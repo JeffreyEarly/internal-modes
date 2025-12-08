@@ -38,7 +38,13 @@
             ]
         }
     ],
-    "dependencies": [],
+    "dependencies": [
+        {
+            "name": "SplineCore",
+            "compatibleVersions": "",
+            "id": "f723c088-397a-43e5-a0ad-e19422cc3c2a"
+        }
+    ],
     "releaseCompatibility": ">=R2024b",
     "schemaVersion": "1.1.0"
 }
