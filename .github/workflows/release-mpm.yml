@@ -6,7 +6,7 @@ on:
       bump:
         description: "Version bump type"
         required: true
-        default: "none"
+        default: "patch"
         type: choice
         options:
           - none
@@ -104,8 +104,24 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage changes from ci_release: mpackage.json, CHANGELOG, docs, etc.
-          git add resources/mpackage.json CHANGELOG.md docs
+          # Always add the updated mpackage.json
+          git add resources/mpackage.json
+
+          # Conditionally add CHANGELOG.md if it exists
+          if [ -f CHANGELOG.md ]; then
+            echo "Adding CHANGELOG.md"
+            git add CHANGELOG.md
+          else
+            echo "CHANGELOG.md not found — skipping"
+          fi
+
+          # Conditionally add docs directory if it exists
+          if [ -d docs ]; then
+            echo "Adding docs/"
+            git add docs
+          else
+            echo "docs/ directory not found — skipping"
+          fi
 
           # If nothing changed, skip commit
           if git diff --cached --quiet; then
