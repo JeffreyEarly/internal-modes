@@ -1,7 +1,7 @@
 function ci_release(options)
 arguments
     options.rootDir = ".."
-    options.bumpType
+    options.bumpType = "none"
     options.notes string = ""
     options.shouldBuildWebsiteDocumentation = false
     options.shouldPackageForDistribution = false
@@ -51,7 +51,7 @@ major = str2double(tokens{1});
 minor = str2double(tokens{2});
 patch = str2double(tokens{3});
 
-if isfield(options,"bumpType")
+if options.bumpType ~= "none"
     switch options.bumpType
         case "major"
             major = major + 1;
@@ -60,7 +60,7 @@ if isfield(options,"bumpType")
         case "minor"
             minor = minor + 1;
             patch = 0;
-        otherwise  % "patch"
+        case "patch"
             patch = patch + 1;
     end
 
