@@ -48,7 +48,6 @@ classdef (Abstract) InternalModesBase < handle
         
         nModes % Used to limit the number of modes to be returned.
         
-        z % Depth coordinate grid used for all output (same as zOut).
         zDomain % [zMin zMax]
         requiresMonotonicDensity
         
@@ -58,6 +57,10 @@ classdef (Abstract) InternalModesBase < handle
         lowerBoundary = LowerBoundary.freeSlip  % Lower boundary condition. Either LowerBoundary.freeSlip (default) or LowerBoundary.none.
     end
     
+    properties (SetObservable, AbortSet, Access = public)
+        z % Depth coordinate grid used for all output (same as zOut).
+    end    
+
     properties (Dependent)
         zMin
         zMax

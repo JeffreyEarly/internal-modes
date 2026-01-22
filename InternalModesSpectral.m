@@ -90,7 +90,6 @@ classdef InternalModesSpectral < InternalModesBase
         % The 'x' refers to the stretched coordinate being used.
         % Once x_function has been set, all the properties listed below are
         % automatically created.
-        x_function         % function handle to return 'x' at z (i.e., the stretched coordinate function)
         xLobatto           % stretched coordinate Lobatto grid nEVP points. z for this class, density or wkb for others.
         xDomain            % limits of the stretched coordinate [xMin xMax]
         z_xLobatto         % The value of z, at the xLobatto points
@@ -111,6 +110,10 @@ classdef InternalModesSpectral < InternalModesBase
         GNorm;
         FNorm;
         GeostrophicNorm
+    end
+
+    properties (SetObservable, AbortSet, Access = public)
+        x_function         % function handle to return 'x' at z (i.e., the stretched coordinate function)
     end
     
     properties (Dependent)
@@ -140,6 +143,8 @@ classdef InternalModesSpectral < InternalModesBase
             end
             self@InternalModesBase(rho=options.rho,N2=options.N2,zIn=options.zIn,zOut=options.zOut,latitude=options.latitude,rho0=options.rho0,nModes=options.nModes,rotationRate=options.rotationRate,g=options.g);
             self.nEVP = options.nEVP;
+            addlistener(self,'x_function','PostSet',@self.stretchedCoordinateDidChange);
+            addlistener(self,'z','PostSet',@self.outputGridDidChange);
             self.SetupEigenvalueProblem();            
         end
 
@@ -676,28 +681,24 @@ classdef InternalModesSpectral < InternalModesBase
         
         function value = get.Lx(self)
             value = self.xMax - self.xMin;
-        end
-        
-        function set.x_function(self,s)
-            self.x_function = s;
-            
-            self.recomputeStretchedGrid(s);
-        end
-        
-        
+        end        
     end
     
     methods (Access = protected)
         
-        function self = recomputeStretchedGrid(self,s)
-            self.xDomain = [s(self.zMin) s(self.zMax)];
+        function self = stretchedCoordinateDidChange(self,~,~)
+            self.xDomain = [self.x_function(self.zMin) self.x_function(self.zMax)];
             self.xLobatto = ((self.xMax-self.xMin)/2)*( cos(((0:self.nEVP-1)')*pi/(self.nEVP-1)) + 1) + self.xMin;
-            [self.z_xLobatto, self.xOut] = InternalModesSpectral.StretchedGridFromCoordinate( s, self.xLobatto, self.zDomain, self.z);
+            
+            self.z_xLobatto = InternalModesSpectral.fInverseBisection(self.x_function,self.xLobatto,self.zMin,self.zMax,1e-12);
+            self.z_xLobatto(self.z_xLobatto>self.zMax) = self.zMax;
+            self.z_xLobatto(self.z_xLobatto<self.zMin) = self.zMin;
+            self.z_xLobatto(1) = self.zMax;
+            self.z_xLobatto(end) = self.zMin;
                         
             self.Diff1_xCheb = @(v) (2/self.Lx)*InternalModesSpectral.DifferentiateChebyshevVector( v );
             [self.T_xLobatto,self.Tx_xLobatto,self.Txx_xLobatto] = InternalModesSpectral.ChebyshevPolynomialsOnGrid( self.xLobatto, length(self.xLobatto) );
-            self.T_xCheb_zOut = InternalModesSpectral.ChebyshevTransformForGrid(self.xLobatto, self.xOut);
-            
+                   
             % We use that \int_{-1}^1 T_n(x) dx = \frac{(-1)^n + 1}{1-n^2}
             % for all n, except n=1, where the integral is zero.
             np = (0:(self.nEVP-1))';
@@ -705,11 +706,19 @@ classdef InternalModesSpectral < InternalModesBase
             self.Int_xCheb(2) = 0;
             self.Int_xCheb = self.Lx/2*self.Int_xCheb;
             
-            self.N2_xLobatto = self.N2_function(self.z_xLobatto);
+            self.outputGridDidChange([],[]);
       
             if self.shouldShowDiagnostics == 1
                 fprintf(' The eigenvalue problem will be solved with %d points.\n', length(self.xLobatto));
             end
+        end
+
+        function self = outputGridDidChange(self,~,~)
+            self.xOut = self.x_function(self.z);
+            self.xOut(self.xOut>max(self.xLobatto)) = max(self.xLobatto);
+            self.xOut(self.xOut<min(self.xLobatto)) = min(self.xLobatto);
+            self.T_xCheb_zOut = InternalModesSpectral.ChebyshevTransformForGrid(self.xLobatto, self.xOut);
+            self.N2_xLobatto = self.N2_function(self.z_xLobatto);
         end
         
         function self = SetupEigenvalueProblem(self)
@@ -1011,34 +1020,7 @@ classdef InternalModesSpectral < InternalModesBase
                 boundaryIndices(index) = [];
             end
         end
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %
-        % Convert to a stretched grid
-        %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [z_xLobatto, xOut] = StretchedGridFromCoordinate( x, xLobatto, zDomain, zOut)
-            % x is a function handle, that maps from z.
-            % xLobatto is the grid on x
-            % zLobatto is the Lobatto grid on z
-            % zOut is the output grid
-            
-            maxZ = max(zDomain);
-            minZ = min(zDomain);
-
-            z_xLobatto = InternalModesSpectral.fInverseBisection(x,xLobatto,min(zDomain),max(zDomain),1e-12);
-            z_xLobatto(z_xLobatto>maxZ) = maxZ;
-            z_xLobatto(z_xLobatto<minZ) = minZ;
-            
-            z_xLobatto(1) = maxZ;
-            z_xLobatto(end) = minZ;
-            
-                        
-            xOut = x(zOut);
-            xOut(xOut>max(xLobatto)) = max(xLobatto);
-            xOut(xOut<min(xLobatto)) = min(xLobatto);
-        end
-        
+                
         function [flag, dTotalVariation, rho_zCheb, rho_zLobatto, rhoz_zCheb, rhoz_zLobatto] = CheckIfReasonablyMonotonic(zLobatto, rho_zCheb, rho_zLobatto, rhoz_zCheb, rhoz_zLobatto)
             % We want to know if the density function is decreasing as z
             % increases. If it's not, are the discrepencies small enough
