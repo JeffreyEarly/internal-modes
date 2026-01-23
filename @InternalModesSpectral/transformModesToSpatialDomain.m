@@ -1,13 +1,8 @@
-function [F,G] = transformModesToSpatialDomain(self,V_cheb,h,maxModes)
+function [F,G,h] = transformModesToSpatialDomain(self,V_cheb,h,maxModes)
 
 F = zeros(length(self.z),maxModes);
 G = zeros(length(self.z),maxModes);
 h = reshape(h(1:maxModes),1,[]);
-
-varargout = cell(size(varargin));
-for iArg=1:length(varargin)
-    varargout{iArg} = zeros(1,maxModes);
-end
 
 % This still need to be optimized to *not* do the transforms
 % twice, when the EVP grid is the same as the output grid.

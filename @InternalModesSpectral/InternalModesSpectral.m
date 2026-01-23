@@ -81,7 +81,7 @@ classdef InternalModesSpectral < InternalModesBase
         rho_function        % function handle to return rho at z
         N2_function         % function handle to return N2 at z
                 
-        nEVP = 0           % number of points in the eigenvalue problem
+        
         
         % These properties are initialized with SetupEigenvalueProblem()
         % Most subclasses *will* override these initializations. The 'x' refers to the stretched coordinate being used.
@@ -90,6 +90,7 @@ classdef InternalModesSpectral < InternalModesBase
         % The 'x' refers to the stretched coordinate being used.
         % Once x_function has been set, all the properties listed below are
         % automatically created.
+        x_function         % function handle to return 'x' at z (i.e., the stretched coordinate function)
         xLobatto           % stretched coordinate Lobatto grid nEVP points. z for this class, density or wkb for others.
         xDomain            % limits of the stretched coordinate [xMin xMax]
         z_xLobatto         % The value of z, at the xLobatto points
@@ -113,7 +114,7 @@ classdef InternalModesSpectral < InternalModesBase
     end
 
     properties (SetObservable, AbortSet, Access = public)
-        x_function         % function handle to return 'x' at z (i.e., the stretched coordinate function)
+        nEVP               % number of points in the eigenvalue problem
     end
     
     properties (Dependent)
@@ -143,9 +144,10 @@ classdef InternalModesSpectral < InternalModesBase
             end
             self@InternalModesBase(rho=options.rho,N2=options.N2,zIn=options.zIn,zOut=options.zOut,latitude=options.latitude,rho0=options.rho0,nModes=options.nModes,rotationRate=options.rotationRate,g=options.g);
             self.nEVP = options.nEVP;
-            addlistener(self,'x_function','PostSet',@self.stretchedCoordinateDidChange);
+            addlistener(self,'nEVP','PostSet',@self.nEVPDidChange);
             addlistener(self,'z','PostSet',@self.outputGridDidChange);
-            self.SetupEigenvalueProblem();            
+            self.SetupEigenvalueProblem();
+            self.nEVPDidChange([],[])
         end
 
         
@@ -527,25 +529,42 @@ classdef InternalModesSpectral < InternalModesBase
             arguments
                 self InternalModesSpectral
                 options.nPoints (1,1) double = 64
-                options.omega (1,1) double = []
-                options.k (1,1) double = []
+                options.omega (1,1) double
+                options.k (1,1) double
             end
-            if (isempty(options.k) && isempty(options.omega)) || (~isempty(options.k) && ~isempty(options.omega))
+            if (isfield(options,"k") && isfield(options,"omega")) || (~isfield(options,"k") && ~isfield(options,"omega"))
                 error("InternalModes:InvalidArguments","You must specify either omega or k.")
-            elseif ~isempty(options.omega)
-                self.gridFrequency = options.omega;
-                [A,B] = self.EigenmatricesForFrequency(options.omega);
-            elseif ~isempty(options.k)
-                [A,B] = self.EigenmatricesForWavenumber(options.k);
             end
 
-            [V_cheb,h] = self.solveGEP(A,B,options);
+            resolvedModes = 0;
+            if self.nEVP < 2*options.nPoints
+                self.nEVP = ceil(2.1*options.nPoints);
+            end
+            while resolvedModes < options.nPoints
 
+                try
+                    if isfield(options,"omega")
+                        self.gridFrequency = options.omega;
+                        [A,B] = self.EigenmatricesForFrequency(options.omega);
+                    elseif isfield(options,"k")
+                        self.gridFrequency = 0;
+                        [A,B] = self.EigenmatricesForWavenumber(options.k);
+                    end
+
+                    [V_cheb,h] = self.solveGEP(A,B,minModes=options.nPoints);
+                catch ME
+                    if ME.cause{1}.identifier == "GLOceanKit:Context"
+                        ctx = jsondecode(ME.cause{1}.message);
+                        self.nEVP = ceil(self.nEVP*(options.nPoints/ctx.resolvedModes));
+                        disp("Increasing nEVP to " + self.nEVP);
+                    end
+                end
+            end
             self.z = self.quadraturePointsForModes(options.nPoints,V_cheb,h);
             
             % is this the right number of modes? Or are we makign a
             % boundary condition assumption?
-            [F,G] = self.transformModesToSpatialDomain(V_cheb,h,options.nPoints-1);            
+            [F,G,h] = self.transformModesToSpatialDomain(V_cheb,h,options.nPoints-1);            
         end
         
         function psi = SurfaceModesAtWavenumber(self, k) 
@@ -618,7 +637,7 @@ classdef InternalModesSpectral < InternalModesBase
         
         z_g = quadraturePointsForEigenmatrices(self,nPoints,A,B)
         z_g = quadraturePointsForModes(self,nPoints,G_cheb,h)
-        [F,G] = transformModesToSpatialDomain(self,V_cheb,h,maxModes)
+        [F,G,h] = transformModesToSpatialDomain(self,V_cheb,h,maxModes)
         
         function value = get.xMin(self)
             value = self.xDomain(1);
@@ -635,7 +654,7 @@ classdef InternalModesSpectral < InternalModesBase
     
     methods (Access = protected)
         
-        function self = stretchedCoordinateDidChange(self,~,~)
+        function self = nEVPDidChange(self,~,~)
             self.xDomain = [self.x_function(self.zMin) self.x_function(self.zMax)];
             self.xLobatto = ((self.xMax-self.xMin)/2)*( cos(((0:self.nEVP-1)')*pi/(self.nEVP-1)) + 1) + self.xMin;
             

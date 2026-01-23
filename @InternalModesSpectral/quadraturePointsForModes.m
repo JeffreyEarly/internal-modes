@@ -10,7 +10,7 @@ function z_g = quadraturePointsForModes(self,nPoints,G_cheb,h)
 % to be good (low), but not the next.
 
 resolvedModes = ceil(find(h>0,1,'last')/2); % Have to do ceil, not floor, or we lose the barotropic mode.
-if resolvedModes < options.minModes
+if resolvedModes < nPoints
     error('GLOceanKit:NeedMorePoints', 'Returned %d valid modes (%d quadrature points requested) using nEVPs=%d.',maxModes,nPoints,self.nEVP);
 end
 

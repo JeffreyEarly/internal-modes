@@ -153,7 +153,11 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     end
     
     methods (Access = protected)
-        
+        function self = nEVPDidChange(self,~,~)
+            nEVPDidChange@InternalModesSpectral(self,[],[]);
+            self.Nz_xLobatto = self.Nz_function(self.z_xLobatto);
+        end
+
         function self = InitializeWithGrid(self, rho, zIn)
             InitializeWithGrid@InternalModesSpectral(self,rho,zIn);
 
@@ -197,7 +201,6 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
             self.x_function = cumsum(N_function);
             
             self.Nz_function = diff(N_function);
-            self.Nz_xLobatto = self.Nz_function(self.z_xLobatto);
 
             self.hFromLambda = @(lambda) 1.0 ./ lambda;
             self.GOutFromVCheb = @(G_cheb,h) self.T_xCheb_zOut(G_cheb);

@@ -27,7 +27,9 @@ end
 
 resolvedModes = ceil(find(h>0,1,'last')/2); % Have to do ceil, not floor, or we lose the barotropic mode.
 if resolvedModes < options.minModes
-    error('GLOceanKit:NeedMorePoints', 'Returned %d valid modes (%d quadrature points requested) using nEVPs=%d.',maxModes,nPoints,self.nEVP);
+    ME = MException('GLOceanKit:NeedMorePoints','Returned %d valid modes (%d modes requested) using nEVPs=%d.', resolvedModes, options.minModes, self.nEVP);
+    ME = addCause(ME, MException("GLOceanKit:Context", jsonencode(struct("resolvedModes", double(resolvedModes)))));
+    throwAsCaller(ME);   % or: throw(ME)
 end
 
 end
