@@ -147,7 +147,7 @@ classdef InternalModesSpectral < InternalModesBase
             addlistener(self,'nEVP','PostSet',@self.nEVPDidChange);
             addlistener(self,'z','PostSet',@self.outputGridDidChange);
             self.SetupEigenvalueProblem();
-            self.nEVPDidChange([],[])
+            self.nEVPDidChange([],[]);
         end
 
         
@@ -525,7 +525,7 @@ classdef InternalModesSpectral < InternalModesBase
             k = self.kFromOmega(h,omega);
         end 
 
-        function [F,G,h,z] = modesAtQuadraturePoints(self, options )
+        function [F,G,h,zq] = modesAtQuadraturePoints(self, options )
             arguments
                 self InternalModesSpectral
                 options.nPoints (1,1) double = 64
@@ -540,27 +540,31 @@ classdef InternalModesSpectral < InternalModesBase
             if self.nEVP < 2*options.nPoints
                 self.nEVP = ceil(2.1*options.nPoints);
             end
+
             while resolvedModes < options.nPoints
 
-                try
-                    if isfield(options,"omega")
-                        self.gridFrequency = options.omega;
-                        [A,B] = self.EigenmatricesForFrequency(options.omega);
-                    elseif isfield(options,"k")
-                        self.gridFrequency = 0;
-                        [A,B] = self.EigenmatricesForWavenumber(options.k);
-                    end
+                if isfield(options,"omega")
+                    self.gridFrequency = options.omega;
+                    [A,B] = self.EigenmatricesForFrequency(options.omega);
+                elseif isfield(options,"k")
+                    self.gridFrequency = 0;
+                    [A,B] = self.EigenmatricesForWavenumber(options.k);
+                end
 
-                    [V_cheb,h] = self.solveGEP(A,B,minModes=options.nPoints);
-                catch ME
-                    if ME.cause{1}.identifier == "GLOceanKit:Context"
-                        ctx = jsondecode(ME.cause{1}.message);
-                        self.nEVP = ceil(self.nEVP*(options.nPoints/ctx.resolvedModes));
-                        disp("Increasing nEVP to " + self.nEVP);
+                [V_cheb,h] = self.solveGEP(A,B,minModes=options.nPoints);
+                % This heuristic only works for frequency!
+                resolvedModes = ceil(find(h>0,1,'last')/2); % Have to do ceil, not floor, or we lose the barotropic mode.
+
+                if resolvedModes < options.nPoints
+                    self.nEVP = ceil(self.nEVP*(options.nPoints/resolvedModes));
+                    if self.shouldShowDiagnostics
+                        disp("increase nEVP to " + self.nEVP);
                     end
                 end
+
             end
-            self.z = self.quadraturePointsForModes(options.nPoints,V_cheb,h);
+            zq = self.quadraturePointsForModes(options.nPoints,V_cheb,h);
+            self.z = zq;
             
             % is this the right number of modes? Or are we makign a
             % boundary condition assumption?

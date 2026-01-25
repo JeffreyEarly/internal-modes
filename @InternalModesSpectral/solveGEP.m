@@ -25,11 +25,4 @@ if options.negativeEigenvalues > 0
     V_cheb=V_cheb(:,permutation);
 end
 
-resolvedModes = ceil(find(h>0,1,'last')/2); % Have to do ceil, not floor, or we lose the barotropic mode.
-if resolvedModes < options.minModes
-    ME = MException('GLOceanKit:NeedMorePoints','Returned %d valid modes (%d modes requested) using nEVPs=%d.', resolvedModes, options.minModes, self.nEVP);
-    ME = addCause(ME, MException("GLOceanKit:Context", jsonencode(struct("resolvedModes", double(resolvedModes)))));
-    throwAsCaller(ME);   % or: throw(ME)
-end
-
 end
