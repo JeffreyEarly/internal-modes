@@ -5,4 +5,100 @@ Lz = 4000;
 
 im = InternalModesWKBSpectral(N2=N2,zIn=[-Lz 0],latitude=31,rho0=1025);
 
+
+%% We need to establish just how many points we need *for a given k*. So we
+% will run a simple convergence test.
+if exist("k_convergence.mat","file")
+    load("k_convergence.mat");
+else
+    lambda = [1e5;1e4;1e3;3.1e2;1e2;3.1e1;1e1;3.1]; % ;1e-1 % 10 cm spirals out of control
+    nModes = [20; 40; 80; 160];
+    k = 2*pi./lambda;
+    [K,MODES] = ndgrid(k,nModes);
+    minEVP = nan(size(K));
+
+    dEVP = 5;
+
+    for i=1:numel(minEVP)
+        isConverged = false;
+
+        nModes = MODES(i);
+        im.nEVP = MODES(i) + dEVP;
+
+        [A,B] = im.EigenmatricesForWavenumber(K(i));
+        [~,D] = eig( A, B );
+        h_lb = sort(real(im.hFromLambda(diag(D))),'descend');
+
+        while (~isConverged)
+            im.nEVP = im.nEVP + dEVP;
+            [A,B] = im.EigenmatricesForWavenumber(K(i));
+            [~,D] = eig( A, B );
+            h_ub = sort(real(im.hFromLambda(diag(D))),'descend');
+
+            rel_error = abs((h_ub(1:nModes)-h_lb(1:nModes))./h_ub(1:nModes));
+            isConverged = max(rel_error) < 1e-7;
+            h_lb = h_ub;
+        end
+        im.nEVP = im.nEVP - dEVP;
+        minEVP(i) = im.nEVP;
+
+    end
+
+    save("k_convergence.mat","k","nModes","K","MODES","minEVP");
+end
+
+%%
+nModes = reshape(MODES(1,:),[],1);
+k = K(:,1);
+
+figure
+tiledlayout(2,1)
+
+nexttile
+labels = cell(size(MODES,2),1);
+for iMode = 1:size(MODES,2)
+    plot(K(:,iMode)/2/pi,minEVP(:,iMode)), hold on
+    labels{iMode} = string(MODES(1,iMode));
+end
+xlog, ylog
+xlabel("k (cycles/m)")
+ylabel("minimum EVP points")
+legend(labels,Location="northwest")
+title("minimum number of EVP points vs k, for a required number of resolved modes")
+
+for iMode = 1:size(MODES,2)
+    fit = fitBrokenPowerLaw_a0(K(:,iMode),minEVP(:,iMode));
+    fit.theta
+    plot(k_cpm,fit.model(k),Color=0*[1 1 1], LineWidth=2)
+end
+
+% iK = size(K,1);
+% iL = iK-3;
+% iMode = 1;
+% slope_k = ( log(minEVP(iL,iMode))-log(minEVP(iK,iMode)) )/( log(K(iL,iMode))-log(K(iK,iMode)) );
+% k_star = 2*pi/3.1e2;
+% delta = 1e-3;
+% m = @(k) (slope_k/2)*(1+tanh((k-k_star)/delta));
+% 
+% k_cpm = k/(2*pi);
+% plot(k_cpm,100*k.^m(k),Color=0*[1 1 1], LineWidth=2)
+
+nexttile
+labels = cell(size(K,1),1);
+for iK = 1:size(K,1)
+    plot(MODES(iK,:),minEVP(iK,:)), hold on
+    labels{iK} = string(round(2*pi/K(iK,1)));
+end
+xlog, ylog
+xlabel("resolved modes")
+ylabel("minimum EVP points")
+legend(labels,Location="northwest")
+title("minimum number of EVP points vs required number of resolved modes, for a given wavelength")
+
+
+iK = size(K,1);
+slope_mode = ( log(minEVP(iK,1))-log(minEVP(iK,end)) )/( log(MODES(iK,1))-log(MODES(iK,end)) );
+C = minEVP(iK,1)/(MODES(iK,1)^slope_mode);
+plot(nModes,1.1*C*nModes.^slope_mode,Color=0*[1 1 1], LineWidth=2)
+
 % profile on; [F,G,h] = im.modesAtQuadraturePoints(nPoints=64,k=2*pi/1e3); profile viewer;
