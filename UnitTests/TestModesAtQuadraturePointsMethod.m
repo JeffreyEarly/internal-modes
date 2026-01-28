@@ -11,7 +11,7 @@ im = InternalModesWKBSpectral(N2=N2,zIn=[-Lz 0],latitude=31,rho0=1025);
 if exist("k_convergence.mat","file")
     load("k_convergence.mat");
 else
-    lambda = [1e5;1e4;1e3;3.1e2;1e2;3.1e1;1e1;3.1]; % ;1e-1 % 10 cm spirals out of control
+    lambda = [1e5;1e4;1e3;3.1e2;1e2;3.1e1;1e1;3.1; 1]; % ;1e-1 % 10 cm spirals out of control
     nModes = [20; 40; 80; 160];
     k = 2*pi./lambda;
     [K,MODES] = ndgrid(k,nModes);
@@ -48,8 +48,16 @@ else
 end
 
 %%
+fit = fit_fkn(K(:), MODES(:), minEVP(:));
+fit.theta
+
+%%
 nModes = reshape(MODES(1,:),[],1);
 k = K(:,1);
+k_cpm = k/(2*pi);
+
+model = @(N,k) 3.07 * N.^0.88 .*(1 + (k./(0.00062*N)) ).^0.3058;
+% model = @(N,k) 3 * N .*(1 + (k./(0.00062*N)) ).^0.33;
 
 figure
 tiledlayout(2,1)
@@ -67,10 +75,14 @@ legend(labels,Location="northwest")
 title("minimum number of EVP points vs k, for a required number of resolved modes")
 
 for iMode = 1:size(MODES,2)
-    fit = fitBrokenPowerLaw_a0(K(:,iMode),minEVP(:,iMode));
-    fit.theta
-    plot(k_cpm,fit.model(k),Color=0*[1 1 1], LineWidth=2)
+    plot(k_cpm,model(nModes(iMode),k),Color=0*[1 1 1], LineWidth=2)
 end
+
+% for iMode = 1:size(MODES,2)
+%     fit = fitBrokenPowerLaw_a0(K(:,iMode),minEVP(:,iMode));
+%     fit.theta
+%     plot(k_cpm,fit.model(k),Color=0*[1 1 1], LineWidth=2)
+% end
 
 % iK = size(K,1);
 % iL = iK-3;
@@ -80,7 +92,7 @@ end
 % delta = 1e-3;
 % m = @(k) (slope_k/2)*(1+tanh((k-k_star)/delta));
 % 
-% k_cpm = k/(2*pi);
+% 
 % plot(k_cpm,100*k.^m(k),Color=0*[1 1 1], LineWidth=2)
 
 nexttile
@@ -95,10 +107,16 @@ ylabel("minimum EVP points")
 legend(labels,Location="northwest")
 title("minimum number of EVP points vs required number of resolved modes, for a given wavelength")
 
+for iK = 1:size(K,1)
+    plot(nModes,model(nModes,k(iK)),Color=0*[1 1 1], LineWidth=2)
+end
 
-iK = size(K,1);
-slope_mode = ( log(minEVP(iK,1))-log(minEVP(iK,end)) )/( log(MODES(iK,1))-log(MODES(iK,end)) );
-C = minEVP(iK,1)/(MODES(iK,1)^slope_mode);
-plot(nModes,1.1*C*nModes.^slope_mode,Color=0*[1 1 1], LineWidth=2)
+
+% iK = size(K,1);
+% slope_mode = ( log(minEVP(iK,1))-log(minEVP(iK,end)) )/( log(MODES(iK,1))-log(MODES(iK,end)) );
+% C = minEVP(iK,1)/(MODES(iK,1)^slope_mode);
+% plot(nModes,1.1*C*nModes.^slope_mode,Color=0*[1 1 1], LineWidth=2)
+% 
+% k0 = [0.0138; 0.0237; 0.0481; 0.0790];
 
 % profile on; [F,G,h] = im.modesAtQuadraturePoints(nPoints=64,k=2*pi/1e3); profile viewer;
