@@ -2,17 +2,21 @@ N0 = 3*2*pi/3600;
 L_gm = 1300;
 N2 = @(z) N0*N0*exp(2*z/L_gm);
 Lz = 4000;
+zDomain = [-Lz 0];
 
-im = InternalModesWKBSpectral(N2=N2,zIn=[-Lz 0],latitude=31,rho0=1025);
+[N2,zDomain] = StratificationProfileWithMixedLayer_modified();
+
+im = InternalModesWKBSpectral(N2=N2,zIn=zDomain,latitude=31,rho0=1025);
 
 
 %% We need to establish just how many points we need *for a given k*. So we
 % will run a simple convergence test.
-if exist("k_convergence.mat","file")
-    load("k_convergence.mat");
+if exist("k_convergence_ml.mat","file")
+    load("k_convergence_ml.mat");
 else
-    lambda = [1e5;1e4;1e3;3.1e2;1e2;3.1e1;1e1;3.1; 1]; % ;1e-1 % 10 cm spirals out of control
-    nModes = [20; 40; 80; 160];
+    lambda = [1e5;1e4;1e3;3.1e2;1e2;3.1e1;1e1;3.1]; % ;1e-1 % 10 cm spirals out of control
+    nModes = sort([20; 40; 80; 160],'descend');
+    
     k = 2*pi./lambda;
     [K,MODES] = ndgrid(k,nModes);
     minEVP = nan(size(K));
@@ -36,15 +40,69 @@ else
             h_ub = sort(real(im.hFromLambda(diag(D))),'descend');
 
             rel_error = abs((h_ub(1:nModes)-h_lb(1:nModes))./h_ub(1:nModes));
-            isConverged = max(rel_error) < 1e-7;
+            isConverged = max(rel_error) < 1e-8;
             h_lb = h_ub;
         end
         im.nEVP = im.nEVP - dEVP;
         minEVP(i) = im.nEVP;
-
     end
 
-    save("k_convergence.mat","k","nModes","K","MODES","minEVP");
+    % for iK = 1:size(K,1)
+    %     iMode = 1;
+    %     i = sub2ind(size(K),iK,iMode);
+    % 
+    %     % first we get the high resolved modes to converge
+    %     isConverged = false;
+    % 
+    %     nModes = MODES(i);
+    %     im.nEVP = MODES(i) + dEVP;
+    % 
+    %     [A,B] = im.EigenmatricesForWavenumber(K(i));
+    %     [~,D] = eig( A, B );
+    %     h_lb = sort(real(im.hFromLambda(diag(D))),'descend');
+    % 
+    %     while (~isConverged)
+    %         im.nEVP = im.nEVP + dEVP;
+    %         [A,B] = im.EigenmatricesForWavenumber(K(i));
+    %         [~,D] = eig( A, B );
+    %         h_ub = sort(real(im.hFromLambda(diag(D))),'descend');
+    % 
+    %         rel_error = abs((h_ub(1:nModes)-h_lb(1:nModes))./h_ub(1:nModes));
+    %         isConverged = max(rel_error) < 1e-8;
+    %         h_lb = h_ub;
+    %     end
+    %     h_high_res = h_lb;
+    %     im.nEVP = im.nEVP - dEVP;
+    %     minEVP(i) = im.nEVP;
+    % 
+    % 
+    %     for iMode = 2:size(MODES,2)
+    %         i = sub2ind(size(K),iK,iMode);
+    %         disp(i)
+    %         isConverged = false;
+    % 
+    %         nModes = MODES(i);
+    %         im.nEVP = MODES(i) + dEVP;
+    % 
+    %         [A,B] = im.EigenmatricesForWavenumber(K(i));
+    %         [~,D] = eig( A, B );
+    %         h_lb = sort(real(im.hFromLambda(diag(D))),'descend');
+    % 
+    %         while (~isConverged)
+    %             im.nEVP = im.nEVP + dEVP;
+    %             [A,B] = im.EigenmatricesForWavenumber(K(i));
+    %             [~,D] = eig( A, B );
+    %             h_ub = sort(real(im.hFromLambda(diag(D))),'descend');
+    % 
+    %             rel_error = abs((h_ub(1:nModes)-h_high_res(1:nModes))./h_high_res(1:nModes));
+    %             isConverged = max(rel_error) < 1e-8;
+    %         end
+    %         im.nEVP = im.nEVP;
+    %         minEVP(i) = im.nEVP;
+    %     end
+    % end
+
+    save("k_convergence_ml.mat","k","nModes","K","MODES","minEVP");
 end
 
 %%
@@ -52,12 +110,15 @@ fit = fit_fkn(K(:), MODES(:), minEVP(:));
 fit.theta
 
 %%
+shouldShowModelFit = false;
+
 nModes = reshape(MODES(1,:),[],1);
 k = K(:,1);
 k_cpm = k/(2*pi);
 
 model = @(N,k) 3.07 * N.^0.88 .*(1 + (k./(0.00062*N)) ).^0.3058;
 % model = @(N,k) 3 * N .*(1 + (k./(0.00062*N)) ).^0.33;
+model = @(N,k) fit.model(k,N);
 
 figure
 tiledlayout(2,1)
@@ -74,8 +135,10 @@ ylabel("minimum EVP points")
 legend(labels,Location="northwest")
 title("minimum number of EVP points vs k, for a required number of resolved modes")
 
-for iMode = 1:size(MODES,2)
-    plot(k_cpm,model(nModes(iMode),k),Color=0*[1 1 1], LineWidth=2)
+if shouldShowModelFit
+    for iMode = 1:size(MODES,2)
+        plot(k_cpm,model(nModes(iMode),k),Color=0*[1 1 1], LineWidth=2)
+    end
 end
 
 % for iMode = 1:size(MODES,2)
@@ -107,8 +170,10 @@ ylabel("minimum EVP points")
 legend(labels,Location="northwest")
 title("minimum number of EVP points vs required number of resolved modes, for a given wavelength")
 
-for iK = 1:size(K,1)
-    plot(nModes,model(nModes,k(iK)),Color=0*[1 1 1], LineWidth=2)
+if shouldShowModelFit
+    for iK = 1:size(K,1)
+        plot(nModes,model(nModes,k(iK)),Color=0*[1 1 1], LineWidth=2)
+    end
 end
 
 
