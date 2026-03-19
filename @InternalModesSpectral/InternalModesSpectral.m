@@ -711,8 +711,8 @@ classdef InternalModesSpectral < InternalModesBase
            self.validateInitialModeAndEVPSettings();
            
            if self.requiresMonotonicDensity == 1
-               z = BSpline.PointsOfSupport(rho.t_knot,rho.K);
-               self.rho_function = ConstrainedSpline(z,rho.ValueAtPoints(z),rho.K,rho.t_knot,NormalDistribution(1),struct('global',ShapeConstraint.monotonicDecreasing));
+               z = BSpline.pointsOfSupport(rho.tKnot,rho.K);
+               self.rho_function = ConstrainedSpline(z,rho.valueAtPoints(z),rho.K,rho.tKnot,NormalDistribution(1),struct('global',ShapeConstraint.monotonicDecreasing));
            else
                self.rho_function = rho;
            end
@@ -1309,5 +1309,4 @@ classdef InternalModesSpectral < InternalModesBase
         
     end
 end
-
 

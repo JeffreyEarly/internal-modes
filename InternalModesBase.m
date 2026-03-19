@@ -162,7 +162,7 @@ classdef (Abstract) InternalModesBase < handle
             elseif isa(options.rho,'function_handle') == true
                 self.InitializeWithFunction(options.rho, min(options.zIn), max(options.zIn));
             elseif isa(options.rho,'BSpline') == true
-                self.rho0 = rho(max(options.rho.domain));
+                self.rho0 = options.rho(max(options.rho.domain));
                 self.InitializeWithBSpline(options.rho);
             elseif isa(options.rho,'numeric') == true
                 if length(options.rho) ~= length(options.zIn)
@@ -193,4 +193,3 @@ classdef (Abstract) InternalModesBase < handle
    
     end
 end
-
