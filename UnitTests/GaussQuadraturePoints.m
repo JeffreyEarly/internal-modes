@@ -5,13 +5,13 @@ k = 0;
 
 [rhoFunc, ~, zIn] = InternalModes.StratificationProfileWithName('exponential');
 z = linspace(min(zIn),max(zIn),1024)';
-im = InternalModesSpectral(rhoFunc,zIn,z,33,'nEVP',512);
+im = InternalModesSpectral(rho=rhoFunc, zIn=zIn, zOut=z, latitude=33, nEVP=512);
 im.normalization = normalization;
 im.upperBoundary = upperBoundary;
 
 z_g = im.GaussQuadraturePointsForModesAtWavenumber(nPoints,k);
 
-im_gauss = InternalModesSpectral(rhoFunc,zIn,z_g,33,'nEVP',256,'nModes',nPoints);
+im_gauss = InternalModesSpectral(rho=rhoFunc, zIn=zIn, zOut=z_g, latitude=33, nEVP=256, nModes=nPoints);
 im_gauss.normalization = normalization;
 im_gauss.upperBoundary = upperBoundary;
 
@@ -55,4 +55,3 @@ if im_gauss.upperBoundary == UpperBoundary.freeSurface
 end
 
 fprintf('Note that the barotropic mode destroys the conditioning. If you leave it off, everything does well again\n');
-

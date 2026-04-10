@@ -740,7 +740,7 @@ classdef InternalModesSpectral < InternalModesBase
            
            if self.requiresMonotonicDensity == 1
                z = BSpline.PointsOfSupport(rho.t_knot,rho.K);
-               self.rho_function = ConstrainedSpline(z,rho.ValueAtPoints(z),rho.K,rho.t_knot,NormalDistribution(1),struct('global',ShapeConstraint.monotonicDecreasing));
+               self.rho_function = ConstrainedSpline(z, rho.ValueAtPoints(z), rho.K, rho.t_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
            else
                self.rho_function = rho;
            end
@@ -755,7 +755,7 @@ classdef InternalModesSpectral < InternalModesBase
             K = 6; 
             if self.requiresMonotonicDensity == 1
                 z_knot = InterpolatingSpline.KnotPointsForPoints(zIn,K,1);
-                rho_interpolant = ConstrainedSpline(zIn,rho,K,z_knot,NormalDistribution(1),struct('global',ShapeConstraint.monotonicDecreasing));
+                rho_interpolant = ConstrainedSpline(zIn, rho, K, z_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
                 if self.shouldShowDiagnostics == 1
                     fprintf('Creating a %d-order monotonic spline from the %d points.\n', K, length(rho));
                 end
@@ -1482,5 +1482,4 @@ classdef InternalModesSpectral < InternalModesBase
         
     end
 end
-
 

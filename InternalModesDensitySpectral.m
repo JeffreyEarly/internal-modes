@@ -128,7 +128,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
                 
                 K = 6; % cubic spline
                 z_knot = InterpolatingSpline.KnotPointsForPoints([zIn(1);zIn(unique(y)+1)],K,1);
-                rho_interpolant = ConstrainedSpline(zIn,rho,K,z_knot,NormalDistribution(1),struct('global',ShapeConstraint.monotonicDecreasing));
+                rho_interpolant = ConstrainedSpline(zIn, rho, K, z_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
                 
                 self.rho_function = rho_interpolant;
                 self.N2_function = (-self.g/self.rho0)*diff(self.rho_function);
