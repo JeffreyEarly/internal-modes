@@ -1,13 +1,13 @@
 ---
 layout: default
-title: BottomModesAtWavenumber
+title: bottomModesAtWavenumber
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 2
+nav_order: 50
 mathjax: true
 ---
 
-#  BottomModesAtWavenumber
+#  bottomModesAtWavenumber
 
 Return the bottom SQG mode at fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Return the bottom SQG mode at fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- psi = BottomModesAtWavenumber(self,k)
+ psi = bottomModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesSpectral instance

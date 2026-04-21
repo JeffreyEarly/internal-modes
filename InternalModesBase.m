@@ -150,28 +150,30 @@ classdef (Abstract) InternalModesBase < handle
         % Return vertical modes for a fixed horizontal wavenumber.
         %
         % - Topic: Compute modes
-        % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+        % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
         % - Parameter self: concrete InternalModesBase subclass instance
         % - Parameter k: horizontal wavenumber
+        % - Parameter varargin: additional requests supported by the concrete solver
         % - Returns F: horizontal-velocity mode matrix on `zOut`
         % - Returns G: vertical-velocity mode matrix on `zOut`
         % - Returns h: equivalent-depth row vector
         % - Returns omega: frequency row vector implied by `h` and `k`
-        [F,G,h,omega] = ModesAtWavenumber(self, k ) % Return the normal modes and eigenvalue at a given wavenumber.
-    end
-
-    methods (Abstract)
+        % - Returns varargout: additional outputs forwarded from the concrete solver
+        [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin ) % Return the normal modes and eigenvalue at a given wavenumber.
+        
         % Return vertical modes for a fixed frequency.
         %
         % - Topic: Compute modes
-        % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+        % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
         % - Parameter self: concrete InternalModesBase subclass instance
         % - Parameter omega: frequency in radians per second
+        % - Parameter varargin: additional requests supported by the concrete solver
         % - Returns F: horizontal-velocity mode matrix on `zOut`
         % - Returns G: vertical-velocity mode matrix on `zOut`
         % - Returns h: equivalent-depth row vector
         % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
-        [F,G,h,k] = ModesAtFrequency(self, omega ) % Return the normal modes and eigenvalue at a given frequency.
+        % - Returns varargout: additional outputs forwarded from the concrete solver
+        [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin ) % Return the normal modes and eigenvalue at a given frequency.
     end
     
     methods (Abstract, Access = protected)
@@ -179,6 +181,26 @@ classdef (Abstract) InternalModesBase < handle
         self = InitializeWithGrid(self, rho, z_in) % Used internally by subclasses to intialize with a density grid.
         self = InitializeWithFunction(self, rho, z_min, z_max, z_out) % Used internally by subclasses to intialize with a density function.
         self = InitializeWithN2Function(self, N2, z_min, z_max, z_out) % Used internally by subclasses to intialize with a density function.
+    end
+    
+    methods (Hidden)
+        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin)
+            if isempty(varargin)
+                [F,G,h,omega] = self.modesAtWavenumber(k);
+            else
+                varargout = cell(size(varargin));
+                [F,G,h,omega,varargout{:}] = self.modesAtWavenumber(k, varargin{:});
+            end
+        end
+        
+        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin)
+            if isempty(varargin)
+                [F,G,h,k] = self.modesAtFrequency(omega);
+            else
+                varargout = cell(size(varargin));
+                [F,G,h,k,varargout{:}] = self.modesAtFrequency(omega, varargin{:});
+            end
+        end
     end
     
     methods

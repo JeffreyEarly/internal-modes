@@ -1,13 +1,13 @@
 ---
 layout: default
-title: SurfaceModesAtWavenumber
+title: surfaceModesAtWavenumber
 parent: InternalModesFiniteDifference
 grand_parent: Classes
-nav_order: 12
+nav_order: 16
 mathjax: true
 ---
 
-#  SurfaceModesAtWavenumber
+#  surfaceModesAtWavenumber
 
 Return the surface SQG mode at fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Return the surface SQG mode at fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- psi = SurfaceModesAtWavenumber(self,k)
+ psi = surfaceModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesFiniteDifference instance

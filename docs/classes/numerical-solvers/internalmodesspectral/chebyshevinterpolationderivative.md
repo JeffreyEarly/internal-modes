@@ -3,7 +3,7 @@ layout: default
 title: ChebyshevInterpolationDerivative
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 5
+nav_order: 3
 mathjax: true
 ---
 

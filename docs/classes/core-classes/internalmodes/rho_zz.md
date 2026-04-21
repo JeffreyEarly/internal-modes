@@ -3,7 +3,7 @@ layout: default
 title: rho_zz
 parent: InternalModes
 grand_parent: Classes
-nav_order: 34
+nav_order: 29
 mathjax: true
 ---
 

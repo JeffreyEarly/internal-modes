@@ -3,7 +3,7 @@ layout: default
 title: EigenmatricesForWavenumber
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 18
+nav_order: 16
 mathjax: true
 ---
 

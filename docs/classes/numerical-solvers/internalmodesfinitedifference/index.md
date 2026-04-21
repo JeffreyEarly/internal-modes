@@ -35,7 +35,7 @@ attractive when many frequencies or wavenumbers are required.
 
 ```matlab
 im = InternalModesFiniteDifference(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, orderOfAccuracy=4);
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
 ```
 
 
@@ -46,9 +46,9 @@ im = InternalModesFiniteDifference(rho=rho, zIn=zIn, zOut=zOut, latitude=latitud
   + [`InternalModesFiniteDifference`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/internalmodesfinitedifference.html) Initialize the finite-difference solver.
   + [`orderOfAccuracy`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/orderofaccuracy.html) Formal order of accuracy for the finite-difference stencils.
 + Compute modes
-  + [`BottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
-  + [`BoundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/boundarymodesatwavenumber.html) Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
-  + [`SurfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
+  + [`bottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
+  + [`boundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/boundarymodesatwavenumber.html) Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
+  + [`surfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesfinitedifference/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 
 
 ## Developer Topics

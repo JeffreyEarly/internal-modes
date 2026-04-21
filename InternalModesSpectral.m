@@ -30,7 +30,7 @@ classdef InternalModesSpectral < InternalModesBase
     %
     % ```matlab
     % im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % [F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -730,11 +730,11 @@ classdef InternalModesSpectral < InternalModesBase
             [F,G,h] = self.ModesFromGEP(A,B);
         end
 
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+        function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
             % Return spectral modes for a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter k: horizontal wavenumber
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -757,11 +757,11 @@ classdef InternalModesSpectral < InternalModesBase
             omega = self.omegaFromK(h,k);
         end
         
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+        function [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin )
             % Return spectral modes for a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter omega: frequency in radians per second
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -784,32 +784,32 @@ classdef InternalModesSpectral < InternalModesBase
             k = self.kFromOmega(h,omega);
         end 
         
-        function psi = SurfaceModesAtWavenumber(self, k) 
+        function psi = surfaceModesAtWavenumber(self, k) 
             % Return the surface SQG mode at fixed horizontal wavenumber.
             %
             % Section 5.6 of Early, Lelong, and Smith (2020) discusses the
             % surface-trapped modes computed by this helper.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Declaration: psi = surfaceModesAtWavenumber(self,k)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: surface boundary mode evaluated on `zOut`
-            psi = self.BoundaryModesAtWavenumber(k,1);
+            psi = self.boundaryModesAtWavenumber(k,1);
         end
         
-        function psi = BottomModesAtWavenumber(self, k) 
+        function psi = bottomModesAtWavenumber(self, k) 
             % Return the bottom SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Declaration: psi = bottomModesAtWavenumber(self,k)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: bottom boundary mode evaluated on `zOut`
-            psi = self.BoundaryModesAtWavenumber(k,0);
+            psi = self.boundaryModesAtWavenumber(k,0);
         end
         
-        function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+        function psi = boundaryModesAtWavenumber(self, k, isSurface)
             % Return either the surface or bottom boundary mode at fixed wavenumber.
             %
             % This helper estimates the boundary-grid resolution needed to
@@ -817,7 +817,7 @@ classdef InternalModesSpectral < InternalModesBase
             % manuscript SQG-style boundary-value problem spectrally.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BoundaryModesAtWavenumber(self,k,isSurface)
+            % - Declaration: psi = boundaryModesAtWavenumber(self,k,isSurface)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter k: horizontal wavenumber array
             % - Parameter isSurface: logical flag selecting the surface mode when true and the bottom mode when false
@@ -1008,6 +1008,20 @@ classdef InternalModesSpectral < InternalModesBase
         function value = get.Lx(self)
             value = self.xMax - self.xMin;
         end        
+    end
+    
+    methods (Hidden)
+        function psi = SurfaceModesAtWavenumber(self, k)
+            psi = self.surfaceModesAtWavenumber(k);
+        end
+        
+        function psi = BottomModesAtWavenumber(self, k)
+            psi = self.bottomModesAtWavenumber(k);
+        end
+        
+        function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+            psi = self.boundaryModesAtWavenumber(k, isSurface);
+        end
     end
     
     methods (Access = protected)

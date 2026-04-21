@@ -3,7 +3,7 @@ layout: default
 title: InternalModesSpectral
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 40
+nav_order: 38
 mathjax: true
 ---
 

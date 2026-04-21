@@ -3,7 +3,7 @@ layout: default
 title: Int_xCheb
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 37
+nav_order: 35
 mathjax: true
 ---
 

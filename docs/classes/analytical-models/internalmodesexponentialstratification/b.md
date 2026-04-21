@@ -3,7 +3,7 @@ layout: default
 title: b
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 16
+nav_order: 14
 mathjax: true
 ---
 

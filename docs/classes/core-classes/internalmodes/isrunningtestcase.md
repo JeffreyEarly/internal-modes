@@ -3,7 +3,7 @@ layout: default
 title: isRunningTestCase
 parent: InternalModes
 grand_parent: Classes
-nav_order: 24
+nav_order: 16
 mathjax: true
 ---
 

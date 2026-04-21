@@ -59,8 +59,8 @@ and exposes quick comparison figures for those benchmark cases.
 
 ```matlab
 im = InternalModes(rho, zIn, zOut, latitude, "method", "wkbAdaptiveSpectral");
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
-psi = im.SurfaceModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
+psi = im.surfaceModesAtWavenumber(2*pi/1000);
 ```
 
 
@@ -87,21 +87,21 @@ psi = im.SurfaceModesAtWavenumber(2*pi/1000);
   + [`normalization`](/internal-modes/classes/core-classes/internalmodes/normalization.html) Mode normalization convention.
   + [`upperBoundary`](/internal-modes/classes/core-classes/internalmodes/upperboundary.html) Upper boundary condition at the ocean surface.
 + Compute modes
-  + [`BottomModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
-  + [`ModesAtFrequency`](/internal-modes/classes/core-classes/internalmodes/modesatfrequency.html) Return vertical modes for a fixed frequency.
-  + [`ModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/modesatwavenumber.html) Return vertical modes for a fixed horizontal wavenumber.
-  + [`ProjectOntoGModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/projectontogmodesatwavenumber.html) Project a profile onto the `G` modes at fixed horizontal wavenumber.
-  + [`ShowLowestModesAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showlowestmodesatfrequency.html) Plot the lowest resolved modes at a fixed frequency.
-  + [`ShowLowestModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showlowestmodesatwavenumber.html) Plot the lowest resolved modes at a fixed horizontal wavenumber.
-  + [`SurfaceModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
+  + [`bottomModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
+  + [`modesAtFrequency`](/internal-modes/classes/core-classes/internalmodes/modesatfrequency.html) Return vertical modes for a fixed frequency.
+  + [`modesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/modesatwavenumber.html) Return vertical modes for a fixed horizontal wavenumber.
   + [`nModes`](/internal-modes/classes/core-classes/internalmodes/nmodes.html) Optional cap on the number of modes returned.
+  + [`projectOntoGModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/projectontogmodesatwavenumber.html) Project a profile onto the `G` modes at fixed horizontal wavenumber.
+  + [`showLowestModesAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showlowestmodesatfrequency.html) Plot the lowest resolved modes at a fixed frequency.
+  + [`showLowestModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showlowestmodesatwavenumber.html) Plot the lowest resolved modes at a fixed horizontal wavenumber.
+  + [`surfaceModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 + Inspect analytical solutions
   + [`ConditionNumberAsFunctionOfModeNumber`](/internal-modes/classes/core-classes/internalmodes/conditionnumberasfunctionofmodenumber.html) Compute condition number as a function of retained mode count.
   + [`NumberOfWellConditionedModes`](/internal-modes/classes/core-classes/internalmodes/numberofwellconditionedmodes.html) Estimate how many columns of a mode matrix remain numerically well conditioned.
   + [`RenormalizeForGoodConditioning`](/internal-modes/classes/core-classes/internalmodes/renormalizeforgoodconditioning.html) Renormalize a mode matrix by matching column norms to a common scale.
-  + [`ShowRelativeErrorAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratfrequency.html) Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
-  + [`ShowRelativeErrorAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratwavenumber.html) Plot benchmark relative errors for a built-in profile at fixed $$K$$.
   + [`StratificationProfileWithName`](/internal-modes/classes/core-classes/internalmodes/stratificationprofilewithname.html) Return one of the built-in benchmark stratification profiles.
+  + [`showRelativeErrorAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratfrequency.html) Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
+  + [`showRelativeErrorAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratwavenumber.html) Plot benchmark relative errors for a built-in profile at fixed $$K$$.
   + [`stratification`](/internal-modes/classes/core-classes/internalmodes/stratification.html) Name of the active built-in benchmark stratification profile.
 
 

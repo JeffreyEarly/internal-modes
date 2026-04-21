@@ -3,7 +3,7 @@ layout: default
 title: GNorm
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 26
+nav_order: 24
 mathjax: true
 ---
 

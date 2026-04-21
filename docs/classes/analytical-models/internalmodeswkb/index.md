@@ -35,7 +35,7 @@ Early, Lelong, and Smith (2020).
 
 ```matlab
 im = InternalModesWKB(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
-[F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+[F, G, h, k] = im.modesAtFrequency(5*im.f0);
 ```
 
 

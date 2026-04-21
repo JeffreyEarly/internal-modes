@@ -41,7 +41,7 @@ sections of Early, Lelong, and Smith (2020).
 
 ```matlab
 im = InternalModesExponentialStratification(N0=5.2e-3, b=1300, zIn=[-5000 0], zOut=zOut, latitude=33);
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
 ```
 
 
@@ -54,8 +54,8 @@ im = InternalModesExponentialStratification(N0=5.2e-3, b=1300, zIn=[-5000 0], zO
   + [`N0`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/n0.html) Surface buoyancy frequency $$N_0$$ in radians per second.
   + [`b`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/b.html) Exponential e-folding depth $$b$$ in meters.
 + Compute modes
-  + [`BottomModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/bottommodesatwavenumber.html) Return the analytical bottom SQG mode for exponential stratification.
-  + [`SurfaceModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/surfacemodesatwavenumber.html) Return the analytical surface SQG mode for exponential stratification.
+  + [`bottomModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/bottommodesatwavenumber.html) Return the analytical bottom SQG mode for exponential stratification.
+  + [`surfaceModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/surfacemodesatwavenumber.html) Return the analytical surface SQG mode for exponential stratification.
 + Inspect analytical solutions
   + [`BarotropicEquivalentDepthAtFrequency`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/barotropicequivalentdepthatfrequency.html) Estimate the barotropic equivalent depth for fixed $$\omega$$.
   + [`BarotropicEquivalentDepthAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesexponentialstratification/barotropicequivalentdepthatwavenumber.html) Estimate the barotropic equivalent depth for fixed $$K$$.

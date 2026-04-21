@@ -3,7 +3,7 @@ layout: default
 title: GaussQuadraturePointsForEigenmatrices
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 28
+nav_order: 26
 mathjax: true
 ---
 

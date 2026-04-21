@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ShowLowestModesAtWavenumber
+title: showLowestModesAtWavenumber
 parent: InternalModes
 grand_parent: Classes
-nav_order: 17
+nav_order: 32
 mathjax: true
 ---
 
-#  ShowLowestModesAtWavenumber
+#  showLowestModesAtWavenumber
 
 Plot the lowest resolved modes at a fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Plot the lowest resolved modes at a fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- ShowLowestModesAtWavenumber(self,k)
+ showLowestModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModes instance

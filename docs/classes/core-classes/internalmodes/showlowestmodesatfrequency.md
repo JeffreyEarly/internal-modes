@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ShowLowestModesAtFrequency
+title: showLowestModesAtFrequency
 parent: InternalModes
 grand_parent: Classes
-nav_order: 16
+nav_order: 31
 mathjax: true
 ---
 
-#  ShowLowestModesAtFrequency
+#  showLowestModesAtFrequency
 
 Plot the lowest resolved modes at a fixed frequency.
 
@@ -16,7 +16,7 @@ Plot the lowest resolved modes at a fixed frequency.
 
 ## Declaration
 ```matlab
- ShowLowestModesAtFrequency(self,omega)
+ showLowestModesAtFrequency(self,omega)
 ```
 ## Parameters
 + `self`  InternalModes instance

@@ -8,7 +8,7 @@ omega = 0.95*N0;
 
 zOut = linspace(min(zIn),max(zIn),1024)';
 imAnalytical = InternalModesExponentialStratification(N0=N0,b=b,zIn=zIn,zOut=zOut,latitude=latitude,nModes=500);
-[F_analytical,G_analytical, h_analytical] = imAnalytical.ModesAtFrequency(omega);
+[F_analytical,G_analytical, h_analytical] = imAnalytical.modesAtFrequency(omega);
 
 % y is the true solution, x is the approximated
 errorFunction = @(x,y) max(abs(x(:,1:min(size(x,2),size(y,2)))-y(:,1:min(size(x,2),size(y,2)))),[],1)./max(abs(y(:,1:min(size(x,2),size(y,2)))),[],1);
@@ -20,7 +20,7 @@ error_cutoff = 1e-2;
 for log2nEVP = 1:totalEVPs
     nEVP = 2^(minEVP+log2nEVP);
     im = InternalModes(rhoFunction,zIn,zOut,latitude, 'nEVP', nEVP, 'nModes', nEVP, 'method','wkbAdaptiveSpectral');
-    [F,G,h] = im.ModesAtFrequency(omega);
+    [F,G,h] = im.modesAtFrequency(omega);
     
     h_error = errorFunction(h,h_analytical);
     F_error = errorFunction(F,F_analytical);

@@ -66,8 +66,8 @@ documented here.
   + [`normalization`](/internal-modes/classes/core-classes/internalmodesbase/normalization.html) Mode normalization convention.
   + [`upperBoundary`](/internal-modes/classes/core-classes/internalmodesbase/upperboundary.html) Upper boundary condition at the ocean surface.
 + Compute modes
-  + [`ModesAtFrequency`](/internal-modes/classes/core-classes/internalmodesbase/modesatfrequency.html) Return vertical modes for a fixed frequency.
-  + [`ModesAtWavenumber`](/internal-modes/classes/core-classes/internalmodesbase/modesatwavenumber.html) Return vertical modes for a fixed horizontal wavenumber.
+  + [`modesAtFrequency`](/internal-modes/classes/core-classes/internalmodesbase/modesatfrequency.html) Return vertical modes for a fixed frequency.
+  + [`modesAtWavenumber`](/internal-modes/classes/core-classes/internalmodesbase/modesatwavenumber.html) Return vertical modes for a fixed horizontal wavenumber.
   + [`nModes`](/internal-modes/classes/core-classes/internalmodesbase/nmodes.html) Optional cap on the number of modes returned.
 
 

@@ -3,7 +3,7 @@ layout: default
 title: shouldShowDiagnostics
 parent: InternalModes
 grand_parent: Classes
-nav_order: 35
+nav_order: 30
 mathjax: true
 ---
 

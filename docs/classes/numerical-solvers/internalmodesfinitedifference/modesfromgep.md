@@ -3,7 +3,7 @@ layout: default
 title: ModesFromGEP
 parent: InternalModesFiniteDifference
 grand_parent: Classes
-nav_order: 9
+nav_order: 7
 mathjax: true
 ---
 

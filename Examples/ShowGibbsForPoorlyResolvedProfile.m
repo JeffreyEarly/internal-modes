@@ -23,7 +23,7 @@ Nz = 1024;
 z = linspace(min(zIn), max(zIn), Nz)';
 
 im = InternalModes(rhoFunction,zIn,z,latitude);
-[F,G,h] = im.ModesAtWavenumber(0);
+[F,G,h] = im.modesAtWavenumber(0);
 return;
 
 % im = InternalModes(rhoFunction(z),z,z,latitude, 'method', 'wkbSpectral');
@@ -32,4 +32,4 @@ im = InternalModes(rhoFunction,zIn,z,latitude, 'method', 'finiteDifference');
 
 
 
-im.ShowLowestModesAtWavenumber(0)
+im.showLowestModesAtWavenumber(0)

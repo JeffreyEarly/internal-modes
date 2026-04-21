@@ -50,8 +50,8 @@ im.upperBoundary = upperBoundary;
 im.normalization = Normalization.kConstant;
 
 k = 0.1*k_star;
-[F,G,h,~,F2,N2G2,G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = im.ModesAtWavenumber( k, 'F2', 'N2G2', 'G2', 'uMax', 'wMax', 'kConstant', 'omegaConstant' );
-[F_analytical,G_analytical,h_analytical,~,F2_analytical,N2G2_analytical,G2_analytical,uMaxRatio_analytical,wMaxRatio_analytical,kConstantRatio_analytical,omegaConstantRatio_analytical] = imAnalytical.ModesAtWavenumber( k, 'F2', 'N2G2', 'G2', 'uMax', 'wMax', 'kConstant', 'omegaConstant' );
+[F,G,h,~,F2,N2G2,G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = im.modesAtWavenumber( k, 'F2', 'N2G2', 'G2', 'uMax', 'wMax', 'kConstant', 'omegaConstant' );
+[F_analytical,G_analytical,h_analytical,~,F2_analytical,N2G2_analytical,G2_analytical,uMaxRatio_analytical,wMaxRatio_analytical,kConstantRatio_analytical,omegaConstantRatio_analytical] = imAnalytical.modesAtWavenumber( k, 'F2', 'N2G2', 'G2', 'uMax', 'wMax', 'kConstant', 'omegaConstant' );
 
 figure
 subplot(2,2,1)

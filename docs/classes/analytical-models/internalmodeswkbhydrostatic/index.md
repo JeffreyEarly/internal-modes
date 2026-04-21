@@ -41,7 +41,7 @@ oscillatory region.
 
 ```matlab
 im = InternalModesWKBHydrostatic(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
-[F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+[F, G, h, k] = im.modesAtFrequency(5*im.f0);
 ```
 
 

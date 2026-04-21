@@ -20,7 +20,7 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
     %
     % ```matlab
     % im = InternalModesWKBHydrostatic(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
-    % [F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+    % [F, G, h, k] = im.modesAtFrequency(5*im.f0);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -71,12 +71,12 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
         % Computation of the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [F,G,h,omega] = ModesAtWavenumber(self, k )
+        function [F,G,h,omega] = modesAtWavenumber(self, k )
             % Report that the hydrostatic WKB solver does not implement fixed-$$K$$ modes.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+            % - Declaration: [F,G,h,omega] = modesAtWavenumber(self,k)
             % - Parameter self: InternalModesWKBHydrostatic instance
             % - Parameter k: horizontal wavenumber
             % - Returns F: not returned because this method throws
@@ -86,11 +86,11 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
             error('Not yet implemented');
         end
         
-        function [F,G,h,k] = ModesAtFrequency(self, omega )
+        function [F,G,h,k] = modesAtFrequency(self, omega )
             % Return hydrostatic WKB modes at a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+            % - Declaration: [F,G,h,k] = modesAtFrequency(self,omega)
             % - Parameter self: InternalModesWKBHydrostatic instance
             % - Parameter omega: frequency in radians per second
             % - Returns F: horizontal-velocity mode matrix on `zOut`

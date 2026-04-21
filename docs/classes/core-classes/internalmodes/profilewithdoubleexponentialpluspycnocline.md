@@ -3,7 +3,7 @@ layout: default
 title: ProfileWithDoubleExponentialPlusPycnocline
 parent: InternalModes
 grand_parent: Classes
-nav_order: 11
+nav_order: 8
 mathjax: true
 ---
 

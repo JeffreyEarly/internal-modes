@@ -1,13 +1,13 @@
 ---
 layout: default
-title: BoundaryModesAtWavenumber
+title: boundaryModesAtWavenumber
 parent: InternalModesFiniteDifference
 grand_parent: Classes
-nav_order: 3
+nav_order: 12
 mathjax: true
 ---
 
-#  BoundaryModesAtWavenumber
+#  boundaryModesAtWavenumber
 
 Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- psi = BoundaryModesAtWavenumber(self,k,isSurface)
+ psi = boundaryModesAtWavenumber(self,k,isSurface)
 ```
 ## Parameters
 + `self`  InternalModesFiniteDifference instance

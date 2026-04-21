@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ModesAtWavenumber
+title: modesAtWavenumber
 parent: InternalModes
 grand_parent: Classes
-nav_order: 7
+nav_order: 21
 mathjax: true
 ---
 
-#  ModesAtWavenumber
+#  modesAtWavenumber
 
 Return vertical modes for a fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Return vertical modes for a fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+ [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
 ```
 ## Parameters
 + `self`  InternalModes instance

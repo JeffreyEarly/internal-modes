@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ModesAtFrequency
+title: modesAtFrequency
 parent: InternalModes
 grand_parent: Classes
-nav_order: 6
+nav_order: 20
 mathjax: true
 ---
 
-#  ModesAtFrequency
+#  modesAtFrequency
 
 Return vertical modes for a fixed frequency.
 
@@ -16,7 +16,7 @@ Return vertical modes for a fixed frequency.
 
 ## Declaration
 ```matlab
- [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+ [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
 ```
 ## Parameters
 + `self`  InternalModes instance

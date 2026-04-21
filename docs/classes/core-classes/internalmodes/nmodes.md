@@ -3,7 +3,7 @@ layout: default
 title: nModes
 parent: InternalModes
 grand_parent: Classes
-nav_order: 28
+nav_order: 22
 mathjax: true
 ---
 

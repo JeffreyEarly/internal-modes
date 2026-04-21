@@ -15,8 +15,8 @@ im_gauss = InternalModesSpectral(rho=rhoFunc, zIn=zIn, zOut=z_g, latitude=33, nE
 im_gauss.normalization = normalization;
 im_gauss.upperBoundary = upperBoundary;
 
-[F,G,h] = im_gauss.ModesAtWavenumber(k);
-[F_hr,G_hr] = im.ModesAtWavenumber(k);
+[F,G,h] = im_gauss.modesAtWavenumber(k);
+[F_hr,G_hr] = im.modesAtWavenumber(k);
 
 if im_gauss.upperBoundary ==  UpperBoundary.rigidLid
     maxGMode = nPoints-2;

@@ -3,7 +3,7 @@ layout: default
 title: EigenmatricesForSmithVannesteModes
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 17
+nav_order: 15
 mathjax: true
 ---
 

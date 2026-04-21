@@ -51,7 +51,7 @@ public mode API.
 
 ```matlab
 im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
 ```
 
 
@@ -62,11 +62,11 @@ im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=
   + [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral/internalmodesspectral.html) Initialize the spectral solver on depth coordinates.
   + [`nEVP`](/internal-modes/classes/numerical-solvers/internalmodesspectral/nevp.html) Number of collocation points used for the generalized EVP.
 + Compute modes
-  + [`BottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
-  + [`BoundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/boundarymodesatwavenumber.html) Return either the surface or bottom boundary mode at fixed wavenumber.
   + [`EigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
   + [`EigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
-  + [`SurfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
+  + [`bottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
+  + [`boundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/boundarymodesatwavenumber.html) Return either the surface or bottom boundary mode at fixed wavenumber.
+  + [`surfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 
 
 ## Developer Topics

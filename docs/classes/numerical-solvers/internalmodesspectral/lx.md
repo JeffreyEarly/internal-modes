@@ -3,7 +3,7 @@ layout: default
 title: Lx
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 42
+nav_order: 40
 mathjax: true
 ---
 

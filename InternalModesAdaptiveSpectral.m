@@ -14,7 +14,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
     %
     % ```matlab
     % im = InternalModesAdaptiveSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-    % [F, G, h, k] = im.ModesAtFrequency(2*pi*1e-3);
+    % [F, G, h, k] = im.modesAtFrequency(2*pi*1e-3);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -131,11 +131,11 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         % Computation of the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+        function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
             % Return adaptive-grid modes for a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesAdaptiveSpectral instance
             % - Parameter k: horizontal wavenumber
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -148,18 +148,18 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % otherwise we can use the superclass method as is.
             self.CreateGridForFrequency(0.0);
             if isempty(varargin)
-                [F,G,h,omega] = ModesAtWavenumber@InternalModesSpectral(self,k);
+                [F,G,h,omega] = modesAtWavenumber@InternalModesSpectral(self,k);
             else
                 varargout = cell(size(varargin));
-                [F,G,h,omega,varargout{:}] = ModesAtWavenumber@InternalModesSpectral(self,k, varargin{:});
+                [F,G,h,omega,varargout{:}] = modesAtWavenumber@InternalModesSpectral(self,k, varargin{:});
             end
         end
 
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+        function [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin )
             % Return adaptive-grid modes for a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesAdaptiveSpectral instance
             % - Parameter omega: frequency in radians per second
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -172,10 +172,10 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % otherwise we can use the superclass method as is.
             self.CreateGridForFrequency(omega);
             if isempty(varargin)
-                [F,G,h,k] = ModesAtFrequency@InternalModesSpectral(self,omega);
+                [F,G,h,k] = modesAtFrequency@InternalModesSpectral(self,omega);
             else
                 varargout = cell(size(varargin));
-                [F,G,h,k,varargout{:}] = ModesAtFrequency@InternalModesSpectral(self,omega, varargin{:});
+                [F,G,h,k,varargout{:}] = modesAtFrequency@InternalModesSpectral(self,omega, varargin{:});
             end
         end
 

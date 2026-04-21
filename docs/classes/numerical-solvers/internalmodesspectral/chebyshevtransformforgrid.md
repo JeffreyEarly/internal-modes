@@ -3,7 +3,7 @@ layout: default
 title: ChebyshevTransformForGrid
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 7
+nav_order: 5
 mathjax: true
 ---
 

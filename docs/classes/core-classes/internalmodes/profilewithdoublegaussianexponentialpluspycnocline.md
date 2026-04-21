@@ -3,7 +3,7 @@ layout: default
 title: ProfileWithDoubleGaussianExponentialPlusPycnocline
 parent: InternalModes
 grand_parent: Classes
-nav_order: 12
+nav_order: 9
 mathjax: true
 ---
 

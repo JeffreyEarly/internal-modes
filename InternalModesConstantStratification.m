@@ -22,7 +22,7 @@ classdef InternalModesConstantStratification < InternalModesBase
     %
     % ```matlab
     % im = InternalModesConstantStratification(N0=5.2e-3, zIn=[-5000 0], zOut=zOut, latitude=33);
-    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % [F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -95,11 +95,11 @@ classdef InternalModesConstantStratification < InternalModesBase
             % fprintf('Using the analytical form for constant stratification N0=%.7g\n',self.N0);
         end
                 
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+        function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
             % Return the analytical modes for a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k: horizontal wavenumber
             % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
@@ -159,11 +159,11 @@ classdef InternalModesConstantStratification < InternalModesBase
         
         % k_z and h should be of size [1, nModes]
         % [F,G] will return with size [length(z), nModes]
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+        function [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin )
             % Return the analytical modes for a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter omega: frequency in radians per second
             % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
@@ -225,11 +225,11 @@ classdef InternalModesConstantStratification < InternalModesBase
             k = self.kFromOmega(h,omega);
         end
         
-        function [psi] = SurfaceModesAtWavenumber(self, k)
+        function [psi] = surfaceModesAtWavenumber(self, k)
             % Return the analytical surface SQG mode for constant stratification.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Declaration: psi = surfaceModesAtWavenumber(self,k)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: surface SQG mode evaluated on `zOut`
@@ -250,11 +250,11 @@ classdef InternalModesConstantStratification < InternalModesBase
             psi = reshape(psi,sizeK);
         end
         
-        function [psi] = BottomModesAtWavenumber(self, k)
+        function [psi] = bottomModesAtWavenumber(self, k)
             % Return the analytical bottom SQG mode for constant stratification.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Declaration: psi = bottomModesAtWavenumber(self,k)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: bottom SQG mode evaluated on `zOut`
@@ -508,6 +508,16 @@ classdef InternalModesConstantStratification < InternalModesBase
                         A = 1/(h0*k_z*cos(k_z*self.Lz));
                 end
             end
+        end
+    end
+    
+    methods (Hidden)
+        function psi = SurfaceModesAtWavenumber(self, k)
+            psi = self.surfaceModesAtWavenumber(k);
+        end
+        
+        function psi = BottomModesAtWavenumber(self, k)
+            psi = self.bottomModesAtWavenumber(k);
         end
     end
     

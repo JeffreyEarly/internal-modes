@@ -35,7 +35,7 @@ decaying rather than oscillatory.
 
 ```matlab
 im = InternalModesAdaptiveSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-[F, G, h, k] = im.ModesAtFrequency(2*pi*1e-3);
+[F, G, h, k] = im.modesAtFrequency(2*pi*1e-3);
 ```
 
 

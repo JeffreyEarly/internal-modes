@@ -3,7 +3,7 @@ layout: default
 title: Txx_xLobatto
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 51
+nav_order: 48
 mathjax: true
 ---
 

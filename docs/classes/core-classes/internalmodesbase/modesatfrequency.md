@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ModesAtFrequency
+title: modesAtFrequency
 parent: InternalModesBase
 grand_parent: Classes
-nav_order: 2
+nav_order: 7
 mathjax: true
 ---
 
-#  ModesAtFrequency
+#  modesAtFrequency
 
 Return vertical modes for a fixed frequency.
 
@@ -16,17 +16,19 @@ Return vertical modes for a fixed frequency.
 
 ## Declaration
 ```matlab
- [F,G,h,k] = ModesAtFrequency(self,omega)
+ [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
 ```
 ## Parameters
 + `self`  concrete InternalModesBase subclass instance
 + `omega`  frequency in radians per second
++ `varargin`  additional requests supported by the concrete solver
 
 ## Returns
 + `F`  horizontal-velocity mode matrix on `zOut`
 + `G`  vertical-velocity mode matrix on `zOut`
 + `h`  equivalent-depth row vector
 + `k`  horizontal wavenumber row vector implied by `h` and `omega`
++ `varargout`  additional outputs forwarded from the concrete solver
 
 ## Discussion
 

@@ -3,7 +3,7 @@ layout: default
 title: ifct
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 56
+nav_order: 55
 mathjax: true
 ---
 

@@ -3,7 +3,7 @@ layout: default
 title: NumberOfWellConditionedModes
 parent: InternalModes
 grand_parent: Classes
-nav_order: 10
+nav_order: 7
 mathjax: true
 ---
 

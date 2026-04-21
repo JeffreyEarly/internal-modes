@@ -3,7 +3,7 @@ layout: default
 title: IntegrateChebyshevVector
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 38
+nav_order: 36
 mathjax: true
 ---
 

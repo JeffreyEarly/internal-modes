@@ -21,7 +21,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
     %
     % ```matlab
     % im = InternalModesDensitySpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % [F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
     % ```
     %
     % - Topic: Create and initialize modes

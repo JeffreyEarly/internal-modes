@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ProjectOntoGModesAtWavenumber
+title: projectOntoGModesAtWavenumber
 parent: InternalModes
 grand_parent: Classes
-nav_order: 14
+nav_order: 24
 mathjax: true
 ---
 
-#  ProjectOntoGModesAtWavenumber
+#  projectOntoGModesAtWavenumber
 
 Project a profile onto the `G` modes at fixed horizontal wavenumber.
 
@@ -16,7 +16,7 @@ Project a profile onto the `G` modes at fixed horizontal wavenumber.
 
 ## Declaration
 ```matlab
- [m,G] = ProjectOntoGModesAtWavenumber(self,zeta,k)
+ [m,G] = projectOntoGModesAtWavenumber(self,zeta,k)
 ```
 ## Parameters
 + `self`  InternalModes instance

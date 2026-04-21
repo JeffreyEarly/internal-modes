@@ -3,7 +3,7 @@ layout: default
 title: rho_function
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 58
+nav_order: 57
 mathjax: true
 ---
 

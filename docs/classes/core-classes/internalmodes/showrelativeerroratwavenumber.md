@@ -1,13 +1,13 @@
 ---
 layout: default
-title: ShowRelativeErrorAtWavenumber
+title: showRelativeErrorAtWavenumber
 parent: InternalModes
 grand_parent: Classes
-nav_order: 19
+nav_order: 34
 mathjax: true
 ---
 
-#  ShowRelativeErrorAtWavenumber
+#  showRelativeErrorAtWavenumber
 
 Plot benchmark relative errors for a built-in profile at fixed $$K$$.
 
@@ -16,7 +16,7 @@ Plot benchmark relative errors for a built-in profile at fixed $$K$$.
 
 ## Declaration
 ```matlab
- ShowRelativeErrorAtWavenumber(self,k)
+ showRelativeErrorAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModes instance initialized from a built-in benchmark profile

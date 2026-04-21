@@ -34,9 +34,9 @@ im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=33, nEVP=257);
 
 %% Compute the hydrostatic modes
 % The simplest first solve is the hydrostatic call
-% [`ModesAtFrequency`](../classes/numerical-solvers/internalmodesspectral/modesatfrequency),
+% [`modesAtFrequency`](../classes/numerical-solvers/internalmodesspectral/modesatfrequency),
 % which uses `omega = 0` as the starting point.
-[F, G] = im.ModesAtFrequency(0);
+[F, G] = im.modesAtFrequency(0);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")
@@ -68,10 +68,10 @@ if exist("tutorialFigureCapture", "var") && isa(tutorialFigureCapture, "function
 % column.
 %
 % The companion fixed-wavenumber problem is also available through
-% [`ModesAtWavenumber`](../classes/numerical-solvers/internalmodesspectral/modesatwavenumber),
+% [`modesAtWavenumber`](../classes/numerical-solvers/internalmodesspectral/modesatwavenumber),
 % which returns `[F, G, h, omega]` for a chosen horizontal wavenumber `k`.
 omega = im.f0 + 0.35 * (max(sqrt(im.N2)) - im.f0);
-[F, G] = im.ModesAtFrequency(omega);
+[F, G] = im.modesAtFrequency(omega);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")
@@ -109,7 +109,7 @@ zLatMix = latmixData.zProfile{1};
 zOutLatMix = linspace(zLatMix(1), zLatMix(end), 1024).';
 
 imLatMix = InternalModesSpectral(rho=rhoLatMix, zIn=zLatMix, zOut=zOutLatMix, latitude=latmixData.latitude, nEVP=257);
-[F, G] = imLatMix.ModesAtFrequency(0);
+[F, G] = imLatMix.modesAtFrequency(0);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")

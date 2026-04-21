@@ -3,7 +3,7 @@ layout: default
 title: shouldApproximate
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 20
+nav_order: 19
 mathjax: true
 ---
 

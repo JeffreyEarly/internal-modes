@@ -3,7 +3,7 @@ layout: default
 title: lowerBoundary
 parent: InternalModesBase
 grand_parent: Classes
-nav_order: 8
+nav_order: 6
 mathjax: true
 ---
 

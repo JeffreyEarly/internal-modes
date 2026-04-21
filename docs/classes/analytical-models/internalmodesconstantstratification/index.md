@@ -43,7 +43,7 @@ numerical solvers.
 
 ```matlab
 im = InternalModesConstantStratification(N0=5.2e-3, zIn=[-5000 0], zOut=zOut, latitude=33);
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
 ```
 
 
@@ -55,8 +55,8 @@ im = InternalModesConstantStratification(N0=5.2e-3, zIn=[-5000 0], zOut=zOut, la
 + Inspect grids and stratification
   + [`N0`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/n0.html) Constant buoyancy frequency $$N_0$$ in radians per second.
 + Compute modes
-  + [`BottomModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/bottommodesatwavenumber.html) Return the analytical bottom SQG mode for constant stratification.
-  + [`SurfaceModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/surfacemodesatwavenumber.html) Return the analytical surface SQG mode for constant stratification.
+  + [`bottomModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/bottommodesatwavenumber.html) Return the analytical bottom SQG mode for constant stratification.
+  + [`surfaceModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/surfacemodesatwavenumber.html) Return the analytical surface SQG mode for constant stratification.
 + Inspect analytical solutions
   + [`BaroclinicModesWithEigenvalue`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/baroclinicmodeswitheigenvalue.html) Evaluate the analytical baroclinic mode shapes for given eigenvalues.
   + [`BarotropicModeAtFrequency`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/barotropicmodeatfrequency.html) Return the analytical barotropic mode branch for fixed $$\omega$$.

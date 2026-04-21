@@ -3,7 +3,7 @@ layout: default
 title: latitude
 parent: InternalModes
 grand_parent: Classes
-nav_order: 25
+nav_order: 17
 mathjax: true
 ---
 

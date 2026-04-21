@@ -17,7 +17,7 @@ zOut = linspace(min(zIn),max(zIn),5000)';
 
 im = InternalModesAdaptiveSpectral(rho=rho,zIn=zIn,zOut=zOut,latitude=latitude);
 
-[F,G,h] = im.ModesAtFrequency( omega );
+[F,G,h] = im.modesAtFrequency( omega );
 
 figure
 subplot(1,3,1)

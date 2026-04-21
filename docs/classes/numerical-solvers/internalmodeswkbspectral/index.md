@@ -43,7 +43,7 @@ public constructor contract used by downstream packages.
 
 ```matlab
 im = InternalModesWKBSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
-[F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+[F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
 ```
 
 

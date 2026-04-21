@@ -1,13 +1,13 @@
 ---
 layout: default
-title: BottomModesAtWavenumber
+title: bottomModesAtWavenumber
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 3
+nav_order: 15
 mathjax: true
 ---
 
-#  BottomModesAtWavenumber
+#  bottomModesAtWavenumber
 
 Return the analytical bottom SQG mode for exponential stratification.
 
@@ -16,7 +16,7 @@ Return the analytical bottom SQG mode for exponential stratification.
 
 ## Declaration
 ```matlab
- psi = BottomModesAtWavenumber(self,k)
+ psi = bottomModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesExponentialStratification instance

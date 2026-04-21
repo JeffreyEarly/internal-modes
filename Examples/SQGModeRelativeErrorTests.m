@@ -35,13 +35,13 @@ for iProfile=1:length(profiles)
     for iMethod=1:length(methods)
         im = InternalModes(rhoFunction,zIn,z,latitude,'nModes',n, 'method', methods{iMethod});
         
-        psi = im.SurfaceModesAtWavenumber( k );
-        psi_analytical = imAnalytical.SurfaceModesAtWavenumber( k );
+        psi = im.surfaceModesAtWavenumber( k );
+        psi_analytical = imAnalytical.surfaceModesAtWavenumber( k );
         max_error = max(errorFunction(psi,psi_analytical));
         fprintf('%s surface modes has an error of %g\n', methods{iMethod}, max_error);
         
-        psi = im.BottomModesAtWavenumber( k );
-        psi_analytical = imAnalytical.BottomModesAtWavenumber( k );
+        psi = im.bottomModesAtWavenumber( k );
+        psi_analytical = imAnalytical.bottomModesAtWavenumber( k );
         max_error = max(errorFunction(psi,psi_analytical));
         fprintf('%s bottom modes has an error of %g\n', methods{iMethod}, max_error);
     end

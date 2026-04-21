@@ -39,8 +39,8 @@ classdef InternalModes < handle
     %
     % ```matlab
     % im = InternalModes(rho, zIn, zOut, latitude, "method", "wkbAdaptiveSpectral");
-    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
-    % psi = im.SurfaceModesAtWavenumber(2*pi/1000);
+    % [F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
+    % psi = im.surfaceModesAtWavenumber(2*pi/1000);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -304,33 +304,33 @@ classdef InternalModes < handle
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        function ShowLowestModesAtWavenumber( self, k )
+        function showLowestModesAtWavenumber( self, k )
             % Plot the lowest resolved modes at a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: ShowLowestModesAtWavenumber(self,k)
+            % - Declaration: showLowestModesAtWavenumber(self,k)
             % - Parameter self: InternalModes instance
             % - Parameter k: horizontal wavenumber
-            [F,G,h] = self.internalModes.ModesAtWavenumber( k );
+            [F,G,h] = self.internalModes.modesAtWavenumber( k );
             self.ShowLowestModesFigure(F,G,h);
         end
         
-        function ShowLowestModesAtFrequency( self, omega )
+        function showLowestModesAtFrequency( self, omega )
             % Plot the lowest resolved modes at a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: ShowLowestModesAtFrequency(self,omega)
+            % - Declaration: showLowestModesAtFrequency(self,omega)
             % - Parameter self: InternalModes instance
             % - Parameter omega: frequency in radians per second
-            [F,G,h] = self.internalModes.ModesAtFrequency( omega );
+            [F,G,h] = self.internalModes.modesAtFrequency( omega );
             self.ShowLowestModesFigure(F,G,h);
         end
         
-        function ShowRelativeErrorAtWavenumber( self, k )
+        function showRelativeErrorAtWavenumber( self, k )
             % Plot benchmark relative errors for a built-in profile at fixed $$K$$.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: ShowRelativeErrorAtWavenumber(self,k)
+            % - Declaration: showRelativeErrorAtWavenumber(self,k)
             % - Parameter self: InternalModes instance initialized from a built-in benchmark profile
             % - Parameter k: horizontal wavenumber
             if self.isRunningTestCase == 0
@@ -340,7 +340,7 @@ classdef InternalModes < handle
             % all test cases should just use all modes possible.
             self.internalModes.nModes = length(self.internalModes.z);
             
-            [F,G,h] = self.internalModes.ModesAtWavenumber( k );
+            [F,G,h] = self.internalModes.modesAtWavenumber( k );
             
             % y is the true solution, x is the approximated
             errorFunction = @(x,y) max(abs(x-y),[],1)./max(abs(y),[],1);
@@ -349,18 +349,18 @@ classdef InternalModes < handle
                 imConstant = InternalModesConstantStratification(N0=5.2e-3,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imConstant.upperBoundary = self.upperBoundary;
                 imConstant.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imConstant.ModesAtWavenumber( k );
+                [F_analytical,G_analytical,h_analytical] = imConstant.modesAtWavenumber( k );
             elseif  strcmp(self.stratification, 'exponential')
                 imExponential = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imExponential.upperBoundary = self.upperBoundary;
                 imExponential.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imExponential.ModesAtWavenumber( k );
+                [F_analytical,G_analytical,h_analytical] = imExponential.modesAtWavenumber( k );
             else
                 [rhoFunc, ~, zIn] = InternalModes.StratificationProfileWithName(self.stratification);
                 imAnalytical = InternalModesAdaptiveSpectral(rho=rhoFunc,zIn=zIn,zOut=self.z,latitude=self.latitude,nEVP=512,nModes=self.nModes);
                 imAnalytical.upperBoundary = self.upperBoundary;
                 imAnalytical.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imAnalytical.ModesAtWavenumber( k );
+                [F_analytical,G_analytical,h_analytical] = imAnalytical.modesAtWavenumber( k );
             end
             
             h_error = errorFunction(h,h_analytical);
@@ -371,11 +371,11 @@ classdef InternalModes < handle
             self.ShowErrorFigure(h_error,F_error,G_error,title);
         end
         
-        function ShowRelativeErrorAtFrequency( self, omega )
+        function showRelativeErrorAtFrequency( self, omega )
             % Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: ShowRelativeErrorAtFrequency(self,omega)
+            % - Declaration: showRelativeErrorAtFrequency(self,omega)
             % - Parameter self: InternalModes instance initialized from a built-in benchmark profile
             % - Parameter omega: frequency in radians per second
             if self.isRunningTestCase == 0
@@ -394,22 +394,22 @@ classdef InternalModes < handle
                 imConstant = InternalModesConstantStratification(N0=5.2e-3,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imConstant.upperBoundary = self.upperBoundary;
                 imConstant.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imConstant.ModesAtFrequency( omega );
+                [F_analytical,G_analytical,h_analytical] = imConstant.modesAtFrequency( omega );
             elseif  strcmp(self.stratification, 'exponential')
                 imExponential = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imExponential.upperBoundary = self.upperBoundary;
                 imExponential.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imExponential.ModesAtFrequency( omega );
+                [F_analytical,G_analytical,h_analytical] = imExponential.modesAtFrequency( omega );
             else
                 [rhoFunc, ~, zIn] = InternalModes.StratificationProfileWithName(self.stratification);
                 imAnalytical = InternalModesAdaptiveSpectral(rho=rhoFunc,zIn=zIn,zOut=self.z,latitude=self.latitude,nEVP=512,nModes=self.nModes);
                 imAnalytical.upperBoundary = self.upperBoundary;
                 imAnalytical.normalization = self.normalization;
-                [F_analytical,G_analytical,h_analytical] = imAnalytical.ModesAtFrequency( omega );
+                [F_analytical,G_analytical,h_analytical] = imAnalytical.modesAtFrequency( omega );
             end
             
             self.internalModes.nModes = length(h_analytical);
-            [F,G,h] = self.internalModes.ModesAtFrequency( omega );
+            [F,G,h] = self.internalModes.modesAtFrequency( omega );
             
             h_error = errorFunction(h,h_analytical);
             F_error = errorFunction(F,F_analytical);
@@ -546,11 +546,11 @@ classdef InternalModes < handle
         % Primary methods to construct the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+        function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
             % Return vertical modes for a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModes instance
             % - Parameter k: horizontal wavenumber
             % - Parameter varargin: additional requests forwarded to the concrete solver
@@ -560,18 +560,18 @@ classdef InternalModes < handle
             % - Returns omega: frequency row vector implied by `h` and `k`
             % - Returns varargout: additional outputs forwarded from the concrete solver
             if isempty(varargin)
-                [F,G,h,omega] = self.internalModes.ModesAtWavenumber( k );
+                [F,G,h,omega] = self.internalModes.modesAtWavenumber( k );
             else
                 varargout = cell(size(varargin));
-                [F,G,h,omega,varargout{:}] = self.internalModes.ModesAtWavenumber( k, varargin{:} );
+                [F,G,h,omega,varargout{:}] = self.internalModes.modesAtWavenumber( k, varargin{:} );
             end
         end
         
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+        function [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin )
             % Return vertical modes for a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModes instance
             % - Parameter omega: frequency in radians per second
             % - Parameter varargin: additional requests forwarded to the concrete solver
@@ -581,45 +581,101 @@ classdef InternalModes < handle
             % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
             % - Returns varargout: additional outputs forwarded from the concrete solver
             if isempty(varargin)
-                [F,G,h,k] = self.internalModes.ModesAtFrequency( omega );
+                [F,G,h,k] = self.internalModes.modesAtFrequency( omega );
             else
                 varargout = cell(size(varargin));
-                [F,G,h,k,varargout{:}] = self.internalModes.ModesAtFrequency( omega, varargin{:} );
+                [F,G,h,k,varargout{:}] = self.internalModes.modesAtFrequency( omega, varargin{:} );
             end
         end
         
-        function psi = SurfaceModesAtWavenumber(self, k)
+        function psi = surfaceModesAtWavenumber(self, k)
             % Return the surface SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Declaration: psi = surfaceModesAtWavenumber(self,k)
             % - Parameter self: InternalModes instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: surface SQG mode evaluated on `zOut`
-            psi = self.internalModes.SurfaceModesAtWavenumber(k);
+            psi = self.internalModes.surfaceModesAtWavenumber(k);
         end
         
-        function psi = BottomModesAtWavenumber(self, k)
+        function psi = bottomModesAtWavenumber(self, k)
             % Return the bottom SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Declaration: psi = bottomModesAtWavenumber(self,k)
             % - Parameter self: InternalModes instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: bottom SQG mode evaluated on `zOut`
-            psi = self.internalModes.BottomModesAtWavenumber(k);
+            psi = self.internalModes.bottomModesAtWavenumber(k);
         end
         
-        function [m,G] = ProjectOntoGModesAtWavenumber(self, zeta, k)
+        function [m,G] = projectOntoGModesAtWavenumber(self, zeta, k)
             % Project a profile onto the `G` modes at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [m,G] = ProjectOntoGModesAtWavenumber(self,zeta,k)
+            % - Declaration: [m,G] = projectOntoGModesAtWavenumber(self,zeta,k)
             % - Parameter self: InternalModes instance
             % - Parameter zeta: profile sampled on `zOut`
             % - Parameter k: horizontal wavenumber
             % - Returns m: modal coefficients from the least-squares projection
             % - Returns G: `G`-mode matrix used in the projection
+            [~, G] = self.internalModes.modesAtWavenumber(k);
+            zeta = zeta(:);
+            if length(zeta) ~= size(G,1)
+                error('InternalModes:InvalidProfileLength', ...
+                    'Expected zeta to have %d elements to match zOut, but found %d.', ...
+                    size(G,1), length(zeta));
+            end
+            m = G \ zeta;
+        end
+    end
+    
+    methods (Hidden)
+        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin)
+            if isempty(varargin)
+                [F,G,h,omega] = self.modesAtWavenumber(k);
+            else
+                varargout = cell(size(varargin));
+                [F,G,h,omega,varargout{:}] = self.modesAtWavenumber(k, varargin{:});
+            end
+        end
+        
+        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin)
+            if isempty(varargin)
+                [F,G,h,k] = self.modesAtFrequency(omega);
+            else
+                varargout = cell(size(varargin));
+                [F,G,h,k,varargout{:}] = self.modesAtFrequency(omega, varargin{:});
+            end
+        end
+        
+        function ShowLowestModesAtWavenumber(self, k)
+            self.showLowestModesAtWavenumber(k);
+        end
+        
+        function ShowLowestModesAtFrequency(self, omega)
+            self.showLowestModesAtFrequency(omega);
+        end
+        
+        function ShowRelativeErrorAtWavenumber(self, k)
+            self.showRelativeErrorAtWavenumber(k);
+        end
+        
+        function ShowRelativeErrorAtFrequency(self, omega)
+            self.showRelativeErrorAtFrequency(omega);
+        end
+        
+        function psi = SurfaceModesAtWavenumber(self, k)
+            psi = self.surfaceModesAtWavenumber(k);
+        end
+        
+        function psi = BottomModesAtWavenumber(self, k)
+            psi = self.bottomModesAtWavenumber(k);
+        end
+        
+        function [m,G] = ProjectOntoGModesAtWavenumber(self, zeta, k)
+            [m,G] = self.projectOntoGModesAtWavenumber(zeta, k);
         end
     end
     

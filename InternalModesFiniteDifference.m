@@ -14,7 +14,7 @@ classdef InternalModesFiniteDifference < InternalModesBase
     %
     % ```matlab
     % im = InternalModesFiniteDifference(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, orderOfAccuracy=4);
-    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % [F, G, h, omega] = im.modesAtWavenumber(2*pi/1000);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -146,11 +146,11 @@ classdef InternalModesFiniteDifference < InternalModesBase
         % Computation of the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+        function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
             % Return finite-difference modes for a fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesFiniteDifference instance
             % - Parameter k: horizontal wavenumber
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -177,11 +177,11 @@ classdef InternalModesFiniteDifference < InternalModesBase
             omega = self.omegaFromK(h,k);
         end
         
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+        function [F,G,h,k,varargout] = modesAtFrequency(self, omega, varargin )
             % Return finite-difference modes for a fixed frequency.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesFiniteDifference instance
             % - Parameter omega: frequency in radians per second
             % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
@@ -252,33 +252,33 @@ classdef InternalModesFiniteDifference < InternalModesBase
             end
         end
         
-        function psi = SurfaceModesAtWavenumber(self, k)
+        function psi = surfaceModesAtWavenumber(self, k)
             % Return the surface SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Declaration: psi = surfaceModesAtWavenumber(self,k)
             % - Parameter self: InternalModesFiniteDifference instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: surface SQG mode evaluated on `zOut`
-            psi = self.BoundaryModesAtWavenumber(k,01);
+            psi = self.boundaryModesAtWavenumber(k,01);
         end
         
-        function psi = BottomModesAtWavenumber(self, k)
+        function psi = bottomModesAtWavenumber(self, k)
             % Return the bottom SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Declaration: psi = bottomModesAtWavenumber(self,k)
             % - Parameter self: InternalModesFiniteDifference instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: bottom SQG mode evaluated on `zOut`
-            psi = self.BoundaryModesAtWavenumber(k,0);
+            psi = self.boundaryModesAtWavenumber(k,0);
         end
         
-        function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+        function psi = boundaryModesAtWavenumber(self, k, isSurface)
             % Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = BoundaryModesAtWavenumber(self,k,isSurface)
+            % - Declaration: psi = boundaryModesAtWavenumber(self,k,isSurface)
             % - Parameter self: InternalModesFiniteDifference instance
             % - Parameter k: horizontal wavenumber array
             % - Parameter isSurface: logical flag selecting the surface mode when true and the bottom mode when false
@@ -325,6 +325,20 @@ classdef InternalModesFiniteDifference < InternalModesBase
         function value = get.rho_zz(self)
             diff2 = InternalModesFiniteDifference.FiniteDifferenceMatrix(2, self.z_diff, 2, 2, self.orderOfAccuracy);
             value = diff2 * self.rho_z_diff;
+        end
+    end
+    
+    methods (Hidden)
+        function psi = SurfaceModesAtWavenumber(self, k)
+            psi = self.surfaceModesAtWavenumber(k);
+        end
+        
+        function psi = BottomModesAtWavenumber(self, k)
+            psi = self.bottomModesAtWavenumber(k);
+        end
+        
+        function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+            psi = self.boundaryModesAtWavenumber(k, isSurface);
         end
     end
     

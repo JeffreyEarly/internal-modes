@@ -3,7 +3,7 @@ layout: default
 title: N2Function
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 13
+nav_order: 12
 mathjax: true
 ---
 

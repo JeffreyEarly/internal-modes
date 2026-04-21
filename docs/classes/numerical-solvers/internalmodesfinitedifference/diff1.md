@@ -3,7 +3,7 @@ layout: default
 title: Diff1
 parent: InternalModesFiniteDifference
 grand_parent: Classes
-nav_order: 4
+nav_order: 2
 mathjax: true
 ---
 

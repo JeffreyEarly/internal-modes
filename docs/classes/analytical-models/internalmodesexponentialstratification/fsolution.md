@@ -3,7 +3,7 @@ layout: default
 title: FSolution
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 4
+nav_order: 3
 mathjax: true
 ---
 

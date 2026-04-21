@@ -1,13 +1,13 @@
 ---
 layout: default
-title: BottomModesAtWavenumber
+title: bottomModesAtWavenumber
 parent: InternalModesConstantStratification
 grand_parent: Classes
-nav_order: 7
+nav_order: 11
 mathjax: true
 ---
 
-#  BottomModesAtWavenumber
+#  bottomModesAtWavenumber
 
 Return the analytical bottom SQG mode for constant stratification.
 
@@ -16,7 +16,7 @@ Return the analytical bottom SQG mode for constant stratification.
 
 ## Declaration
 ```matlab
- psi = BottomModesAtWavenumber(self,k)
+ psi = bottomModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesConstantStratification instance

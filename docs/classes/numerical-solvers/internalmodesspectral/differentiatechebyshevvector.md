@@ -3,7 +3,7 @@ layout: default
 title: DifferentiateChebyshevVector
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 10
+nav_order: 8
 mathjax: true
 ---
 

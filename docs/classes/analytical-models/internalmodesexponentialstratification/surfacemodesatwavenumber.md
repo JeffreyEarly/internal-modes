@@ -1,13 +1,13 @@
 ---
 layout: default
-title: SurfaceModesAtWavenumber
+title: surfaceModesAtWavenumber
 parent: InternalModesExponentialStratification
 grand_parent: Classes
-nav_order: 15
+nav_order: 20
 mathjax: true
 ---
 
-#  SurfaceModesAtWavenumber
+#  surfaceModesAtWavenumber
 
 Return the analytical surface SQG mode for exponential stratification.
 
@@ -16,7 +16,7 @@ Return the analytical surface SQG mode for exponential stratification.
 
 ## Declaration
 ```matlab
- psi = SurfaceModesAtWavenumber(self,k)
+ psi = surfaceModesAtWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesExponentialStratification instance

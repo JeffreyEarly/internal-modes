@@ -44,20 +44,22 @@ im = InternalModes(rho,[L 0],zOut,latitude);
 ```
 The `InternalModes` class is initialized with four arguments: the density function, an array specifying the domain bounds (lower and upper boundary), the the output grid upon which all returned functions will be given, and the latitude.
 
+The preferred API uses lowerCamel method names such as `modesAtFrequency`, `modesAtWavenumber`, `surfaceModesAtWavenumber`, and `showLowestModesAtFrequency`. The legacy UpperCamel names remain supported for backward compatibility, but new code should use the lowerCamel forms.
+
 Now that the `im` object is initialized, you can request the internal modes at a given wavenumber, `k`, where k is 2*pi/wavelength.
 ```matlab
-   [F,G,h,omega] = im.ModesAtWavenumber(2*pi/1000);
+   [F,G,h,omega] = im.modesAtWavenumber(2*pi/1000);
    ```
 or frequency `omega`,
 ```matlab
-   [F,G,h,k] = im.ModesAtFrequency(5*im.f0);
+   [F,G,h,k] = im.modesAtFrequency(5*im.f0);
    ```
 The arrays `F` and `G` contain the vertical modes for u/v and w/rho, respectively. The arrays have dimensions `size(F)=[length(zOut) length(h)]`, meaning that each column `i` is a normal mode, `F(:,i)` with corresponding eigendepth `h(i)`. The associated eigenfrequency or eigenwavenumber are also returned for convenience.
 
 You can also request the surface quasigeostrophy (SQG) modes,
 ```matlab
-psi_t = im.SurfaceModesAtWavenumber(2*pi/1000);
-psi_b = im.BottomModesAtWavenumber(2*pi/1000);
+psi_t = im.surfaceModesAtWavenumber(2*pi/1000);
+psi_b = im.bottomModesAtWavenumber(2*pi/1000);
 ```
 The functions can also take arrays of wavenumbers of any shape or size.
 
@@ -86,12 +88,12 @@ Convenience functions
 ------------
 Once the `InternalModes` objects is initialized there are a few notable convenience functions. You can use,
 ```matlab
-im.ShowLowestModesAtWavenumber(2*pi/1000)
+im.showLowestModesAtWavenumber(2*pi/1000)
 ```
 and
 
 ```matlab
-im.ShowLowestModesAtFrequency(5*im.f0)
+im.showLowestModesAtFrequency(5*im.f0)
 ```
 to quickly visualize the four lowest modes.
 
@@ -207,12 +209,12 @@ where the defaults (if not given) are `stratification='constant'`, `method='wkbA
 
 If you initialize with this test case method, you can then call either
 ```matlab
-im.ShowRelativeErrorAtWavenumber(2*pi/1000)
+im.showRelativeErrorAtWavenumber(2*pi/1000)
 ```
 or
 
 ```matlab
-im.ShowRelativeErrorAtFrequency(5*im.f0)
+im.showRelativeErrorAtFrequency(5*im.f0)
 ```
 to estimate the error.
 

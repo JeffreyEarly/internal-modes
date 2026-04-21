@@ -14,7 +14,7 @@ classdef InternalModesWKB < InternalModesSpectral
     %
     % ```matlab
     % im = InternalModesWKB(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
-    % [F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+    % [F, G, h, k] = im.modesAtFrequency(5*im.f0);
     % ```
     %
     % - Topic: Create and initialize modes
@@ -82,12 +82,12 @@ classdef InternalModesWKB < InternalModesSpectral
         % Computation of the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [F,G,h,omega] = ModesAtWavenumber(self, k )
+        function [F,G,h,omega] = modesAtWavenumber(self, k )
             % Report that the WKB approximation is implemented only for fixed $$\omega$$.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+            % - Declaration: [F,G,h,omega] = modesAtWavenumber(self,k)
             % - Parameter self: InternalModesWKB instance
             % - Parameter k: horizontal wavenumber
             % - Returns F: not returned because this method throws
@@ -109,14 +109,14 @@ classdef InternalModesWKB < InternalModesSpectral
             value = self.Diff1_xCheb;
         end
         
-        function [F,G,h,k] = ModesAtFrequency(self, omega )
+        function [F,G,h,k] = modesAtFrequency(self, omega )
             % Return WKB modes at a fixed frequency.
             %
             % This is the main user-facing WKB entry point. It currently
             % delegates to the Airy-style turning-point treatment.
             %
             % - Topic: Compute modes
-            % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+            % - Declaration: [F,G,h,k] = modesAtFrequency(self,omega)
             % - Parameter self: InternalModesWKB instance
             % - Parameter omega: frequency in radians per second
             % - Returns F: horizontal-velocity mode matrix on `zOut`
@@ -364,11 +364,11 @@ classdef InternalModesWKB < InternalModesSpectral
             psi = scale.*numerator./denominator;
         end
         
-        function psi = SurfaceModesAtWavenumber(self, k)
+        function psi = surfaceModesAtWavenumber(self, k)
             % Return the WKB approximation to the surface SQG mode.
             %
             % - Topic: Compute modes
-            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Declaration: psi = surfaceModesAtWavenumber(self,k)
             % - Parameter self: InternalModesWKB instance
             % - Parameter k: horizontal wavenumber array
             % - Returns psi: surface SQG mode evaluated on `zOut`
@@ -396,6 +396,12 @@ classdef InternalModesWKB < InternalModesSpectral
             psi = scale.*numerator./denominator;
         end
                 
+    end
+    
+    methods (Hidden)
+        function psi = SurfaceModesAtWavenumber(self, k)
+            psi = self.surfaceModesAtWavenumber(k);
+        end
     end
         
 end
