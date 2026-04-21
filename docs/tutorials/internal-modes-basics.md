@@ -9,7 +9,7 @@ permalink: /tutorials/internal-modes-basics
 
 # Internal Modes Basics
 
-Initialize InternalModesSpectral, compute zero-frequency and fixed-frequency modes, and repeat the workflow for a realistic LatMix profile.
+Initialize InternalModesSpectral, compute hydrostatic and fixed-frequency modes, and repeat the workflow for a realistic LatMix profile.
 
 Source: `Examples/Tutorials/InternalModesBasics.m`
 
@@ -34,29 +34,25 @@ sample the implied density profile on a depth grid, and initialize the
 spectral solver on a denser output grid for plotting.
 
 ```matlab
-rho0 = 1025;
 g = 9.81;
-latitude = 33;
 N0 = 5.2e-3;
 b = 1300;
-nEVP = 257;
-nPlot = 4;
 
-zIn = linspace(-5000, 0, nEVP).';
+zIn = linspace(-5000, 0, 500).';
 zOut = linspace(zIn(1), zIn(end), 1024).';
-rho = rho0 * (1 + (b * N0^2 / (2 * g)) * (1 - exp(2 * zIn / b)));
+rho = 1025 * (1 + (b * N0^2 / (2 * g)) * (1 - exp(2 * zIn / b)));
 
-im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=nEVP);
+im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=33, nEVP=257);
 ```
 
-## Compute the zero-frequency modes
+## Compute the hydrostatic modes
 
-The simplest first solve is the zero-frequency call
+The simplest first solve is the hydrostatic call
 [`ModesAtFrequency`](../classes/numerical-solvers/internalmodesspectral/modesatfrequency),
-which we use here as the hydrostatic starting point.
+which uses `omega = 0` as the starting point.
 
 ```matlab
-[F0, G0, h0, k0] = im.ModesAtFrequency(0); %#ok<NASGU>
+[F, G] = im.ModesAtFrequency(0);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")
@@ -69,25 +65,25 @@ title("Exponential profile")
 grid on
 
 nexttile
-plot(F0(:, 1:nPlot), im.z, LineWidth=1.5)
+plot(F(:, 1:4), im.z, LineWidth=1.5)
 xlabel("F_j(z)")
-title("Zero-frequency F modes")
+title("Hydrostatic F modes")
 grid on
 
 nexttile
-plot(G0(:, 1:nPlot), im.z, LineWidth=1.5)
+plot(G(:, 1:4), im.z, LineWidth=1.5)
 xlabel("G_j(z)")
-title("Zero-frequency G modes")
+title("Hydrostatic G modes")
 grid on
 ```
 
-![The zero-frequency solve gives a clean first look at the leading vertical modes for the standard exponential stratification.](./internal-modes-basics/exponential-zero-frequency-modes.png)
+![The hydrostatic solve gives a clean first look at the leading vertical modes for the standard exponential stratification.](./internal-modes-basics/exponential-hydrostatic-modes.png)
 
-*The zero-frequency solve gives a clean first look at the leading vertical modes for the standard exponential stratification.*
+*The hydrostatic solve gives a clean first look at the leading vertical modes for the standard exponential stratification.*
 
 ## Compute modes at a nonzero frequency
 
-To move away from the zero-frequency limit, choose a representative
+To move away from the hydrostatic limit, choose a representative
 frequency between `f0` and the largest buoyancy frequency in the water
 column.
 
@@ -97,7 +93,7 @@ which returns `[F, G, h, omega]` for a chosen horizontal wavenumber `k`.
 
 ```matlab
 omega = im.f0 + 0.35 * (max(sqrt(im.N2)) - im.f0);
-[Fomega, Gomega, homega, kwave] = im.ModesAtFrequency(omega); %#ok<NASGU>
+[F, G] = im.ModesAtFrequency(omega);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")
@@ -110,13 +106,13 @@ title("Exponential profile")
 grid on
 
 nexttile
-plot(Fomega(:, 1:nPlot), im.z, LineWidth=1.5)
+plot(F(:, 1:4), im.z, LineWidth=1.5)
 xlabel("F_j(z)")
 title(sprintf("F modes at \\omega = %.2f f_0", omega / im.f0))
 grid on
 
 nexttile
-plot(Gomega(:, 1:nPlot), im.z, LineWidth=1.5)
+plot(G(:, 1:4), im.z, LineWidth=1.5)
 xlabel("G_j(z)")
 title(sprintf("G modes at \\omega = %.2f f_0", omega / im.f0))
 grid on
@@ -138,11 +134,10 @@ latmixData = load(fullfile(scriptDir, "..", "SampleLatmixProfiles.mat"));
 
 rhoLatMix = latmixData.rhoProfile{1};
 zLatMix = latmixData.zProfile{1};
-latitudeLatMix = latmixData.latitude;
 zOutLatMix = linspace(zLatMix(1), zLatMix(end), 1024).';
 
-imLatMix = InternalModesSpectral(rho=rhoLatMix, zIn=zLatMix, zOut=zOutLatMix, latitude=latitudeLatMix, nEVP=nEVP);
-[FLatMix, GLatMix, hLatMix, kLatMix] = imLatMix.ModesAtFrequency(0); %#ok<NASGU>
+imLatMix = InternalModesSpectral(rho=rhoLatMix, zIn=zLatMix, zOut=zOutLatMix, latitude=latmixData.latitude, nEVP=257);
+[F, G] = imLatMix.ModesAtFrequency(0);
 
 figure(Color="w", Position=[100 100 980 360])
 tiledlayout(1, 3, TileSpacing="compact", Padding="compact")
@@ -155,21 +150,21 @@ title("LatMix density profile")
 grid on
 
 nexttile
-plot(FLatMix(:, 1:nPlot), imLatMix.z, LineWidth=1.5)
+plot(F(:, 1:4), imLatMix.z, LineWidth=1.5)
 xlabel("F_j(z)")
-title("LatMix zero-frequency F modes")
+title("LatMix hydrostatic F modes")
 grid on
 
 nexttile
-plot(GLatMix(:, 1:nPlot), imLatMix.z, LineWidth=1.5)
+plot(G(:, 1:4), imLatMix.z, LineWidth=1.5)
 xlabel("G_j(z)")
-title("LatMix zero-frequency G modes")
+title("LatMix hydrostatic G modes")
 grid on
 ```
 
-![InternalModesSpectral works directly on the realistic LatMix profile and returns the leading zero-frequency modes on the requested output grid.](./internal-modes-basics/latmix-zero-frequency-modes.png)
+![InternalModesSpectral works directly on the realistic LatMix profile and returns the leading hydrostatic modes on the requested output grid.](./internal-modes-basics/latmix-hydrostatic-modes.png)
 
-*InternalModesSpectral works directly on the realistic LatMix profile and returns the leading zero-frequency modes on the requested output grid.*
+*InternalModesSpectral works directly on the realistic LatMix profile and returns the leading hydrostatic modes on the requested output grid.*
 
 ## Choose the solver to match the profile
 
