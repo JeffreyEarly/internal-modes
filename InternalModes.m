@@ -121,6 +121,7 @@ classdef InternalModes < handle
         function self = InternalModes(varargin)    
             % Initialize with either a grid or analytical profile.   
             userSpecifiedMethod = 0;
+            wrapperOptions = self.defaultWrapperConstructorOptions();
             
             % First check to see if the user specified some extra arguments
             if nargin >= 5 
@@ -139,7 +140,8 @@ classdef InternalModes < handle
                         userSpecifiedMethod = 1;
                         break;
                     end
-                end      
+                end
+                [extraargs, wrapperOptions] = self.extractWrapperConstructorOptions(extraargs, wrapperOptions);
             else
                 extraargs = {};
             end
@@ -161,10 +163,10 @@ classdef InternalModes < handle
                 if userSpecifiedMethod == 0 && isStratificationConstant == 1
                     [N0, rho0] = InternalModesConstantStratification.BuoyancyFrequencyFromConstantStratification(rho,zIn);
                     fprintf('Initialization detected that you are using constant stratification with N0=%.1g. The modes will now be computed using the analytical form. If you would like to override this behavior, specify the method parameter.\n', N0);
-                    self.internalModes = InternalModesConstantStratification([N0, rho0],zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesConstantStratification('N0',N0,'rho0',rho0,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif userSpecifiedMethod == 0 && isStratificationExponential == 1
                     fprintf('Initialization detected that you are using exponential stratification with N0=%.1g, b=%d. The modes will now be computed using the analytical form. If you would like to override this behavior, specify the method parameter.\n',rho_params(1),round(rho_params(2)));
-                    self.internalModes = InternalModesExponentialStratification(rho_params,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesExponentialStratification('N0',rho_params(1),'b',rho_params(2),'rho0',rho_params(3),'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif userSpecifiedMethod == 0
                     % If the user didn't specify a method, try
                     % wkbAdaptiveSpectral first, but if that fails to
@@ -172,7 +174,7 @@ classdef InternalModes < handle
                     % z-coordinate spectral.
 %                     try
                         self.method = 'wkbAdaptiveSpectral';
-                        self.internalModes = InternalModesAdaptiveSpectral(rho,zIn,zOut,latitude,extraargs{:});
+                        self.internalModes = InternalModesAdaptiveSpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
 %                     catch ME
 %                         errorStruct = [];
 %                         if ~isempty(ME.cause) && strcmp(ME.cause{1}.identifier,'StretchedGridFromCoordinate:NonMonotonicFunction')
@@ -185,28 +187,29 @@ classdef InternalModes < handle
 %                             fprintf('%s : %s\n', errorStruct.identifier, errorStruct.message);
 %                             fprintf('Switching to InternalModesSpectral.\n');
 %                             self.method = 'spectral';
-%                             self.internalModes = InternalModesSpectral(rho,zIn,zOut,latitude,extraargs{:});
+%                             self.internalModes = InternalModesSpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
 %                         else
 %                             rethrow(ME);
 %                         end
 %                     end
                 elseif  strcmp(self.method, 'densitySpectral')
-                    self.internalModes = InternalModesDensitySpectral(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesDensitySpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif  strcmp(self.method, 'wkbSpectral')
-                    self.internalModes = InternalModesWKBSpectral(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesWKBSpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif  strcmp(self.method, 'wkbAdaptiveSpectral')
-                    self.internalModes = InternalModesAdaptiveSpectral(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesAdaptiveSpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif strcmp(self.method, 'finiteDifference')
-                    self.internalModes = InternalModesFiniteDifference(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesFiniteDifference('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif strcmp(self.method, 'spectral')
-                    self.internalModes = InternalModesSpectral(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesSpectral('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif strcmp(self.method, 'wkb')
-                    self.internalModes = InternalModesWKB(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesWKB('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 elseif strcmp(self.method, 'wkb-hydrostatic')
-                    self.internalModes = InternalModesWKBHydrostatic(rho,zIn,zOut,latitude,extraargs{:});
+                    self.internalModes = InternalModesWKBHydrostatic('rho',rho,'zIn',zIn,'zOut',zOut,'latitude',latitude,extraargs{:});
                 else
                     error('Invalid method!')
                 end
+                self.applyWrapperConstructorOptions(wrapperOptions);
             else
                 
                 if nargin == 4
@@ -267,18 +270,18 @@ classdef InternalModes < handle
             errorFunction = @(x,y) max(abs(x-y),[],1)./max(abs(y),[],1);
             
             if strcmp(self.stratification, 'constant')
-                imConstant = InternalModesConstantStratification(5.2e-3,[-5000 0],self.z,self.latitude,'nModes',self.nModes);
+                imConstant = InternalModesConstantStratification(N0=5.2e-3,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imConstant.upperBoundary = self.upperBoundary;
                 imConstant.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imConstant.ModesAtWavenumber( k );
             elseif  strcmp(self.stratification, 'exponential')
-                imExponential = InternalModesExponentialStratification([5.2e-3 1300],[-5000 0],self.z,self.latitude,'nModes',self.nModes);
+                imExponential = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imExponential.upperBoundary = self.upperBoundary;
                 imExponential.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imExponential.ModesAtWavenumber( k );
             else
                 [rhoFunc, ~, zIn] = InternalModes.StratificationProfileWithName(self.stratification);
-                imAnalytical = InternalModesAdaptiveSpectral(rhoFunc,zIn,self.z,self.latitude,'nEVP',512,'nModes',self.nModes);
+                imAnalytical = InternalModesAdaptiveSpectral(rho=rhoFunc,zIn=zIn,zOut=self.z,latitude=self.latitude,nEVP=512,nModes=self.nModes);
                 imAnalytical.upperBoundary = self.upperBoundary;
                 imAnalytical.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imAnalytical.ModesAtWavenumber( k );
@@ -308,18 +311,18 @@ classdef InternalModes < handle
             errorFunction = @(x,y) max(max(abs(x-y),[],1)./max(abs(y),[],1),1e-15);
             
             if  strcmp(self.stratification, 'constant')
-                imConstant = InternalModesConstantStratification(5.2e-3,[-5000 0],self.z,self.latitude,'nModes',self.nModes);
+                imConstant = InternalModesConstantStratification(N0=5.2e-3,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imConstant.upperBoundary = self.upperBoundary;
                 imConstant.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imConstant.ModesAtFrequency( omega );
             elseif  strcmp(self.stratification, 'exponential')
-                imExponential = InternalModesExponentialStratification([5.2e-3 1300],[-5000 0],self.z,self.latitude,'nModes',self.nModes);
+                imExponential = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=[-5000 0],zOut=self.z,latitude=self.latitude,nModes=self.nModes);
                 imExponential.upperBoundary = self.upperBoundary;
                 imExponential.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imExponential.ModesAtFrequency( omega );
             else
                 [rhoFunc, ~, zIn] = InternalModes.StratificationProfileWithName(self.stratification);
-                imAnalytical = InternalModesAdaptiveSpectral(rhoFunc,zIn,self.z,self.latitude,'nEVP',512,'nModes',self.nModes);
+                imAnalytical = InternalModesAdaptiveSpectral(rho=rhoFunc,zIn=zIn,zOut=self.z,latitude=self.latitude,nEVP=512,nModes=self.nModes);
                 imAnalytical.upperBoundary = self.upperBoundary;
                 imAnalytical.normalization = self.normalization;
                 [F_analytical,G_analytical,h_analytical] = imAnalytical.ModesAtFrequency( omega );
@@ -766,6 +769,56 @@ classdef InternalModes < handle
     end
     
     methods (Access = private)
+
+        function options = defaultWrapperConstructorOptions(~)
+            options.hasShouldShowDiagnostics = false;
+            options.shouldShowDiagnostics = [];
+            options.hasUpperBoundary = false;
+            options.upperBoundary = [];
+            options.hasLowerBoundary = false;
+            options.lowerBoundary = [];
+            options.hasNormalization = false;
+            options.normalization = [];
+        end
+
+        function [remainingArgs, wrapperOptions] = extractWrapperConstructorOptions(~, extraargs, wrapperOptions)
+            remainingArgs = {};
+            for iArg = 1:2:length(extraargs)
+                optionName = extraargs{iArg};
+                optionValue = extraargs{iArg+1};
+
+                if strcmp(optionName, 'shouldShowDiagnostics')
+                    wrapperOptions.hasShouldShowDiagnostics = true;
+                    wrapperOptions.shouldShowDiagnostics = optionValue;
+                elseif strcmp(optionName, 'upperBoundary')
+                    wrapperOptions.hasUpperBoundary = true;
+                    wrapperOptions.upperBoundary = optionValue;
+                elseif strcmp(optionName, 'lowerBoundary')
+                    wrapperOptions.hasLowerBoundary = true;
+                    wrapperOptions.lowerBoundary = optionValue;
+                elseif strcmp(optionName, 'normalization')
+                    wrapperOptions.hasNormalization = true;
+                    wrapperOptions.normalization = optionValue;
+                else
+                    remainingArgs = cat(2, remainingArgs, extraargs(iArg:iArg+1));
+                end
+            end
+        end
+
+        function applyWrapperConstructorOptions(self, wrapperOptions)
+            if wrapperOptions.hasShouldShowDiagnostics
+                self.shouldShowDiagnostics = wrapperOptions.shouldShowDiagnostics;
+            end
+            if wrapperOptions.hasUpperBoundary
+                self.upperBoundary = wrapperOptions.upperBoundary;
+            end
+            if wrapperOptions.hasLowerBoundary
+                self.lowerBoundary = wrapperOptions.lowerBoundary;
+            end
+            if wrapperOptions.hasNormalization
+                self.normalization = wrapperOptions.normalization;
+            end
+        end
         
         function self = InitTestCase(self, stratification, theMethod, n)
             self.method = theMethod;
@@ -780,21 +833,21 @@ classdef InternalModes < handle
             zOut = linspace(min(zIn),max(zIn),n)';
 
             if  strcmp(theMethod, 'densitySpectral')
-                self.internalModes = InternalModesDensitySpectral(self.rhoFunction,zIn,zOut,lat,'nEVP', n);
+                self.internalModes = InternalModesDensitySpectral(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat,nEVP=n);
             elseif  strcmp(theMethod, 'wkbSpectral')
-                self.internalModes = InternalModesWKBSpectral(self.rhoFunction,zIn,zOut,lat,'nEVP', n);
+                self.internalModes = InternalModesWKBSpectral(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat,nEVP=n);
             elseif  strcmp(theMethod, 'wkbAdaptiveSpectral')
-                self.internalModes = InternalModesAdaptiveSpectral(self.rhoFunction,zIn,zOut,lat,'nEVP', n);
+                self.internalModes = InternalModesAdaptiveSpectral(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat,nEVP=n);
             elseif strcmp(theMethod, 'finiteDifference')
-                self.internalModes = InternalModesFiniteDifference(self.rhoFunction,zIn,zOut,lat);
+                self.internalModes = InternalModesFiniteDifference(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat);
             elseif strcmp(theMethod, 'spectral')
-                self.internalModes = InternalModesSpectral(self.rhoFunction,zIn,zOut,lat,'nEVP', n);
+                self.internalModes = InternalModesSpectral(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat,nEVP=n);
             elseif strcmp(self.method, 'wkb')
-                self.internalModes = InternalModesWKB(self.rhoFunction,zIn,zOut,lat);
+                self.internalModes = InternalModesWKB(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat);
             elseif strcmp(self.method, 'wkb-hydrostatic')
-                self.internalModes = InternalModesWKBHydrostatic(self.rhoFunction,zIn,zOut,lat);
+                self.internalModes = InternalModesWKBHydrostatic(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat);
             elseif isempty(theMethod)
-                self.internalModes = InternalModesWKBSpectral(self.rhoFunction,zIn,zOut,lat,'nEVP', n);
+                self.internalModes = InternalModesWKBSpectral(rho=self.rhoFunction,zIn=zIn,zOut=zOut,latitude=lat,nEVP=n);
             else
                 error('Invalid method!')
             end
@@ -875,5 +928,3 @@ classdef InternalModes < handle
     end
     
 end
-
-

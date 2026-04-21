@@ -13,6 +13,12 @@ classdef InternalModesWKB < InternalModesSpectral
     %
     %   June 8th, 2017        Version 1.0
     %   October 17th, 2017    Version 1.1, implemented non-hydrostatic vers
+
+    properties (Dependent)
+        zLobatto
+        N2_zLobatto
+        Diff1_zCheb
+    end
     
     methods
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -20,8 +26,21 @@ classdef InternalModesWKB < InternalModesSpectral
         % Initialization
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function self = InternalModesWKB(rho, z_in, z_out, latitude, varargin)
-            self@InternalModesSpectral(rho,z_in,z_out,latitude, varargin{:});
+        function self = InternalModesWKB(options)
+            arguments
+                options.rho = ''
+                options.N2 function_handle = @disp
+                options.zIn (:,1) double = []
+                options.zOut (:,1) double = []
+                options.latitude (1,1) double = 33
+                options.rho0 (1,1) double {mustBePositive} = 1025
+                options.nModes (1,1) double = 0
+                options.nEVP = 512
+                options.rotationRate (1,1) double = 7.2921e-5
+                options.g (1,1) double = 9.81
+            end
+            parentArgs = namedargs2cell(options);
+            self@InternalModesSpectral(parentArgs{:});
         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -31,6 +50,18 @@ classdef InternalModesWKB < InternalModesSpectral
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega] = ModesAtWavenumber(self, k )
             error('The WKB solution for modes with constant wavenumber has not been solved. Maybe you should solve it!');
+        end
+
+        function value = get.zLobatto(self)
+            value = self.z_xLobatto;
+        end
+
+        function value = get.N2_zLobatto(self)
+            value = self.N2_xLobatto;
+        end
+
+        function value = get.Diff1_zCheb(self)
+            value = self.Diff1_xCheb;
         end
         
         function [F,G,h,k] = ModesAtFrequency(self, omega )
@@ -278,4 +309,3 @@ classdef InternalModesWKB < InternalModesSpectral
     end
         
 end
-

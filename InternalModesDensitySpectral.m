@@ -31,10 +31,21 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         % Initialization
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function self = InternalModesDensitySpectral(rho, z_in, z_out, latitude, varargin)
-            varargin{end+1} = 'requiresMonotonicDensity';
-            varargin{end+1} = 1;
-            self@InternalModesSpectral(rho,z_in,z_out,latitude, varargin{:});
+        function self = InternalModesDensitySpectral(options)
+            arguments
+                options.rho = ''
+                options.N2 function_handle = @disp
+                options.zIn (:,1) double = []
+                options.zOut (:,1) double = []
+                options.latitude (1,1) double = 33
+                options.rho0 (1,1) double {mustBePositive} = 1025
+                options.nModes (1,1) double = 0
+                options.nEVP = 512
+                options.rotationRate (1,1) double = 7.2921e-5
+                options.g (1,1) double = 9.81
+            end
+            parentArgs = namedargs2cell(options);
+            self@InternalModesSpectral(parentArgs{:});
         end
                     
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,6 +113,9 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
     end
     
     methods (Access = protected)
+        function out = requiresMonotonicDensitySetting(~)
+            out = 1;
+        end
         
         function self = InitializeWithGrid(self, rho, zIn)
             InitializeWithGrid@InternalModesSpectral(self,rho,zIn);
@@ -126,9 +140,14 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
                     y = discretize(xLobatto,xIn);
                 end
                 
-                K = 6; % cubic spline
-                z_knot = InterpolatingSpline.KnotPointsForPoints([zIn(1);zIn(unique(y)+1)],K,1);
-                rho_interpolant = ConstrainedSpline(zIn, rho, K, z_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
+                K = 6; % quintic spline
+                splineDegree = K - 1;
+                z_knot = BSpline.knotPointsForDataPoints([zIn(1); zIn(unique(y)+1)], S=splineDegree);
+                rho_interpolant = ConstrainedSpline.fromData(zIn, rho, ...
+                    S=splineDegree, ...
+                    knotPoints=z_knot, ...
+                    distribution=NormalDistribution(sigma=1), ...
+                    constraints=GlobalConstraint.monotonicDecreasing());
                 
                 self.rho_function = rho_interpolant;
                 self.N2_function = (-self.g/self.rho0)*diff(self.rho_function);
@@ -147,10 +166,10 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
             self.N2z_xLobatto = N2z_function(self.z_xLobatto);
 
             self.hFromLambda = @(lambda) 1.0 ./ lambda;
-            self.GOutFromGCheb = @(G_cheb,h) self.T_xCheb_zOut(G_cheb);
-            self.FOutFromGCheb = @(G_cheb,h) h * self.N2 .* self.T_xCheb_zOut(self.Diff1_xCheb(G_cheb));
-            self.GFromGCheb = @(G_cheb,h) InternalModesSpectral.ifct(G_cheb);
-            self.FFromGCheb = @(G_cheb,h) h * self.N2_xLobatto .* InternalModesSpectral.ifct( self.Diff1_xCheb(G_cheb) );
+            self.GOutFromVCheb = @(G_cheb,h) self.T_xCheb_zOut(G_cheb);
+            self.FOutFromVCheb = @(G_cheb,h) h * self.N2 .* self.T_xCheb_zOut(self.Diff1_xCheb(G_cheb));
+            self.GFromVCheb = @(G_cheb,h) InternalModesSpectral.ifct(G_cheb);
+            self.FFromVCheb = @(G_cheb,h) h * self.N2_xLobatto .* InternalModesSpectral.ifct(self.Diff1_xCheb(G_cheb));
             self.GNorm = @(Gj) abs(Gj(1)*Gj(1) + sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.g) * (1 - self.f0*self.f0./self.N2_xLobatto) .* Gj .^ 2)));
             self.FNorm = @(Fj) abs(sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.Lz) * (Fj.^ 2)./self.N2_xLobatto)));
         end

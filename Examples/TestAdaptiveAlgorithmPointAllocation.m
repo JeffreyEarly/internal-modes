@@ -7,7 +7,7 @@ omega = 0.95*N0;
 [rhoFunction, N2Function, zIn] = InternalModes.StratificationProfileWithName(stratification);
 
 zOut = linspace(min(zIn),max(zIn),1024)';
-imAnalytical = InternalModesExponentialStratification([N0 b], zIn, zOut, latitude, 'nModes', 500);
+imAnalytical = InternalModesExponentialStratification(N0=N0,b=b,zIn=zIn,zOut=zOut,latitude=latitude,nModes=500);
 [F_analytical,G_analytical, h_analytical] = imAnalytical.ModesAtFrequency(omega);
 
 % y is the true solution, x is the approximated

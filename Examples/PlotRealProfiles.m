@@ -1,4 +1,5 @@
-load('SampleLatmixProfiles.mat');
+exampleDir = fileparts(mfilename('fullpath'));
+load(fullfile(exampleDir,'SampleLatmixProfiles.mat'));
 
 i=1;
 % for i=1:2:length(rhoProfile)

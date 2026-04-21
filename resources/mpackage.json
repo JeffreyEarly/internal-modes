@@ -1,6 +1,6 @@
 {
     "name": "InternalModes",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "id": "d671f7d7-4215-4319-a7cc-d4c25efc725a",
     "formerNames": [],
     "displayName": "InternalModes",
@@ -33,6 +33,12 @@
         },
         {
             "path": "UnitTests",
+            "languages": [
+                "matlab"
+            ]
+        },
+        {
+            "path": "Examples",
             "languages": [
                 "matlab"
             ]

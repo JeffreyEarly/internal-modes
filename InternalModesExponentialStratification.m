@@ -22,25 +22,27 @@ classdef InternalModesExponentialStratification < InternalModesBase
     end
     
     methods
-        function self = InternalModesExponentialStratification(rho, z_in, z_out, latitude, varargin) 
-            % rho should be a two component vector with the buoyancy at the
-            % surface and the e-fold scale, e.g., [5.2e-3 1300].
-            if isa(rho,'numeric') == true && (length(rho) == 2 || length(rho) == 3)
-                N0 = double(rho(1));
-                b = double(rho(2));
-                if length(rho) == 3
-                    rho0 = double(rho(3));
-                else
-                    rho0 = 1025;
-                end
-                g = 9.81;
-                rhoFunction = @(z) rho0*(1 + b*N0*N0/(2*g)*(1 - exp(2*z/b)));
-                N2Function = @(z) N0*N0*exp(2*z/b);
-            else
-                error('Invalid initialization: rho must be a two-component vector with the bouyancy at the surface and the e-fold scale, e.g., [5.2e-3 1300], or a three-component vector that includes the density at the surface as the final argument.\n');
+        function self = InternalModesExponentialStratification(options)
+            arguments
+                options.N0 (1,1) double {mustBePositive} = 5.2e-3
+                options.b (1,1) double {mustBePositive} = 1300
+                options.zIn (1,2) double = [-1300 0]
+                options.zOut (:,1) double = linspace(-1300,0,65).'
+                options.latitude (1,1) double = 33
+                options.rho0 (1,1) double {mustBePositive} = 1025
+                options.nModes (1,1) double = 0
+                options.rotationRate (1,1) double = 7.2921e-5
+                options.g (1,1) double = 9.81
             end
+            N0 = options.N0;
+            b = options.b;
+            rho0 = options.rho0;
+            g = options.g;
+
+            rhoFunction = @(z) rho0*(1 + b*N0*N0/(2*g)*(1 - exp(2*z/b)));
+            N2Function = @(z) N0*N0*exp(2*z/b);
             
-            self@InternalModesBase(rhoFunction,double(z_in),double(z_out),double(latitude), varargin{:});
+            self@InternalModesBase(rho=rhoFunction,zIn=options.zIn,zOut=options.zOut,latitude=options.latitude,rho0=rho0,nModes=options.nModes,rotationRate=options.rotationRate,g=g);
             self.N0 = N0;
             self.b = b;
             self.rhoFunction = rhoFunction;

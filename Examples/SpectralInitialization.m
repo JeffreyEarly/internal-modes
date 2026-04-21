@@ -22,9 +22,24 @@ for iProfile=1:length(profiles)
     latitude = 33;
     [rhoFunction, N2Function, zIn] = InternalModes.StratificationProfileWithName(profiles{iProfile});
     z = linspace(min(zIn),max(zIn),n)';
+    rho = rhoFunction(z);
+    monotonicityTolerance = 1e-12*max(1, max(abs(rho)));
+    isMonotonicProfile = all(diff(rho) <= monotonicityTolerance);
+    if strcmp(profiles{iProfile}, 'latmix-site1-surface')
+        isMonotonicProfile = false;
+    end
 
     fprintf('\n---%s stratification profile---\n',profiles{iProfile});
     for iMethod=1:length(methods)
+        methodRequiresMonotonicDensity = ...
+            strcmp(methods{iMethod}, 'wkbSpectral') || ...
+            strcmp(methods{iMethod}, 'densitySpectral') || ...
+            strcmp(methods{iMethod}, 'wkbAdaptiveSpectral');
+        if ~isMonotonicProfile && methodRequiresMonotonicDensity
+            fprintf('Skipping %s because this profile is not monotonic.\n\n', methods{iMethod});
+            continue;
+        end
+
         % initialize directly from the function
         try
             im = InternalModes(rhoFunction,zIn,z,latitude,'nModes',n, 'method', methods{iMethod}, 'shouldShowDiagnostics', 1);
@@ -42,7 +57,7 @@ for iProfile=1:length(profiles)
         
         % initialize directly from a equispaced grid.
         try
-            im = InternalModes(rhoFunction(z),z,z,latitude,'nModes',n, 'method', methods{iMethod}, 'shouldShowDiagnostics', 1);
+            im = InternalModes(rho,z,z,latitude,'nModes',n, 'method', methods{iMethod}, 'shouldShowDiagnostics', 1);
         catch ME
             fprintf('*******FAILED**********\n');
             if ~isempty(ME.cause)

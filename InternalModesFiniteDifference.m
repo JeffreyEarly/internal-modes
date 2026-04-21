@@ -54,16 +54,31 @@ classdef InternalModesFiniteDifference < InternalModesBase
         % Initialization
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function self = InternalModesFiniteDifference(rho, z_in, z_out, latitude, varargin)
+        function self = InternalModesFiniteDifference(options)
             % Initialize with either a grid or analytical profile.
-            self@InternalModesBase(rho,z_in,z_out,latitude,varargin{:});
+            arguments
+                options.rho = ''
+                options.N2 function_handle = @disp
+                options.zIn (:,1) double = []
+                options.zOut (:,1) double = []
+                options.latitude (1,1) double = 33
+                options.rho0 (1,1) double {mustBePositive} = 1025
+                options.nModes (1,1) double = 0
+                options.orderOfAccuracy (1,1) double {mustBePositive} = 4
+                options.rotationRate (1,1) double = 7.2921e-5
+                options.g (1,1) double = 9.81
+            end
+            baseOptions = rmfield(options,'orderOfAccuracy');
+            baseArgs = namedargs2cell(baseOptions);
+            self@InternalModesBase(baseArgs{:});
+            self.orderOfAccuracy = options.orderOfAccuracy;
             
             self.n = length(self.z_diff);
             self.Diff1 = InternalModesFiniteDifference.FiniteDifferenceMatrix(1, self.z_diff, 1, 1, self.orderOfAccuracy);
             self.Diff2 = InternalModesFiniteDifference.FiniteDifferenceMatrix(2, self.z_diff, 2, 2, self.orderOfAccuracy);
             self.N2_z_diff = -(self.g/self.rho0) * self.Diff1 * self.rho_z_diff;
             
-            self.InitializeOutputTransformation(z_out);
+            self.InitializeOutputTransformation(self.z);
             self.rho = self.T_out(self.rho_z_diff);
             self.N2 = self.T_out(self.N2_z_diff);
             
@@ -242,11 +257,8 @@ classdef InternalModesFiniteDifference < InternalModesBase
         end
         
         function self = InitializeWithN2Function(self, N2, zMin, zMax)
-            fprintf('Initialization from N2 has not yet been unit tested...or implemented for that matter.');
-            % Note that there will be a grid mismatch here---so we need to
-            % do something clever...
-%             self.z_diff = z_in;
-%             self.rho_z_diff = -(self.rho0/self.g)*N2;
+            error('InternalModesFiniteDifference:UnsupportedInitialization', ...
+                'Initialization from N2 functions is not implemented for InternalModesFiniteDifference.');
         end
     end
     
@@ -449,4 +461,3 @@ classdef InternalModesFiniteDifference < InternalModesBase
     end
     
 end
-

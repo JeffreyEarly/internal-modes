@@ -101,13 +101,13 @@ Constant and exponential stratification
 Both constant and exponential stratification profiles have exact analytical solutions that have been implemented directly. Initialization follows the same basic format, but rather than specify a density profile, you specify the parameters for the stratification. For example,
 ```matlab
 N0 = 5.2e-3;
-imConst = InternalModesConstantStratification(N0,[L 0],zOut,latitude);
+imConst = InternalModesConstantStratification(N0=N0,zIn=[L 0],zOut=zOut,latitude=latitude);
 ```
 will initialize a constant stratification profile with buoyancy frequency given by `N0`, and
 ```matlab
 N0 = 5.2e-3;
 b = 1300;
-imExp = InternalModesExponentialStratification([N0 b],[L 0],zOut,latitude);
+imExp = InternalModesExponentialStratification(N0=N0,b=b,zIn=[L 0],zOut=zOut,latitude=latitude);
 ```
 will initialize an exponential stratification profile with surface buoyancy frequency of `N0` and e-fold scale of `b`. 
 
@@ -216,9 +216,11 @@ im.ShowRelativeErrorAtFrequency(5*im.f0)
 ```
 to estimate the error.
 
-Unit testing
+Examples and smoke tests
 ------------------
 
-The folder `UnitTests` constains two functions that use the analytical solutions from constant and exponential stratification to unit test against the numerical methods.
--`InternalModeRelativeErrorTests.m` computes the internal mode solution at three different wavenumbers and three different frequencies, returning the number of 'good' modes (modes with less than 1 percent error). The test should be run with both surface boundary conditions.
--`SQGModeRelativeErrorTests.m` computes the surface and bottom boundary SQG mode solutions at a range wavenumbers, returning the relative error.
+The folder `Examples` contains interactive comparison scripts and demos.
+- `InternalModeRelativeErrorTests.m` computes the internal mode solution at three different wavenumbers and three different frequencies, returning the number of "good" modes (modes with less than 1 percent error). The example should be run with both surface boundary conditions.
+- `SQGModeRelativeErrorTests.m` computes the surface and bottom boundary SQG mode solutions at a range of wavenumbers, returning the relative error.
+
+The folder `UnitTests` contains automated `matlab.unittest` smoke coverage for constructor initialization and wrapper dispatch.

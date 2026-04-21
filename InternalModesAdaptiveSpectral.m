@@ -45,8 +45,21 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         % Initialization
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function self = InternalModesAdaptiveSpectral(rho, z_in, z_out, latitude, varargin)
-            self@InternalModesWKBSpectral(rho,z_in,z_out,latitude, varargin{:});
+        function self = InternalModesAdaptiveSpectral(options)
+            arguments
+                options.rho = ''
+                options.N2 function_handle = @disp
+                options.zIn (:,1) double = []
+                options.zOut (:,1) double = []
+                options.latitude (1,1) double = 33
+                options.rho0 (1,1) double {mustBePositive} = 1025
+                options.nModes (1,1) double = 0
+                options.nEVP = 512
+                options.rotationRate (1,1) double = 7.2921e-5
+                options.g (1,1) double = 9.81
+            end
+            parentArgs = namedargs2cell(options);
+            self@InternalModesWKBSpectral(parentArgs{:});
         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

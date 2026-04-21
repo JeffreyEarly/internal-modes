@@ -21,9 +21,9 @@ for iProfile=1:length(profiles)
     [rhoFunction, N2Function, zIn] = InternalModes.StratificationProfileWithName(profiles{iProfile});
     z = linspace(min(zIn),max(zIn),n)';
     if strcmp(profiles{iProfile},'constant')==1
-        imAnalytical = InternalModesConstantStratification(5.2e-3,zIn,z,latitude,'nModes',n);
+        imAnalytical = InternalModesConstantStratification(N0=5.2e-3,zIn=zIn,zOut=z,latitude=latitude,nModes=n);
     else
-        imAnalytical = InternalModesExponentialStratification([5.2e-3 1300],zIn,z,latitude,'nModes',n);
+        imAnalytical = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=zIn,zOut=z,latitude=latitude,nModes=n);
     end
     imAnalytical.upperBoundary = upperBoundary;
     imAnalytical.normalization = Normalization.kConstant;

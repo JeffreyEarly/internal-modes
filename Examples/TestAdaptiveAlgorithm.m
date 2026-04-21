@@ -15,7 +15,7 @@ z = linspace(Lz,0,n)';
 rho = rhoFunction;
 zOut = linspace(min(zIn),max(zIn),5000)';
 
-im = InternalModesAdaptiveSpectral(rho,zIn,zOut,latitude);
+im = InternalModesAdaptiveSpectral(rho=rho,zIn=zIn,zOut=zOut,latitude=latitude);
 
 [F,G,h] = im.ModesAtFrequency( omega );
 
@@ -28,7 +28,7 @@ xlabel('(u,v)-modes');
 b = subplot(1,3,2);
 plot(G(:,1:4),im.z, 'LineWidth', 2)
 xlabel('w-modes');
-ytick([]);
+yticks([]);
 
 subplot(1,3,3)
 plot(sqrt(im.N2),im.z, 'LineWidth', 2), hold on
@@ -37,4 +37,4 @@ plot(sqrt(im.N2),im.z, 'LineWidth', 2), hold on
 % end
 xlim([0.0 1.1*max(sqrt(im.N2))])
 xlabel('buoyancy frequency');
-ytick([]);
+yticks([]);

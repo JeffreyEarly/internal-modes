@@ -24,7 +24,6 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     properties %(Access = private)
         Nz_function
         Nz_xLobatto     	% (d/dz)N on the xiLobatto grid   
-        requiresMonotonicDensitySetting = 1
     end
     
     methods
@@ -153,13 +152,16 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     end
     
     methods (Access = protected)
+        function out = requiresMonotonicDensitySetting(~)
+            out = 1;
+        end
         
         function self = InitializeWithGrid(self, rho, zIn)
             InitializeWithGrid@InternalModesSpectral(self,rho,zIn);
 
             % This is our new (s)treched grid...we need to make s(z) be
             % monotonic!
-            N_function = sqrt(self.N2_function,struct('global',ShapeConstraint.positive));
+            N_function = sqrt(self.N2_function);
             s = cumsum(N_function);
             
             self.xDomain = [s(self.zMin) s(self.zMax)];
@@ -179,8 +181,13 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
                 end
                 
                 K = 4; % cubic spline
-                z_knot = InterpolatingSpline.KnotPointsForPoints([zIn(1);zIn(unique(y)+1)],K,1);
-                rho_interpolant = ConstrainedSpline(zIn, rho, K, z_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
+                splineDegree = K - 1;
+                z_knot = BSpline.knotPointsForDataPoints([zIn(1); zIn(unique(y)+1)], S=splineDegree);
+                rho_interpolant = ConstrainedSpline.fromData(zIn, rho, ...
+                    S=splineDegree, ...
+                    knotPoints=z_knot, ...
+                    distribution=NormalDistribution(sigma=1), ...
+                    constraints=GlobalConstraint.monotonicDecreasing());
                 
                 self.rho_function = rho_interpolant;
                 self.N2_function = (-self.g/self.rho0)*diff(self.rho_function);

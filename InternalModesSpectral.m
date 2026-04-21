@@ -739,8 +739,12 @@ classdef InternalModesSpectral < InternalModesBase
            self.validateInitialModeAndEVPSettings();
            
            if self.requiresMonotonicDensity == 1
-               z = BSpline.PointsOfSupport(rho.t_knot,rho.K);
-               self.rho_function = ConstrainedSpline(z, rho.ValueAtPoints(z), rho.K, rho.t_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
+               z = BSpline.pointsOfSupportFromKnotPoints(rho.knotPoints, S=rho.S);
+               self.rho_function = ConstrainedSpline.fromData(z, rho(z), ...
+                   S=rho.S, ...
+                   knotPoints=rho.knotPoints, ...
+                   distribution=NormalDistribution(sigma=1), ...
+                   constraints=GlobalConstraint.monotonicDecreasing());
            else
                self.rho_function = rho;
            end
@@ -753,14 +757,19 @@ classdef InternalModesSpectral < InternalModesBase
             self.validateInitialModeAndEVPSettings();
 
             K = 6; 
+            splineDegree = K - 1;
             if self.requiresMonotonicDensity == 1
-                z_knot = InterpolatingSpline.KnotPointsForPoints(zIn,K,1);
-                rho_interpolant = ConstrainedSpline(zIn, rho, K, z_knot, NormalDistribution(sigma=1), struct('global', ShapeConstraint.monotonicDecreasing));
+                z_knot = BSpline.knotPointsForDataPoints(zIn, S=splineDegree);
+                rho_interpolant = ConstrainedSpline.fromData(zIn, rho, ...
+                    S=splineDegree, ...
+                    knotPoints=z_knot, ...
+                    distribution=NormalDistribution(sigma=1), ...
+                    constraints=GlobalConstraint.monotonicDecreasing());
                 if self.shouldShowDiagnostics == 1
                     fprintf('Creating a %d-order monotonic spline from the %d points.\n', K, length(rho));
                 end
             else
-                rho_interpolant = InterpolatingSpline(zIn,rho,'K',K);
+                rho_interpolant = InterpolatingSpline.fromGriddedValues(zIn, rho, S=splineDegree);
                 if self.shouldShowDiagnostics == 1
                     fprintf('Creating a %d-order spline from the %d points.\n', K, length(rho));
                 end
@@ -1482,4 +1491,3 @@ classdef InternalModesSpectral < InternalModesBase
         
     end
 end
-

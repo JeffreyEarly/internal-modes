@@ -1,7 +1,7 @@
 z = linspace(-5000, 0, 500);
 
 
-imAnalytical = InternalModesExponentialStratification([5.2e-3 1300], [-5000 0], z, 33,'nModes',128);
+imAnalytical = InternalModesExponentialStratification(N0=5.2e-3,b=1300,zIn=[-5000 0],zOut=z,latitude=33,nModes=128);
 imAnalytical.normalization = Normalization.kConstant;
 
 profile on
