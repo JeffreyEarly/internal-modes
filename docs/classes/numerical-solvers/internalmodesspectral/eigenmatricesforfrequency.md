@@ -1,13 +1,13 @@
 ---
 layout: default
-title: EigenmatricesForFrequency
+title: eigenmatricesForFrequency
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 9
+nav_order: 50
 mathjax: true
 ---
 
-#  EigenmatricesForFrequency
+#  eigenmatricesForFrequency
 
 Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
 
@@ -16,7 +16,7 @@ Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
 
 ## Declaration
 ```matlab
- [A,B] = EigenmatricesForFrequency(self,omega)
+ [A,B] = eigenmatricesForFrequency(self,omega)
 ```
 ## Parameters
 + `self`  InternalModesSpectral instance

@@ -1,13 +1,13 @@
 ---
 layout: default
-title: EigenmatricesForWavenumber
+title: eigenmatricesForWavenumber
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 16
+nav_order: 51
 mathjax: true
 ---
 
-#  EigenmatricesForWavenumber
+#  eigenmatricesForWavenumber
 
 Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
 
@@ -16,7 +16,7 @@ Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
 
 ## Declaration
 ```matlab
- [A,B] = EigenmatricesForWavenumber(self,k)
+ [A,B] = eigenmatricesForWavenumber(self,k)
 ```
 ## Parameters
 + `self`  InternalModesSpectral instance

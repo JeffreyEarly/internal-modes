@@ -126,6 +126,35 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             
             testCase.verifyEqual(size(psi, ndims(psi)), numel(zOut))
         end
+        
+        function spectralEigenmatricesForFrequencyComputesWithLowerCamelApi(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+            
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            [A, B] = im.eigenmatricesForFrequency(0.8*N0);
+            
+            testCase.verifyEVPMatrices(A, B, im.nEVP)
+        end
+        
+        function spectralEigenmatricesForWavenumberComputesWithLowerCamelApi(testCase)
+            [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
+            
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            [A, B] = im.eigenmatricesForWavenumber(1e-4);
+            
+            testCase.verifyEVPMatrices(A, B, im.nEVP)
+        end
+        
+        function adaptiveEigenmatricesForFrequencyComputesWithLowerCamelApi(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+            omega = 0.8*N0;
+            
+            im = InternalModesAdaptiveSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            im.modesAtFrequency(omega);
+            [A, B] = im.eigenmatricesForFrequency(omega);
+            
+            testCase.verifyEVPMatrices(A, B, im.nEVP)
+        end
 
         function wrapperDetectsConstantStratification(testCase)
             [rhoFunction, ~, zIn] = InternalModes.StratificationProfileWithName('constant');
@@ -194,6 +223,18 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyEqual(kNew, kOld)
         end
         
+        function spectralEigenmatricesForFrequencyCompatibilityAliasMatchesLowerCamel(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+            omega = 0.8*N0;
+            
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            [ANew, BNew] = im.eigenmatricesForFrequency(omega);
+            [AOld, BOld] = im.EigenmatricesForFrequency(omega);
+            
+            testCase.verifyEqual(ANew, AOld)
+            testCase.verifyEqual(BNew, BOld)
+        end
+        
         function spectralModesAtWavenumberCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn, zOut, ~] = testCase.exponentialProfile();
             k = 1e-4;
@@ -206,6 +247,18 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyEqual(GNew, GOld)
             testCase.verifyEqual(hNew, hOld)
             testCase.verifyEqual(omegaNew, omegaOld)
+        end
+        
+        function spectralEigenmatricesForWavenumberCompatibilityAliasMatchesLowerCamel(testCase)
+            [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
+            k = 1e-4;
+            
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            [ANew, BNew] = im.eigenmatricesForWavenumber(k);
+            [AOld, BOld] = im.EigenmatricesForWavenumber(k);
+            
+            testCase.verifyEqual(ANew, AOld)
+            testCase.verifyEqual(BNew, BOld)
         end
         
         function wrapperSurfaceModesCompatibilityAliasMatchesLowerCamel(testCase)
@@ -229,6 +282,13 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(size(G, 2), minModeCount)
             testCase.verifyGreaterThanOrEqual(numel(h), minModeCount)
             testCase.verifyGreaterThan(h(1), 0)
+        end
+        
+        function verifyEVPMatrices(testCase, A, B, nEVP)
+            testCase.verifySize(A, [nEVP nEVP])
+            testCase.verifySize(B, [nEVP nEVP])
+            testCase.verifyFalse(any(isnan(A(:))))
+            testCase.verifyFalse(any(isnan(B(:))))
         end
     end
 

@@ -285,11 +285,11 @@ classdef InternalModesSpectral < InternalModesBase
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        function [A,B] = EigenmatricesForWavenumber(self, k )
+        function [A,B] = eigenmatricesForWavenumber(self, k )
             % Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Declaration: [A,B] = eigenmatricesForWavenumber(self,k)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter k: horizontal wavenumber
             % - Returns A: left generalized-eigenproblem matrix
@@ -308,11 +308,11 @@ classdef InternalModesSpectral < InternalModesBase
             [A,B] = self.ApplyBoundaryConditions(A,B);
         end
         
-        function [A,B] = EigenmatricesForFrequency(self, omega )
+        function [A,B] = eigenmatricesForFrequency(self, omega )
             % Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Declaration: [A,B] = eigenmatricesForFrequency(self,omega)
             % - Parameter self: InternalModesSpectral instance
             % - Parameter omega: frequency in radians per second
             % - Returns A: left generalized-eigenproblem matrix
@@ -745,7 +745,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             self.gridFrequency = 0;
             
-            [A,B] = self.EigenmatricesForWavenumber(k);
+            [A,B] = self.eigenmatricesForWavenumber(k);
             
             if isempty(varargin)
                 [F,G,h] = self.ModesFromGEP(A,B);
@@ -772,7 +772,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             self.gridFrequency = omega;
             
-            [A,B] = self.EigenmatricesForFrequency(omega);
+            [A,B] = self.eigenmatricesForFrequency(omega);
             
             if isempty(varargin)
                 [F,G,h] = self.ModesFromGEP(A,B);
@@ -878,7 +878,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Parameter nPoints: number of quadrature points requested
             % - Parameter omega: target frequency in radians per second
             % - Returns z_g: depth locations of the quadrature points
-            [A,B] = self.EigenmatricesForFrequency(omega);
+            [A,B] = self.eigenmatricesForFrequency(omega);
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         function z_g = GaussQuadraturePointsForModesAtWavenumber(self,nPoints,k)
@@ -891,7 +891,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Parameter nPoints: number of quadrature points requested
             % - Parameter k: target horizontal wavenumber
             % - Returns z_g: depth locations of the quadrature points
-            [A,B] = self.EigenmatricesForWavenumber(k);
+            [A,B] = self.eigenmatricesForWavenumber(k);
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         function z_g = GaussQuadraturePointsForMDAModes(self,nPoints)
@@ -1011,6 +1011,14 @@ classdef InternalModesSpectral < InternalModesBase
     end
     
     methods (Hidden)
+        function [A,B] = EigenmatricesForWavenumber(self, k)
+            [A,B] = self.eigenmatricesForWavenumber(k);
+        end
+        
+        function [A,B] = EigenmatricesForFrequency(self, omega)
+            [A,B] = self.eigenmatricesForFrequency(omega);
+        end
+        
         function psi = SurfaceModesAtWavenumber(self, k)
             psi = self.surfaceModesAtWavenumber(k);
         end

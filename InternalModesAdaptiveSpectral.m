@@ -179,12 +179,12 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             end
         end
 
-        function [A,B] = EigenmatricesForFrequency(self, omega )
+        function [A,B] = eigenmatricesForFrequency(self, omega )
             % Assemble the coupled fixed-$$\omega$$ EVP on the adaptive WKB grid.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Declaration: [A,B] = eigenmatricesForFrequency(self,omega)
             % - Parameter self: InternalModesAdaptiveSpectral instance
             % - Parameter omega: frequency in radians per second
             % - Returns A: left generalized-eigenproblem matrix
@@ -683,6 +683,12 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             else
                 nEVPPoints = nTotalPoints;
             end
+        end
+    end
+    
+    methods (Hidden)
+        function [A,B] = EigenmatricesForFrequency(self, omega)
+            [A,B] = self.eigenmatricesForFrequency(omega);
         end
     end
     

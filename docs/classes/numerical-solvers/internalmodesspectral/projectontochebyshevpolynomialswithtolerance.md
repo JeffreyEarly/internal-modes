@@ -3,7 +3,7 @@ layout: default
 title: ProjectOntoChebyshevPolynomialsWithTolerance
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 44
+nav_order: 42
 mathjax: true
 ---
 

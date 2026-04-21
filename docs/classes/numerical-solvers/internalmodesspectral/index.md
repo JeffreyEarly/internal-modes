@@ -62,10 +62,10 @@ im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=
   + [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral/internalmodesspectral.html) Initialize the spectral solver on depth coordinates.
   + [`nEVP`](/internal-modes/classes/numerical-solvers/internalmodesspectral/nevp.html) Number of collocation points used for the generalized EVP.
 + Compute modes
-  + [`EigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
-  + [`EigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
   + [`bottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
   + [`boundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/boundarymodesatwavenumber.html) Return either the surface or bottom boundary mode at fixed wavenumber.
+  + [`eigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
+  + [`eigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
   + [`surfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 
 

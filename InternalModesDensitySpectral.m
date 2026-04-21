@@ -81,11 +81,11 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         % Computation of the modes
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [A,B] = EigenmatricesForWavenumber(self, k )
+        function [A,B] = eigenmatricesForWavenumber(self, k )
             % Assemble the fixed-$$K$$ generalized EVP in density coordinates.
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Declaration: [A,B] = eigenmatricesForWavenumber(self,k)
             % - Parameter self: InternalModesDensitySpectral instance
             % - Parameter k: horizontal wavenumber
             % - Returns A: left generalized-eigenproblem matrix
@@ -100,11 +100,11 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
             [A,B] = self.ApplyBoundaryConditions(A,B);
         end
 
-        function [A,B] = EigenmatricesForFrequency(self, omega )
+        function [A,B] = eigenmatricesForFrequency(self, omega )
             % Assemble the fixed-$$\omega$$ generalized EVP in density coordinates.
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Declaration: [A,B] = eigenmatricesForFrequency(self,omega)
             % - Parameter self: InternalModesDensitySpectral instance
             % - Parameter omega: frequency in radians per second
             % - Returns A: left generalized-eigenproblem matrix
@@ -229,6 +229,16 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
             self.FFromVCheb = @(G_cheb,h) h * self.N2_xLobatto .* InternalModesSpectral.ifct(self.Diff1_xCheb(G_cheb));
             self.GNorm = @(Gj) abs(Gj(1)*Gj(1) + sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.g) * (1 - self.f0*self.f0./self.N2_xLobatto) .* Gj .^ 2)));
             self.FNorm = @(Fj) abs(sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.Lz) * (Fj.^ 2)./self.N2_xLobatto)));
+        end
+    end
+    
+    methods (Hidden)
+        function [A,B] = EigenmatricesForWavenumber(self, k)
+            [A,B] = self.eigenmatricesForWavenumber(k);
+        end
+        
+        function [A,B] = EigenmatricesForFrequency(self, omega)
+            [A,B] = self.eigenmatricesForFrequency(omega);
         end
     end
     

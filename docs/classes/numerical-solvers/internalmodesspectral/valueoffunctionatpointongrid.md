@@ -3,7 +3,7 @@ layout: default
 title: ValueOfFunctionAtPointOnGrid
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 49
+nav_order: 47
 mathjax: true
 ---
 

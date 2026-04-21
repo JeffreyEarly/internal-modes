@@ -3,7 +3,7 @@ layout: default
 title: EigenmatricesForMDAModes
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 13
+nav_order: 12
 mathjax: true
 ---
 

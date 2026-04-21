@@ -3,7 +3,7 @@ layout: default
 title: T_xCheb_zOut
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 45
+nav_order: 43
 mathjax: true
 ---
 

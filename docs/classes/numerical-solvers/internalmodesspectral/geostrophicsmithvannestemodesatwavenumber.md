@@ -3,7 +3,7 @@ layout: default
 title: GeostrophicSmithVannesteModesAtWavenumber
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 34
+nav_order: 32
 mathjax: true
 ---
 

@@ -91,7 +91,7 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        function [A,B] = EigenmatricesForWavenumber(self, k )
+        function [A,B] = eigenmatricesForWavenumber(self, k )
             % Assemble the fixed-$$K$$ generalized EVP in the WKB coordinate.
             %
             % In manuscript notation this method discretizes
@@ -102,7 +102,7 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
             % $$
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Declaration: [A,B] = eigenmatricesForWavenumber(self,k)
             % - Parameter self: InternalModesWKBSpectral instance
             % - Parameter k: horizontal wavenumber
             % - Returns A: left generalized-eigenproblem matrix
@@ -117,11 +117,11 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
             [A,B] = self.ApplyBoundaryConditions(A,B);
         end
         
-        function [A,B] = EigenmatricesForFrequency(self, omega )
+        function [A,B] = eigenmatricesForFrequency(self, omega )
             % Assemble the fixed-$$\omega$$ generalized EVP in the WKB coordinate.
             %
             % - Topic: Compute modes
-            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Declaration: [A,B] = eigenmatricesForFrequency(self,omega)
             % - Parameter self: InternalModesWKBSpectral instance
             % - Parameter omega: frequency in radians per second
             % - Returns A: left generalized-eigenproblem matrix
@@ -305,6 +305,16 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
             self.GeostrophicNorm = @(Gj) abs(sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.g) * self.N2_xLobatto .* ( self.N2_xLobatto.^(-0.5) ) .* Gj .^ 2)));
             self.FNorm = @(Fj) abs(sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.Lz) * (Fj.^ 2) .* ( self.N2_xLobatto.^(-0.5) ))));
         end   
+    end
+    
+    methods (Hidden)
+        function [A,B] = EigenmatricesForWavenumber(self, k)
+            [A,B] = self.eigenmatricesForWavenumber(k);
+        end
+        
+        function [A,B] = EigenmatricesForFrequency(self, omega)
+            [A,B] = self.eigenmatricesForFrequency(omega);
+        end
     end
     
 end
