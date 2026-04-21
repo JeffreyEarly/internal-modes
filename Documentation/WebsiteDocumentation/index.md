@@ -19,6 +19,7 @@ If you use these classes in published work, please cite:
 ## Start here
 
 - [Installation](installation)
+- [Tutorials](tutorials)
 - [Class documentation](classes)
 - [Version history](version-history)
 

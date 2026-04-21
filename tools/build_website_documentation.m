@@ -1,11 +1,16 @@
 function build_website_documentation(options)
 arguments
     options.rootDir = ".."
+    options.rebuildTutorials (1,1) logical = false
 end
 
 rootDir = char(java.io.File(char(options.rootDir)).getCanonicalPath());
 buildFolder = fullfile(rootDir, "docs");
 sourceFolder = fullfile(rootDir, "Documentation", "WebsiteDocumentation");
+tutorialSources = {
+    fullfile(rootDir, "Examples", "Tutorials", "InternalModesBasics.m")
+};
+previousTutorialBuildFolder = "";
 
 if ~isfolder(sourceFolder)
     error("build_website_documentation:SourceMissing", ...
@@ -14,17 +19,39 @@ end
 
 ensureDocumentationToolingOnPath(rootDir);
 
-if ~exist("ClassDocumentation", "class") || ~exist("rebuildWebsiteDocumentationFromSource", "file")
+if ~exist("ClassDocumentation", "class") || ~exist("TutorialDocumentation", "class") || ~exist("rebuildWebsiteDocumentationFromSource", "file")
     error("build_website_documentation:MissingDocumentationTools", ...
-        "Could not find ClassDocumentation or rebuildWebsiteDocumentationFromSource on the MATLAB path.");
+        "Could not find ClassDocumentation, TutorialDocumentation, or rebuildWebsiteDocumentationFromSource on the MATLAB path.");
+end
+
+if isfolder(fullfile(buildFolder, "tutorials"))
+    previousTutorialBuildFolder = tempname();
+    mkdir(previousTutorialBuildFolder);
+    copyfile(fullfile(buildFolder, "tutorials"), fullfile(previousTutorialBuildFolder, "tutorials"));
 end
 
 if isfolder(buildFolder)
     rmdir(buildFolder, "s");
 end
+mkdir(buildFolder);
 
-rebuildWebsiteDocumentationFromSource(sourceFolder, buildFolder);
 addPackageToPath(rootDir);
+
+tutorialDocumentation = TutorialDocumentation.documentationFromSourceFiles( ...
+    tutorialSources, ...
+    buildFolder=buildFolder, ...
+    websiteRootURL="internal-modes/", ...
+    websiteFolder="tutorials", ...
+    sourceRoot=rootDir, ...
+    previousBuildFolder=previousTutorialBuildFolder, ...
+    rebuildTutorials=options.rebuildTutorials);
+preservedTutorialDirectories = unique(string({tutorialDocumentation.preservedAssetDirectoryRelativeToBuildFolder}))';
+
+rebuildWebsiteDocumentationFromSource( ...
+    sourceFolder, ...
+    buildFolder, ...
+    string.empty(0, 1), ...
+    preservedRelativeDirectories=preservedTutorialDirectories);
 
 changelogPath = fullfile(rootDir, "CHANGELOG.md");
 if isfile(changelogPath)
@@ -39,6 +66,18 @@ if isfile(changelogPath)
     assert(fid ~= -1, "Could not open version-history.md for writing");
     fwrite(fid, versionHistoryText);
     fclose(fid);
+end
+
+TutorialDocumentation.writeMarkdownIndex( ...
+    tutorialDocumentation, ...
+    buildFolder=buildFolder, ...
+    websiteFolder="tutorials", ...
+    nav_order=3, ...
+    description="Start here for a minimal workflow with InternalModesSpectral before moving on to the full class reference.");
+arrayfun(@(a) a.writeToFile(), tutorialDocumentation)
+clear tutorialDocumentation
+if previousTutorialBuildFolder ~= "" && isfolder(previousTutorialBuildFolder)
+    rmdir(previousTutorialBuildFolder, "s");
 end
 
 evalin("base", "clear classes");
