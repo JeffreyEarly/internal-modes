@@ -1,28 +1,45 @@
 classdef InternalModesWKBSpectral < InternalModesSpectral
-    % This class solves the vertical eigenvalue problem on a WKB stretched
-    % density coordinate grid using Chebyshev polynomials.
+    % Solve the vertical EVP on a WKB stretched coordinate with Chebyshev collocation.
     %
-    % See InternalModesBase for basic usage information.
+    % `InternalModesWKBSpectral` implements the WKB-coordinate spectral
+    % method described in Section 4.3 of Early, Lelong, and Smith (2020).
+    % It introduces the stretched coordinate
     %
-    % This class uses the coordinate
-    %   s = \int_{-Lz}^0 \sqrt(-(g/rho0)*rho_z) dz
-    % to solve the EVP.
+    % $$
+    % s(z) = \int_z^D N(z') \, dz',
+    % $$
     %
-    % Internally, xLobatto is the stretched WKB coordinate on a
-    % Chebyshev extrema/Lobatto grid. This is the grid upon which the
-    % eigenvalue problem is solved, and therefore the class uses the
-    % superclass properties denoted with 'x'.
+    % and solves the transformed fixed-`K` and fixed-`\omega`
+    % eigenproblems in `s`, with
     %
-    %   See also INTERNALMODES, INTERNALMODESBASE, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, and INTERNALMODESFINITEDIFFERENCE.
+    % $$
+    % F_j = h_j N \, \partial_s G_j.
+    % $$
     %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
+    % Compared with `InternalModesSpectral`, this class concentrates grid
+    % resolution where stratification is strong while preserving the
+    % public constructor contract used by downstream packages.
     %
-    %   March 14th, 2017        Version 1.0
+    % ```matlab
+    % im = InternalModesWKBSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
+    %
+    % - Topic: Create and initialize modes
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesWKBSpectral < InternalModesSpectral
     
     properties %(Access = private)
+        % Derivative of `N(z)` used when assembling the stretched-coordinate EVP.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Nz_function
+        % `\partial_z N` sampled on the Lobatto grid in the WKB coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Nz_xLobatto     	% (d/dz)N on the xiLobatto grid   
     end
     
@@ -34,6 +51,24 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesWKBSpectral(options)
+            % Initialize the WKB-coordinate spectral solver.
+            %
+            % This constructor intentionally preserves the public
+            % name-value API used by `wave-vortex-model`.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesWKBSpectral(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: number of collocation points in the stretched-coordinate EVP
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: WKB-coordinate spectral solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -57,6 +92,21 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [A,B] = EigenmatricesForWavenumber(self, k )
+            % Assemble the fixed-`K` generalized EVP in the WKB coordinate.
+            %
+            % In manuscript notation this method discretizes
+            %
+            % $$
+            % N^2 \partial_{ss} G_j + N_s \partial_s G_j - K^2 G_j
+            % = \frac{f_0^2-N^2}{g h_j} G_j.
+            % $$
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Parameter self: InternalModesWKBSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -68,6 +118,14 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         end
         
         function [A,B] = EigenmatricesForFrequency(self, omega )
+            % Assemble the fixed-`\omega` generalized EVP in the WKB coordinate.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Parameter self: InternalModesWKBSpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -79,6 +137,14 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         end
 
         function [A,B] = EigenmatricesForMDAModes(self )
+            % Assemble the MDA generalized EVP used by the diagnostic helper.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForMDAModes(self)
+            % - Parameter self: InternalModesWKBSpectral instance
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -99,6 +165,15 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         end
 
         function [A,B] = EigenmatricesForGeostrophicGModes(self, k )
+            % Assemble the geostrophic `G`-mode EVP in the WKB coordinate.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForGeostrophicGModes(self,k)
+            % - Parameter self: InternalModesWKBSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -119,6 +194,21 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         end
                 
         function [A,B] = ApplyBoundaryConditions(self,A,B)
+            % Apply the active surface and bottom conditions in WKB coordinates.
+            %
+            % With a free surface, this enforces
+            % $N \partial_s G_j = G_j / h_j$ at `z = 0`, while rigid-lid
+            % and bottom conditions follow the same physical choices as
+            % the base spectral solver.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = ApplyBoundaryConditions(self,A,B)
+            % - Parameter self: InternalModesWKBSpectral instance
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Returns A: boundary-conditioned left matrix
+            % - Returns B: boundary-conditioned right matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             n = self.nEVP;

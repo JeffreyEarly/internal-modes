@@ -1,22 +1,41 @@
 classdef InternalModesWKB < InternalModesSpectral
-    % This class returns the WKB approximated internal wave modes. This
-    % class is a subclass of InternalModesSpectral to compute N2
-    % spectrally.
+    % Compute WKB mode approximations from a spectrally resolved stratification.
     %
-    %   See also INTERNALMODES, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, INTERNALMODESWKBSPECTRAL, and
-    %   INTERNALMODESBASE.
+    % `InternalModesWKB` uses the spectral initialization machinery of
+    % [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral)
+    % to build smooth representations of `\rho(z)` and `N^2(z)`, then
+    % applies the WKB asymptotic formulas for the fixed-`\omega`
+    % eigenvalue problem.
     %
+    % This class is most useful for asymptotic comparison, for exploring
+    % turning-point structure, and for the analytical Airy-style
+    % approximations discussed around Sections 2.3, 4.3, and 4.4 of
+    % Early, Lelong, and Smith (2020).
     %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
+    % ```matlab
+    % im = InternalModesWKB(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
+    % [F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+    % ```
     %
-    %   June 8th, 2017        Version 1.0
-    %   October 17th, 2017    Version 1.1, implemented non-hydrostatic vers
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect analytical solutions
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesWKB < InternalModesSpectral
 
     properties (Dependent)
+        % Return the spectral Lobatto grid in physical depth coordinates.
+        %
+        % - Topic: Inspect analytical solutions
         zLobatto
+        % Return the spectral Lobatto samples of `N2(z)`.
+        %
+        % - Topic: Inspect analytical solutions
         N2_zLobatto
+        % Return the spectral first-derivative operator in Chebyshev space.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Diff1_zCheb
     end
     
@@ -27,6 +46,21 @@ classdef InternalModesWKB < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesWKB(options)
+            % Initialize the WKB approximation solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesWKB(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: spectral initialization resolution
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: WKB solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -49,6 +83,17 @@ classdef InternalModesWKB < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega] = ModesAtWavenumber(self, k )
+            % Report that the WKB approximation is implemented only for fixed `\omega`.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F: not returned because this method throws
+            % - Returns G: not returned because this method throws
+            % - Returns h: not returned because this method throws
+            % - Returns omega: not returned because this method throws
             error('The WKB solution for modes with constant wavenumber has not been solved. Maybe you should solve it!');
         end
 
@@ -65,14 +110,34 @@ classdef InternalModesWKB < InternalModesSpectral
         end
         
         function [F,G,h,k] = ModesAtFrequency(self, omega )
-            % Return the normal modes and eigenvalue at a given frequency.
-            % Surface boundary condition
+            % Return WKB modes at a fixed frequency.
+            %
+            % This is the main user-facing WKB entry point. It currently
+            % delegates to the Airy-style turning-point treatment.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
             [F,G,h] = self.ModesAtFrequencyAiry(omega);
             %[F,G,h] = self.ModesAtFrequencyApproximatedAiry(omega);
             k = self.kFromOmega(h,omega);
         end
         
         function [F,G,h] = ModesAtFrequencyAiry(self, omega )
+            % Return the turning-point-aware Airy approximation for fixed `\omega`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [F,G,h] = ModesAtFrequencyAiry(self,omega)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
                       
             [zBoundary, thesign, boundaryIndices] = InternalModesSpectral.FindTurningPointBoundariesAtFrequency(self.N2_zLobatto, self.zLobatto, omega);
             N2Omega2_zLobatto = self.N2_zLobatto - omega*omega; 
@@ -158,6 +223,16 @@ classdef InternalModesWKB < InternalModesSpectral
         end
         
         function [F,G,h] = ModesAtFrequencyApproximatedAiry(self, omega )
+            % Return the simplified WKB Airy approximation for fixed `\omega`.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = ModesAtFrequencyApproximatedAiry(self,omega)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns F: approximate horizontal-velocity mode matrix
+            % - Returns G: approximate vertical-velocity mode matrix
+            % - Returns h: approximate equivalent-depth row vector
             [zBoundary, thesign, boundaryIndices] = InternalModesSpectral.FindTurningPointBoundariesAtFrequency(self.N2_zLobatto, self.zLobatto, omega);
             N2Omega2_zLobatto = self.N2_zLobatto - omega*omega;
             
@@ -256,6 +331,14 @@ classdef InternalModesWKB < InternalModesSpectral
         end
         
         function psi = SurfaceModesAtWavenumberAlt(self, k)
+            % Return the alternate WKB approximation for the surface SQG mode.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: psi = SurfaceModesAtWavenumberAlt(self,k)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: approximate surface SQG mode evaluated on `zOut`
             N_zLobatto = abs(self.N2_zLobatto).^(1/2);
             N_zCheb = InternalModesSpectral.fct(N_zLobatto);
             Nz_zLobatto = InternalModesSpectral.ifct(self.Diff1_zCheb(N_zCheb));
@@ -281,7 +364,14 @@ classdef InternalModesWKB < InternalModesSpectral
             psi = scale.*numerator./denominator;
         end
         
-        function psi = SurfaceModesAtWavenumber(self, k) 
+        function psi = SurfaceModesAtWavenumber(self, k)
+            % Return the WKB approximation to the surface SQG mode.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesWKB instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface SQG mode evaluated on `zOut`
             N_zLobatto = abs(self.N2_zLobatto).^(1/2);
             N_zCheb = InternalModesSpectral.fct(N_zLobatto);
             Nz_zLobatto = InternalModesSpectral.ifct(self.Diff1_zCheb(N_zCheb));

@@ -1,86 +1,176 @@
 classdef (Abstract) InternalModesBase < handle
-    % InternalModesBase is an abstract class from which four different
-    % internal mode solution methods derive.
+    % Define the shared contract for all internal-mode solvers.
     %
-    % The class InternalModes is a wrapper around these four classes.
+    % `InternalModesBase` is the abstract base class for the concrete
+    % solver implementations. It stores the common physical parameters,
+    % normalization choices, and boundary-condition state, and it defines
+    % the shared public interface for requesting modes at fixed wavenumber
+    % or fixed frequency.
     %
-    %   There are two primary methods of initializing this class: either
-    %   you specify density with gridded data, or you specify density as an
-    %   analytical function.
+    % Following Section 2.3 of Early, Lelong, and Smith (2020), the
+    % package centers on the vertical structure functions `F_j(z)` and
+    % `G_j(z)` with equivalent depths `h_j`, connected by
     %
-    %   modes = InternalModes(rho,z,zOut,latitude);
-    %   'rho' must be a vector of gridded density data with length matching
-    %   'z'. zOut is the output grid upon which all returned function will
-    %   be given.
+    % $$
+    % (N^2 - \omega^2) G_j = -g \, \partial_z F_j,
+    % \qquad
+    % F_j = h_j \, \partial_z G_j.
+    % $$
     %
-    %   modes = InternalModes(rho,zDomain,zOut,latitude);
-    %   'rho' must be a function handle, e.g.
-    %       rho = @(z) -(N0*N0*rho0/g)*z + rho0
-    %   zDomain must be an array with two values: z_domain = [z_bottom
-    %   z_surface];
+    % Concrete subclasses solve either the fixed-`K` or fixed-`\omega`
+    % eigenvalue problems using spectral, finite-difference, analytical,
+    % or WKB-based formulations, but they all expose the same shared state
+    % documented here.
     %
-    %   Once initialized, you can request variations of the density, e.g.,
-    %       N2 = modes.N2;
-    %       rho_zz = modes.rho_zz;
-    %   or you can request the internal modes at a given wavenumber,
-    %       [F,G,h,omega] = modes.ModesAtWavenumber(0.01);
-    %   or frequency,
-    %       [F,G,h,k] = modes.ModesAtWavenumber(5*modes.f0);
-    %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
-    %
-    %   March 14th, 2017        Version 1.0
-    %
-    %   See also INTERNALMODES, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, INTERNALMODESWKBSPECTRAL, and
-    %   INTERNALMODESFINITEDIFFERENCE.
+    % - Topic: Inspect grids and stratification
+    % - Topic: Configure normalization and boundaries
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef (Abstract) InternalModesBase < handle
 
     
     properties (Access = public)
+        % Toggle diagnostic messages from the active solver.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         shouldShowDiagnostics = 0 % flag to show diagnostic information, default = 0
         
+        % Planetary rotation rate in radians per second.
+        %
+        % - Topic: Inspect grids and stratification
         rotationRate % rotation rate of the planetary body
+        % Latitude in degrees used to compute `f0`.
+        %
+        % - Topic: Inspect grids and stratification
         latitude % Latitude for which the modes are being computed.
+        % Coriolis parameter at the selected latitude.
+        %
+        % - Topic: Inspect grids and stratification
         f0 % Coriolis parameter at the above latitude.
+        % Total water-column depth `D = zMax - zMin`.
+        %
+        % - Topic: Inspect grids and stratification
         Lz % Depth of the ocean.
+        % Reference surface density.
+        %
+        % - Topic: Inspect grids and stratification
         rho0 % Density at the surface of the ocean.
         
+        % Optional cap on the number of modes returned.
+        %
+        % - Topic: Compute modes
         nModes % Used to limit the number of modes to be returned.
         
+        % Two-element depth domain `[zMin zMax]`.
+        %
+        % - Topic: Inspect grids and stratification
         zDomain % [zMin zMax]
+        % Flag indicating whether the concrete solver requires monotonic density.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         requiresMonotonicDensity
         
+        % Last fixed frequency used to build an adaptive grid, when applicable.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         gridFrequency = [] % last requested frequency from the user---set to f0 if a wavenumber was last requested
+        % Mode normalization convention.
+        %
+        % - Topic: Configure normalization and boundaries
         normalization = Normalization.kConstant % Normalization used for the modes. Either Normalization.(kConstant, omegaConstant, uMax, or wMax).
+        % Upper boundary condition at the ocean surface.
+        %
+        % - Topic: Configure normalization and boundaries
         upperBoundary = UpperBoundary.rigidLid  % Surface boundary condition. Either UpperBoundary.rigidLid (default) or UpperBoundary.freeSurface.
+        % Lower boundary condition at the ocean bottom.
+        %
+        % - Topic: Configure normalization and boundaries
         lowerBoundary = LowerBoundary.freeSlip  % Lower boundary condition. Either LowerBoundary.freeSlip (default) or LowerBoundary.none.
     end
     
     properties (SetObservable, AbortSet, Access = public)
+        % Output depth grid on which public profiles and modes are returned.
+        %
+        % - Topic: Inspect grids and stratification
         z % Depth coordinate grid used for all output (same as zOut).
     end    
 
     properties (Dependent)
+        % Minimum depth in `zDomain`.
+        %
+        % - Topic: Inspect grids and stratification
         zMin
+        % Maximum depth in `zDomain`.
+        %
+        % - Topic: Inspect grids and stratification
         zMax
     end
     
     properties (Abstract)
+        % Background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho  % Density on the z grid.
+        % Buoyancy frequency squared sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2 % Buoyancy frequency on the z grid, $N^2 = -\frac{g}{\rho(0)} \frac{\partial \rho}{\partial z}$.
+        % First depth derivative of the background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z % First derivative of density on the z grid.
+        % Second depth derivative of the background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz % Second derivative of density on the z grid.
     end
     
     properties (Access = protected)
+        % Gravitational acceleration.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         g % 9.81 meters per second.
+        % Dispersion-relation map from `h` and `k` to `omega`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         omegaFromK % function handle to compute omega(h,k)
+        % Dispersion-relation map from `h` and `omega` to `k`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         kFromOmega % function handle to compute k(h,omega)
     end
     
     methods (Abstract)
+        % Return vertical modes for a fixed horizontal wavenumber.
+        %
+        % - Topic: Compute modes
+        % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+        % - Parameter self: concrete InternalModesBase subclass instance
+        % - Parameter k: horizontal wavenumber
+        % - Returns F: horizontal-velocity mode matrix on `zOut`
+        % - Returns G: vertical-velocity mode matrix on `zOut`
+        % - Returns h: equivalent-depth row vector
+        % - Returns omega: frequency row vector implied by `h` and `k`
         [F,G,h,omega] = ModesAtWavenumber(self, k ) % Return the normal modes and eigenvalue at a given wavenumber.
+    end
+
+    methods (Abstract)
+        % Return vertical modes for a fixed frequency.
+        %
+        % - Topic: Compute modes
+        % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+        % - Parameter self: concrete InternalModesBase subclass instance
+        % - Parameter omega: frequency in radians per second
+        % - Returns F: horizontal-velocity mode matrix on `zOut`
+        % - Returns G: vertical-velocity mode matrix on `zOut`
+        % - Returns h: equivalent-depth row vector
+        % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
         [F,G,h,k] = ModesAtFrequency(self, omega ) % Return the normal modes and eigenvalue at a given frequency.
     end
     
@@ -126,6 +216,21 @@ classdef (Abstract) InternalModesBase < handle
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesBase(options)
+            % Initialize the shared solver state used by concrete subclasses.
+            %
+            % - Topic: Developer topics
+            % - Declaration: self = InternalModesBase(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns self: initialized InternalModesBase state for subclass construction
+            % - Developer: true
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -193,4 +298,3 @@ classdef (Abstract) InternalModesBase < handle
    
     end
 end
-

@@ -1,113 +1,161 @@
 
 classdef InternalModes < handle
-    % InternalModes This class solves the internal mode (Sturm-Liouville)
-    % problem for a given density profile.
+    % Create vertical-mode solvers from gridded or analytical stratification.
     %
-    %   This computes the internal modes for u & v (F), the internal modes for w
-    %   (G), the eigendepths (h). You can also request the buoyancy
-    %   frequency (N2) and derivatives of rho (rho_z and rho_zz).
+    % `InternalModes` is the user-facing wrapper around the concrete
+    % solver classes. It initializes one of the numerical, analytical, or
+    % asymptotic implementations, then forwards the common public
+    % interface for requesting `F_j(z)`, `G_j(z)`, `h_j`, SQG modes, and
+    % background-stratification diagnostics.
     %
-    %   There are two primary methods of initializing this class: either
-    %   you specify density with gridded data, or you specify density as an
-    %   analytical function.
+    % The wrapper follows the vertical eigenvalue problems described in
+    % Section 2.3 of Early, Lelong, and Smith (2020):
     %
-    %   modes = InternalModes(rho,z,zOut,latitude);
-    %   'rho' must be a vector of gridded density data with length matching
-    %   'z'. zOut is the output grid upon which all returned function will
-    %   be given.
+    % $$
+    % \partial_{zz} G_j = -\frac{N^2 - \omega^2}{g h_j} G_j
+    % $$
     %
-    %   modes = InternalModes(rho,zDomain,zOut,latitude);
-    %   'rho' must be a function handle, e.g.
-    %       rho = @(z) -(N0*N0*rho0/g)*z + rho0
-    %   zDomain must be an array with two values: z_domain = [z_bottom
-    %   z_surface];
+    % for fixed `\omega`, and
     %
-    %   Once initialized, you can request variations of the density, e.g.,
-    %       N2 = modes.N2;
-    %       rho_zz = modes.rho_zz;
-    %   or you can request the internal modes at a given wavenumber, k,
-    %   where k is 2*pi/wavelength.
-    %       [F,G,h,omega] = modes.ModesAtWavenumber(0.01);
-    %   or frequency,
-    %       [F,G,h,k] = modes.ModesAtWavenumber(5*modes.f0);
+    % $$
+    % \partial_{zz} G_j - K^2 G_j = -\frac{N^2 - f_0^2}{g h_j} G_j
+    % $$
     %
-    %   There are two convenience methods,
-    %       modes.ShowLowestModesAtWavenumber(0.0);
-    %   and
-    %       modes.ShowLowestModesAtFrequency(5*modes.f0)
-    %   that can be used to quickly visual the modes.
+    % for fixed `K`.
     %
-    %   Internally the InternalModes class is actually initializing one of
-    %   four different classes used to solve the eigenvalue problem. By
-    %   default is uses Cheyshev polynomials on a WKB coordinate grid. You
-    %   can change this default by passing the name/value pair
-    %   'method'/method where the method is either 'wkbSpectral',
-    %   'densitySpectral', 'spectral' or 'finiteDifference'. For example,
-    %       modes = InternalModes(rho,zDomain,zOut,lat, 'method',
-    %       'finiteDifference');
-    %   will initialize the class that uses finite differencing to solve
-    %   the EVP.
+    % The primary construction path is either:
     %
-    %   You can also pass the argument 'nModes'/nModes to limit the number
-    %   of modes that are returned.
+    % - gridded density: `InternalModes(rho, zIn, zOut, latitude, ...)`
+    % - analytical density or `N2`: `InternalModes(rhoOrN2, [zBottom 0], zOut, latitude, ...)`
     %
-    %   Any other name value pairs are passed directly to the class being
-    %   initialized.
+    % The wrapper also supports built-in benchmark profiles through the
+    % shorthand
     %
-    %   This wrapper class also supports a number of basic test cases. You
-    %   can initialize the class as follows,
-    %       modes = InternalModes(stratification, method, n);
-    %   where stratification must be either 'constant' (default) or
-    %   'exponential', method must be one of the methods described above,
-    %   and n is the number of points to be used.
+    % ```matlab
+    % im = InternalModes("constant", "wkbAdaptiveSpectral", 128);
+    % ```
     %
-    %   When initialized with the built-in stratification profiles, you can
-    %   use the functions,
-    %       modes.ShowRelativeErrorAtWavenumber(0.01)
-    %   or
-    %       modes.ShowRelativeErrorAtFrequency(5*modes.f0)
-    %   to assess the quality of the numerical methods. These test
-    %   functions work for both constant G and F normalizations, as well as
-    %   both rigid lid and free surface boundary conditions.
+    % and exposes quick comparison figures for those benchmark cases.
     %
-    %   See also INTERNALMODESSPECTRAL, INTERNALMODESDENSITYSPECTRAL,
-    %   INTERNALMODESWKBSPECTRAL, and INTERNALMODESFINITEDIFFERENCE
+    % ```matlab
+    % im = InternalModes(rho, zIn, zOut, latitude, "method", "wkbAdaptiveSpectral");
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % psi = im.SurfaceModesAtWavenumber(2*pi/1000);
+    % ```
     %
-    %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
-    %
-    %   March 14th, 2017        Version 1.0
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect grids and stratification
+    % - Topic: Configure normalization and boundaries
+    % - Topic: Compute modes
+    % - Topic: Inspect analytical solutions
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModes < handle
     
     properties (Access = public)
+        % Name of the selected concrete solver implementation.
+        %
+        % - Topic: Create and initialize modes
         method % Numerical method used to solve the Sturm-Liouville equation. Either, 'wkbSpectral' (default), 'densitySpectral', 'spectral' or 'finiteDifference'.
+        % Concrete solver instance created by the wrapper.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         internalModes % Instance of actual internal modes class that is doing all the work.
     end
     
     properties (Dependent)
+        % Toggle diagnostic messages from the concrete solver.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         shouldShowDiagnostics % flag to show diagnostic information, default = 0
         
+        % Latitude in degrees used to compute `f0`.
+        %
+        % - Topic: Inspect grids and stratification
         latitude % Latitude for which the modes are being computed.
+        % Coriolis parameter at the selected latitude.
+        %
+        % - Topic: Inspect grids and stratification
         f0 % Coriolis parameter at the above latitude.
+        % Optional cap on the number of modes returned.
+        %
+        % - Topic: Compute modes
         nModes % Number of modes to be returned.
         
+        % Total water-column depth.
+        %
+        % - Topic: Inspect grids and stratification
         Lz % Depth of the ocean.
+        % Output depth grid on which public profiles and modes are returned.
+        %
+        % - Topic: Inspect grids and stratification
         z % Depth coordinate grid used for all output (same as zOut).
+        % Background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho % Density on the z grid.
+        % Buoyancy frequency squared sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2 % Buoyancy frequency on the z grid, $N^2 = -\frac{g}{\rho(0)} \frac{\partial \rho}{\partial z}$.
+        % First depth derivative of the background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z % First derivative of density on the z grid.
+        % Second depth derivative of the background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz % Second derivative of density on the z grid.
+        % Reference surface density.
+        %
+        % - Topic: Inspect grids and stratification
         rho0 % density at the surface (or user specified through constructor args)
         
+        % Lower boundary condition at the ocean bottom.
+        %
+        % - Topic: Configure normalization and boundaries
         lowerBoundary % Lower boundary condition. Either LowerBoundary.freeSlip (default) or LowerBoundary.none.
+        % Upper boundary condition at the ocean surface.
+        %
+        % - Topic: Configure normalization and boundaries
         upperBoundary % Surface boundary condition. Either UpperBoundary.rigidLid (default) or UpperBoundary.freeSurface.
+        % Mode normalization convention.
+        %
+        % - Topic: Configure normalization and boundaries
         normalization % Normalization used for the modes. Either Normalization.(kConstant, omegaConstant, uMax, or wMax).
     end
     
     properties %(Access = private)
+        % Flag indicating whether the wrapper was initialized from a built-in benchmark case.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         isRunningTestCase = 0;
+        % Name of the active built-in benchmark stratification profile.
+        %
+        % This property is set when the shorthand benchmark constructor
+        % `InternalModes(profileName, methodName, nPoints)` is used.
+        %
+        % - Topic: Inspect analytical solutions
         stratification = 'user specified';
+        % Function handle for the benchmark density profile `\bar{\rho}(z)`.
+        %
+        % For user-specified gridded profiles this may be empty. For the
+        % built-in analytical and benchmark cases it stores the
+        % continuous background density used to initialize the concrete
+        % solver.
+        %
+        % - Topic: Inspect grids and stratification
         rhoFunction
+        % Function handle for the benchmark buoyancy-frequency profile `N^2(z)`.
+        %
+        % For user-specified gridded profiles this may be empty. For the
+        % built-in analytical and benchmark cases it stores the
+        % continuous stratification used to initialize the concrete
+        % solver.
+        %
+        % - Topic: Inspect grids and stratification
         N2Function
     end
     
@@ -118,8 +166,22 @@ classdef InternalModes < handle
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        function self = InternalModes(varargin)    
-            % Initialize with either a grid or analytical profile.   
+        function self = InternalModes(varargin)
+            % Initialize the wrapper from a profile or a built-in benchmark case.
+            %
+            % The main calling patterns are:
+            %
+            % - `InternalModes(rho, zIn, zOut, latitude, ...)`
+            % - `InternalModes(profileName, methodName, nPoints)`
+            %
+            % where additional name-value pairs are split between wrapper
+            % options such as `method` and the concrete solver
+            % constructor.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModes(varargin)
+            % - Parameter varargin: initialization arguments for either a user-specified profile or a built-in benchmark case
+            % - Returns im: wrapper instance that forwards to a concrete solver
             userSpecifiedMethod = 0;
             wrapperOptions = self.defaultWrapperConstructorOptions();
             
@@ -243,20 +305,34 @@ classdef InternalModes < handle
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function ShowLowestModesAtWavenumber( self, k )
-            % Quickly visualize the lowest modes at a given wavenumber.
+            % Plot the lowest resolved modes at a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: ShowLowestModesAtWavenumber(self,k)
+            % - Parameter self: InternalModes instance
+            % - Parameter k: horizontal wavenumber
             [F,G,h] = self.internalModes.ModesAtWavenumber( k );
             self.ShowLowestModesFigure(F,G,h);
         end
         
         function ShowLowestModesAtFrequency( self, omega )
-            % Quickly visualize the lowest modes at a given frequency.
+            % Plot the lowest resolved modes at a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: ShowLowestModesAtFrequency(self,omega)
+            % - Parameter self: InternalModes instance
+            % - Parameter omega: frequency in radians per second
             [F,G,h] = self.internalModes.ModesAtFrequency( omega );
             self.ShowLowestModesFigure(F,G,h);
         end
         
         function ShowRelativeErrorAtWavenumber( self, k )
-            % When using one of the built-in test cases, this method will
-            % create a figure showing the relative error of the modes.
+            % Plot benchmark relative errors for a built-in profile at fixed `K`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: ShowRelativeErrorAtWavenumber(self,k)
+            % - Parameter self: InternalModes instance initialized from a built-in benchmark profile
+            % - Parameter k: horizontal wavenumber
             if self.isRunningTestCase == 0
                 error('Cannot show relative error for user specified stratification.\n');
             end
@@ -296,8 +372,12 @@ classdef InternalModes < handle
         end
         
         function ShowRelativeErrorAtFrequency( self, omega )
-            % When using one of the built-in test cases, this method will
-            % create a figure showing the relative error of the modes.
+            % Plot benchmark relative errors for a built-in profile at fixed `\omega`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: ShowRelativeErrorAtFrequency(self,omega)
+            % - Parameter self: InternalModes instance initialized from a built-in benchmark profile
+            % - Parameter omega: frequency in radians per second
             if self.isRunningTestCase == 0
                 error('Cannot show relative error for user specified stratification.\n');
             end
@@ -467,7 +547,18 @@ classdef InternalModes < handle
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
-            % Return the normal modes and eigenvalue at a given wavenumber.
+            % Return vertical modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModes instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: additional requests forwarded to the concrete solver
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: additional outputs forwarded from the concrete solver
             if isempty(varargin)
                 [F,G,h,omega] = self.internalModes.ModesAtWavenumber( k );
             else
@@ -477,7 +568,18 @@ classdef InternalModes < handle
         end
         
         function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
-            % Return the normal modes and eigenvalue at a given frequency.
+            % Return vertical modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModes instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: additional requests forwarded to the concrete solver
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: additional outputs forwarded from the concrete solver
             if isempty(varargin)
                 [F,G,h,k] = self.internalModes.ModesAtFrequency( omega );
             else
@@ -487,21 +589,50 @@ classdef InternalModes < handle
         end
         
         function psi = SurfaceModesAtWavenumber(self, k)
+            % Return the surface SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModes instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface SQG mode evaluated on `zOut`
             psi = self.internalModes.SurfaceModesAtWavenumber(k);
         end
         
         function psi = BottomModesAtWavenumber(self, k)
+            % Return the bottom SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Parameter self: InternalModes instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: bottom SQG mode evaluated on `zOut`
             psi = self.internalModes.BottomModesAtWavenumber(k);
         end
         
         function [m,G] = ProjectOntoGModesAtWavenumber(self, zeta, k)
-            
+            % Project a profile onto the `G` modes at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [m,G] = ProjectOntoGModesAtWavenumber(self,zeta,k)
+            % - Parameter self: InternalModes instance
+            % - Parameter zeta: profile sampled on `zOut`
+            % - Parameter k: horizontal wavenumber
+            % - Returns m: modal coefficients from the least-squares projection
+            % - Returns G: `G`-mode matrix used in the projection
         end
     end
     
     methods (Static)
         
         function N = NumberOfWellConditionedModes(G,varargin)
+            % Estimate how many columns of a mode matrix remain numerically well conditioned.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: N = NumberOfWellConditionedModes(G,varargin)
+            % - Parameter G: mode matrix whose columns are ordered by mode number
+            % - Parameter varargin: reserved for future options
+            % - Returns N: estimated count of usable leading modes
             % This function can become a rate limiting step if used for
             % each set of returned modes. So a good algorithm is necessary.
             % Otherwise we'd just use,
@@ -556,6 +687,15 @@ classdef InternalModes < handle
         end
         
         function [kappa,modeIndices] = ConditionNumberAsFunctionOfModeNumberForModeIndices(G,modeIndices)
+            % Compute mode-matrix condition numbers for selected truncation indices.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [kappa,modeIndices] = ConditionNumberAsFunctionOfModeNumberForModeIndices(G,modeIndices)
+            % - Parameter G: mode matrix whose columns are ordered by mode number
+            % - Parameter modeIndices: truncation indices to evaluate
+            % - Returns kappa: condition number at each requested truncation
+            % - Returns modeIndices: echo of the evaluated truncation indices
             kappa = zeros(length(modeIndices),1);
             for iIndex=1:length(modeIndices)
                kappa(iIndex) =  cond(G(:,1:modeIndices(iIndex)));
@@ -563,10 +703,23 @@ classdef InternalModes < handle
         end
         
         function kappa = ConditionNumberAsFunctionOfModeNumber(G)
+            % Compute condition number as a function of retained mode count.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: kappa = ConditionNumberAsFunctionOfModeNumber(G)
+            % - Parameter G: mode matrix whose columns are ordered by mode number
+            % - Returns kappa: condition number for each leading-column truncation
             kappa = InternalModes.ConditionNumberAsFunctionOfModeNumberForModeIndices(G,1:min(size(G)));
         end
         
         function [G_tilde, gamma] = RenormalizeForGoodConditioning(G)
+            % Renormalize a mode matrix by matching column norms to a common scale.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [G_tilde,gamma] = RenormalizeForGoodConditioning(G)
+            % - Parameter G: mode matrix whose columns are ordered by mode number
+            % - Returns G_tilde: renormalized mode matrix
+            % - Returns gamma: column rescaling factors
             gamma = zeros(1,size(G,2));
             for iMode = 1:size(G,2)
                 gamma(iMode) = norm(G(:,iMode));
@@ -576,10 +729,14 @@ classdef InternalModes < handle
         end
                 
         function [rhoFunc, N2Func, zIn] = StratificationProfileWithName(stratification)
-            % Returns function handles for several built-in analytical
-            % profiles. Options include 'constant', 'exponential',
-            % 'pycnocline-constant', 'pycnocline-exponential', and
-            % 'latmix-site1'.
+            % Return one of the built-in benchmark stratification profiles.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [rhoFunc,N2Func,zIn] = StratificationProfileWithName(stratification)
+            % - Parameter stratification: profile name such as `constant`, `exponential`, `pycnocline-constant`, or `latmix-site1`
+            % - Returns rhoFunc: density function handle
+            % - Returns N2Func: buoyancy-frequency function handle
+            % - Returns zIn: depth domain or depth grid associated with the profile
             N0 = 5.2e-3; % reference buoyancy frequency, radians/seconds
             g = 9.81;
             rho_0 = 1025;
@@ -698,6 +855,24 @@ classdef InternalModes < handle
         end
         
         function [rhoFunc, N2Func, zIn] = ProfileWithDoubleExponentialPlusPycnocline(rho_0, D, delta_p, z_p, z_s, L_s, L_d, N0, Np, Nd)            
+            % Build a two-exponential pycnocline profile used by the built-in benchmarks.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [rhoFunc,N2Func,zIn] = ProfileWithDoubleExponentialPlusPycnocline(rho_0,D,delta_p,z_p,z_s,L_s,L_d,N0,Np,Nd)
+            % - Parameter rho_0: reference surface density
+            % - Parameter D: water-column depth
+            % - Parameter delta_p: pycnocline thickness scale
+            % - Parameter z_p: pycnocline center depth
+            % - Parameter z_s: shallow transition depth
+            % - Parameter L_s: shallow exponential scale
+            % - Parameter L_d: deep exponential scale
+            % - Parameter N0: surface buoyancy frequency
+            % - Parameter Np: pycnocline buoyancy-frequency scale
+            % - Parameter Nd: deep buoyancy-frequency scale
+            % - Returns rhoFunc: density function handle
+            % - Returns N2Func: buoyancy-frequency function handle
+            % - Returns zIn: depth domain for the constructed profile
             A = Np*Np - Nd*Nd*exp(2*(D+z_p)/L_d);
             B = (Nd*Nd*exp(2*(D+z_p)/L_d) - N0*N0)/(exp(-2*(z_p-z_s)/L_s) - exp(2*z_s/L_s));
             C = N0*N0-B*exp(2*z_s/L_s);
@@ -719,6 +894,24 @@ classdef InternalModes < handle
         end
         
         function [rhoFunc, N2Func, zIn] = ProfileWithDoubleGaussianPlusPycnocline(rho_0, D, delta_p, z_p, L_s, L_d, N0, Nq, Np, Nd)
+            % Build a double-Gaussian pycnocline profile used by the built-in benchmarks.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [rhoFunc,N2Func,zIn] = ProfileWithDoubleGaussianPlusPycnocline(rho_0,D,delta_p,z_p,L_s,L_d,N0,Nq,Np,Nd)
+            % - Parameter rho_0: reference surface density
+            % - Parameter D: water-column depth
+            % - Parameter delta_p: pycnocline thickness scale
+            % - Parameter z_p: pycnocline center depth
+            % - Parameter L_s: shallow Gaussian scale
+            % - Parameter L_d: deep Gaussian scale
+            % - Parameter N0: surface buoyancy frequency
+            % - Parameter Nq: mixed-layer buoyancy-frequency scale
+            % - Parameter Np: pycnocline buoyancy-frequency scale
+            % - Parameter Nd: deep buoyancy-frequency scale
+            % - Returns rhoFunc: density function handle
+            % - Returns N2Func: buoyancy-frequency function handle
+            % - Returns zIn: depth domain for the constructed profile
             A = Np*Np - Nq*Nq;
             B = (Nq*Nq - N0*N0)/(1 - exp(-2*z_p^2/L_s^2));
             C = N0*N0-B*exp(-2*z_p^2/L_s);
@@ -741,6 +934,25 @@ classdef InternalModes < handle
         end
         
         function [rhoFunc, N2Func, zIn] = ProfileWithDoubleGaussianExponentialPlusPycnocline(rho_0, D, delta_p, z_p, L_s, L_d, z_T, L_deep, N0, Nq, Np)
+            % Build a mixed Gaussian-exponential pycnocline profile used by the built-in benchmarks.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [rhoFunc,N2Func,zIn] = ProfileWithDoubleGaussianExponentialPlusPycnocline(rho_0,D,delta_p,z_p,L_s,L_d,z_T,L_deep,N0,Nq,Np)
+            % - Parameter rho_0: reference surface density
+            % - Parameter D: water-column depth
+            % - Parameter delta_p: pycnocline thickness scale
+            % - Parameter z_p: pycnocline center depth
+            % - Parameter L_s: shallow Gaussian scale
+            % - Parameter L_d: deep Gaussian scale
+            % - Parameter z_T: transition depth to the exponential tail
+            % - Parameter L_deep: deep exponential scale
+            % - Parameter N0: surface buoyancy frequency
+            % - Parameter Nq: mixed-layer buoyancy-frequency scale
+            % - Parameter Np: pycnocline buoyancy-frequency scale
+            % - Returns rhoFunc: density function handle
+            % - Returns N2Func: buoyancy-frequency function handle
+            % - Returns zIn: depth domain for the constructed profile
             A = Np*Np - Nq*Nq;
             B = (Nq*Nq - N0*N0)/(1 - exp(-2*z_p^2/L_s^2));
             C = N0*N0-B*exp(-2*z_p^2/L_s);

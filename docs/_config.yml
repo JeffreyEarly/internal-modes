@@ -1,0 +1,17 @@
+remote_theme: just-the-docs/just-the-docs
+title: Internal Modes
+description: Compute vertical modes and SQG modes for arbitrary stratification
+compress_html:
+  blanklines: true
+
+search_enabled: false
+
+# Aux links for the upper right navigation
+aux_links:
+  "Internal Modes on GitHub":
+    - "https://github.com/JeffreyEarly/internal-modes"
+
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: false
+
+color_scheme: light

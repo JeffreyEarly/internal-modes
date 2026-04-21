@@ -1,86 +1,84 @@
 classdef InternalModesSpectral < InternalModesBase
-    % InternalModesSpectral uses Chebyshev polynomials on a z-grid to
-    % compute the internal wave modes. See InternalModesBase for basic
-    % usage information.
+    % Solve the vertical internal-mode EVP with Chebyshev collocation.
     %
-    % This class takes the name/value pair 'nEVP' (default 513) in order to
-    % set the default resolution of the polynomials used to solve the
-    % eigenvalue problem (EVP), e.g.,
-    %       modes = InternalModes(rho,zDomain,zOut,latitude, 'nEVP', 128);
-    % Generally speaking, you will get half or more good quality modes (so
-    % nEVP=513 should give you 250 or so quality modes, if the density
-    % structure isn't too weird). Note that the time to solve the EVP
-    % scales as the nEVP^3, so going higher resolution comes at great cost.
-    % For best speed results, nEVP should be set to 2^n+1 to fully utilize
-    % the FFT.
+    % `InternalModesSpectral` is the core numerical solver described in
+    % Sections 4 and 5 of Early, Lelong, and Smith (2020). It represents
+    % the vertical structure on a Gauss-Lobatto grid and solves the
+    % manuscript eigenvalue problems
     %
-    % All solutions are spectrally projected to the request ouput grid, and
-    % therefore will remain high quality. The fastest output can be
-    % achieved by using an Gauss-Lobatto grid spanning z.
-    % 
-    % The modes are normalized by integrating the Chebyshev polynomials on
-    % the Lobatto grid using the exact integrals.
+    % $$
+    % \partial_{zz} G_j - K^2 G_j = \frac{f_0^2 - N^2}{g h_j} G_j
+    % $$
     %
-    % A word on notation:
+    % for fixed `K`, or
     %
-    % Dimensions -- like z -- have grids, which may differ. zIn is the
-    % dimension z, on some grid given by the user. zLobatto is the
-    % diension z, on a Lobatto grid. zCheb would be used for the Chebyshev
-    % polynomial representation of a function defined on z. Note that the
-    % base class property 'z' is really zOut.
+    % $$
+    % \partial_{zz} G_j = \frac{\omega^2 - N^2}{g h_j} G_j
+    % $$
     %
-    % Functions -- if they're analytical, they're defined on a dimension,
-    % not a grid. If they're gridded, then the grid must also be specified.
-    % Thus, the function rho(z) when analytically defined will be given as
-    % either just rho (when obvious) or rho_z when necessary. If it's
-    % gridded, then expect rho_zIn or rho_zLobatto.
+    % for fixed `\omega`, together with
     %
-    % Transformations -- a transformation often a matrix (or generally just
-    % a function) that transformation a function from one basis to another.
-    % A common scenario here is that we need to go from zLobatto to zCheb.
-    % In our cases we're usually going from one gridded dimension to
-    % another. Inverse Chebyshev transformations are denote by T, or more
-    % specifically T_zCheb_zLobatto.
+    % $$
+    % F_j = h_j \partial_z G_j.
+    % $$
     %
-    % The underscore in the case of rho_z is certainly recognized as a
-    % derivative (because of LaTex notation), so it is awkward with the
-    % notion used here, where the underscore is used to separate the
-    % function/transformation name from the grid. Thus, we leave rho_z and
-    % rho_zz as the only two exceptions to the aforementioned notation
-    % because they are the only public facing interface.
+    % The solver stores background fields on the user-facing output grid
+    % `z`, but internally works with a spectral grid and exact integrals
+    % of Chebyshev polynomials for mode normalization. Subclasses reuse
+    % this machinery in stretched coordinates while preserving the same
+    % public mode API.
     %
-    % The 'x' dimension used in the properties for this class are denoted
-    % as such because the different subclasses uses these properties to
-    % store values on different grids. In other words, this class uses 'x'
-    % for the z dimension (depth), but the density subclass uses 'x' for
-    % its density stretched coordinated.
+    % ```matlab
+    % im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
     %
-    %   See also INTERNALMODES, INTERNALMODESBASE,
-    %   INTERNALMODESDENSITYSPECTRAL, INTERNALMODESWKBSPECTRAL, and
-    %   INTERNALMODESFINITEDIFFERENCE.
-    %
-    %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
-    %
-    %   March 14th, 2017        Version 1.0
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect grids and stratification
+    % - Topic: Compute modes
+    % - Topic: Configure normalization and boundaries
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesSpectral < InternalModesBase
     
     properties (Access = public)
 
     end
     
     properties (Dependent)
+        % Background density sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho % Density on the z grid.
+        % First depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z % First derivative of density on the z grid.
+        % Second depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz % Second derivative of density on the z grid.
+        % Buoyancy frequency squared sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2 % Buoyancy frequency on the z grid, $N^2 = -\frac{g}{\rho(0)} \frac{\partial \rho}{\partial z}$.
     end
     
 
     properties %(Access = private)
+        % Density profile represented as a spline or functional object.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         rho_function        % function handle to return rho at z
+        % Buoyancy-frequency profile represented as a function of depth.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         N2_function         % function handle to return N2 at z
                 
+        % Number of collocation points used for the generalized EVP.
+        %
+        % - Topic: Create and initialize modes
         nEVP = 0           % number of points in the eigenvalue problem
         
         % These properties are initialized with SetupEigenvalueProblem()
@@ -90,35 +88,129 @@ classdef InternalModesSpectral < InternalModesBase
         % The 'x' refers to the stretched coordinate being used.
         % Once x_function has been set, all the properties listed below are
         % automatically created.
+        % Lobatto grid in the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xLobatto           % stretched coordinate Lobatto grid nEVP points. z for this class, density or wkb for others.
+        % Bounds of the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xDomain            % limits of the stretched coordinate [xMin xMax]
+        % Physical depths associated with `xLobatto`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         z_xLobatto         % The value of z, at the xLobatto points
+        % Output locations mapped into the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xOut               % desired locations of the output in x-coordinate (deduced from z_out)
+        % First-derivative operator in Chebyshev coefficient space.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Diff1_xCheb        % single derivative in spectral space, *function handle*
-        T_xLobatto, Tx_xLobatto, Txx_xLobatto        % Chebyshev polys (and derivs) on the zLobatto
-        T_xCheb_zOut        
+        % Chebyshev basis evaluated on the Lobatto grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
+        T_xLobatto
+        % First derivatives of the Chebyshev basis on the Lobatto grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
+        Tx_xLobatto
+        % Second derivatives of the Chebyshev basis on the Lobatto grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
+        Txx_xLobatto
+        % Transform from Chebyshev coefficients to the public output grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
+        T_xCheb_zOut
+        % Exact integral weights for Chebyshev coefficients on the active domain.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Int_xCheb          % Vector that multiplies Cheb coeffs, then sum for integral
+        % Buoyancy frequency squared sampled on `xLobatto`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         N2_xLobatto        % N2 on the z2Lobatto grid
 
         % Set on initialization by the subclass, these transformations are
         % applied after solving the EVP to transform back into z-space.
+        % Map generalized-eigenvalues to equivalent depths `h_j`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         hFromLambda;
+        % Map Chebyshev coefficients to `G_j(z)` on the public output grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         GOutFromVCheb;
+        % Map Chebyshev coefficients to `F_j(z)` on the public output grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         FOutFromVCheb;
+        % Map Chebyshev coefficients to `G_j` on the active internal grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         GFromVCheb;
+        % Map Chebyshev coefficients to `F_j` on the active internal grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         FFromVCheb;
+        % `K`-constant normalization functional.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         GNorm;
+        % `\omega`-constant normalization functional.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         FNorm;
+        % Geostrophic normalization functional.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         GeostrophicNorm
     end
 
     properties (SetObservable, AbortSet, Access = public)
+        % Active stretched-coordinate map `x(z)` used by the solver.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         x_function         % function handle to return 'x' at z (i.e., the stretched coordinate function)
     end
     
     properties (Dependent)
+        % Minimum value of the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xMin
+        % Maximum value of the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xMax
+        % Total span of the active spectral coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Lx
     end
     
@@ -129,6 +221,21 @@ classdef InternalModesSpectral < InternalModesBase
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesSpectral(options)
+            % Initialize the spectral solver on depth coordinates.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesSpectral(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: number of collocation points in the spectral EVP
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: spectral solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -179,6 +286,14 @@ classdef InternalModesSpectral < InternalModesBase
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [A,B] = EigenmatricesForWavenumber(self, k )
+            % Assemble the fixed-`K` generalized EVP on the spectral grid.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             % The eigenvalue equation is,
             % G_{zz} - K^2 G = \frac{f_0^2 -N^2}{gh_j}G
             % A = \frac{g}{f_0^2 -N^2} \left( \partial_{zz} - K^2*I \right)
@@ -194,6 +309,14 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [A,B] = EigenmatricesForFrequency(self, omega )
+            % Assemble the fixed-`\omega` generalized EVP on the spectral grid.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tzz = self.Txx_xLobatto;
             
@@ -204,6 +327,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [A,B] = EigenmatricesForGeostrophicGModes(self, k )
+            % Assemble the geostrophic interior `G`-mode EVP.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForGeostrophicGModes(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -224,6 +356,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [A,B] = EigenmatricesForRigidLidGModes(self, k )
+            % Assemble the rigid-lid geostrophic `G`-mode EVP.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForRigidLidGModes(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -244,6 +385,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [A,B] = EigenmatricesForGeostrophicFModes(self, k )
+            % Assemble the geostrophic interior `F`-mode EVP.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForGeostrophicFModes(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -310,6 +460,16 @@ classdef InternalModesSpectral < InternalModesBase
         % end
 
         function [A,B] = EigenmatricesForGeostrophicRigidLidGModes(self, eta0, etad)
+            % Assemble the rigid-lid geostrophic EVP with displaced boundaries.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForGeostrophicRigidLidGModes(self,eta0,etad)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter eta0: imposed surface displacement coefficient
+            % - Parameter etad: imposed bottom displacement coefficient
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             arguments
                 self InternalModesSpectral
                 eta0 (1,1) double = 0
@@ -336,6 +496,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [A,B] = EigenmatricesForSmithVannesteModes(self, k )
+            % Assemble the Smith-Vanneste SQG-like EVP used by a helper workflow.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForSmithVannesteModes(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -366,6 +535,14 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [A,B] = EigenmatricesForMDAModes(self )
+            % Assemble the MDA diagnostic EVP.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForMDAModes(self)
+            % - Parameter self: InternalModesSpectral instance
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -393,6 +570,16 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [A,B] = ApplyBoundaryConditions(self,A,B)
+            % Apply the active surface and bottom conditions to an EVP pair.
+            %
+            % - Topic: Configure normalization and boundaries
+            % - Developer: true
+            % - Declaration: [A,B] = ApplyBoundaryConditions(self,A,B)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Returns A: boundary-conditioned left matrix
+            % - Returns B: boundary-conditioned right matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             n = self.nEVP;
@@ -445,6 +632,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [F,G,h] = MDAModes(self )
+            % Return the diagnostic MDA modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = MDAModes(self)
+            % - Parameter self: InternalModesSpectral instance
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
             self.gridFrequency = 0;
 
             [A,B] = self.EigenmatricesForMDAModes();
@@ -453,6 +649,16 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [F,G,h] = GeostrophicModesAtWavenumber(self, k )
+            % Return the geostrophic interior `G`-modes at fixed horizontal wavenumber.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = GeostrophicModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
             self.gridFrequency = 0;
 
             [A,B] = self.EigenmatricesForGeostrophicGModes(k);
@@ -461,6 +667,16 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [F,G,h] = GeostrophicFModesAtWavenumber(self, k )
+            % Return the geostrophic interior `F`-modes at fixed horizontal wavenumber.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = GeostrophicFModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
             self.gridFrequency = 0;
 
             [A,B] = self.EigenmatricesForGeostrophicFModes(k);
@@ -469,6 +685,17 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [F,G,h] = GeostrophicRigidLidModes(self, eta0, etad )
+            % Return rigid-lid geostrophic modes with displaced boundaries.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = GeostrophicRigidLidModes(self,eta0,etad)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter eta0: imposed surface displacement coefficient
+            % - Parameter etad: imposed bottom displacement coefficient
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
             arguments
                 self InternalModesSpectral
                 eta0 (1,1) double = 0
@@ -486,6 +713,16 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [F,G,h] = GeostrophicSmithVannesteModesAtWavenumber(self, k )
+            % Return Smith-Vanneste modes at fixed horizontal wavenumber.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h] = GeostrophicSmithVannesteModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
             self.gridFrequency = 0;
 
             [A,B] = self.EigenmatricesForSmithVannesteModes(k);
@@ -494,6 +731,18 @@ classdef InternalModesSpectral < InternalModesBase
         end
 
         function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+            % Return spectral modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             self.gridFrequency = 0;
             
             [A,B] = self.EigenmatricesForWavenumber(k);
@@ -509,6 +758,18 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+            % Return spectral modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             self.gridFrequency = omega;
             
             [A,B] = self.EigenmatricesForFrequency(omega);
@@ -524,14 +785,43 @@ classdef InternalModesSpectral < InternalModesBase
         end 
         
         function psi = SurfaceModesAtWavenumber(self, k) 
+            % Return the surface SQG mode at fixed horizontal wavenumber.
+            %
+            % Section 5.6 of Early, Lelong, and Smith (2020) discusses the
+            % surface-trapped modes computed by this helper.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface boundary mode evaluated on `zOut`
             psi = self.BoundaryModesAtWavenumber(k,1);
         end
         
         function psi = BottomModesAtWavenumber(self, k) 
+            % Return the bottom SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: bottom boundary mode evaluated on `zOut`
             psi = self.BoundaryModesAtWavenumber(k,0);
         end
         
-        function psi = BoundaryModesAtWavenumber(self, k, isSurface)            
+        function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+            % Return either the surface or bottom boundary mode at fixed wavenumber.
+            %
+            % This helper estimates the boundary-grid resolution needed to
+            % resolve the smallest retained boundary mode, then solves the
+            % manuscript SQG-style boundary-value problem spectrally.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BoundaryModesAtWavenumber(self,k,isSurface)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter k: horizontal wavenumber array
+            % - Parameter isSurface: logical flag selecting the surface mode when true and the bottom mode when false
+            % - Returns psi: requested boundary mode evaluated on `zOut`
             % Estimate the grid resolution necessary to resolve the
             % smallest mode.
             sizeK = size(k);
@@ -579,19 +869,55 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function z_g = GaussQuadraturePointsForModesAtFrequency(self,nPoints,omega)
+            % Return quadrature points tailored to fixed-`\omega` modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: z_g = GaussQuadraturePointsForModesAtFrequency(self,nPoints,omega)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter nPoints: number of quadrature points requested
+            % - Parameter omega: target frequency in radians per second
+            % - Returns z_g: depth locations of the quadrature points
             [A,B] = self.EigenmatricesForFrequency(omega);
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         function z_g = GaussQuadraturePointsForModesAtWavenumber(self,nPoints,k)
+            % Return quadrature points tailored to fixed-`K` modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: z_g = GaussQuadraturePointsForModesAtWavenumber(self,nPoints,k)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter nPoints: number of quadrature points requested
+            % - Parameter k: target horizontal wavenumber
+            % - Returns z_g: depth locations of the quadrature points
             [A,B] = self.EigenmatricesForWavenumber(k);
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         function z_g = GaussQuadraturePointsForMDAModes(self,nPoints)
+            % Return quadrature points tailored to the diagnostic MDA modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: z_g = GaussQuadraturePointsForMDAModes(self,nPoints)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter nPoints: number of quadrature points requested
+            % - Returns z_g: depth locations of the quadrature points
             [A,B] = self.EigenmatricesForMDAModes();
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         
         function z_g = GaussQuadraturePointsForEigenmatrices(self,nPoints,A,B)
+            % Return quadrature points inferred from a generalized EVP.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: z_g = GaussQuadraturePointsForEigenmatrices(self,nPoints,A,B)
+            % - Parameter self: InternalModesSpectral instance
+            % - Parameter nPoints: number of quadrature points requested
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Returns z_g: depth locations of the quadrature points
             % Now we just need to find the roots of the n+1 mode.
             % For constant stratification this should give back the
             % standard Fourier modes, i.e., an evenly spaced grid.
@@ -1001,6 +1327,17 @@ classdef InternalModesSpectral < InternalModesBase
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [zBoundariesAndTPs, thesign, boundaryIndices] = FindTurningPointBoundariesAtFrequency(N2, z, omega)
+            % Find turning points and region signs for `N2(z)-\omega^2`.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [zBoundariesAndTPs,thesign,boundaryIndices] = FindTurningPointBoundariesAtFrequency(N2,z,omega)
+            % - Parameter N2: buoyancy-frequency profile on grid `z`
+            % - Parameter z: depth grid
+            % - Parameter omega: target frequency in radians per second
+            % - Returns zBoundariesAndTPs: boundaries consisting of the endpoints and turning points
+            % - Returns thesign: sign of `N2-\omega^2` in each region
+            % - Returns boundaryIndices: grid indices associated with each returned boundary
             % This function returns not just the turning points, but also
             % the top and bottom boundary locations in z. The boundary
             % indices are the index to the point just *above* the turning
@@ -1031,6 +1368,22 @@ classdef InternalModesSpectral < InternalModesBase
         end
                 
         function [flag, dTotalVariation, rho_zCheb, rho_zLobatto, rhoz_zCheb, rhoz_zLobatto] = CheckIfReasonablyMonotonic(zLobatto, rho_zCheb, rho_zLobatto, rhoz_zCheb, rhoz_zLobatto)
+            % Test whether a gridded density profile is monotonic enough for stretched coordinates.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [flag,dTotalVariation,rho_zCheb,rho_zLobatto,rhoz_zCheb,rhoz_zLobatto] = CheckIfReasonablyMonotonic(zLobatto,rho_zCheb,rho_zLobatto,rhoz_zCheb,rhoz_zLobatto)
+            % - Parameter zLobatto: Lobatto depth grid
+            % - Parameter rho_zCheb: Chebyshev coefficients of density
+            % - Parameter rho_zLobatto: density sampled on `zLobatto`
+            % - Parameter rhoz_zCheb: Chebyshev coefficients of `\partial_z \rho`
+            % - Parameter rhoz_zLobatto: `\partial_z \rho` sampled on `zLobatto`
+            % - Returns flag: monotonicity status flag
+            % - Returns dTotalVariation: fractional change in total variation after coercion
+            % - Returns rho_zCheb: possibly corrected Chebyshev coefficients of density
+            % - Returns rho_zLobatto: possibly corrected density on `zLobatto`
+            % - Returns rhoz_zCheb: possibly corrected Chebyshev coefficients of `\partial_z \rho`
+            % - Returns rhoz_zLobatto: possibly corrected `\partial_z \rho` on `zLobatto`
             % We want to know if the density function is decreasing as z
             % increases. If it's not, are the discrepencies small enough
             % that we can just force them?
@@ -1081,6 +1434,17 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function y = fInverseBisection(f, x, yMin,yMax, tol)
+            % Invert a monotonic function by vectorized bisection.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: y = fInverseBisection(f,x,yMin,yMax,tol)
+            % - Parameter f: monotonic function handle to invert
+            % - Parameter x: target values
+            % - Parameter yMin: lower search bound
+            % - Parameter yMax: upper search bound
+            % - Parameter tol: termination tolerance
+            % - Returns y: approximate inverse values satisfying `f(y) = x`
             %FINVERSEBISECTION(F, X)   Compute F^{-1}(X) using Bisection.
             % Taken from cumsum as part of chebfun.
             % chebfun/inv.m
@@ -1114,6 +1478,16 @@ classdef InternalModesSpectral < InternalModesBase
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [zLobatto, rho_zCheb] = ProjectOntoChebyshevPolynomialsWithTolerance(zIn, rhoFunc, tol)
+            % Project a profile onto Chebyshev coefficients to a requested tolerance.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [zLobatto,rho_zCheb] = ProjectOntoChebyshevPolynomialsWithTolerance(zIn,rhoFunc,tol)
+            % - Parameter zIn: source depth grid
+            % - Parameter rhoFunc: function to sample on candidate Lobatto grids
+            % - Parameter tol: coefficient-chopping tolerance
+            % - Returns zLobatto: selected Lobatto grid
+            % - Returns rho_zCheb: Chebyshev coefficients on that grid
             m = 3;
             m_max = 15;
             
@@ -1147,6 +1521,13 @@ classdef InternalModesSpectral < InternalModesBase
         % Fast Chebyshev Transform
         % By Allan P. Engsig-Karup, apek@imm.dtu.dk.
         function uh = fct(u)
+            % Compute the fast Chebyshev transform of values on a Lobatto grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: uh = fct(u)
+            % - Parameter u: values on a Chebyshev-Lobatto grid
+            % - Returns uh: Chebyshev coefficients
             N  = length(u);
             u  = ifft(u([1:N N-1:-1:2])); % reverse ordering due to Matlab's fft
             uh = ([u(1); 2*u(2:(N-1)); u(N)]);
@@ -1160,6 +1541,13 @@ classdef InternalModesSpectral < InternalModesBase
         
         % Inverse Fast Chebyshev Transform
         function u = ifct(uh)
+            % Compute the inverse fast Chebyshev transform.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: u = ifct(uh)
+            % - Parameter uh: Chebyshev coefficients
+            % - Returns u: values on a Chebyshev-Lobatto grid
             N = length(uh) - 1;
             s = N*[uh(1)*2; uh(2:N); uh(end)*2];
             u = ifft([s; flip(s(2:end-1))],'symmetric');
@@ -1167,6 +1555,13 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function bool = IsChebyshevGrid(z_in)
+            % Test whether a grid is a Chebyshev-Lobatto grid up to tolerance.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: bool = IsChebyshevGrid(z_in)
+            % - Parameter z_in: candidate grid
+            % - Returns bool: true when `z_in` matches a Lobatto grid
             % make sure the grid is monotonically decreasing
             if (z_in(2) - z_in(1)) > 0
                 z_in = flip(z_in);
@@ -1188,6 +1583,15 @@ classdef InternalModesSpectral < InternalModesBase
         % transformation function T that goes from spectral to the output
         % grid. This basically gives you spectral interpolation.
         function [T, doesOutputGridSpanDomain] = ChebyshevTransformForGrid(lobatto_grid, output_grid)
+            % Build a spectral interpolation map from a Lobatto grid to an output grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [T,doesOutputGridSpanDomain] = ChebyshevTransformForGrid(lobatto_grid,output_grid)
+            % - Parameter lobatto_grid: source Chebyshev-Lobatto grid
+            % - Parameter output_grid: target grid inside the source bounds
+            % - Returns T: transform from Chebyshev coefficients to values on `output_grid`
+            % - Returns doesOutputGridSpanDomain: true when the output grid spans the full Lobatto domain
             if(min(output_grid) < min(lobatto_grid) || max(output_grid) > max(lobatto_grid))
                error('The output grid must be bounded by the lobatto grid'); 
             end
@@ -1220,6 +1624,13 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function v_p = DifferentiateChebyshevVector(v)
+            % Differentiate a Chebyshev series in coefficient space.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: v_p = DifferentiateChebyshevVector(v)
+            % - Parameter v: Chebyshev coefficients
+            % - Returns v_p: coefficients of the derivative
             v_p = zeros(size(v));
             k = length(v)-1;
             v_p(k) = 2*k*v(k+1);
@@ -1230,6 +1641,16 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function s = IntegrateChebyshevVectorWithLimits(v,x,a,b)
+            % Integrate a Chebyshev series between two physical limits.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: s = IntegrateChebyshevVectorWithLimits(v,x,a,b)
+            % - Parameter v: Chebyshev coefficients
+            % - Parameter x: Lobatto grid defining the physical interval
+            % - Parameter a: lower integration limit
+            % - Parameter b: upper integration limit
+            % - Returns s: definite integral between `a` and `b`
             % v are the coefficients of the chebyshev polynomials
             % x is the domain, a Gauss-Lobatto grid
             % a and b are the lower and upper limits, respectively
@@ -1239,6 +1660,13 @@ classdef InternalModesSpectral < InternalModesBase
         end
                    
         function v_p = IntegrateChebyshevVector(v)
+            % Integrate a Chebyshev series in coefficient space.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: v_p = IntegrateChebyshevVector(v)
+            % - Parameter v: Chebyshev coefficients
+            % - Returns v_p: coefficients of the antiderivative with zero value at `x=-1`
             % Taken from cumsum as part of chebfun.
             % chebfun/@chebtech/cumsum.m
             %
@@ -1262,8 +1690,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function D = ChebyshevDifferentiationMatrix(n)
+            % Return the matrix that differentiates Chebyshev coefficients.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: D = ChebyshevDifferentiationMatrix(n)
+            % - Parameter n: number of coefficients
+            % - Returns D: coefficient-space differentiation matrix
             %% Chebyshev Differentiation Matrix
-            % Returns the Chebyshev differentiation matrix for the first n polynomials.
+            % This matrix differentiates the first `n` Chebyshev polynomials.
             D = zeros(n,n);
             for i=1:n
                 for j=1:n
@@ -1278,6 +1713,13 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function D = ChebyshevInterpolationDerivative(n)
+            % Return the Lobatto-grid differentiation matrix for interpolation values.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: D = ChebyshevInterpolationDerivative(n)
+            % - Parameter n: number of grid points
+            % - Returns D: interpolation-space differentiation matrix
             %% Chebyshev Interpolation Derivative
             % taken from Canuto, et al. 2.4.33
             D = zeros(n,n);
@@ -1300,6 +1742,15 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function value = ValueOfFunctionAtPointOnGrid( x0, x, func_cheb )
+           % Evaluate a Chebyshev series at arbitrary points in its physical domain.
+           %
+           % - Topic: Developer topics
+           % - Developer: true
+           % - Declaration: value = ValueOfFunctionAtPointOnGrid(x0,x,func_cheb)
+           % - Parameter x0: evaluation points
+           % - Parameter x: Lobatto grid defining the physical domain
+           % - Parameter func_cheb: Chebyshev coefficients
+           % - Returns value: series evaluated at `x0`
            % We have the Chebyshev coefficents of function func_cheb, defined on grid x, return the value at x0;
            L = max(x)-min(x);
            x_norm = (2/L)*(x0-min(x)) - 1;
@@ -1315,6 +1766,14 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [varargout] = ChebyshevPolynomialsOnGrid( x, N_polys )
+            % Evaluate Chebyshev polynomials and derivatives on an arbitrary grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [varargout] = ChebyshevPolynomialsOnGrid(x,N_polys)
+            % - Parameter x: grid on which to evaluate the basis
+            % - Parameter N_polys: number of Chebyshev polynomials requested
+            % - Returns varargout: basis matrices for the polynomials and requested derivatives
             %% Chebyshev Polynomials on Grid
             % Compute the the first N Chebyshev polynomials and their derivatives for
             % an arbitrary grid x.
@@ -1377,6 +1836,13 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [z_lobatto_grid] = FindSmallestChebyshevGridWithNoGaps(z)
+            % Find the coarsest Lobatto grid that covers a target grid without gaps.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: z_lobatto_grid = FindSmallestChebyshevGridWithNoGaps(z)
+            % - Parameter z: target grid
+            % - Returns z_lobatto_grid: Lobatto grid whose intervals each contain at most one target point
             % Want to create a chebyshev grid that never has two or more point between
             % its points. If that makes sense.
             if (z(2) - z(1)) > 0 % make z_out decreasing
@@ -1396,6 +1862,14 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function cutoff = standardChop(coeffs, tol)
+            % Choose a truncation index for a Chebyshev coefficient sequence.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: cutoff = standardChop(coeffs,tol)
+            % - Parameter coeffs: coefficient sequence
+            % - Parameter tol: chopping tolerance
+            % - Returns cutoff: retained coefficient count
             % Copyright 2017 by The University of Oxford and The Chebfun Developers. 
             % See http://www.chebfun.org/ for Chebfun information.
             %
@@ -1451,6 +1925,14 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function roots = FindRootsFromChebyshevVector(f_cheb, zLobatto)
+            % Find physical-domain roots of a Chebyshev series.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: roots = FindRootsFromChebyshevVector(f_cheb,zLobatto)
+            % - Parameter f_cheb: Chebyshev coefficients
+            % - Parameter zLobatto: Lobatto grid defining the physical interval
+            % - Returns roots: real roots mapped onto the physical interval
             % Copyright (c) 2007, Stephen Morris 
             % All rights reserved.
             n = length(f_cheb);

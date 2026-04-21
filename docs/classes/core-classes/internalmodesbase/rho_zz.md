@@ -1,0 +1,19 @@
+---
+layout: default
+title: rho_zz
+parent: InternalModesBase
+grand_parent: Classes
+nav_order: 15
+mathjax: true
+---
+
+#  rho_zz
+
+Second depth derivative of the background density sampled on `zOut`.
+
+
+---
+
+## Discussion
+
+

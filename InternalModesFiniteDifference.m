@@ -1,50 +1,90 @@
 classdef InternalModesFiniteDifference < InternalModesBase
-    % This class uses finite differencing of arbitrary order to compute the
-    % internal wave modes. See InternalModesBase for basic usage
-    % information.
+    % Solve the vertical eigenvalue problems with finite-difference matrices.
     %
-    %   The class takes the name/value pair 'orderOfAccuracy' (default
-    %   value of 4) in order to set the order of accuracy of the finite
-    %   differencing matrix. The matrix is constructed using the weights
-    %   algorithm described by Bengt Fornberg in 'Calculation of weight in
-    %   finite difference formulas', SIAM review, 1998.
+    % `InternalModesFiniteDifference` discretizes the fixed-`K` and
+    % fixed-`\omega` eigenvalue problems directly on the supplied depth
+    % grid. It uses arbitrary-order finite-difference stencils generated
+    % from the Fornberg weights algorithm and optionally interpolates the
+    % resulting modes onto a separate output grid.
     %
-    %   Setting the orderOfAccuracy does tended to improve the quality of
-    %   the solution, but does tend to have strange effects when the order
-    %   gets high relative to the number of grid points.
+    % This class is mainly useful as a baseline against the spectral
+    % methods discussed in Section 3 of Early, Lelong, and Smith (2020),
+    % where the manuscript explains why finite differencing becomes less
+    % attractive when many frequencies or wavenumbers are required.
     %
-    %   If you request a different output grid than input grid, the
-    %   solutions are mapped to the output grid with spline interpolation.
+    % ```matlab
+    % im = InternalModesFiniteDifference(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, orderOfAccuracy=4);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
     %
-    %   See also INTERNALMODES, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, INTERNALMODESWKBSPECTRAL, and
-    %   INTERNALMODESBASE.
-    %
-    %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
-    %
-    %   March 14th, 2017        Version 1.0
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect grids and stratification
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesFiniteDifference < InternalModesBase
     
     properties (Access = public)
+        % Density profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho  % Density on the z grid.
+        % Buoyancy-frequency profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2 % Buoyancy frequency on the z grid, $N^2 = -\frac{g}{\rho(0)} \frac{\partial \rho}{\partial z}$.
+        % Formal order of accuracy for the finite-difference stencils.
+        %
+        % - Topic: Create and initialize modes
         orderOfAccuracy = 4 % Order of accuracy of the finite difference matrices.
     end
     
     properties (Dependent)
+        % First depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z % First derivative of density on the z grid.
+        % Second depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz % Second derivative of density on the z grid.
     end
     
     properties (Access = public)
+        % Number of differentiation-grid points.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         n                   % length of z_diff
+        % Depth grid used for differentiation and the generalized EVP.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         z_diff              % the z-grid used for differentiation
+        % Background density sampled on `z_diff`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         rho_z_diff          % rho on the z_diff grid
+        % Buoyancy frequency squared sampled on `z_diff`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         N2_z_diff           % N2 on the z_diff grid
+        % First-derivative finite-difference matrix.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Diff1               % 1st derivative matrix, w/ 1st derivative boundaries
+        % Second-derivative finite-difference matrix.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Diff2               % 2nd derivative matrix, w/ BCs set by upperBoundary property
         
+        % Transformation from `z_diff` functions to the public output grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         T_out               % *function* handle that transforms from z_diff functions to z_out functions
     end
     
@@ -55,7 +95,21 @@ classdef InternalModesFiniteDifference < InternalModesBase
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesFiniteDifference(options)
-            % Initialize with either a grid or analytical profile.
+            % Initialize the finite-difference solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesFiniteDifference(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.orderOfAccuracy: formal order of accuracy for the finite-difference stencils
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: finite-difference solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -93,7 +147,18 @@ classdef InternalModesFiniteDifference < InternalModesBase
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
-            % Return the normal modes and eigenvalue at a given wavenumber.
+            % Return finite-difference modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             
             self.gridFrequency = 0;
             
@@ -113,7 +178,18 @@ classdef InternalModesFiniteDifference < InternalModesBase
         end
         
         function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
-            % Return the normal modes and eigenvalue at a given frequency.
+            % Return finite-difference modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             
             self.gridFrequency = omega;
             
@@ -129,6 +205,16 @@ classdef InternalModesFiniteDifference < InternalModesBase
         end
         
         function [A,B] = ApplyBoundaryConditions(self,A,B)
+            % Apply the current lower and upper boundary conditions to an EVP pair.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = ApplyBoundaryConditions(self,A,B)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Returns A: boundary-conditioned left matrix
+            % - Returns B: boundary-conditioned right matrix
             iSurface = size(A,1);
             iBottom = 1;
             
@@ -167,14 +253,36 @@ classdef InternalModesFiniteDifference < InternalModesBase
         end
         
         function psi = SurfaceModesAtWavenumber(self, k)
+            % Return the surface SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface SQG mode evaluated on `zOut`
             psi = self.BoundaryModesAtWavenumber(k,01);
         end
         
         function psi = BottomModesAtWavenumber(self, k)
+            % Return the bottom SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: bottom SQG mode evaluated on `zOut`
             psi = self.BoundaryModesAtWavenumber(k,0);
         end
         
         function psi = BoundaryModesAtWavenumber(self, k, isSurface)
+            % Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BoundaryModesAtWavenumber(self,k,isSurface)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter k: horizontal wavenumber array
+            % - Parameter isSurface: logical flag selecting the surface mode when true and the bottom mode when false
+            % - Returns psi: requested boundary mode evaluated on `zOut`
             sizeK = size(k);
             if length(sizeK) == 2 && sizeK(2) == 1
                 sizeK(2) = [];
@@ -264,8 +372,14 @@ classdef InternalModesFiniteDifference < InternalModesBase
     
     methods (Access = public)   
         function self = InitializeOutputTransformation(self, z_out)
-            % After the input variables have been initialized, this is used to
-            % initialize the output transformation, T_out(f).            
+            % Prepare the interpolation from the differentiation grid to the public output grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: self = InitializeOutputTransformation(self,z_out)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter z_out: requested output grid
+            % - Returns self: updated finite-difference solver instance
             if isequal(self.z_diff,z_out)
                 self.T_out = @(f_in) real(f_in);
             else % want to interpolate onto the output grid
@@ -275,9 +389,20 @@ classdef InternalModesFiniteDifference < InternalModesBase
         
 
         function [F,G,h,varargout] = ModesFromGEP(self,A,B,h_func, varargin)
-            % Take matrices A and B from the generalized eigenvalue problem
-            % (GEP) and returns F,G,h. The h_func parameter is a function that
-            % returns the eigendepth, h, given eigenvalue lambda from the GEP.
+            % Solve a generalized EVP and map its modes onto the public grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h,varargout] = ModesFromGEP(self,A,B,h_func,varargin)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Parameter h_func: map from eigenvalue to equivalent depth
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns varargout: requested diagnostics from `NormalizeModes`
             [V,D] = eig( A, B );
             
             [h, permutation] = sort(real(h_func(diag(D))),'descend');
@@ -310,11 +435,20 @@ classdef InternalModesFiniteDifference < InternalModesBase
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,varargout] = NormalizeModes(self,F,G,N2,z,varargin)
-            % This method normalizes the modes F,G using trapezoidal
-            % integration on the given z grid. At the moment, this is only
-            % used by the finite differencing algorithm, as the spectral
-            % methods can use a superior (more accurate) technique of
-            % directly integrating the polynomials.
+            % Normalize finite-difference modes using the active convention.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,varargout] = NormalizeModes(self,F,G,N2,z,varargin)
+            % - Parameter self: InternalModesFiniteDifference instance
+            % - Parameter F: horizontal-velocity mode matrix
+            % - Parameter G: vertical-velocity mode matrix
+            % - Parameter N2: buoyancy-frequency profile associated with the modes
+            % - Parameter z: depth grid associated with the modes
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: normalized horizontal-velocity mode matrix
+            % - Returns G: normalized vertical-velocity mode matrix
+            % - Returns varargout: requested quadratic-integral and normalization diagnostics
             if z(2)-z(1) > 0
                 direction = 'last';
             else
@@ -391,17 +525,17 @@ classdef InternalModesFiniteDifference < InternalModesBase
     
     methods (Static)
         function D = FiniteDifferenceMatrix(numDerivs, x, leftBCDerivs, rightBCDerivs, orderOfAccuracy)
-            % Creates a finite difference matrix of aribtrary accuracy, on an arbitrary
-            % grid. Left and right boundary conditions are specified as their order of
-            % derivative.
+            % Build a finite-difference differentiation matrix with boundary stencils.
             %
-            % numDerivs ? the number of derivatives
-            % x ? the grid
-            % leftBCDerivs ? derivatives for the left boundary condition.
-            % rightBCDerivs ? derivatives for the right boundary condition.
-            % orderOfAccuracy ? minimum order of accuracy required
-            %
-            % Jeffrey J. Early, 2015
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: D = FiniteDifferenceMatrix(numDerivs,x,leftBCDerivs,rightBCDerivs,orderOfAccuracy)
+            % - Parameter numDerivs: derivative order to approximate
+            % - Parameter x: grid on which to build the stencil matrix
+            % - Parameter leftBCDerivs: derivative order enforced at the left boundary
+            % - Parameter rightBCDerivs: derivative order enforced at the right boundary
+            % - Parameter orderOfAccuracy: formal order of accuracy
+            % - Returns D: differentiation matrix
             
             n = length(x);
             D = zeros(n,n);
@@ -433,14 +567,15 @@ classdef InternalModesFiniteDifference < InternalModesBase
         end
                 
         function c = weights(z,x,m)
-            % Calculates FD weights. The parameters are:
-            %  z   location where approximations are to be accurate,
-            %  x   vector with x-coordinates for grid points,
-            %  m   highest derivative that we want to find weights for
-            %  c   array size m+1,lentgh(x) containing (as output) in
-            %      successive rows the weights for derivatives 0,1,...,m.
+            % Return Fornberg finite-difference weights for one stencil location.
             %
-            % Taken from Bengt Fornberg
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: c = weights(z,x,m)
+            % - Parameter z: evaluation location
+            % - Parameter x: stencil grid points
+            % - Parameter m: highest derivative order requested
+            % - Returns c: weight matrix whose rows correspond to derivative order
             %
             n=length(x); c=zeros(m+1,n); c1=1; c4=x(1)-z; c(1,1)=1;
             for i=2:n

@@ -1,28 +1,117 @@
 classdef InternalModesExponentialStratification < InternalModesBase
+    % Solve the vertical mode problem for exponential stratification.
+    %
+    % `InternalModesExponentialStratification` provides the closed-form
+    % benchmark for the exponential profile used throughout the manuscript:
+    %
+    % $$
+    % N^2(z) = N_0^2 e^{2 z / b}
+    % $$
+    %
+    % together with
+    %
+    % $$
+    % \bar{\rho}(z) = \rho_0 \left(1 + \frac{b N_0^2}{2 g} \left(1 - e^{2 z / b}\right)\right).
+    % $$
+    %
+    % The resulting vertical modes are expressed in terms of Bessel
+    % functions, matching the analytical benchmark used in the validation
+    % sections of Early, Lelong, and Smith (2020).
+    %
+    % ```matlab
+    % im = InternalModesExponentialStratification(N0=5.2e-3, b=1300, zIn=[-5000 0], zOut=zOut, latitude=33);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
+    %
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect grids and stratification
+    % - Topic: Compute modes
+    % - Topic: Inspect analytical solutions
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesExponentialStratification < InternalModesBase
     properties (Access = public)
+        % Surface buoyancy frequency `N_0` in radians per second.
+        %
+        % - Topic: Inspect grids and stratification
         N0
+        % Exponential e-folding depth `b` in meters.
+        %
+        % - Topic: Inspect grids and stratification
         b
+        % Density profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho
+        % Buoyancy-frequency profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2
+        % First depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z
+        % Second depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz
         
+        % Number of trial roots used when expanding the analytical search interval.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         nInitialSearchModes = 128
         
-        % analytical solutions
+        % Exact analytical `G(z,\omega,c)` solution handle.
+        %
+        % - Topic: Inspect analytical solutions
         GSolution
+        % Exact analytical `F(z,\omega,c)` solution handle.
+        %
+        % - Topic: Inspect analytical solutions
         FSolution
         
+        % Predicate that chooses between exact and approximate Bessel forms.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         shouldApproximate
+        % Approximate analytical `G(z,\omega,c)` solution handle.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         GSolutionApprox
+        % Approximate analytical `F(z,\omega,c)` solution handle.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         FSolutionApprox
         
+        % Background density function handle.
+        %
+        % - Topic: Inspect analytical solutions
         rhoFunction
+        % Background buoyancy-frequency function handle.
+        %
+        % - Topic: Inspect analytical solutions
         N2Function
     end
     
     methods
         function self = InternalModesExponentialStratification(options)
+            % Initialize the exponential-stratification analytical solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesExponentialStratification(options)
+            % - Parameter options.N0: surface buoyancy frequency in radians per second
+            % - Parameter options.b: exponential e-folding scale in meters
+            % - Parameter options.zIn: two-element depth domain `[zBottom zSurface]`
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: exponential-stratification solver instance
             arguments
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.b (1,1) double {mustBePositive} = 1300
@@ -66,7 +155,19 @@ classdef InternalModesExponentialStratification < InternalModesBase
             fprintf('Using the analytical form for exponential stratification N0=%.7g and b=%d\n',self.N0,self.b);
         end
                 
-        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )            
+        function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+            % Return the analytical modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: requested normalization and quadratic-integral diagnostics
             epsilon = self.f0/self.N0;
             lambda = k*self.b;
             
@@ -119,7 +220,19 @@ classdef InternalModesExponentialStratification < InternalModesBase
             end
         end
         
-        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )            
+        function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+            % Return the analytical modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: requested normalization and quadratic-integral diagnostics
             % This is the function that we use to find the eigenvalues,
             % by finding its roots.
             if omega > self.N0*exp(-self.Lz/self.b) % This is from equation 2.18 in Desaubies (1973)
@@ -163,6 +276,17 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function r = FindRootsInRange(self, nu, s, bounds, expMinusDOverB)
+            % Find analytical eigenvalue roots over a bounded search interval.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: r = FindRootsInRange(self,nu,s,bounds,expMinusDOverB)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter nu: order function for the Bessel solution
+            % - Parameter s: argument function for the Bessel solution
+            % - Parameter bounds: two-element search interval
+            % - Parameter expMinusDOverB: exponential lower-bound factor `e^{-D/b}`
+            % - Returns r: sorted root vector
             % nu(x) is a function of x [used in the solution J_\nu(s)]
             % s(x) is a function of x [used in the solution J_\nu(s)]
             % bounds is the [xmin xmax] of the region to search for roots
@@ -204,6 +328,13 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function h0 = BarotropicEquivalentDepthAtWavenumber(self, k)
+            % Estimate the barotropic equivalent depth for fixed `K`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: h0 = BarotropicEquivalentDepthAtWavenumber(self,k)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns h0: barotropic equivalent depth
             % this function estimates the location of the root
             f = @(k) self.b*self.N0./sqrt(self.g*tanh(max(k,1e-15)*self.Lz)./max(k,1e-15));
             
@@ -218,6 +349,13 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function h0 = BarotropicEquivalentDepthAtFrequency(self, omega)
+            % Estimate the barotropic equivalent depth for fixed `\omega`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: h0 = BarotropicEquivalentDepthAtFrequency(self,omega)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns h0: barotropic equivalent depth
             % this function estimates the location of the root
             f = @(omega) max( self.b*self.N0*omega/self.g, self.b*self.N0/sqrt(self.g*self.Lz));
             
@@ -230,6 +368,13 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
                 
         function [psi] = SurfaceModesAtWavenumber(self, k)
+            % Return the analytical surface SQG mode for exponential stratification.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface SQG mode evaluated on `zOut`
             % See LaCasce 2012.
             % size(psi) = [size(k); length(z)]
             sizeK = size(k);
@@ -252,6 +397,13 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function [psi] = BottomModesAtWavenumber(self, k)
+            % Return the analytical bottom SQG mode for exponential stratification.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: bottom SQG mode evaluated on `zOut`
             % Not done in LaCasce 2012, but the calculation is almost
             % identical.
             % size(psi) = [size(k); length(z)]
@@ -276,6 +428,16 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function [F,G] = ModeFunctionsForOmegaAndC(self,omega,c)
+            % Select the exact or approximate analytical mode functions.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G] = ModeFunctionsForOmegaAndC(self,omega,c)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter omega: frequency row vector
+            % - Parameter c: phase-speed row vector
+            % - Returns F: function handle for the analytical `F(z,\omega,c)`
+            % - Returns G: function handle for the analytical `G(z,\omega,c)`
             if self.shouldApproximate(omega,c) == 1
                 G = self.GSolutionApprox;
                 F = self.FSolutionApprox;
@@ -286,6 +448,17 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function [F,G,varargout] = NormalizedModesForOmegaAndC(self,omega,c,varargin)
+            % Evaluate and normalize analytical mode functions at `zOut`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [F,G,varargout] = NormalizedModesForOmegaAndC(self,omega,c,varargin)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter omega: frequency row vector
+            % - Parameter c: phase-speed row vector
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: normalized horizontal-velocity mode matrix
+            % - Returns G: normalized vertical-velocity mode matrix
+            % - Returns varargout: requested normalization and quadratic-integral diagnostics
             F = zeros(length(self.z),length(c));
             G = zeros(length(self.z),length(c));
 
@@ -359,6 +532,15 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
        
         function A = kConstantNormalizationForOmegaAndC(self,omega,c)
+            % Return the `kConstant` normalization for the analytical exponential solution.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: A = kConstantNormalizationForOmegaAndC(self,omega,c)
+            % - Parameter self: InternalModesExponentialStratification instance
+            % - Parameter omega: frequency row vector
+            % - Parameter c: phase-speed row vector
+            % - Returns A: normalization factor row vector
             nu = self.b*omega/c;
             f = @(s) s*s*(besselj(nu,s).^2 - besselj(nu-1,s)*besselj(nu+1,s))/2;
             g = @(s) (((s/2).^(2*nu))/(2*(nu^3)*gamma(nu)^2)) * genHyper([nu, nu+1/2],[nu+1,nu+1,2*nu+1],-s*s);
@@ -398,6 +580,14 @@ classdef InternalModesExponentialStratification < InternalModesBase
          % N2 = -g*diff(rho)/rho0 = N0*N0 * exp(2*z/b)
          % log(N2) = log(N0^2)+(2/b)*z
          function [flag,rho_params] = IsStratificationExponential(rho,z_in)
+             % Test whether a supplied profile is close to the exponential benchmark.
+             %
+             % - Topic: Inspect analytical solutions
+             % - Declaration: [flag,rho_params] = IsStratificationExponential(rho,z_in)
+             % - Parameter rho: density profile as gridded values, a spline, or a function handle
+             % - Parameter z_in: depth grid or domain bounds associated with `rho`
+             % - Returns flag: logical scalar indicating whether the profile matches the exponential benchmark
+             % - Returns rho_params: inferred `[N0 b rho0]` parameter vector
              if isa(rho,'function_handle') == true || isa(rho,'BSpline') == true
 %                  if numel(z_in) ~= 2
 %                      error('When using a function handle, z_domain must be an array with two values: z_domain = [z_bottom z_surface];')

@@ -1,14 +1,74 @@
 classdef InternalModesConstantStratification < InternalModesBase
+    % Solve the vertical mode problem for constant buoyancy frequency.
+    %
+    % `InternalModesConstantStratification` provides the closed-form
+    % solutions used throughout the package for validation and smoke
+    % testing. In this model,
+    %
+    % $$
+    % N^2(z) = N_0^2
+    % $$
+    %
+    % and the background density is the linear profile
+    %
+    % $$
+    % \bar{\rho}(z) = \rho_0 - \frac{N_0^2 \rho_0}{g} z.
+    % $$
+    %
+    % The fixed-`K` and fixed-`\omega` solutions reduce to trigonometric
+    % or hyperbolic functions with analytically known equivalent depths,
+    % making this class the main reference implementation for checking the
+    % numerical solvers.
+    %
+    % ```matlab
+    % im = InternalModesConstantStratification(N0=5.2e-3, zIn=[-5000 0], zOut=zOut, latitude=33);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
+    %
+    % - Topic: Create and initialize modes
+    % - Topic: Inspect grids and stratification
+    % - Topic: Compute modes
+    % - Topic: Inspect analytical solutions
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesConstantStratification < InternalModesBase
     properties (Access = public)
+        % Constant buoyancy frequency `N_0` in radians per second.
+        %
+        % - Topic: Inspect grids and stratification
         N0
+        % Density profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho
+        % Constant buoyancy-frequency profile sampled on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         N2
+        % First depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_z
+        % Second depth derivative of the background density on `zOut`.
+        %
+        % - Topic: Inspect grids and stratification
         rho_zz
     end
     
     methods
         function self = InternalModesConstantStratification(options) 
+            % Initialize the constant-stratification analytical solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesConstantStratification(options)
+            % - Parameter options.N0: constant buoyancy frequency in radians per second
+            % - Parameter options.zIn: two-element depth domain `[zBottom zSurface]`
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: constant-stratification solver instance
             arguments
                 options.N0 (1,1) double = 5.2e-3
                 options.zIn (1,2) double = [-1300 0]
@@ -36,6 +96,18 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
                 
         function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+            % Return the analytical modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: requested normalization and quadratic-integral diagnostics
             k_z = (1:self.nModes)*pi/self.Lz;
             if self.upperBoundary == UpperBoundary.freeSurface % add the free surface correction to the vertical wavenumber
                 for i=1:self.nModes
@@ -88,6 +160,18 @@ classdef InternalModesConstantStratification < InternalModesBase
         % k_z and h should be of size [1, nModes]
         % [F,G] will return with size [length(z), nModes]
         function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+            % Return the analytical modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: requested normalization and quadratic-integral diagnostics
             k_z = (1:self.nModes)*pi/self.Lz;
             if self.upperBoundary == UpperBoundary.freeSurface % add the free surface correction to the vertical wavenumber
                 for i=1:self.nModes
@@ -142,6 +226,13 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [psi] = SurfaceModesAtWavenumber(self, k)
+            % Return the analytical surface SQG mode for constant stratification.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = SurfaceModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: surface SQG mode evaluated on `zOut`
             % size(psi) = [size(k); length(z)]
             sizeK = size(k);
             if length(sizeK) == 2 && sizeK(2) == 1
@@ -160,6 +251,13 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [psi] = BottomModesAtWavenumber(self, k)
+            % Return the analytical bottom SQG mode for constant stratification.
+            %
+            % - Topic: Compute modes
+            % - Declaration: psi = BottomModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter k: horizontal wavenumber array
+            % - Returns psi: bottom SQG mode evaluated on `zOut`
             % size(psi) = [size(k); length(z)]
             sizeK = size(k);
             if length(sizeK) == 2 && sizeK(2) == 1
@@ -178,6 +276,22 @@ classdef InternalModesConstantStratification < InternalModesBase
         % k_z and h should be of size [1, nModes]
         % [F,G] will return with size [length(z), nModes]
         function [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BaroclinicModesWithEigenvalue(self, k_z, h)
+            % Evaluate the analytical baroclinic mode shapes for given eigenvalues.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BaroclinicModesWithEigenvalue(self,k_z,h)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter k_z: vertical wavenumber row vector
+            % - Parameter h: equivalent-depth row vector
+            % - Returns F: horizontal-velocity mode matrix
+            % - Returns G: vertical-velocity mode matrix
+            % - Returns F2: depth integrals of `F.^2`
+            % - Returns G2: depth integrals of `G.^2`
+            % - Returns N2G2: depth integrals of `N2 .* G.^2`
+            % - Returns uMaxRatio: ratio from the active normalization to `uMax`
+            % - Returns wMaxRatio: ratio from the active normalization to `wMax`
+            % - Returns kConstantRatio: ratio from the active normalization to `kConstant`
+            % - Returns omegaConstantRatio: ratio from the active normalization to `omegaConstant`
             N0_ = self.N0; % reference buoyancy frequency, radians/seconds
             A = self.BaroclinicModeNormalization(self.normalization,k_z);
             G = A .*  sin(k_z .* (self.z + self.Lz));
@@ -192,6 +306,16 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
 
         function A = BaroclinicModeNormalization(self, norm, k_z, h)
+            % Return the requested analytical normalization factor for baroclinic modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: A = BaroclinicModeNormalization(self,norm,k_z,h)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter norm: normalization convention from `Normalization`
+            % - Parameter k_z: vertical wavenumber row vector
+            % - Parameter h: equivalent-depth row vector
+            % - Returns A: normalization factor row vector
             j = 1:self.nModes;
             switch norm
                 case Normalization.kConstant
@@ -208,6 +332,22 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtWavenumber(self, k)
+            % Return the analytical barotropic mode branch for fixed `K`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtWavenumber(self,k)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F0: barotropic horizontal mode
+            % - Returns G0: barotropic vertical mode
+            % - Returns h0: barotropic equivalent depth
+            % - Returns F20: depth integral of `F0.^2`
+            % - Returns G20: depth integral of `G0.^2`
+            % - Returns N2G20: depth integral of `N2 .* G0.^2`
+            % - Returns uMaxRatio0: ratio from the active normalization to `uMax`
+            % - Returns wMaxRatio0: ratio from the active normalization to `wMax`
+            % - Returns kConstantRatio0: ratio from the active normalization to `kConstant`
+            % - Returns omegaConstantRatio0: ratio from the active normalization to `omegaConstant`
             k_star = sqrt( (self.N0*self.N0 - self.f0*self.f0)/(self.g*self.Lz) );
                 
             if (abs(k-k_star)/k_star < 1e-6) % transition (linear) solution
@@ -232,6 +372,22 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self, omega)
+            % Return the analytical barotropic mode branch for fixed `\omega`.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self,omega)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns F0: barotropic horizontal mode
+            % - Returns G0: barotropic vertical mode
+            % - Returns h0: barotropic equivalent depth
+            % - Returns F20: depth integral of `F0.^2`
+            % - Returns G20: depth integral of `G0.^2`
+            % - Returns N2G20: depth integral of `N2 .* G0.^2`
+            % - Returns uMaxRatio0: ratio from the active normalization to `uMax`
+            % - Returns wMaxRatio0: ratio from the active normalization to `wMax`
+            % - Returns kConstantRatio0: ratio from the active normalization to `kConstant`
+            % - Returns omegaConstantRatio0: ratio from the active normalization to `omegaConstant`
             if (abs(omega-self.N0)/self.N0 < 1e-6)
                 solutionType = 'linear';
                 h0 = self.Lz;
@@ -252,6 +408,24 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
 
         function [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BarotropicMode(self, solutionType, k_z, h0)
+            % Evaluate a chosen analytical barotropic branch.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BarotropicMode(self,solutionType,k_z,h0)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter solutionType: one of `linear`, `hyperbolic`, or `trig`
+            % - Parameter k_z: barotropic vertical wavenumber
+            % - Parameter h0: barotropic equivalent depth
+            % - Returns F0: barotropic horizontal mode
+            % - Returns G0: barotropic vertical mode
+            % - Returns F2: depth integral of `F0.^2`
+            % - Returns G2: depth integral of `G0.^2`
+            % - Returns N2G2: depth integral of `N2 .* G0.^2`
+            % - Returns uMaxRatio: ratio from the active normalization to `uMax`
+            % - Returns wMaxRatio: ratio from the active normalization to `wMax`
+            % - Returns kConstantRatio: ratio from the active normalization to `kConstant`
+            % - Returns omegaConstantRatio: ratio from the active normalization to `omegaConstant`
             A = self.BarotropicModeNormalization(self.normalization, solutionType, k_z, h0);
 
             % It's safer to do a switch on solutionType, rather than check
@@ -283,6 +457,17 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
 
         function A = BarotropicModeNormalization(self, norm, solutionType, k_z, h0)
+            % Return the requested analytical normalization factor for the barotropic branch.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: A = BarotropicModeNormalization(self,norm,solutionType,k_z,h0)
+            % - Parameter self: InternalModesConstantStratification instance
+            % - Parameter norm: normalization convention from `Normalization`
+            % - Parameter solutionType: one of `linear`, `hyperbolic`, or `trig`
+            % - Parameter k_z: barotropic vertical wavenumber
+            % - Parameter h0: barotropic equivalent depth
+            % - Returns A: normalization factor
             if strcmp(solutionType, 'linear')
                 switch norm
                     case Normalization.kConstant
@@ -351,6 +536,13 @@ classdef InternalModesConstantStratification < InternalModesBase
     
     methods (Static)
         function flag = IsStratificationConstant(rho,z_in)
+            % Test whether a supplied profile is close to constant stratification.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: flag = IsStratificationConstant(rho,z_in)
+            % - Parameter rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter z_in: depth grid or domain bounds associated with `rho`
+            % - Returns flag: logical scalar indicating whether the profile is approximately constant-stratification
             if isa(rho,'function_handle') || isa(rho,'BSpline') == true
 %                 if numel(z_in) ~= 2
 %                     error('When using a function handle, z_domain must be an array with two values: z_domain = [z_bottom z_surface];')
@@ -366,6 +558,14 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [N0, rho0] = BuoyancyFrequencyFromConstantStratification(rho,z_in)
+            % Estimate `N0` and `rho0` from a constant-stratification profile.
+            %
+            % - Topic: Inspect analytical solutions
+            % - Declaration: [N0,rho0] = BuoyancyFrequencyFromConstantStratification(rho,z_in)
+            % - Parameter rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter z_in: depth grid or domain bounds associated with `rho`
+            % - Returns N0: estimated constant buoyancy frequency
+            % - Returns rho0: estimated reference surface density
             g = 9.81;
             if isa(rho,'function_handle') == true || isa(rho,'BSpline') == true
                 rho0 = rho(max(z_in));

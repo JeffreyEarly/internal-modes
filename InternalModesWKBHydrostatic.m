@@ -1,18 +1,32 @@
 classdef InternalModesWKBHydrostatic < InternalModesSpectral
-    % This class returns the hydrostatic WKB approximated internal wave
-    % modes. This class is a subclass of InternalModesSpectral to compute
-    % N2 spectrally.
+    % Compute hydrostatic WKB mode approximations from a spectrally resolved stratification.
     %
-    %   See also INTERNALMODES, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, INTERNALMODESWKBSPECTRAL, and
-    %   INTERNALMODESBASE.
+    % `InternalModesWKBHydrostatic` uses the spectral initialization path of
+    % [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral)
+    % to resolve `N2(z)`, then applies a hydrostatic WKB approximation for
+    % the fixed-`\omega` problem. This class is useful as an asymptotic
+    % comparison tool rather than as the primary production solver.
     %
+    % In this approximation, the vertical phase coordinate is built from
+    % the positive part of `N(z) - \omega`, and the modal depth is
+    % estimated from
     %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
+    % $$
+    % h_j = \frac{1}{g}\left(\frac{d}{j\pi}\right)^2,
+    % $$
     %
-    %   June 8th, 2017        Version 1.0
-    %   October 17th, 2017    Version 1.1, implemented non-hydrostatic vers
+    % where `d` is the accumulated hydrostatic WKB phase over the
+    % oscillatory region.
+    %
+    % ```matlab
+    % im = InternalModesWKBHydrostatic(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
+    % [F, G, h, k] = im.ModesAtFrequency(5*im.f0);
+    % ```
+    %
+    % - Topic: Create and initialize modes
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesWKBHydrostatic < InternalModesSpectral
     
     methods
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -21,6 +35,21 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesWKBHydrostatic(options)
+            % Initialize the hydrostatic WKB approximation.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesWKBHydrostatic(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: spectral initialization resolution
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: hydrostatic WKB solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -43,10 +72,31 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega] = ModesAtWavenumber(self, k )
+            % Report that the hydrostatic WKB solver does not implement fixed-`K` modes.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [F,G,h,omega] = ModesAtWavenumber(self,k)
+            % - Parameter self: InternalModesWKBHydrostatic instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns F: not returned because this method throws
+            % - Returns G: not returned because this method throws
+            % - Returns h: not returned because this method throws
+            % - Returns omega: not returned because this method throws
             error('Not yet implemented');
         end
         
-        function [F,G,h,k] = ModesAtFrequency(self, omega )            
+        function [F,G,h,k] = ModesAtFrequency(self, omega )
+            % Return hydrostatic WKB modes at a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k] = ModesAtFrequency(self,omega)
+            % - Parameter self: InternalModesWKBHydrostatic instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
             N = flip(sqrt(self.N2_xLobatto));
             z = flip(self.xLobatto);
             

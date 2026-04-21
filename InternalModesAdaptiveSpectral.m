@@ -1,41 +1,90 @@
 classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
-    % This class solves the vertical eigenvalue problem on a WKB stretched
-    % density coordinate grid using Chebyshev polynomials.
+    % Solve the vertical EVP on an adaptive WKB grid with coupled Chebyshev blocks.
     %
-    % See InternalModesBase for basic usage information.
+    % `InternalModesAdaptiveSpectral` extends
+    % `InternalModesWKBSpectral` using the adaptive multi-region strategy
+    % described in Section 4.4 of Early, Lelong, and Smith (2020). The
+    % solver keeps the WKB stretched coordinate but partitions it into
+    % oscillatory and evanescent regions, then couples separate Chebyshev
+    % blocks across the turning points.
     %
-    % This class uses the coordinate
-    %   xi = \int_{-Lz}^0 \sqrt(-(g/rho0)*rho_z) dz
-    % to solve the EVP.
+    % This is most useful at fixed frequency, where the turning points of
+    % `N2(z) - \omega^2` can leave large regions that are exponentially
+    % decaying rather than oscillatory.
     %
-    % This uses the same WKB coordinates as its superclass. The difference
-    % is that the collocation points within that coordinate may be
-    % different when more than one equation is used. Specifically, the
-    % xLobatto grid is not actually Gauss-Lobatto.
+    % ```matlab
+    % im = InternalModesAdaptiveSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
+    % [F, G, h, k] = im.ModesAtFrequency(2*pi*1e-3);
+    % ```
     %
-    %   See also INTERNALMODES, INTERNALMODESBASE, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESDENSITYSPECTRAL, and INTERNALMODESFINITEDIFFERENCE.
-    %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
-    %
-    %   March 14th, 2017        Version 1.0
+    % - Topic: Create and initialize modes
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
     
     properties %(Access = private)
-        x_zLobatto                  % x (xi) coordinate on the zLobatto grid                
+        % Adaptive stretched-coordinate grid sampled on the public Lobatto grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
+        x_zLobatto                  % x (xi) coordinate on the zLobatto grid
+        % Chebyshev coefficients of `N(z)` on the reference grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         N_zCheb
-        
+
+        % Physical depths of region boundaries and turning points.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         zBoundaries                 % z-location of the boundaries (end points plus turning points).
+        % WKB-coordinate values of region boundaries and turning points.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xiBoundaries                % xi-location of the boundaries (end points plus turning points).
+        % Number of coupled Chebyshev subproblems.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         nEquations
+        % Length of each coupled subdomain in the adaptive coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         Lxi                         % array of length(nEquations) with the length of each EVP domain in xi coordinates
-        
+
+        % Row indices for each coupled subproblem.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         eqIndices                   % cell array containing indices into the *rows* for a given EVP
+        % Column indices for each coupled Chebyshev block.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         polyIndices                 % cell array containing indices into the *coumns* for a given EVP
+        % Grid-point indices into the unique adaptive Lobatto grid.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         xiIndices
-        
+
+        % Per-region transforms from Chebyshev coefficients to `zOut`.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         T_xCheb_zOut_Transforms     % cell array containing function handles
+        % Source indices in coefficient space for each output transform.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         T_xCheb_zOut_fromIndices    % cell array with indices into the xLobatto grid
+        % Target indices in `zOut` for each output transform.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         T_xCheb_zOut_toIndices      % cell array with indices into the xOut grid
     end
     
@@ -46,6 +95,21 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesAdaptiveSpectral(options)
+            % Initialize the adaptive WKB spectral solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesAdaptiveSpectral(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: total number of collocation points across all coupled subproblems
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: adaptive WKB spectral solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -68,6 +132,18 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega,varargout] = ModesAtWavenumber(self, k, varargin )
+            % Return adaptive-grid modes for a fixed horizontal wavenumber.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,omega,varargout] = ModesAtWavenumber(self,k,varargin)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns omega: frequency row vector implied by `h` and `k`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             % We just need to make sure we're using the right grid,
             % otherwise we can use the superclass method as is.
             self.CreateGridForFrequency(0.0);
@@ -80,6 +156,18 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
 
         function [F,G,h,k,varargout] = ModesAtFrequency(self, omega, varargin )
+            % Return adaptive-grid modes for a fixed frequency.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [F,G,h,k,varargout] = ModesAtFrequency(self,omega,varargin)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Parameter varargin: additional requests forwarded through `ModesFromGEP`
+            % - Returns F: horizontal-velocity mode matrix on `zOut`
+            % - Returns G: vertical-velocity mode matrix on `zOut`
+            % - Returns h: equivalent-depth row vector
+            % - Returns k: horizontal wavenumber row vector implied by `h` and `omega`
+            % - Returns varargout: additional outputs forwarded through `ModesFromGEP`
             % We just need to make sure we're using the right grid,
             % otherwise we can use the superclass method as is.
             self.CreateGridForFrequency(omega);
@@ -92,6 +180,15 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
 
         function [A,B] = EigenmatricesForFrequency(self, omega )
+            % Assemble the coupled fixed-`\omega` EVP on the adaptive WKB grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -125,6 +222,14 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
  
         function v_xCheb = T_xLobatto_xCheb( self, v_xLobatto)
+            % Transform adaptive-grid values into the coupled Chebyshev basis.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: v_xCheb = T_xLobatto_xCheb(self,v_xLobatto)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter v_xLobatto: values on the adaptive Lobatto grid
+            % - Returns v_xCheb: coefficients in the coupled Chebyshev basis
             % transform from xLobatto basis to xCheb basis
             v_xCheb = zeros(self.nEVP,1);
             for i=1:self.nEquations
@@ -133,6 +238,14 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
         
         function v_xLobatto = T_xCheb_xLobatto( self, v_xCheb)
+            % Transform coupled Chebyshev coefficients onto the adaptive Lobatto grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: v_xLobatto = T_xCheb_xLobatto(self,v_xCheb)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter v_xCheb: coefficients in the coupled Chebyshev basis
+            % - Returns v_xLobatto: values on the adaptive Lobatto grid
             % transform from xCheb basis to xLobatto
             v_xLobatto = zeros(size(self.xLobatto));
             for i=1:self.nEquations
@@ -141,6 +254,14 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
         
         function v_zOut = T_xCheb_zOutFunction( self, v_xCheb )
+            % Transform coupled Chebyshev coefficients onto the public output grid.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: v_zOut = T_xCheb_zOutFunction(self,v_xCheb)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter v_xCheb: coefficients in the coupled Chebyshev basis
+            % - Returns v_zOut: values on `zOut`
             % transform from xCheb basis to zOut
             v_zOut = zeros(size(self.xOut));
             for i = 1:length(self.T_xCheb_zOut_Transforms)
@@ -150,6 +271,14 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
         
         function vx = Diff1_xChebFunction( self, v )
+            % Differentiate a vector in the coupled Chebyshev basis.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: vx = Diff1_xChebFunction(self,v)
+            % - Parameter self: InternalModesAdaptiveSpectral instance
+            % - Parameter v: coefficients in the coupled Chebyshev basis
+            % - Returns vx: first derivative in the coupled Chebyshev basis
             % differentiate a vector in the compound Chebyshev xi basis
             vx = zeros(size(v));
             for iEquation = 1:self.nEquations
@@ -388,7 +517,17 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
 %         end
         
         function [zBoundariesAndTPs, thesign] = FindWKBSolutionBoundaries(N2, z, omega, requiredDecay)
-            % Find the theoretical solution boundaries of the WKB solution.
+            % Estimate adaptive-region boundaries from turning points and WKB decay.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [zBoundariesAndTPs,thesign] = FindWKBSolutionBoundaries(N2,z,omega,requiredDecay)
+            % - Parameter N2: buoyancy-frequency profile on grid `z`
+            % - Parameter z: depth grid
+            % - Parameter omega: target frequency in radians per second
+            % - Parameter requiredDecay: minimum retained evanescent amplitude ratio
+            % - Returns zBoundariesAndTPs: region boundaries including turning points
+            % - Returns thesign: sign of `N2-\omega^2` in each region
             % The requiredDecay is <=1 and find the point at which the
             % solution has decayed below that value.
             [zBoundariesAndTPs, thesign, boundaryIndices] = InternalModesSpectral.FindTurningPointBoundariesAtFrequency(N2, z, omega);
@@ -454,6 +593,15 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
         
         function decay = WKBDecaySolution(xi, L_osc, N2Omega2)
+            % Evaluate the Airy-based WKB decay envelope used for pruning regions.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: decay = WKBDecaySolution(xi,L_osc,N2Omega2)
+            % - Parameter xi: positive distance from a turning point in WKB coordinates
+            % - Parameter L_osc: total oscillatory extent used in the asymptotic scaling
+            % - Parameter N2Omega2: values of `N2-\omega^2`
+            % - Returns decay: WKB decay-envelope estimate
             % The decay part of the lowest F-mode. xi should be > 0
             c = L_osc./((3/4)*pi);
             q = xi * (1./c);
@@ -467,6 +615,16 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
                
         function [newBoundaries, newSigns] = RemoveRegionAtIndex(oldBoundaries, oldSigns, index)
+            % Merge neighboring adaptive regions by removing one boundary.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [newBoundaries,newSigns] = RemoveRegionAtIndex(oldBoundaries,oldSigns,index)
+            % - Parameter oldBoundaries: current region boundaries
+            % - Parameter oldSigns: signs of `N2-\omega^2` in each region
+            % - Parameter index: boundary index to remove
+            % - Returns newBoundaries: merged region boundaries
+            % - Returns newSigns: updated regional signs
             % Given a list of boundaries (length n), and the signs of the
             % regions created by the boundaries (length n-1), this removes
             % the boundary at some index, and returns the appropriate signs
@@ -487,6 +645,15 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
                 
         function nEVPPoints = DistributePointsInRegionsWithMinimum( nTotalPoints, boundaries, thesign )
+            % Distribute collocation points across adaptive regions.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: nEVPPoints = DistributePointsInRegionsWithMinimum(nTotalPoints,boundaries,thesign)
+            % - Parameter nTotalPoints: total number of collocation points
+            % - Parameter boundaries: region boundaries in WKB coordinates
+            % - Parameter thesign: signs of `N2-\omega^2` in each region
+            % - Returns nEVPPoints: point counts assigned to each region
             % This algorithm distributes the points/polynomials amongst the
             % different regions/equations
             L = abs(diff(boundaries));

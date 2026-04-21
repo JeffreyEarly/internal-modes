@@ -1,26 +1,39 @@
 classdef InternalModesDensitySpectral < InternalModesSpectral
-    % InternalModesDensitySpectral This class solves the vertical
-    % eigenvalue problem on a stretched density coordinate grid using
-    % Chebyshev polynomials.
+    % Solve the vertical EVP on a density-stretched coordinate with Chebyshev collocation.
     %
-    % See InternalModesBase for basic usage information.
+    % `InternalModesDensitySpectral` implements the density-coordinate
+    % formulation discussed in Section 4.2 of Early, Lelong, and Smith
+    % (2020). It uses the stretched coordinate
     %
-    % This class uses the coordinate s=-g*rho/rho0 to solve the EVP.
-    % 
-    % Internally, sLobatto is the stretched density coordinate on a Chebyshev
-    % extrema/Lobatto grid. This is the grid upon which the eigenvalue problem
-    % is solved, and therefore the class uses the superclass properties denoted
-    % with 'x' when setting up the eigenvalue problem.
+    % $$
+    % s(z) = -\frac{g}{\rho_0}\rho(z) + g,
+    % $$
     %
-    %   See also INTERNALMODES, INTERNALMODESBASE, INTERNALMODESSPECTRAL,
-    %   INTERNALMODESWKBSPECTRAL, and INTERNALMODESFINITEDIFFERENCE.
+    % so that
     %
-    %   Jeffrey J. Early
-    %   jeffrey@jeffreyearly.com
+    % $$
+    % F_j = h_j N^2 \partial_s G_j.
+    % $$
     %
-    %   March 14th, 2017        Version 1.0
+    % This coordinate concentrates points where the density varies most
+    % rapidly and therefore requires a monotonic background density
+    % profile.
+    %
+    % ```matlab
+    % im = InternalModesDensitySpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=257);
+    % [F, G, h, omega] = im.ModesAtWavenumber(2*pi/1000);
+    % ```
+    %
+    % - Topic: Create and initialize modes
+    % - Topic: Compute modes
+    % - Topic: Developer topics
+    % - Declaration: classdef InternalModesDensitySpectral < InternalModesSpectral
     
-    properties %(Access = private)            
+    properties %(Access = private)
+        % `\partial_z N^2` sampled on the Lobatto grid in the density coordinate.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         N2z_xLobatto    	% (d/dz)N2 on the z_sLobatto grid   
     end
 
@@ -32,6 +45,21 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function self = InternalModesDensitySpectral(options)
+            % Initialize the density-coordinate spectral solver.
+            %
+            % - Topic: Create and initialize modes
+            % - Declaration: im = InternalModesDensitySpectral(options)
+            % - Parameter options.rho: density profile as gridded values, a spline, or a function handle
+            % - Parameter options.N2: buoyancy-frequency function handle used instead of `rho`
+            % - Parameter options.zIn: input depth grid or domain bounds
+            % - Parameter options.zOut: output depth grid
+            % - Parameter options.latitude: latitude in degrees
+            % - Parameter options.rho0: reference surface density
+            % - Parameter options.nModes: optional cap on the number of modes returned
+            % - Parameter options.nEVP: number of collocation points in the density-coordinate EVP
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second
+            % - Parameter options.g: gravitational acceleration
+            % - Returns im: density-coordinate spectral solver instance
             arguments
                 options.rho = ''
                 options.N2 function_handle = @disp
@@ -54,6 +82,14 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [A,B] = EigenmatricesForWavenumber(self, k )
+            % Assemble the fixed-`K` generalized EVP in density coordinates.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
+            % - Parameter self: InternalModesDensitySpectral instance
+            % - Parameter k: horizontal wavenumber
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -65,6 +101,14 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         end
 
         function [A,B] = EigenmatricesForFrequency(self, omega )
+            % Assemble the fixed-`\omega` generalized EVP in density coordinates.
+            %
+            % - Topic: Compute modes
+            % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
+            % - Parameter self: InternalModesDensitySpectral instance
+            % - Parameter omega: frequency in radians per second
+            % - Returns A: left generalized-eigenproblem matrix
+            % - Returns B: right generalized-eigenproblem matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             Tzz = self.Txx_xLobatto;
@@ -76,6 +120,19 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         end
 
         function [A,B] = ApplyBoundaryConditions(self,A,B)
+            % Apply the active boundary conditions in density coordinates.
+            %
+            % With a free surface, this enforces the manuscript relation
+            % `N^2 \partial_s G_j = G_j / h_j` at the surface.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = ApplyBoundaryConditions(self,A,B)
+            % - Parameter self: InternalModesDensitySpectral instance
+            % - Parameter A: left generalized-eigenproblem matrix
+            % - Parameter B: right generalized-eigenproblem matrix
+            % - Returns A: boundary-conditioned left matrix
+            % - Returns B: boundary-conditioned right matrix
             T = self.T_xLobatto;
             Tz = self.Tx_xLobatto;
             n = self.nEVP;
