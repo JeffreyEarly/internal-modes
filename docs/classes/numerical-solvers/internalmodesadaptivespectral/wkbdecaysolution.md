@@ -23,7 +23,7 @@ Evaluate the Airy-based WKB decay envelope used for pruning regions.
 ## Parameters
 + `xi`  positive distance from a turning point in WKB coordinates
 + `L_osc`  total oscillatory extent used in the asymptotic scaling
-+ `N2Omega2`  values of `N2-\omega^2`
++ `N2Omega2`  values of $$N^2-\omega^2$$
 
 ## Returns
 + `decay`  WKB decay-envelope estimate

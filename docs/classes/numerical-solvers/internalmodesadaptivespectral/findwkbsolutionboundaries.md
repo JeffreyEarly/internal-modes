@@ -28,7 +28,7 @@ Estimate adaptive-region boundaries from turning points and WKB decay.
 
 ## Returns
 + `zBoundariesAndTPs`  region boundaries including turning points
-+ `thesign`  sign of `N2-\omega^2` in each region
++ `thesign`  sign of $$N^2-\omega^2$$ in each region
 
 ## Discussion
 

@@ -9,7 +9,7 @@ mathjax: true
 
 #  Lz
 
-Total water-column depth `D = zMax - zMin`.
+Total water-column depth $$D = zMax - zMin$$.
 
 
 ---

@@ -3,19 +3,19 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
     %
     % `InternalModesWKBHydrostatic` uses the spectral initialization path of
     % [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral)
-    % to resolve `N2(z)`, then applies a hydrostatic WKB approximation for
-    % the fixed-`\omega` problem. This class is useful as an asymptotic
+    % to resolve $$N^2(z)$$, then applies a hydrostatic WKB approximation for
+    % the fixed-$$\omega$$ problem. This class is useful as an asymptotic
     % comparison tool rather than as the primary production solver.
     %
     % In this approximation, the vertical phase coordinate is built from
-    % the positive part of `N(z) - \omega`, and the modal depth is
+    % the positive part of $$N(z) - \omega$$, and the modal depth is
     % estimated from
     %
     % $$
     % h_j = \frac{1}{g}\left(\frac{d}{j\pi}\right)^2,
     % $$
     %
-    % where `d` is the accumulated hydrostatic WKB phase over the
+    % where $$d$$ is the accumulated hydrostatic WKB phase over the
     % oscillatory region.
     %
     % ```matlab
@@ -72,7 +72,7 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega] = ModesAtWavenumber(self, k )
-            % Report that the hydrostatic WKB solver does not implement fixed-`K` modes.
+            % Report that the hydrostatic WKB solver does not implement fixed-$$K$$ modes.
             %
             % - Topic: Developer topics
             % - Developer: true

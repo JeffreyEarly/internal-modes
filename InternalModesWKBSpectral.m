@@ -9,8 +9,8 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     % s(z) = \int_z^D N(z') \, dz',
     % $$
     %
-    % and solves the transformed fixed-`K` and fixed-`\omega`
-    % eigenproblems in `s`, with
+    % and solves the transformed fixed-$$K$$ and fixed-$$\omega$$
+    % eigenproblems in $$s$$, with
     %
     % $$
     % F_j = h_j N \, \partial_s G_j.
@@ -31,12 +31,12 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     % - Declaration: classdef InternalModesWKBSpectral < InternalModesSpectral
     
     properties %(Access = private)
-        % Derivative of `N(z)` used when assembling the stretched-coordinate EVP.
+        % Derivative of $$N(z)$$ used when assembling the stretched-coordinate EVP.
         %
         % - Topic: Developer topics
         % - Developer: true
         Nz_function
-        % `\partial_z N` sampled on the Lobatto grid in the WKB coordinate.
+        % $$\partial_z N$$ sampled on the Lobatto grid in the WKB coordinate.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -92,7 +92,7 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [A,B] = EigenmatricesForWavenumber(self, k )
-            % Assemble the fixed-`K` generalized EVP in the WKB coordinate.
+            % Assemble the fixed-$$K$$ generalized EVP in the WKB coordinate.
             %
             % In manuscript notation this method discretizes
             %
@@ -118,7 +118,7 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
         end
         
         function [A,B] = EigenmatricesForFrequency(self, omega )
-            % Assemble the fixed-`\omega` generalized EVP in the WKB coordinate.
+            % Assemble the fixed-$$\omega$$ generalized EVP in the WKB coordinate.
             %
             % - Topic: Compute modes
             % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)

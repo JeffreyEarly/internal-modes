@@ -24,16 +24,16 @@ Test whether a gridded density profile is monotonic enough for stretched coordin
 + `zLobatto`  Lobatto depth grid
 + `rho_zCheb`  Chebyshev coefficients of density
 + `rho_zLobatto`  density sampled on `zLobatto`
-+ `rhoz_zCheb`  Chebyshev coefficients of `\partial_z \rho`
-+ `rhoz_zLobatto`  `\partial_z \rho` sampled on `zLobatto`
++ `rhoz_zCheb`  Chebyshev coefficients of $$\partial_z \rho$$
++ `rhoz_zLobatto`  $$\partial_z \rho$$ sampled on `zLobatto`
 
 ## Returns
 + `flag`  monotonicity status flag
 + `dTotalVariation`  fractional change in total variation after coercion
 + `rho_zCheb`  possibly corrected Chebyshev coefficients of density
 + `rho_zLobatto`  possibly corrected density on `zLobatto`
-+ `rhoz_zCheb`  possibly corrected Chebyshev coefficients of `\partial_z \rho`
-+ `rhoz_zLobatto`  possibly corrected `\partial_z \rho` on `zLobatto`
++ `rhoz_zCheb`  possibly corrected Chebyshev coefficients of $$\partial_z \rho$$
++ `rhoz_zLobatto`  possibly corrected $$\partial_z \rho$$ on `zLobatto`
 
 ## Discussion
 

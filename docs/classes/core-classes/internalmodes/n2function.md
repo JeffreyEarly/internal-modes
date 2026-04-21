@@ -9,7 +9,7 @@ mathjax: true
 
 #  N2Function
 
-Function handle for the benchmark buoyancy-frequency profile `N^2(z)`.
+Function handle for the benchmark buoyancy-frequency profile $$N^2(z)$$.
 
 
 ---

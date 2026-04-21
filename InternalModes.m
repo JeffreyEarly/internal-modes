@@ -5,7 +5,7 @@ classdef InternalModes < handle
     % `InternalModes` is the user-facing wrapper around the concrete
     % solver classes. It initializes one of the numerical, analytical, or
     % asymptotic implementations, then forwards the common public
-    % interface for requesting `F_j(z)`, `G_j(z)`, `h_j`, SQG modes, and
+    % interface for requesting $$F_j(z)$$, $$G_j(z)$$, $$h_j$$, SQG modes, and
     % background-stratification diagnostics.
     %
     % The wrapper follows the vertical eigenvalue problems described in
@@ -15,13 +15,13 @@ classdef InternalModes < handle
     % \partial_{zz} G_j = -\frac{N^2 - \omega^2}{g h_j} G_j
     % $$
     %
-    % for fixed `\omega`, and
+    % for fixed $$\omega$$, and
     %
     % $$
     % \partial_{zz} G_j - K^2 G_j = -\frac{N^2 - f_0^2}{g h_j} G_j
     % $$
     %
-    % for fixed `K`.
+    % for fixed $$K$$.
     %
     % The primary construction path is either:
     %
@@ -139,7 +139,7 @@ classdef InternalModes < handle
         %
         % - Topic: Inspect analytical solutions
         stratification = 'user specified';
-        % Function handle for the benchmark density profile `\bar{\rho}(z)`.
+        % Function handle for the benchmark density profile $$\bar{\rho}(z)$$.
         %
         % For user-specified gridded profiles this may be empty. For the
         % built-in analytical and benchmark cases it stores the
@@ -148,7 +148,7 @@ classdef InternalModes < handle
         %
         % - Topic: Inspect grids and stratification
         rhoFunction
-        % Function handle for the benchmark buoyancy-frequency profile `N^2(z)`.
+        % Function handle for the benchmark buoyancy-frequency profile $$N^2(z)$$.
         %
         % For user-specified gridded profiles this may be empty. For the
         % built-in analytical and benchmark cases it stores the
@@ -327,7 +327,7 @@ classdef InternalModes < handle
         end
         
         function ShowRelativeErrorAtWavenumber( self, k )
-            % Plot benchmark relative errors for a built-in profile at fixed `K`.
+            % Plot benchmark relative errors for a built-in profile at fixed $$K$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: ShowRelativeErrorAtWavenumber(self,k)
@@ -372,7 +372,7 @@ classdef InternalModes < handle
         end
         
         function ShowRelativeErrorAtFrequency( self, omega )
-            % Plot benchmark relative errors for a built-in profile at fixed `\omega`.
+            % Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: ShowRelativeErrorAtFrequency(self,omega)

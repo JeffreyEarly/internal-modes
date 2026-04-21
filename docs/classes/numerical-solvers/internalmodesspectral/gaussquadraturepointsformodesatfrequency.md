@@ -9,7 +9,7 @@ mathjax: true
 
 #  GaussQuadraturePointsForModesAtFrequency
 
-Return quadrature points tailored to fixed-`\omega` modes.
+Return quadrature points tailored to fixed-$$\omega$$ modes.
 
 > Developer documentation: this item describes internal implementation details.
 

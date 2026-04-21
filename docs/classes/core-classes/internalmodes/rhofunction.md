@@ -9,7 +9,7 @@ mathjax: true
 
 #  rhoFunction
 
-Function handle for the benchmark density profile `\bar{\rho}(z)`.
+Function handle for the benchmark density profile $$\bar{\rho}(z)$$.
 
 
 ---

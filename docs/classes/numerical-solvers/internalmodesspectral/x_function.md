@@ -9,7 +9,7 @@ mathjax: true
 
 #  x_function
 
-Active stretched-coordinate map `x(z)` used by the solver.
+Active stretched-coordinate map $$x(z)$$ used by the solver.
 
 > Developer documentation: this item describes internal implementation details.
 

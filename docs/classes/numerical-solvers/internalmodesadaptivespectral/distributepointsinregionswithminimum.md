@@ -23,7 +23,7 @@ Distribute collocation points across adaptive regions.
 ## Parameters
 + `nTotalPoints`  total number of collocation points
 + `boundaries`  region boundaries in WKB coordinates
-+ `thesign`  signs of `N2-\omega^2` in each region
++ `thesign`  signs of $$N^2-\omega^2$$ in each region
 
 ## Returns
 + `nEVPPoints`  point counts assigned to each region

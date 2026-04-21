@@ -9,7 +9,7 @@ mathjax: true
 
 #  ModesAtFrequencyApproximatedAiry
 
-Return the simplified WKB Airy approximation for fixed `\omega`.
+Return the simplified WKB Airy approximation for fixed $$\omega$$.
 
 > Developer documentation: this item describes internal implementation details.
 

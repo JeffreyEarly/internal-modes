@@ -9,7 +9,7 @@ mathjax: true
 
 #  GFromVCheb
 
-Map Chebyshev coefficients to `G_j` on the active internal grid.
+Map Chebyshev coefficients to $$G_j$$ on the active internal grid.
 
 > Developer documentation: this item describes internal implementation details.
 

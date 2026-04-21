@@ -9,7 +9,7 @@ mathjax: true
 
 #  BarotropicEquivalentDepthAtWavenumber
 
-Estimate the barotropic equivalent depth for fixed `K`.
+Estimate the barotropic equivalent depth for fixed $$K$$.
 
 
 ---

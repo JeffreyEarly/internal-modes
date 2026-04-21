@@ -9,7 +9,7 @@ mathjax: true
 
 #  N2_zLobatto
 
-Return the spectral Lobatto samples of `N2(z)`.
+Return the spectral Lobatto samples of $$N^2(z)$$.
 
 
 ---

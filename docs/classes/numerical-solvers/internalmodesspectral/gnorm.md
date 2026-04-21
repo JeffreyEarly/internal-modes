@@ -9,7 +9,7 @@ mathjax: true
 
 #  GNorm
 
-`K`-constant normalization functional.
+$$K$$-constant normalization functional.
 
 > Developer documentation: this item describes internal implementation details.
 

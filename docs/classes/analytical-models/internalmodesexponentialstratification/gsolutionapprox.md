@@ -9,7 +9,7 @@ mathjax: true
 
 #  GSolutionApprox
 
-Approximate analytical `G(z,\omega,c)` solution handle.
+Approximate analytical $$G(z,\omega,c)$$ solution handle.
 
 > Developer documentation: this item describes internal implementation details.
 

@@ -9,7 +9,7 @@ mathjax: true
 
 #  FOutFromVCheb
 
-Map Chebyshev coefficients to `F_j(z)` on the public output grid.
+Map Chebyshev coefficients to $$F_j(z)$$ on the public output grid.
 
 > Developer documentation: this item describes internal implementation details.
 

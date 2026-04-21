@@ -9,7 +9,7 @@ mathjax: true
 
 #  BarotropicModeAtWavenumber
 
-Return the analytical barotropic mode branch for fixed `K`.
+Return the analytical barotropic mode branch for fixed $$K$$.
 
 
 ---

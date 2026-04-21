@@ -29,8 +29,8 @@ the shared public interface for requesting modes at fixed wavenumber
 or fixed frequency.
 
 Following Section 2.3 of Early, Lelong, and Smith (2020), the
-package centers on the vertical structure functions `F_j(z)` and
-`G_j(z)` with equivalent depths `h_j`, connected by
+package centers on the vertical structure functions $$F_j(z)$$ and
+$$G_j(z)$$ with equivalent depths $$h_j$$, connected by
 
 $$
 (N^2 - \omega^2) G_j = -g \, \partial_z F_j,
@@ -38,7 +38,7 @@ $$
 F_j = h_j \, \partial_z G_j.
 $$
 
-Concrete subclasses solve either the fixed-`K` or fixed-`\omega`
+Concrete subclasses solve either the fixed-$$K$$ or fixed-$$\omega$$
 eigenvalue problems using spectral, finite-difference, analytical,
 or WKB-based formulations, but they all expose the same shared state
 documented here.
@@ -48,7 +48,7 @@ documented here.
 
 ## Topics
 + Inspect grids and stratification
-  + [`Lz`](/internal-modes/classes/core-classes/internalmodesbase/lz.html) Total water-column depth `D = zMax - zMin`.
+  + [`Lz`](/internal-modes/classes/core-classes/internalmodesbase/lz.html) Total water-column depth $$D = zMax - zMin$$.
   + [`N2`](/internal-modes/classes/core-classes/internalmodesbase/n2.html) Buoyancy frequency squared sampled on `zOut`.
   + [`f0`](/internal-modes/classes/core-classes/internalmodesbase/f0.html) Coriolis parameter at the selected latitude.
   + [`latitude`](/internal-modes/classes/core-classes/internalmodesbase/latitude.html) in degrees used to compute `f0`.

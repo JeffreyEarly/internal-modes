@@ -9,7 +9,7 @@ mathjax: true
 
 #  BarotropicEquivalentDepthAtFrequency
 
-Estimate the barotropic equivalent depth for fixed `\omega`.
+Estimate the barotropic equivalent depth for fixed $$\omega$$.
 
 
 ---

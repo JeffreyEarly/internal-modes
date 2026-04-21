@@ -9,7 +9,7 @@ mathjax: true
 
 #  EigenmatricesForFrequency
 
-Assemble the fixed-`\omega` generalized EVP on the spectral grid.
+Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
 
 
 ---

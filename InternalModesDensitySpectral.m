@@ -30,7 +30,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
     % - Declaration: classdef InternalModesDensitySpectral < InternalModesSpectral
     
     properties %(Access = private)
-        % `\partial_z N^2` sampled on the Lobatto grid in the density coordinate.
+        % $$\partial_z N^2$$ sampled on the Lobatto grid in the density coordinate.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -82,7 +82,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [A,B] = EigenmatricesForWavenumber(self, k )
-            % Assemble the fixed-`K` generalized EVP in density coordinates.
+            % Assemble the fixed-$$K$$ generalized EVP in density coordinates.
             %
             % - Topic: Compute modes
             % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
@@ -101,7 +101,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
         end
 
         function [A,B] = EigenmatricesForFrequency(self, omega )
-            % Assemble the fixed-`\omega` generalized EVP in density coordinates.
+            % Assemble the fixed-$$\omega$$ generalized EVP in density coordinates.
             %
             % - Topic: Compute modes
             % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
@@ -123,7 +123,7 @@ classdef InternalModesDensitySpectral < InternalModesSpectral
             % Apply the active boundary conditions in density coordinates.
             %
             % With a free surface, this enforces the manuscript relation
-            % `N^2 \partial_s G_j = G_j / h_j` at the surface.
+            % $$N^2 \partial_s G_j = G_j / h_j$$ at the surface.
             %
             % - Topic: Developer topics
             % - Developer: true

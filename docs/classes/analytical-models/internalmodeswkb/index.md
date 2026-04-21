@@ -24,8 +24,8 @@ Compute WKB mode approximations from a spectrally resolved stratification.
 
 `InternalModesWKB` uses the spectral initialization machinery of
 [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral)
-to build smooth representations of `\rho(z)` and `N^2(z)`, then
-applies the WKB asymptotic formulas for the fixed-`\omega`
+to build smooth representations of $$\rho(z)$$ and $$N^2(z)$$, then
+applies the WKB asymptotic formulas for the fixed-$$\omega$$
 eigenvalue problem.
 
 This class is most useful for asymptotic comparison, for exploring
@@ -45,8 +45,8 @@ im = InternalModesWKB(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
 + Create and initialize modes
   + [`InternalModesWKB`](/internal-modes/classes/analytical-models/internalmodeswkb/internalmodeswkb.html) Initialize the WKB approximation solver.
 + Inspect analytical solutions
-  + [`ModesAtFrequencyAiry`](/internal-modes/classes/analytical-models/internalmodeswkb/modesatfrequencyairy.html) Return the turning-point-aware Airy approximation for fixed `\omega`.
-  + [`N2_zLobatto`](/internal-modes/classes/analytical-models/internalmodeswkb/n2_zlobatto.html) Return the spectral Lobatto samples of `N2(z)`.
+  + [`ModesAtFrequencyAiry`](/internal-modes/classes/analytical-models/internalmodeswkb/modesatfrequencyairy.html) Return the turning-point-aware Airy approximation for fixed $$\omega$$.
+  + [`N2_zLobatto`](/internal-modes/classes/analytical-models/internalmodeswkb/n2_zlobatto.html) Return the spectral Lobatto samples of $$N^2(z)$$.
   + [`zLobatto`](/internal-modes/classes/analytical-models/internalmodeswkb/zlobatto.html) Return the spectral Lobatto grid in physical depth coordinates.
 
 
@@ -54,7 +54,7 @@ im = InternalModesWKB(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude);
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
   + [`Diff1_zCheb`](/internal-modes/classes/analytical-models/internalmodeswkb/diff1_zcheb.html) Return the spectral first-derivative operator in Chebyshev space.
-  + [`ModesAtFrequencyApproximatedAiry`](/internal-modes/classes/analytical-models/internalmodeswkb/modesatfrequencyapproximatedairy.html) Return the simplified WKB Airy approximation for fixed `\omega`.
+  + [`ModesAtFrequencyApproximatedAiry`](/internal-modes/classes/analytical-models/internalmodeswkb/modesatfrequencyapproximatedairy.html) Return the simplified WKB Airy approximation for fixed $$\omega$$.
   + [`SurfaceModesAtWavenumberAlt`](/internal-modes/classes/analytical-models/internalmodeswkb/surfacemodesatwavenumberalt.html) Return the alternate WKB approximation for the surface SQG mode.
 
 

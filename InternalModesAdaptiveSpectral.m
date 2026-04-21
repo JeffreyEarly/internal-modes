@@ -9,7 +9,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
     % blocks across the turning points.
     %
     % This is most useful at fixed frequency, where the turning points of
-    % `N2(z) - \omega^2` can leave large regions that are exponentially
+    % $$N^2(z) - \omega^2$$ can leave large regions that are exponentially
     % decaying rather than oscillatory.
     %
     % ```matlab
@@ -28,7 +28,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         % - Topic: Developer topics
         % - Developer: true
         x_zLobatto                  % x (xi) coordinate on the zLobatto grid
-        % Chebyshev coefficients of `N(z)` on the reference grid.
+        % Chebyshev coefficients of $$N(z)$$ on the reference grid.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -180,7 +180,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
         end
 
         function [A,B] = EigenmatricesForFrequency(self, omega )
-            % Assemble the coupled fixed-`\omega` EVP on the adaptive WKB grid.
+            % Assemble the coupled fixed-$$\omega$$ EVP on the adaptive WKB grid.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -527,7 +527,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % - Parameter omega: target frequency in radians per second
             % - Parameter requiredDecay: minimum retained evanescent amplitude ratio
             % - Returns zBoundariesAndTPs: region boundaries including turning points
-            % - Returns thesign: sign of `N2-\omega^2` in each region
+            % - Returns thesign: sign of $$N^2-\omega^2$$ in each region
             % The requiredDecay is <=1 and find the point at which the
             % solution has decayed below that value.
             [zBoundariesAndTPs, thesign, boundaryIndices] = InternalModesSpectral.FindTurningPointBoundariesAtFrequency(N2, z, omega);
@@ -600,7 +600,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % - Declaration: decay = WKBDecaySolution(xi,L_osc,N2Omega2)
             % - Parameter xi: positive distance from a turning point in WKB coordinates
             % - Parameter L_osc: total oscillatory extent used in the asymptotic scaling
-            % - Parameter N2Omega2: values of `N2-\omega^2`
+            % - Parameter N2Omega2: values of $$N^2-\omega^2$$
             % - Returns decay: WKB decay-envelope estimate
             % The decay part of the lowest F-mode. xi should be > 0
             c = L_osc./((3/4)*pi);
@@ -621,7 +621,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % - Developer: true
             % - Declaration: [newBoundaries,newSigns] = RemoveRegionAtIndex(oldBoundaries,oldSigns,index)
             % - Parameter oldBoundaries: current region boundaries
-            % - Parameter oldSigns: signs of `N2-\omega^2` in each region
+            % - Parameter oldSigns: signs of $$N^2-\omega^2$$ in each region
             % - Parameter index: boundary index to remove
             % - Returns newBoundaries: merged region boundaries
             % - Returns newSigns: updated regional signs
@@ -652,7 +652,7 @@ classdef InternalModesAdaptiveSpectral < InternalModesWKBSpectral
             % - Declaration: nEVPPoints = DistributePointsInRegionsWithMinimum(nTotalPoints,boundaries,thesign)
             % - Parameter nTotalPoints: total number of collocation points
             % - Parameter boundaries: region boundaries in WKB coordinates
-            % - Parameter thesign: signs of `N2-\omega^2` in each region
+            % - Parameter thesign: signs of $$N^2-\omega^2$$ in each region
             % - Returns nEVPPoints: point counts assigned to each region
             % This algorithm distributes the points/polynomials amongst the
             % different regions/equations

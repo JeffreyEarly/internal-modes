@@ -9,7 +9,7 @@ mathjax: true
 
 #  BarotropicModeAtFrequency
 
-Return the analytical barotropic mode branch for fixed `\omega`.
+Return the analytical barotropic mode branch for fixed $$\omega$$.
 
 
 ---

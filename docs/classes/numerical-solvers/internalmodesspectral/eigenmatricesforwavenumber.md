@@ -9,7 +9,7 @@ mathjax: true
 
 #  EigenmatricesForWavenumber
 
-Assemble the fixed-`K` generalized EVP on the spectral grid.
+Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
 
 
 ---

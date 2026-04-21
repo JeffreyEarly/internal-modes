@@ -31,13 +31,13 @@ $$
 \partial_{zz} G_j - K^2 G_j = \frac{f_0^2 - N^2}{g h_j} G_j
 $$
 
-for fixed `K`, or
+for fixed $$K$$, or
 
 $$
 \partial_{zz} G_j = \frac{\omega^2 - N^2}{g h_j} G_j
 $$
 
-for fixed `\omega`, together with
+for fixed $$\omega$$, together with
 
 $$
 F_j = h_j \partial_z G_j.
@@ -64,8 +64,8 @@ im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=
 + Compute modes
   + [`BottomModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/bottommodesatwavenumber.html) Return the bottom SQG mode at fixed horizontal wavenumber.
   + [`BoundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/boundarymodesatwavenumber.html) Return either the surface or bottom boundary mode at fixed wavenumber.
-  + [`EigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-`\omega` generalized EVP on the spectral grid.
-  + [`EigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-`K` generalized EVP on the spectral grid.
+  + [`EigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
+  + [`EigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
   + [`SurfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 
 
@@ -87,19 +87,19 @@ These items document internal implementation details and are not part of the pri
   + [`EigenmatricesForMDAModes`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesformdamodes.html) Assemble the MDA diagnostic EVP.
   + [`EigenmatricesForRigidLidGModes`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforrigidlidgmodes.html) Assemble the rigid-lid geostrophic `G`-mode EVP.
   + [`EigenmatricesForSmithVannesteModes`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforsmithvannestemodes.html) Assemble the Smith-Vanneste SQG-like EVP used by a helper workflow.
-  + [`FFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/ffromvcheb.html) Map Chebyshev coefficients to `F_j` on the active internal grid.
-  + [`FNorm`](/internal-modes/classes/numerical-solvers/internalmodesspectral/fnorm.html) `\omega`-constant normalization functional.
-  + [`FOutFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/foutfromvcheb.html) Map Chebyshev coefficients to `F_j(z)` on the public output grid.
+  + [`FFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/ffromvcheb.html) Map Chebyshev coefficients to $$F_j$$ on the active internal grid.
+  + [`FNorm`](/internal-modes/classes/numerical-solvers/internalmodesspectral/fnorm.html) $$\omega$$-constant normalization functional.
+  + [`FOutFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/foutfromvcheb.html) Map Chebyshev coefficients to $$F_j(z)$$ on the public output grid.
   + [`FindRootsFromChebyshevVector`](/internal-modes/classes/numerical-solvers/internalmodesspectral/findrootsfromchebyshevvector.html) Find physical-domain roots of a Chebyshev series.
   + [`FindSmallestChebyshevGridWithNoGaps`](/internal-modes/classes/numerical-solvers/internalmodesspectral/findsmallestchebyshevgridwithnogaps.html) Find the coarsest Lobatto grid that covers a target grid without gaps.
-  + [`FindTurningPointBoundariesAtFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/findturningpointboundariesatfrequency.html) Find turning points and region signs for `N2(z)-\omega^2`.
-  + [`GFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gfromvcheb.html) Map Chebyshev coefficients to `G_j` on the active internal grid.
-  + [`GNorm`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gnorm.html) `K`-constant normalization functional.
-  + [`GOutFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/goutfromvcheb.html) Map Chebyshev coefficients to `G_j(z)` on the public output grid.
+  + [`FindTurningPointBoundariesAtFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/findturningpointboundariesatfrequency.html) Find turning points and region signs for $$N^2(z)-\omega^2$$.
+  + [`GFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gfromvcheb.html) Map Chebyshev coefficients to $$G_j$$ on the active internal grid.
+  + [`GNorm`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gnorm.html) $$K$$-constant normalization functional.
+  + [`GOutFromVCheb`](/internal-modes/classes/numerical-solvers/internalmodesspectral/goutfromvcheb.html) Map Chebyshev coefficients to $$G_j(z)$$ on the public output grid.
   + [`GaussQuadraturePointsForEigenmatrices`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsforeigenmatrices.html) Return quadrature points inferred from a generalized EVP.
   + [`GaussQuadraturePointsForMDAModes`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsformdamodes.html) Return quadrature points tailored to the diagnostic MDA modes.
-  + [`GaussQuadraturePointsForModesAtFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsformodesatfrequency.html) Return quadrature points tailored to fixed-`\omega` modes.
-  + [`GaussQuadraturePointsForModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsformodesatwavenumber.html) Return quadrature points tailored to fixed-`K` modes.
+  + [`GaussQuadraturePointsForModesAtFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsformodesatfrequency.html) Return quadrature points tailored to fixed-$$\omega$$ modes.
+  + [`GaussQuadraturePointsForModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/gaussquadraturepointsformodesatwavenumber.html) Return quadrature points tailored to fixed-$$K$$ modes.
   + [`GeostrophicFModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/geostrophicfmodesatwavenumber.html) Return the geostrophic interior `F`-modes at fixed horizontal wavenumber.
   + [`GeostrophicModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/geostrophicmodesatwavenumber.html) Return the geostrophic interior `G`-modes at fixed horizontal wavenumber.
   + [`GeostrophicNorm`](/internal-modes/classes/numerical-solvers/internalmodesspectral/geostrophicnorm.html) Geostrophic normalization functional.
@@ -130,7 +130,7 @@ These items document internal implementation details and are not part of the pri
   + [`xMax`](/internal-modes/classes/numerical-solvers/internalmodesspectral/xmax.html) Maximum value of the active spectral coordinate.
   + [`xMin`](/internal-modes/classes/numerical-solvers/internalmodesspectral/xmin.html) Minimum value of the active spectral coordinate.
   + [`xOut`](/internal-modes/classes/numerical-solvers/internalmodesspectral/xout.html) Output locations mapped into the active spectral coordinate.
-  + [`x_function`](/internal-modes/classes/numerical-solvers/internalmodesspectral/x_function.html) Active stretched-coordinate map `x(z)` used by the solver.
+  + [`x_function`](/internal-modes/classes/numerical-solvers/internalmodesspectral/x_function.html) Active stretched-coordinate map $$x(z)$$ used by the solver.
   + [`z_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodesspectral/z_xlobatto.html) Physical depths associated with `xLobatto`.
 
 

@@ -56,7 +56,7 @@ im = InternalModesDensitySpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + [`N2z_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodesdensityspectral/n2z_xlobatto.html) `\partial_z N^2` sampled on the Lobatto grid in the density coordinate.
+  + [`N2z_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodesdensityspectral/n2z_xlobatto.html) $$\partial_z N^2$$ sampled on the Lobatto grid in the density coordinate.
 
 
 ---

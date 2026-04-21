@@ -15,7 +15,7 @@ classdef InternalModesConstantStratification < InternalModesBase
     % \bar{\rho}(z) = \rho_0 - \frac{N_0^2 \rho_0}{g} z.
     % $$
     %
-    % The fixed-`K` and fixed-`\omega` solutions reduce to trigonometric
+    % The fixed-$$K$$ and fixed-$$\omega$$ solutions reduce to trigonometric
     % or hyperbolic functions with analytically known equivalent depths,
     % making this class the main reference implementation for checking the
     % numerical solvers.
@@ -32,7 +32,7 @@ classdef InternalModesConstantStratification < InternalModesBase
     % - Topic: Developer topics
     % - Declaration: classdef InternalModesConstantStratification < InternalModesBase
     properties (Access = public)
-        % Constant buoyancy frequency `N_0` in radians per second.
+        % Constant buoyancy frequency $$N_0$$ in radians per second.
         %
         % - Topic: Inspect grids and stratification
         N0
@@ -332,7 +332,7 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtWavenumber(self, k)
-            % Return the analytical barotropic mode branch for fixed `K`.
+            % Return the analytical barotropic mode branch for fixed $$K$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtWavenumber(self,k)
@@ -372,7 +372,7 @@ classdef InternalModesConstantStratification < InternalModesBase
         end
         
         function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self, omega)
-            % Return the analytical barotropic mode branch for fixed `\omega`.
+            % Return the analytical barotropic mode branch for fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self,omega)

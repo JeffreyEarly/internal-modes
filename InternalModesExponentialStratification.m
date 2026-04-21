@@ -30,11 +30,11 @@ classdef InternalModesExponentialStratification < InternalModesBase
     % - Topic: Developer topics
     % - Declaration: classdef InternalModesExponentialStratification < InternalModesBase
     properties (Access = public)
-        % Surface buoyancy frequency `N_0` in radians per second.
+        % Surface buoyancy frequency $$N_0$$ in radians per second.
         %
         % - Topic: Inspect grids and stratification
         N0
-        % Exponential e-folding depth `b` in meters.
+        % Exponential e-folding depth $$b$$ in meters.
         %
         % - Topic: Inspect grids and stratification
         b
@@ -61,11 +61,11 @@ classdef InternalModesExponentialStratification < InternalModesBase
         % - Developer: true
         nInitialSearchModes = 128
         
-        % Exact analytical `G(z,\omega,c)` solution handle.
+        % Exact analytical $$G(z,\omega,c)$$ solution handle.
         %
         % - Topic: Inspect analytical solutions
         GSolution
-        % Exact analytical `F(z,\omega,c)` solution handle.
+        % Exact analytical $$F(z,\omega,c)$$ solution handle.
         %
         % - Topic: Inspect analytical solutions
         FSolution
@@ -75,12 +75,12 @@ classdef InternalModesExponentialStratification < InternalModesBase
         % - Topic: Developer topics
         % - Developer: true
         shouldApproximate
-        % Approximate analytical `G(z,\omega,c)` solution handle.
+        % Approximate analytical $$G(z,\omega,c)$$ solution handle.
         %
         % - Topic: Developer topics
         % - Developer: true
         GSolutionApprox
-        % Approximate analytical `F(z,\omega,c)` solution handle.
+        % Approximate analytical $$F(z,\omega,c)$$ solution handle.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -328,7 +328,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function h0 = BarotropicEquivalentDepthAtWavenumber(self, k)
-            % Estimate the barotropic equivalent depth for fixed `K`.
+            % Estimate the barotropic equivalent depth for fixed $$K$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: h0 = BarotropicEquivalentDepthAtWavenumber(self,k)
@@ -349,7 +349,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
         end
         
         function h0 = BarotropicEquivalentDepthAtFrequency(self, omega)
-            % Estimate the barotropic equivalent depth for fixed `\omega`.
+            % Estimate the barotropic equivalent depth for fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: h0 = BarotropicEquivalentDepthAtFrequency(self,omega)
@@ -436,8 +436,8 @@ classdef InternalModesExponentialStratification < InternalModesBase
             % - Parameter self: InternalModesExponentialStratification instance
             % - Parameter omega: frequency row vector
             % - Parameter c: phase-speed row vector
-            % - Returns F: function handle for the analytical `F(z,\omega,c)`
-            % - Returns G: function handle for the analytical `G(z,\omega,c)`
+            % - Returns F: function handle for the analytical $$F(z,\omega,c)$$
+            % - Returns G: function handle for the analytical $$G(z,\omega,c)$$
             if self.shouldApproximate(omega,c) == 1
                 G = self.GSolutionApprox;
                 F = self.FSolutionApprox;

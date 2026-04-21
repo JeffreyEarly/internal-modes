@@ -29,8 +29,8 @@ described in Section 2.3 of Early, Lelong, and Smith (2020).
 
 The valid values are:
 
-- `UpperBoundary.rigidLid` for `G(0) = 0`
-- `UpperBoundary.freeSurface` for `h \partial_z G(0) = G(0)`
+- `UpperBoundary.rigidLid` for $$G(0) = 0$$
+- `UpperBoundary.freeSurface` for $$h \partial_z G(0) = G(0)$$
 - `UpperBoundary.mda`, `UpperBoundary.buoyancyAnomaly`,
   `UpperBoundary.geostrophicFreeSurface`, and `UpperBoundary.custom`
   for specialized internal workflows

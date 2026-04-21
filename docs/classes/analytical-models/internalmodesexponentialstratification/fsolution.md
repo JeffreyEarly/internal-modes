@@ -9,7 +9,7 @@ mathjax: true
 
 #  FSolution
 
-Exact analytical `F(z,\omega,c)` solution handle.
+Exact analytical $$F(z,\omega,c)$$ solution handle.
 
 
 ---

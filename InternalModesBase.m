@@ -8,8 +8,8 @@ classdef (Abstract) InternalModesBase < handle
     % or fixed frequency.
     %
     % Following Section 2.3 of Early, Lelong, and Smith (2020), the
-    % package centers on the vertical structure functions `F_j(z)` and
-    % `G_j(z)` with equivalent depths `h_j`, connected by
+    % package centers on the vertical structure functions $$F_j(z)$$ and
+    % $$G_j(z)$$ with equivalent depths $$h_j$$, connected by
     %
     % $$
     % (N^2 - \omega^2) G_j = -g \, \partial_z F_j,
@@ -17,7 +17,7 @@ classdef (Abstract) InternalModesBase < handle
     % F_j = h_j \, \partial_z G_j.
     % $$
     %
-    % Concrete subclasses solve either the fixed-`K` or fixed-`\omega`
+    % Concrete subclasses solve either the fixed-$$K$$ or fixed-$$\omega$$
     % eigenvalue problems using spectral, finite-difference, analytical,
     % or WKB-based formulations, but they all expose the same shared state
     % documented here.
@@ -48,7 +48,7 @@ classdef (Abstract) InternalModesBase < handle
         %
         % - Topic: Inspect grids and stratification
         f0 % Coriolis parameter at the above latitude.
-        % Total water-column depth `D = zMax - zMin`.
+        % Total water-column depth $$D = zMax - zMin$$.
         %
         % - Topic: Inspect grids and stratification
         Lz % Depth of the ocean.

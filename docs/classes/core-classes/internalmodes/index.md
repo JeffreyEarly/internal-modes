@@ -25,7 +25,7 @@ Create vertical-mode solvers from gridded or analytical stratification.
 `InternalModes` is the user-facing wrapper around the concrete
 solver classes. It initializes one of the numerical, analytical, or
 asymptotic implementations, then forwards the common public
-interface for requesting `F_j(z)`, `G_j(z)`, `h_j`, SQG modes, and
+interface for requesting $$F_j(z)$$, $$G_j(z)$$, $$h_j$$, SQG modes, and
 background-stratification diagnostics.
 
 The wrapper follows the vertical eigenvalue problems described in
@@ -35,13 +35,13 @@ $$
 \partial_{zz} G_j = -\frac{N^2 - \omega^2}{g h_j} G_j
 $$
 
-for fixed `\omega`, and
+for fixed $$\omega$$, and
 
 $$
 \partial_{zz} G_j - K^2 G_j = -\frac{N^2 - f_0^2}{g h_j} G_j
 $$
 
-for fixed `K`.
+for fixed $$K$$.
 
 The primary construction path is either:
 
@@ -73,12 +73,12 @@ psi = im.SurfaceModesAtWavenumber(2*pi/1000);
 + Inspect grids and stratification
   + [`Lz`](/internal-modes/classes/core-classes/internalmodes/lz.html) Total water-column depth.
   + [`N2`](/internal-modes/classes/core-classes/internalmodes/n2.html) Buoyancy frequency squared sampled on `zOut`.
-  + [`N2Function`](/internal-modes/classes/core-classes/internalmodes/n2function.html) Function handle for the benchmark buoyancy-frequency profile `N^2(z)`.
+  + [`N2Function`](/internal-modes/classes/core-classes/internalmodes/n2function.html) Function handle for the benchmark buoyancy-frequency profile $$N^2(z)$$.
   + [`f0`](/internal-modes/classes/core-classes/internalmodes/f0.html) Coriolis parameter at the selected latitude.
   + [`latitude`](/internal-modes/classes/core-classes/internalmodes/latitude.html) in degrees used to compute `f0`.
   + [`rho`](/internal-modes/classes/core-classes/internalmodes/rho.html) Background density sampled on `zOut`.
   + [`rho0`](/internal-modes/classes/core-classes/internalmodes/rho0.html) Reference surface density.
-  + [`rhoFunction`](/internal-modes/classes/core-classes/internalmodes/rhofunction.html) Function handle for the benchmark density profile `\bar{\rho}(z)`.
+  + [`rhoFunction`](/internal-modes/classes/core-classes/internalmodes/rhofunction.html) Function handle for the benchmark density profile $$\bar{\rho}(z)$$.
   + [`rho_z`](/internal-modes/classes/core-classes/internalmodes/rho_z.html) First depth derivative of the background density sampled on `zOut`.
   + [`rho_zz`](/internal-modes/classes/core-classes/internalmodes/rho_zz.html) Second depth derivative of the background density sampled on `zOut`.
   + [`z`](/internal-modes/classes/core-classes/internalmodes/z.html) Output depth grid on which public profiles and modes are returned.
@@ -99,8 +99,8 @@ psi = im.SurfaceModesAtWavenumber(2*pi/1000);
   + [`ConditionNumberAsFunctionOfModeNumber`](/internal-modes/classes/core-classes/internalmodes/conditionnumberasfunctionofmodenumber.html) Compute condition number as a function of retained mode count.
   + [`NumberOfWellConditionedModes`](/internal-modes/classes/core-classes/internalmodes/numberofwellconditionedmodes.html) Estimate how many columns of a mode matrix remain numerically well conditioned.
   + [`RenormalizeForGoodConditioning`](/internal-modes/classes/core-classes/internalmodes/renormalizeforgoodconditioning.html) Renormalize a mode matrix by matching column norms to a common scale.
-  + [`ShowRelativeErrorAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratfrequency.html) Plot benchmark relative errors for a built-in profile at fixed `\omega`.
-  + [`ShowRelativeErrorAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratwavenumber.html) Plot benchmark relative errors for a built-in profile at fixed `K`.
+  + [`ShowRelativeErrorAtFrequency`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratfrequency.html) Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
+  + [`ShowRelativeErrorAtWavenumber`](/internal-modes/classes/core-classes/internalmodes/showrelativeerroratwavenumber.html) Plot benchmark relative errors for a built-in profile at fixed $$K$$.
   + [`StratificationProfileWithName`](/internal-modes/classes/core-classes/internalmodes/stratificationprofilewithname.html) Return one of the built-in benchmark stratification profiles.
   + [`stratification`](/internal-modes/classes/core-classes/internalmodes/stratification.html) Name of the active built-in benchmark stratification profile.
 

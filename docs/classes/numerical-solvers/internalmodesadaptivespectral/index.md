@@ -30,7 +30,7 @@ oscillatory and evanescent regions, then couples separate Chebyshev
 blocks across the turning points.
 
 This is most useful at fixed frequency, where the turning points of
-`N2(z) - \omega^2` can leave large regions that are exponentially
+$$N^2(z) - \omega^2$$ can leave large regions that are exponentially
 decaying rather than oscillatory.
 
 ```matlab
@@ -53,7 +53,7 @@ These items document internal implementation details and are not part of the pri
   + [`DistributePointsInRegionsWithMinimum`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/distributepointsinregionswithminimum.html) Distribute collocation points across adaptive regions.
   + [`FindWKBSolutionBoundaries`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/findwkbsolutionboundaries.html) Estimate adaptive-region boundaries from turning points and WKB decay.
   + [`Lxi`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/lxi.html) Length of each coupled subdomain in the adaptive coordinate.
-  + [`N_zCheb`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/n_zcheb.html) Chebyshev coefficients of `N(z)` on the reference grid.
+  + [`N_zCheb`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/n_zcheb.html) Chebyshev coefficients of $$N(z)$$ on the reference grid.
   + [`RemoveRegionAtIndex`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/removeregionatindex.html) Merge neighboring adaptive regions by removing one boundary.
   + [`T_xCheb_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/t_xcheb_xlobatto.html) Transform coupled Chebyshev coefficients onto the adaptive Lobatto grid.
   + [`T_xCheb_zOutFunction`](/internal-modes/classes/numerical-solvers/internalmodesadaptivespectral/t_xcheb_zoutfunction.html) Transform coupled Chebyshev coefficients onto the public output grid.

@@ -9,7 +9,7 @@ mathjax: true
 
 #  N_zCheb
 
-Chebyshev coefficients of `N(z)` on the reference grid.
+Chebyshev coefficients of $$N(z)$$ on the reference grid.
 
 > Developer documentation: this item describes internal implementation details.
 

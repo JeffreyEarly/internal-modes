@@ -9,7 +9,7 @@ mathjax: true
 
 #  GSolution
 
-Exact analytical `G(z,\omega,c)` solution handle.
+Exact analytical $$G(z,\omega,c)$$ solution handle.
 
 
 ---

@@ -30,8 +30,8 @@ $$
 s(z) = \int_z^D N(z') \, dz',
 $$
 
-and solves the transformed fixed-`K` and fixed-`\omega`
-eigenproblems in `s`, with
+and solves the transformed fixed-$$K$$ and fixed-$$\omega$$
+eigenproblems in $$s$$, with
 
 $$
 F_j = h_j N \, \partial_s G_j.
@@ -57,8 +57,8 @@ im = InternalModesWKBSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nE
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + [`Nz_function`](/internal-modes/classes/numerical-solvers/internalmodeswkbspectral/nz_function.html) Derivative of `N(z)` used when assembling the stretched-coordinate EVP.
-  + [`Nz_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodeswkbspectral/nz_xlobatto.html) `\partial_z N` sampled on the Lobatto grid in the WKB coordinate.
+  + [`Nz_function`](/internal-modes/classes/numerical-solvers/internalmodeswkbspectral/nz_function.html) Derivative of $$N(z)$$ used when assembling the stretched-coordinate EVP.
+  + [`Nz_xLobatto`](/internal-modes/classes/numerical-solvers/internalmodeswkbspectral/nz_xlobatto.html) $$\partial_z N$$ sampled on the Lobatto grid in the WKB coordinate.
 
 
 ---

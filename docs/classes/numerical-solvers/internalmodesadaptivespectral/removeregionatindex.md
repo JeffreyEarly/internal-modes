@@ -22,7 +22,7 @@ Merge neighboring adaptive regions by removing one boundary.
 ```
 ## Parameters
 + `oldBoundaries`  current region boundaries
-+ `oldSigns`  signs of `N2-\omega^2` in each region
++ `oldSigns`  signs of $$N^2-\omega^2$$ in each region
 + `index`  boundary index to remove
 
 ## Returns

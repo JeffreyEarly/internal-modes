@@ -9,7 +9,7 @@ mathjax: true
 
 #  GaussQuadraturePointsForModesAtWavenumber
 
-Return quadrature points tailored to fixed-`K` modes.
+Return quadrature points tailored to fixed-$$K$$ modes.
 
 > Developer documentation: this item describes internal implementation details.
 

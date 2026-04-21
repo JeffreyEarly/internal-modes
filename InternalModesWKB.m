@@ -3,8 +3,8 @@ classdef InternalModesWKB < InternalModesSpectral
     %
     % `InternalModesWKB` uses the spectral initialization machinery of
     % [`InternalModesSpectral`](/internal-modes/classes/numerical-solvers/internalmodesspectral)
-    % to build smooth representations of `\rho(z)` and `N^2(z)`, then
-    % applies the WKB asymptotic formulas for the fixed-`\omega`
+    % to build smooth representations of $$\rho(z)$$ and $$N^2(z)$$, then
+    % applies the WKB asymptotic formulas for the fixed-$$\omega$$
     % eigenvalue problem.
     %
     % This class is most useful for asymptotic comparison, for exploring
@@ -28,7 +28,7 @@ classdef InternalModesWKB < InternalModesSpectral
         %
         % - Topic: Inspect analytical solutions
         zLobatto
-        % Return the spectral Lobatto samples of `N2(z)`.
+        % Return the spectral Lobatto samples of $$N^2(z)$$.
         %
         % - Topic: Inspect analytical solutions
         N2_zLobatto
@@ -83,7 +83,7 @@ classdef InternalModesWKB < InternalModesSpectral
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function [F,G,h,omega] = ModesAtWavenumber(self, k )
-            % Report that the WKB approximation is implemented only for fixed `\omega`.
+            % Report that the WKB approximation is implemented only for fixed $$\omega$$.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -129,7 +129,7 @@ classdef InternalModesWKB < InternalModesSpectral
         end
         
         function [F,G,h] = ModesAtFrequencyAiry(self, omega )
-            % Return the turning-point-aware Airy approximation for fixed `\omega`.
+            % Return the turning-point-aware Airy approximation for fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
             % - Declaration: [F,G,h] = ModesAtFrequencyAiry(self,omega)
@@ -223,7 +223,7 @@ classdef InternalModesWKB < InternalModesSpectral
         end
         
         function [F,G,h] = ModesAtFrequencyApproximatedAiry(self, omega )
-            % Return the simplified WKB Airy approximation for fixed `\omega`.
+            % Return the simplified WKB Airy approximation for fixed $$\omega$$.
             %
             % - Topic: Developer topics
             % - Developer: true

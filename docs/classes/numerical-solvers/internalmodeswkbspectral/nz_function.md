@@ -9,7 +9,7 @@ mathjax: true
 
 #  Nz_function
 
-Derivative of `N(z)` used when assembling the stretched-coordinate EVP.
+Derivative of $$N(z)$$ used when assembling the stretched-coordinate EVP.
 
 > Developer documentation: this item describes internal implementation details.
 

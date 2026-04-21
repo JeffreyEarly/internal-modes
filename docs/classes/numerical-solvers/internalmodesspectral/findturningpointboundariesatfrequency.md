@@ -9,7 +9,7 @@ mathjax: true
 
 #  FindTurningPointBoundariesAtFrequency
 
-Find turning points and region signs for `N2(z)-\omega^2`.
+Find turning points and region signs for $$N^2(z)-\omega^2$$.
 
 > Developer documentation: this item describes internal implementation details.
 
@@ -27,7 +27,7 @@ Find turning points and region signs for `N2(z)-\omega^2`.
 
 ## Returns
 + `zBoundariesAndTPs`  boundaries consisting of the endpoints and turning points
-+ `thesign`  sign of `N2-\omega^2` in each region
++ `thesign`  sign of $$N^2-\omega^2$$ in each region
 + `boundaryIndices`  grid indices associated with each returned boundary
 
 ## Discussion

@@ -36,7 +36,7 @@ $$
 \bar{\rho}(z) = \rho_0 - \frac{N_0^2 \rho_0}{g} z.
 $$
 
-The fixed-`K` and fixed-`\omega` solutions reduce to trigonometric
+The fixed-$$K$$ and fixed-$$\omega$$ solutions reduce to trigonometric
 or hyperbolic functions with analytically known equivalent depths,
 making this class the main reference implementation for checking the
 numerical solvers.
@@ -53,14 +53,14 @@ im = InternalModesConstantStratification(N0=5.2e-3, zIn=[-5000 0], zOut=zOut, la
 + Create and initialize modes
   + [`InternalModesConstantStratification`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/internalmodesconstantstratification.html) Initialize the constant-stratification analytical solver.
 + Inspect grids and stratification
-  + [`N0`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/n0.html) Constant buoyancy frequency `N_0` in radians per second.
+  + [`N0`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/n0.html) Constant buoyancy frequency $$N_0$$ in radians per second.
 + Compute modes
   + [`BottomModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/bottommodesatwavenumber.html) Return the analytical bottom SQG mode for constant stratification.
   + [`SurfaceModesAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/surfacemodesatwavenumber.html) Return the analytical surface SQG mode for constant stratification.
 + Inspect analytical solutions
   + [`BaroclinicModesWithEigenvalue`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/baroclinicmodeswitheigenvalue.html) Evaluate the analytical baroclinic mode shapes for given eigenvalues.
-  + [`BarotropicModeAtFrequency`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/barotropicmodeatfrequency.html) Return the analytical barotropic mode branch for fixed `\omega`.
-  + [`BarotropicModeAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/barotropicmodeatwavenumber.html) Return the analytical barotropic mode branch for fixed `K`.
+  + [`BarotropicModeAtFrequency`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/barotropicmodeatfrequency.html) Return the analytical barotropic mode branch for fixed $$\omega$$.
+  + [`BarotropicModeAtWavenumber`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/barotropicmodeatwavenumber.html) Return the analytical barotropic mode branch for fixed $$K$$.
   + [`BuoyancyFrequencyFromConstantStratification`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/buoyancyfrequencyfromconstantstratification.html) Estimate `N0` and `rho0` from a constant-stratification profile.
   + [`IsStratificationConstant`](/internal-modes/classes/analytical-models/internalmodesconstantstratification/isstratificationconstant.html) Test whether a supplied profile is close to constant stratification.
 

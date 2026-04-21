@@ -9,7 +9,7 @@ mathjax: true
 
 #  b
 
-Exponential e-folding depth `b` in meters.
+Exponential e-folding depth $$b$$ in meters.
 
 
 ---

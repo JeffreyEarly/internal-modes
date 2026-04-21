@@ -10,13 +10,13 @@ classdef InternalModesSpectral < InternalModesBase
     % \partial_{zz} G_j - K^2 G_j = \frac{f_0^2 - N^2}{g h_j} G_j
     % $$
     %
-    % for fixed `K`, or
+    % for fixed $$K$$, or
     %
     % $$
     % \partial_{zz} G_j = \frac{\omega^2 - N^2}{g h_j} G_j
     % $$
     %
-    % for fixed `\omega`, together with
+    % for fixed $$\omega$$, together with
     %
     % $$
     % F_j = h_j \partial_z G_j.
@@ -146,37 +146,37 @@ classdef InternalModesSpectral < InternalModesBase
 
         % Set on initialization by the subclass, these transformations are
         % applied after solving the EVP to transform back into z-space.
-        % Map generalized-eigenvalues to equivalent depths `h_j`.
+        % Map generalized-eigenvalues to equivalent depths $$h_j$$.
         %
         % - Topic: Developer topics
         % - Developer: true
         hFromLambda;
-        % Map Chebyshev coefficients to `G_j(z)` on the public output grid.
+        % Map Chebyshev coefficients to $$G_j(z)$$ on the public output grid.
         %
         % - Topic: Developer topics
         % - Developer: true
         GOutFromVCheb;
-        % Map Chebyshev coefficients to `F_j(z)` on the public output grid.
+        % Map Chebyshev coefficients to $$F_j(z)$$ on the public output grid.
         %
         % - Topic: Developer topics
         % - Developer: true
         FOutFromVCheb;
-        % Map Chebyshev coefficients to `G_j` on the active internal grid.
+        % Map Chebyshev coefficients to $$G_j$$ on the active internal grid.
         %
         % - Topic: Developer topics
         % - Developer: true
         GFromVCheb;
-        % Map Chebyshev coefficients to `F_j` on the active internal grid.
+        % Map Chebyshev coefficients to $$F_j$$ on the active internal grid.
         %
         % - Topic: Developer topics
         % - Developer: true
         FFromVCheb;
-        % `K`-constant normalization functional.
+        % $$K$$-constant normalization functional.
         %
         % - Topic: Developer topics
         % - Developer: true
         GNorm;
-        % `\omega`-constant normalization functional.
+        % $$\omega$$-constant normalization functional.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -189,7 +189,7 @@ classdef InternalModesSpectral < InternalModesBase
     end
 
     properties (SetObservable, AbortSet, Access = public)
-        % Active stretched-coordinate map `x(z)` used by the solver.
+        % Active stretched-coordinate map $$x(z)$$ used by the solver.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -286,7 +286,7 @@ classdef InternalModesSpectral < InternalModesBase
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [A,B] = EigenmatricesForWavenumber(self, k )
-            % Assemble the fixed-`K` generalized EVP on the spectral grid.
+            % Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
             %
             % - Topic: Compute modes
             % - Declaration: [A,B] = EigenmatricesForWavenumber(self,k)
@@ -309,7 +309,7 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function [A,B] = EigenmatricesForFrequency(self, omega )
-            % Assemble the fixed-`\omega` generalized EVP on the spectral grid.
+            % Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
             %
             % - Topic: Compute modes
             % - Declaration: [A,B] = EigenmatricesForFrequency(self,omega)
@@ -869,7 +869,7 @@ classdef InternalModesSpectral < InternalModesBase
         end
         
         function z_g = GaussQuadraturePointsForModesAtFrequency(self,nPoints,omega)
-            % Return quadrature points tailored to fixed-`\omega` modes.
+            % Return quadrature points tailored to fixed-$$\omega$$ modes.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -882,7 +882,7 @@ classdef InternalModesSpectral < InternalModesBase
             z_g = self.GaussQuadraturePointsForEigenmatrices(nPoints,A,B);
         end
         function z_g = GaussQuadraturePointsForModesAtWavenumber(self,nPoints,k)
-            % Return quadrature points tailored to fixed-`K` modes.
+            % Return quadrature points tailored to fixed-$$K$$ modes.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -1327,7 +1327,7 @@ classdef InternalModesSpectral < InternalModesBase
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         function [zBoundariesAndTPs, thesign, boundaryIndices] = FindTurningPointBoundariesAtFrequency(N2, z, omega)
-            % Find turning points and region signs for `N2(z)-\omega^2`.
+            % Find turning points and region signs for $$N^2(z)-\omega^2$$.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -1336,7 +1336,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Parameter z: depth grid
             % - Parameter omega: target frequency in radians per second
             % - Returns zBoundariesAndTPs: boundaries consisting of the endpoints and turning points
-            % - Returns thesign: sign of `N2-\omega^2` in each region
+            % - Returns thesign: sign of $$N^2-\omega^2$$ in each region
             % - Returns boundaryIndices: grid indices associated with each returned boundary
             % This function returns not just the turning points, but also
             % the top and bottom boundary locations in z. The boundary
@@ -1376,14 +1376,14 @@ classdef InternalModesSpectral < InternalModesBase
             % - Parameter zLobatto: Lobatto depth grid
             % - Parameter rho_zCheb: Chebyshev coefficients of density
             % - Parameter rho_zLobatto: density sampled on `zLobatto`
-            % - Parameter rhoz_zCheb: Chebyshev coefficients of `\partial_z \rho`
-            % - Parameter rhoz_zLobatto: `\partial_z \rho` sampled on `zLobatto`
+            % - Parameter rhoz_zCheb: Chebyshev coefficients of $$\partial_z \rho$$
+            % - Parameter rhoz_zLobatto: $$\partial_z \rho$$ sampled on `zLobatto`
             % - Returns flag: monotonicity status flag
             % - Returns dTotalVariation: fractional change in total variation after coercion
             % - Returns rho_zCheb: possibly corrected Chebyshev coefficients of density
             % - Returns rho_zLobatto: possibly corrected density on `zLobatto`
-            % - Returns rhoz_zCheb: possibly corrected Chebyshev coefficients of `\partial_z \rho`
-            % - Returns rhoz_zLobatto: possibly corrected `\partial_z \rho` on `zLobatto`
+            % - Returns rhoz_zCheb: possibly corrected Chebyshev coefficients of $$\partial_z \rho$$
+            % - Returns rhoz_zLobatto: possibly corrected $$\partial_z \rho$$ on `zLobatto`
             % We want to know if the density function is decreasing as z
             % increases. If it's not, are the discrepencies small enough
             % that we can just force them?

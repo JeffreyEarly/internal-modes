@@ -22,8 +22,8 @@ Solve the vertical eigenvalue problems with finite-difference matrices.
 
 ## Overview
 
-`InternalModesFiniteDifference` discretizes the fixed-`K` and
-fixed-`\omega` eigenvalue problems directly on the supplied depth
+`InternalModesFiniteDifference` discretizes the fixed-$$K$$ and
+fixed-$$\omega$$ eigenvalue problems directly on the supplied depth
 grid. It uses arbitrary-order finite-difference stencils generated
 from the Fornberg weights algorithm and optionally interpolates the
 resulting modes onto a separate output grid.

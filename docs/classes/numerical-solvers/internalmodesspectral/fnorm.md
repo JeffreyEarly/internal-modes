@@ -9,7 +9,7 @@ mathjax: true
 
 #  FNorm
 
-`\omega`-constant normalization functional.
+$$\omega$$-constant normalization functional.
 
 > Developer documentation: this item describes internal implementation details.
 

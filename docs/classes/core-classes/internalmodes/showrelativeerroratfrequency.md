@@ -9,7 +9,7 @@ mathjax: true
 
 #  ShowRelativeErrorAtFrequency
 
-Plot benchmark relative errors for a built-in profile at fixed `\omega`.
+Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
 
 
 ---
