@@ -242,6 +242,13 @@ classdef InternalModesWKBSpectral < InternalModesSpectral
     end
     
     methods (Access = protected)
+        function self = nEVPDidChange(self,~,~)
+            nEVPDidChange@InternalModesSpectral(self,[],[]);
+            if ~isempty(self.Nz_function)
+                self.Nz_xLobatto = self.Nz_function(self.z_xLobatto);
+            end
+        end
+
         function out = requiresMonotonicDensitySetting(~)
             out = 1;
         end

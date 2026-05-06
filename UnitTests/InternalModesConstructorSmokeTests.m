@@ -117,42 +117,119 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
 
             testCase.verifyModes(F, G, h, zOut, 4)
         end
-        
+
         function spectralSurfaceModeComputesWithLowerCamelApi(testCase)
             [rhoFunction, ~, zIn, zOut, ~] = testCase.exponentialProfile();
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             psi = im.surfaceModesAtWavenumber(1e-4);
-            
+
             testCase.verifyEqual(size(psi, ndims(psi)), numel(zOut))
         end
-        
+
         function spectralEigenmatricesForFrequencyComputesWithLowerCamelApi(testCase)
             [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [A, B] = im.eigenmatricesForFrequency(0.8*N0);
-            
+
             testCase.verifyEVPMatrices(A, B, im.nEVP)
         end
-        
+
         function spectralEigenmatricesForWavenumberComputesWithLowerCamelApi(testCase)
             [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [A, B] = im.eigenmatricesForWavenumber(1e-4);
-            
+
             testCase.verifyEVPMatrices(A, B, im.nEVP)
         end
-        
+
+        function spectralModesAtQuadraturePointsSupportsFrequency(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33);
+            [F, G, h, zq] = im.modesAtQuadraturePoints(nPoints=6, omega=0.8*N0);
+
+            testCase.verifyModes(F, G, h, zq, 6)
+            testCase.verifyEqual(numel(zq), 6)
+            testCase.verifyEqual(im.z, zOut)
+            testCase.verifyTrue(all(isfinite(F(:))))
+            testCase.verifyTrue(all(isfinite(G(:))))
+            testCase.verifyTrue(all(isfinite(h(:))))
+        end
+
+        function spectralModesAtQuadraturePointsSupportsWavenumber(testCase)
+            [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
+
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33);
+            [F, G, h, zq] = im.modesAtQuadraturePoints(nPoints=6, k=1e-4);
+
+            testCase.verifyModes(F, G, h, zq, 6)
+            testCase.verifyEqual(numel(zq), 6)
+            testCase.verifyEqual(im.z, zOut)
+        end
+
+        function spectralNEVPMutationRefreshesInternalGrid(testCase)
+            [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
+
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            im.nEVP = 49;
+
+            testCase.verifyEqual(numel(im.xLobatto), 49)
+            testCase.verifySize(im.T_xLobatto, [49 49])
+            testCase.verifyEqual(numel(im.N2_xLobatto), 49)
+            [A, B] = im.eigenmatricesForWavenumber(1e-4);
+            testCase.verifyEVPMatrices(A, B, 49)
+        end
+
+        function wkbSpectralNEVPMutationRefreshesStretchedDerivative(testCase)
+            [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
+
+            im = InternalModesWKBSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            im.nEVP = 49;
+
+            testCase.verifyEqual(numel(im.xLobatto), 49)
+            testCase.verifyEqual(numel(im.Nz_xLobatto), 49)
+            testCase.verifySize(im.T_xLobatto, [49 49])
+        end
+
+        function spectralLegacyGaussQuadratureWrappersStillCompute(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+
+            im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=129, nModes=4);
+            zFrequency = im.GaussQuadraturePointsForModesAtFrequency(6, 0.8*N0);
+            zWavenumber = im.GaussQuadraturePointsForModesAtWavenumber(6, 1e-4);
+
+            testCase.verifyEqual(numel(zFrequency), 6)
+            testCase.verifyEqual(numel(zWavenumber), 6)
+            testCase.verifyTrue(all(isfinite(zFrequency)))
+            testCase.verifyTrue(all(isfinite(zWavenumber)))
+        end
+
+        function spectralConstructorSupportsBSplineInitialization(testCase)
+            [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
+            zFit = linspace(zIn(1), zIn(2), 17)';
+            rhoFit = rhoFunction(zFit);
+            splineDegree = 3;
+            knotPoints = BSpline.knotPointsForDataPoints(zFit, S=splineDegree);
+            X = BSpline.matrixForDataPoints(zFit, knotPoints=knotPoints, S=splineDegree);
+            rhoSpline = BSpline(S=splineDegree, knotPoints=knotPoints, xi=X\rhoFit);
+
+            im = InternalModesSpectral(rho=rhoSpline, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
+            [F, G, h] = im.modesAtFrequency(0.8*N0);
+
+            testCase.verifyModes(F, G, h, zOut, 4)
+        end
+
         function adaptiveEigenmatricesForFrequencyComputesWithLowerCamelApi(testCase)
             [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
             omega = 0.8*N0;
-            
+
             im = InternalModesAdaptiveSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             im.modesAtFrequency(omega);
             [A, B] = im.eigenmatricesForFrequency(omega);
-            
+
             testCase.verifyEVPMatrices(A, B, im.nEVP)
         end
 
@@ -208,68 +285,68 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyEqual(im.normalization, Normalization.omegaConstant)
             testCase.verifyModes(F, G, h, zOut, 4)
         end
-        
+
         function spectralModesAtFrequencyCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
             omega = 0.8*N0;
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [FNew, GNew, hNew, kNew] = im.modesAtFrequency(omega);
             [FOld, GOld, hOld, kOld] = im.ModesAtFrequency(omega);
-            
+
             testCase.verifyEqual(FNew, FOld)
             testCase.verifyEqual(GNew, GOld)
             testCase.verifyEqual(hNew, hOld)
             testCase.verifyEqual(kNew, kOld)
         end
-        
+
         function spectralEigenmatricesForFrequencyCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn, zOut, N0] = testCase.exponentialProfile();
             omega = 0.8*N0;
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [ANew, BNew] = im.eigenmatricesForFrequency(omega);
             [AOld, BOld] = im.EigenmatricesForFrequency(omega);
-            
+
             testCase.verifyEqual(ANew, AOld)
             testCase.verifyEqual(BNew, BOld)
         end
-        
+
         function spectralModesAtWavenumberCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn, zOut, ~] = testCase.exponentialProfile();
             k = 1e-4;
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [FNew, GNew, hNew, omegaNew] = im.modesAtWavenumber(k);
             [FOld, GOld, hOld, omegaOld] = im.ModesAtWavenumber(k);
-            
+
             testCase.verifyEqual(FNew, FOld)
             testCase.verifyEqual(GNew, GOld)
             testCase.verifyEqual(hNew, hOld)
             testCase.verifyEqual(omegaNew, omegaOld)
         end
-        
+
         function spectralEigenmatricesForWavenumberCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn, zOut] = testCase.exponentialProfile();
             k = 1e-4;
-            
+
             im = InternalModesSpectral(rho=rhoFunction, zIn=zIn, zOut=zOut, latitude=33, nEVP=33, nModes=4);
             [ANew, BNew] = im.eigenmatricesForWavenumber(k);
             [AOld, BOld] = im.EigenmatricesForWavenumber(k);
-            
+
             testCase.verifyEqual(ANew, AOld)
             testCase.verifyEqual(BNew, BOld)
         end
-        
+
         function wrapperSurfaceModesCompatibilityAliasMatchesLowerCamel(testCase)
             [rhoFunction, ~, zIn] = InternalModes.StratificationProfileWithName('exponential');
             zOut = linspace(min(zIn), max(zIn), 33)';
             k = 1e-4;
-            
+
             im = InternalModes(rhoFunction, zIn, zOut, 33, 'method', 'spectral', 'nEVP', 33, 'nModes', 4);
             psiNew = im.surfaceModesAtWavenumber(k);
             psiOld = im.SurfaceModesAtWavenumber(k);
-            
+
             testCase.verifyEqual(psiNew, psiOld)
         end
     end
@@ -283,7 +360,7 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(numel(h), minModeCount)
             testCase.verifyGreaterThan(h(1), 0)
         end
-        
+
         function verifyEVPMatrices(testCase, A, B, nEVP)
             testCase.verifySize(A, [nEVP nEVP])
             testCase.verifySize(B, [nEVP nEVP])
