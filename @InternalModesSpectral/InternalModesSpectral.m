@@ -76,11 +76,6 @@ classdef InternalModesSpectral < InternalModesBase
         % - Developer: true
         N2_function         % function handle to return N2 at z
                 
-        % Number of collocation points used for the generalized EVP.
-        %
-        % - Topic: Create and initialize modes
-        nEVP = 0           % number of points in the eigenvalue problem
-        
         % These properties are initialized with SetupEigenvalueProblem()
         % Most subclasses *will* override these initializations. The 'x' refers to the stretched coordinate being used.
         % This class uses x=z (depth), although they may have different numbers of points.
@@ -189,6 +184,10 @@ classdef InternalModesSpectral < InternalModesBase
     end
 
     properties (SetObservable, AbortSet, Access = public)
+        % Number of collocation points used for the generalized EVP.
+        %
+        % - Topic: Create and initialize modes
+        nEVP = 0           % number of points in the eigenvalue problem
         % Active stretched-coordinate map $$x(z)$$ used by the solver.
         %
         % - Topic: Developer topics
@@ -250,6 +249,7 @@ classdef InternalModesSpectral < InternalModesBase
             end
             self@InternalModesBase(rho=options.rho,N2=options.N2,zIn=options.zIn,zOut=options.zOut,latitude=options.latitude,rho0=options.rho0,nModes=options.nModes,rotationRate=options.rotationRate,g=options.g);
             self.nEVP = options.nEVP;
+            addlistener(self,'nEVP','PostSet',@self.nEVPDidChange);
             addlistener(self,'x_function','PostSet',@self.stretchedCoordinateDidChange);
             addlistener(self,'z','PostSet',@self.outputGridDidChange);
             self.SetupEigenvalueProblem();            
@@ -918,83 +918,7 @@ classdef InternalModesSpectral < InternalModesBase
             % - Parameter A: left generalized-eigenproblem matrix
             % - Parameter B: right generalized-eigenproblem matrix
             % - Returns z_g: depth locations of the quadrature points
-            % Now we just need to find the roots of the n+1 mode.
-            % For constant stratification this should give back the
-            % standard Fourier modes, i.e., an evenly spaced grid.
-            %
-            % Note that if the boundary conditions are such that G(0)=0 and
-            % G(-D)=0, then those two points do not encode any information.
-            % As such, only the first (nPoints-2) modes will encode any
-            % useful information. So we'd expect cond(G(:,1:(nPoints-2))))
-            % to be good (low), but not the next.
-            if 2*nPoints < self.nEVP
-               if ( any(any(isnan(A))) || any(any(isnan(B))) )
-                   error('GLOceanKit:NaNInMatrix', 'EVP setup fail. Found at least one nan in matrices A and B.\n');
-               end
-               [V,D] = eig( A, B );
-               
-               [h, permutation] = sort(real(self.hFromLambda(diag(D))),'descend');
-               G_cheb=V(:,permutation);
-               maxModes = ceil(find(h>0,1,'last')/2);
-               
-               if maxModes < (nPoints+1)
-                   error('GLOceanKit:NeedMorePoints', 'Returned %d valid modes (%d quadrature points requested) using nEVPs=%d.',maxModes,nPoints,self.nEVP);
-               end
-  
-               % Could compute the roots of the F-modes, but nah.
-%                F = self.Diff1_xCheb(G_cheb(:,nPoints-1));
-%                roots = InternalModesSpectral.FindRootsFromChebyshevVector(F(1:end-1), self.z_xLobatto);
-%                z_g = cat(1,min(self.z_xLobatto),reshape(roots,[],1),max(self.z_xLobatto));
-
-               % depending on the boundary conditions and particular
-               % problem, the nth mode might contain (n-1), (n), or (n+1)
-               % zero crossings. If nPoints are request, we want to include
-               % the boundaries in that number.
-               if self.upperBoundary == UpperBoundary.mda
-                    rootMode = nPoints-2;
-               elseif self.upperBoundary == UpperBoundary.rigidLid
-                   % n-th mode has n+1 zeros (including boundaries)
-                   rootMode = nPoints-1;
-               elseif self.upperBoundary == UpperBoundary.freeSurface && self.lowerBoundary == LowerBoundary.noSlip
-                   % n-th mode has n zeros (including zero at lower
-                   % boundary, and not zero at upper)
-                   rootMode = nPoints-1;
-               elseif self.upperBoundary == UpperBoundary.freeSurface
-                   % n-th mode has n zeros (including zero at lower
-                   % boundary, and not zero at upper)
-                   rootMode = nPoints;
-               end
-               rootsVar = InternalModesSpectral.FindRootsFromChebyshevVector(G_cheb(:,rootMode), self.xDomain);
-
-               % First we make sure the roots are within the bounds
-               rootsVar(rootsVar<self.xMin) = self.xMin;
-               rootsVar(rootsVar>self.xMax) = self.xMax;
-               
-               % Add the boundary points---if they are redundant, they will
-               % get eliminated below
-               rootsVar = cat(1,self.xMin,rootsVar,self.xMax);
-
-               % Then we eliminate any repeats (it happens)
-               rootsVar = unique(rootsVar,'stable');
-               
-               while (length(rootsVar) > nPoints)
-                   rootsVar = sort(rootsVar);
-                   F = InternalModesSpectral.IntegrateChebyshevVector(G_cheb(:,rootMode));
-                   value = InternalModesSpectral.ValueOfFunctionAtPointOnGrid( rootsVar, self.xDomain, F );
-                   dv = diff(value);
-                   [~,minIndex] = min(abs(dv));
-                   rootsVar(minIndex+1) = [];
-               end
-
-               if length(rootsVar) < nPoints
-                   error('GLOceanKit:NeedMorePoints', 'Returned %d unique roots (requested %d). Maybe need more EVP.', length(rootsVar),nPoints);
-               end
-
-               z_g = reshape(rootsVar,[],1);          
-               z_g = InternalModesSpectral.fInverseBisection(self.x_function,z_g,min(self.zDomain),max(self.zDomain),1e-12);
-            else
-                error('GLOceanKit:NeedMorePoints', 'You need at least twice as many nEVP as points you request');
-            end
+            z_g = self.quadraturePointsForEigenmatrices(nPoints,A,B);
         end
         
         function value = get.xMin(self)
@@ -1034,6 +958,13 @@ classdef InternalModesSpectral < InternalModesBase
     
     methods (Access = protected)
         
+        function self = nEVPDidChange(self,~,~)
+            if isempty(self.x_function)
+                return;
+            end
+            self.stretchedCoordinateDidChange([],[]);
+        end
+
         function self = stretchedCoordinateDidChange(self,~,~)
             self.xDomain = [self.x_function(self.zMin) self.x_function(self.zMax)];
             self.xLobatto = ((self.xMax-self.xMin)/2)*( cos(((0:self.nEVP-1)')*pi/(self.nEVP-1)) + 1) + self.xMin;
@@ -1190,148 +1121,11 @@ classdef InternalModesSpectral < InternalModesBase
             end            
         end
                         
-        
-        % Take matrices A and B from the generalized eigenvalue problem
-        % (GEP) and returns F,G,h. The last seven arguments are all
-        % function handles that do as they say.
-        function [F,G,h,varargout] = ModesFromGEP(self,A,B,varargin,options)
-            arguments
-                self InternalModesSpectral
-                A (:,:) double
-                B (:,:) double
-            end
-            arguments (Repeating)
-                varargin
-            end
-            arguments
-                options.negativeEigenvalues = 0
-            end
-            if ( any(any(isnan(A))) || any(any(isnan(B))) )
-                error('EVP setup fail. Found at least one nan in matrices A and B.\n');
-            end
-            [V,D] = eig( A, B );
-
-            % The following might be better, as it captures the the
-            % barotopic mode.
-            % d = diag(D);
-            % [d, permutation] = sort(real(d),'ascend');
-            % V_cheb=V(:,permutation);
-            % if options.negativeEigenvalues > 0
-            %     negIndices = find(d<0,options.negativeEigenvalues,'last');
-            % else
-            %     negIndices = [];
-            % end
-            % if isempty(negIndices)
-            %     minIndex = find(d>=0,1,'first');
-            %     if isempty(minIndex)
-            %         fprintf('No usable modes found! Try with higher resolution.\n');
-            %         return;
-            %     end
-            % else
-            %     minIndex = min(negIndices);
-            % end
-            % V_cheb = V_cheb(:,minIndex:end);
-            % h = self.hFromLambda(d(minIndex:end));
-
-            [h, permutation] = sort(real(self.hFromLambda(diag(D))),'descend');
-            V_cheb=V(:,permutation);
-            if options.negativeEigenvalues > 0
-                negIndices = find(h<0,options.negativeEigenvalues,'first');
-                permutation = cat(1,negIndices,setdiff((1:length(h))',negIndices));
-                h = h(permutation);
-                V_cheb=V_cheb(:,permutation);
-            end
-            
-            if self.nModes == 0
-                maxModes = ceil(find(h>0,1,'last')/2); % Have to do ceil, not floor, or we lose the barotropic mode.
-                if maxModes == 0
-                    fprintf('No usable modes found! Try with higher resolution.\n');
-                    return;
-                end
-            else
-                maxModes = self.nModes;
-            end
-            
-%             FzOutFromGCheb = @(G_cheb,h) h * self.T_xCheb_zOut(self.Diff1_xCheb(self.Diff1_xCheb(G_cheb)));
-%             Fz = zeros(length(self.z),maxModes);
-
-            F = zeros(length(self.z),maxModes);
-            G = zeros(length(self.z),maxModes);
-            h = reshape(h(1:maxModes),1,[]);
-            
-            varargout = cell(size(varargin));
-            for iArg=1:length(varargin)
-                varargout{iArg} = zeros(1,maxModes);
-            end
-            
-            % This still need to be optimized to *not* do the transforms
-            % twice, when the EVP grid is the same as the output grid.
-            [maxIndexZ] = find(self.N2_xLobatto-self.gridFrequency*self.gridFrequency>0,1,'first');
-            if maxIndexZ > 1 % grab a point just above the turning point, which should have the right sign.
-                maxIndexZ = maxIndexZ-1;
-            elseif isempty(maxIndexZ)
-                maxIndexZ = 1;
-            end
-            for j=1:maxModes
-                Fj = self.FFromVCheb(V_cheb(:,j),h(j));
-                Gj = self.GFromVCheb(V_cheb(:,j),h(j));
-                switch self.normalization
-                    case Normalization.uMax
-                        A = max( abs( Fj ));
-                    case Normalization.wMax
-                        A = max( abs( Gj ) );
-                    case Normalization.kConstant
-                        A = sqrt(self.GNorm( Gj ));
-                    case Normalization.omegaConstant
-                        A = sqrt(self.FNorm( Fj ));
-                    case Normalization.geostrophic
-                        A = sqrt(self.GeostrophicNorm( Gj ));
-                end
-                if Fj(maxIndexZ) < 0
-                    A = -A;
-                end
-                
-                G(:,j) = self.GOutFromVCheb(V_cheb(:,j),h(j))/A;
-                F(:,j) = self.FOutFromVCheb(V_cheb(:,j),h(j))/A;
-%                 Fz(:,j) = FzOutFromGCheb(G_cheb(:,j),h(j))/A;
-                % K-constant norm: G(0)^2 + \frac{1}{g} \int_{-D}^0 (N^2 -
-                % f_0^2)
-                for iArg=1:length(varargin)
-                    if ( strcmp(varargin{iArg}, 'F2') )
-                        varargout{iArg}(j) = self.Lz*self.FNorm( Fj/A );
-                    elseif ( strcmp(varargin{iArg}, 'G2') )
-                        varargout{iArg}(j) = self.Lz*self.FNorm( Gj/A );
-                    elseif ( strcmp(varargin{iArg}, 'N2G2') )
-                        varargout{iArg}(j) = self.g*(self.GNorm( Gj/A )-Gj(1)*Gj(1)) + self.f0*self.f0*self.Lz*self.FNorm( Gj/A ); % this is being clever, but should give \int N2*G2 dz
-                    elseif  ( strcmp(varargin{iArg}, 'uMax') )
-                        B = max( abs( Fj ));
-                        varargout{iArg}(j) = abs(A/B);
-                    elseif  ( strcmp(varargin{iArg}, 'wMax') )
-                        B = max( abs( Gj ) );
-                        varargout{iArg}(j) = abs(A/B);
-                    elseif ( strcmp(varargin{iArg}, 'kConstant') )
-                        B = sqrt(self.GNorm( Gj ));
-                        varargout{iArg}(j) = abs(A/B);
-                    elseif ( strcmp(varargin{iArg}, 'omegaConstant') )
-                        B = sqrt(self.FNorm( Fj ));
-                        varargout{iArg}(j) = abs(A/B);
-                    elseif ( strcmp(varargin{iArg}, 'geostrophicNorm') )
-                        B = sqrt(self.GeostrophicNorm( Gj ));
-                        varargout{iArg}(j) = abs(A/B);
-                    elseif ( strcmp(varargin{iArg}, 'int_N2_G_dz/g') )
-                        varargout{iArg}(j) = sum(self.Int_xCheb .*InternalModesSpectral.fct((1/self.g) * self.N2_xLobatto .* (Gj/A)));
-                    elseif ( strcmp(varargin{iArg}, 'int_F_dz') )
-                        varargout{iArg}(j) = sum(self.Int_xCheb .*InternalModesSpectral.fct(Fj/A));
-                    elseif ( strcmp(varargin{iArg}, 'int_G_dz') )
-                        varargout{iArg}(j) = sum(self.Int_xCheb .*InternalModesSpectral.fct(Gj/A));
-                    else
-                        error('Invalid option. You may request F2, G2, N2G2');
-                    end
-                end
-            end
-            
-
-        end
+        [F,G,h,varargout] = ModesFromGEP(self,A,B,varargin,options)
+        [V_cheb,h] = solveGEP(self,A,B,options)
+        [F,G,h,varargout] = transformModesToSpatialDomain(self,V_cheb,h,maxModes,varargin)
+        z_g = quadraturePointsForEigenmatrices(self,nPoints,A,B)
+        z_g = quadraturePointsForModes(self,nPoints,G_cheb,h)
         
 %         function zTPs = FindTurningPointsAtFrequency(self, omega)
 %             f_cheb = self.N2_zCheb;
