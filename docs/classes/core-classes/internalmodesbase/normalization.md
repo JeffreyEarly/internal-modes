@@ -15,5 +15,3 @@ Mode normalization convention.
 ---
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ Row indices for each coupled subproblem.
 ---
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ $$\partial_z N$$ sampled on the Lobatto grid in the WKB coordinate.
 ---
 
 ## Discussion
-
-

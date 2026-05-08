@@ -2,7 +2,7 @@
 layout: default
 title: Supporting types
 parent: Class documentation
-nav_order: 4
+nav_order: 5
 has_children: true
 permalink: /classes/supporting-types
 ---

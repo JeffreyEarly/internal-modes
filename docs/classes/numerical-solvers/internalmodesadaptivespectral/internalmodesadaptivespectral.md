@@ -34,5 +34,3 @@ Initialize the adaptive WKB spectral solver.
 + `im`  adaptive WKB spectral solver instance
 
 ## Discussion
-
-

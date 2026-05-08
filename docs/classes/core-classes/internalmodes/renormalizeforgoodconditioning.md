@@ -26,5 +26,3 @@ Renormalize a mode matrix by matching column norms to a common scale.
 + `gamma`  column rescaling factors
 
 ## Discussion
-
-

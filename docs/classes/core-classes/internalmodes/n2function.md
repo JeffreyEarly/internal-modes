@@ -20,5 +20,3 @@ Function handle for the benchmark buoyancy-frequency profile $$N^2(z)$$.
   built-in analytical and benchmark cases it stores the
   continuous stratification used to initialize the concrete
   solver.
-
-

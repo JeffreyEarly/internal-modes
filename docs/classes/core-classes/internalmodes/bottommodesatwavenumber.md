@@ -26,5 +26,3 @@ Return the bottom SQG mode at fixed horizontal wavenumber.
 + `psi`  bottom SQG mode evaluated on `zOut`
 
 ## Discussion
-
-

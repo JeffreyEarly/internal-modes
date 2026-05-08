@@ -17,5 +17,3 @@ Geostrophic normalization functional.
 ---
 
 ## Discussion
-
-

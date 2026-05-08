@@ -15,5 +15,3 @@ Two-element depth domain `[zMin zMax]`.
 ---
 
 ## Discussion
-
-

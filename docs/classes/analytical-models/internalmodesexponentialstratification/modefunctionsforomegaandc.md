@@ -30,5 +30,3 @@ Select the exact or approximate analytical mode functions.
 + `G`  function handle for the analytical $$G(z,\omega,c)$$
 
 ## Discussion
-
-

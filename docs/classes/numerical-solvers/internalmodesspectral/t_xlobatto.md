@@ -17,5 +17,3 @@ Chebyshev basis evaluated on the Lobatto grid.
 ---
 
 ## Discussion
-
-

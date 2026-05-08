@@ -15,5 +15,3 @@ Exact analytical $$F(z,\omega,c)$$ solution handle.
 ---
 
 ## Discussion
-
-

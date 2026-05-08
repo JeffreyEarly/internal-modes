@@ -17,5 +17,3 @@ Buoyancy frequency squared sampled on `z_diff`.
 ---
 
 ## Discussion
-
-

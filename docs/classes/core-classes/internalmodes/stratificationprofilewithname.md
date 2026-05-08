@@ -27,5 +27,3 @@ Return one of the built-in benchmark stratification profiles.
 + `zIn`  depth domain or depth grid associated with the profile
 
 ## Discussion
-
-

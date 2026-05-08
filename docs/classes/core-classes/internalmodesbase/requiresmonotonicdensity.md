@@ -17,5 +17,3 @@ Flag indicating whether the concrete solver requires monotonic density.
 ---
 
 ## Discussion
-
-

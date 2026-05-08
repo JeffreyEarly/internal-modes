@@ -3,7 +3,7 @@ layout: default
 title: x_function
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 65
+nav_order: 66
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Active stretched-coordinate map $$x(z)$$ used by the solver.
 ---
 
 ## Discussion
-
-

@@ -93,6 +93,12 @@ classGroups = {
         "classes", {{"InternalModes", "InternalModesBase"}} ...
     )
     struct( ...
+        "parent", "Vertical transforms", ...
+        "grandparent", classFolderName, ...
+        "websiteFolder", "classes/vertical-transforms", ...
+        "classes", {{"InternalModesBasis", "InternalModesTransform", "InternalModesProjection"}} ...
+    )
+    struct( ...
         "parent", "Numerical solvers", ...
         "grandparent", classFolderName, ...
         "websiteFolder", "classes/numerical-solvers", ...
@@ -138,6 +144,8 @@ function excludedSuperclasses = excludedSuperclassesForClass(className)
 switch string(className)
     case {"InternalModes", "InternalModesBase"}
         excludedSuperclasses = {"handle"};
+    case {"InternalModesBasis", "InternalModesTransform", "InternalModesProjection"}
+        excludedSuperclasses = {"handle", "CAAnnotatedClass"};
     case {"InternalModesConstantStratification", "InternalModesExponentialStratification", "InternalModesFiniteDifference"}
         excludedSuperclasses = {"handle", "InternalModesBase"};
     case "InternalModesSpectral"
@@ -182,6 +190,7 @@ for iFile = 1:numel(markdownFiles)
     filePath = fullfile(markdownFiles(iFile).folder, markdownFiles(iFile).name);
     fileText = fileread(filePath);
     trimmedText = regexprep(fileText, "[ \t]+(\r?\n)", "$1");
+    trimmedText = regexprep(trimmedText, "(\r?\n){2,}$", newline);
     if ~strcmp(fileText, trimmedText)
         fid = fopen(filePath, "w");
         assert(fid ~= -1, "Could not open markdown file for writing");
@@ -210,6 +219,8 @@ siblingCandidates = [
     fullfile(repoRoot, "..", "spline-core")
     fullfile(repoRoot, "..", "distributions")
     fullfile(repoRoot, "..", "chebfun")
+    fullfile(repoRoot, "..", "class-annotations")
+    fullfile(repoRoot, "..", "netcdf")
 ];
 for iCandidate = 1:numel(siblingCandidates)
     if isfolder(siblingCandidates(iCandidate))

@@ -17,5 +17,3 @@ Number of trial roots used when expanding the analytical search interval.
 ---
 
 ## Discussion
-
-

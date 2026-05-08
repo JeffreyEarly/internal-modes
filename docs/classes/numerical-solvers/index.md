@@ -2,7 +2,7 @@
 layout: default
 title: Numerical solvers
 parent: Class documentation
-nav_order: 2
+nav_order: 3
 has_children: true
 permalink: /classes/numerical-solvers
 ---

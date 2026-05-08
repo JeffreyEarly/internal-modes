@@ -17,5 +17,3 @@ Number of coupled Chebyshev subproblems.
 ---
 
 ## Discussion
-
-

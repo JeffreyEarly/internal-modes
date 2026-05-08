@@ -15,5 +15,3 @@ Output depth grid on which public profiles and modes are returned.
 ---
 
 ## Discussion
-
-

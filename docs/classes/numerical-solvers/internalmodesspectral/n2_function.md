@@ -17,5 +17,3 @@ Buoyancy-frequency profile represented as a function of depth.
 ---
 
 ## Discussion
-
-

@@ -15,5 +15,3 @@ Reference surface density.
 ---
 
 ## Discussion
-
-

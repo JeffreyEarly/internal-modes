@@ -15,5 +15,3 @@ Lower boundary condition at the ocean bottom.
 ---
 
 ## Discussion
-
-

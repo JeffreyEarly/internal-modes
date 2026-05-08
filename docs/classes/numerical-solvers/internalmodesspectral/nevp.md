@@ -3,7 +3,7 @@ layout: default
 title: nEVP
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 56
+nav_order: 57
 mathjax: true
 ---
 
@@ -15,5 +15,3 @@ Number of collocation points used for the generalized EVP.
 ---
 
 ## Discussion
-
-

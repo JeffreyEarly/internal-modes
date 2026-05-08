@@ -18,5 +18,3 @@ Name of the active built-in benchmark stratification profile.
 
   This property is set when the shorthand benchmark constructor
   `InternalModes(profileName, methodName, nPoints)` is used.
-
-

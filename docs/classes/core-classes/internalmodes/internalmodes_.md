@@ -17,5 +17,3 @@ Concrete solver instance created by the wrapper.
 ---
 
 ## Discussion
-
-

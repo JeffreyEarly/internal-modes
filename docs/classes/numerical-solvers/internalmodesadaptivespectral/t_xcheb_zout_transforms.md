@@ -17,5 +17,3 @@ Per-region transforms from Chebyshev coefficients to `zOut`.
 ---
 
 ## Discussion
-
-

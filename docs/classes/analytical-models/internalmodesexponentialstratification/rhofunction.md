@@ -15,5 +15,3 @@ Background density function handle.
 ---
 
 ## Discussion
-
-

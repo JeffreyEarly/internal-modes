@@ -33,5 +33,3 @@ Initialize the exponential-stratification analytical solver.
 + `im`  exponential-stratification solver instance
 
 ## Discussion
-
-

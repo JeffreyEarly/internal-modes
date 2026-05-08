@@ -17,5 +17,3 @@ Approximate analytical $$G(z,\omega,c)$$ solution handle.
 ---
 
 ## Discussion
-
-

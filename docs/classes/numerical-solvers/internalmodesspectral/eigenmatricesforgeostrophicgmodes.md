@@ -29,5 +29,3 @@ Assemble the geostrophic interior `G`-mode EVP.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

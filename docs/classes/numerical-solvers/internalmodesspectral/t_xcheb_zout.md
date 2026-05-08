@@ -17,5 +17,3 @@ Transform from Chebyshev coefficients to the public output grid.
 ---
 
 ## Discussion
-
-

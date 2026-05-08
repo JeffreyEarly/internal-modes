@@ -17,5 +17,3 @@ First-derivative operator in Chebyshev coefficient space.
 ---
 
 ## Discussion
-
-

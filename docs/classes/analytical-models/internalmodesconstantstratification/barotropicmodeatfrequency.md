@@ -35,5 +35,3 @@ Return the analytical barotropic mode branch for fixed $$\omega$$.
 + `omegaConstantRatio0`  ratio from the active normalization to `omegaConstant`
 
 ## Discussion
-
-

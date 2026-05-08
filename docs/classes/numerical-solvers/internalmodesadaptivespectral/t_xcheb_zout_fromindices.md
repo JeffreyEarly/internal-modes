@@ -17,5 +17,3 @@ Source indices in coefficient space for each output transform.
 ---
 
 ## Discussion
-
-

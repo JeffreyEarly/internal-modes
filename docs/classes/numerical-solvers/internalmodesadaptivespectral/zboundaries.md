@@ -17,5 +17,3 @@ Physical depths of region boundaries and turning points.
 ---
 
 ## Discussion
-
-

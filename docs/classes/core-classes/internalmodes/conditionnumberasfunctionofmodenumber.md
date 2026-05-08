@@ -25,5 +25,3 @@ Compute condition number as a function of retained mode count.
 + `kappa`  condition number for each leading-column truncation
 
 ## Discussion
-
-

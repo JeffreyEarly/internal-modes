@@ -15,5 +15,3 @@ Upper boundary condition at the ocean surface.
 ---
 
 ## Discussion
-
-

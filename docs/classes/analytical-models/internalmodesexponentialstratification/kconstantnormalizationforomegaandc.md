@@ -29,5 +29,3 @@ Return the `kConstant` normalization for the analytical exponential solution.
 + `A`  normalization factor row vector
 
 ## Discussion
-
-

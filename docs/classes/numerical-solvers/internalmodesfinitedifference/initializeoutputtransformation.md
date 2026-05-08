@@ -28,5 +28,3 @@ Prepare the interpolation from the differentiation grid to the public output gri
 + `self`  updated finite-difference solver instance
 
 ## Discussion
-
-

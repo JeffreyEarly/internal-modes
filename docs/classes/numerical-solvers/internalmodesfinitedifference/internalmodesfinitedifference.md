@@ -34,5 +34,3 @@ Initialize the finite-difference solver.
 + `im`  finite-difference solver instance
 
 ## Discussion
-
-

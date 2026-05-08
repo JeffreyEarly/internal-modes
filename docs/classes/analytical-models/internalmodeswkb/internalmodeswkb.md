@@ -34,5 +34,3 @@ Initialize the WKB approximation solver.
 + `im`  WKB solver instance
 
 ## Discussion
-
-

@@ -30,5 +30,3 @@ Apply the current lower and upper boundary conditions to an EVP pair.
 + `B`  boundary-conditioned right matrix
 
 ## Discussion
-
-

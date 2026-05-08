@@ -34,5 +34,3 @@ Initialize the wrapper from a profile or a built-in benchmark case.
   where additional name-value pairs are split between wrapper
   options such as `method` and the concrete solver
   constructor.
-
-

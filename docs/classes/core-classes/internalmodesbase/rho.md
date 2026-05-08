@@ -15,5 +15,3 @@ Background density sampled on `zOut`.
 ---
 
 ## Discussion
-
-

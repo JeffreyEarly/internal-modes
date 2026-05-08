@@ -66,6 +66,7 @@ im = InternalModesSpectral(rho=rho, zIn=zIn, zOut=zOut, latitude=latitude, nEVP=
   + [`boundaryModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/boundarymodesatwavenumber.html) Return either the surface or bottom boundary mode at fixed wavenumber.
   + [`eigenmatricesForFrequency`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforfrequency.html) Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
   + [`eigenmatricesForWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/eigenmatricesforwavenumber.html) Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
+  + [`modesAtQuadraturePoints`](/internal-modes/classes/numerical-solvers/internalmodesspectral/modesatquadraturepoints.html) Return resolved modes on mode-adapted quadrature points.
   + [`surfaceModesAtWavenumber`](/internal-modes/classes/numerical-solvers/internalmodesspectral/surfacemodesatwavenumber.html) Return the surface SQG mode at fixed horizontal wavenumber.
 
 

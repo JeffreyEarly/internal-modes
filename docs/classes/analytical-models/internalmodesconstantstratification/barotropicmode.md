@@ -38,5 +38,3 @@ Evaluate a chosen analytical barotropic branch.
 + `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
 
 ## Discussion
-
-

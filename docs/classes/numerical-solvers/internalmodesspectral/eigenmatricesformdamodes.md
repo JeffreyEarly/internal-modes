@@ -28,5 +28,3 @@ Assemble the MDA diagnostic EVP.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

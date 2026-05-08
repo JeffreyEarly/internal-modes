@@ -31,5 +31,3 @@ Build a finite-difference differentiation matrix with boundary stencils.
 + `D`  differentiation matrix
 
 ## Discussion
-
-

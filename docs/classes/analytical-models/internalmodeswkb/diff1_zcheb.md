@@ -17,5 +17,3 @@ Return the spectral first-derivative operator in Chebyshev space.
 ---
 
 ## Discussion
-
-

@@ -3,7 +3,7 @@ layout: default
 title: xOut
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 64
+nav_order: 65
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Output locations mapped into the active spectral coordinate.
 ---
 
 ## Discussion
-
-

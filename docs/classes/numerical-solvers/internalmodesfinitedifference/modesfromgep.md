@@ -34,5 +34,3 @@ Solve a generalized EVP and map its modes onto the public grid.
 + `varargout`  requested diagnostics from `NormalizeModes`
 
 ## Discussion
-
-

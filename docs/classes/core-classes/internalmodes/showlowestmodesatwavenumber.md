@@ -23,5 +23,3 @@ Plot the lowest resolved modes at a fixed horizontal wavenumber.
 + `k`  horizontal wavenumber
 
 ## Discussion
-
-

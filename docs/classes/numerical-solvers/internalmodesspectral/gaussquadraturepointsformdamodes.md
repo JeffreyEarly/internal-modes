@@ -28,5 +28,3 @@ Return quadrature points tailored to the diagnostic MDA modes.
 + `z_g`  depth locations of the quadrature points
 
 ## Discussion
-
-

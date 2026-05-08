@@ -15,5 +15,3 @@ Maximum depth in `zDomain`.
 ---
 
 ## Discussion
-
-

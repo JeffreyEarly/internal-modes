@@ -29,5 +29,3 @@ Return Fornberg finite-difference weights for one stencil location.
 + `c`  weight matrix whose rows correspond to derivative order
 
 ## Discussion
-
-

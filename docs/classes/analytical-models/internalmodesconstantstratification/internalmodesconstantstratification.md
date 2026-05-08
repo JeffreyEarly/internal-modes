@@ -32,5 +32,3 @@ Initialize the constant-stratification analytical solver.
 + `im`  constant-stratification solver instance
 
 ## Discussion
-
-

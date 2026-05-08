@@ -17,5 +17,3 @@ Exact integral weights for Chebyshev coefficients on the active domain.
 ---
 
 ## Discussion
-
-

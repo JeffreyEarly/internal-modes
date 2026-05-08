@@ -30,5 +30,3 @@ Project a profile onto Chebyshev coefficients to a requested tolerance.
 + `rho_zCheb`  Chebyshev coefficients on that grid
 
 ## Discussion
-
-

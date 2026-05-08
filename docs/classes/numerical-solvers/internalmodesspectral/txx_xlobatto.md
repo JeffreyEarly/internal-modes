@@ -17,5 +17,3 @@ Second derivatives of the Chebyshev basis on the Lobatto grid.
 ---
 
 ## Discussion
-
-

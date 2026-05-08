@@ -27,5 +27,3 @@ Estimate `N0` and `rho0` from a constant-stratification profile.
 + `rho0`  estimated reference surface density
 
 ## Discussion
-
-

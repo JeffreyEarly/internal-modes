@@ -17,5 +17,3 @@ Flag indicating whether the wrapper was initialized from a built-in benchmark ca
 ---
 
 ## Discussion
-
-

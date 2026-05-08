@@ -17,5 +17,3 @@ WKB-coordinate values of region boundaries and turning points.
 ---
 
 ## Discussion
-
-

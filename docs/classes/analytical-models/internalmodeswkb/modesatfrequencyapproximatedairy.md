@@ -30,5 +30,3 @@ Return the simplified WKB Airy approximation for fixed $$\omega$$.
 + `h`  approximate equivalent-depth row vector
 
 ## Discussion
-
-

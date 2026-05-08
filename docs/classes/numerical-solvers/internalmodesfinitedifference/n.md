@@ -17,5 +17,3 @@ Number of differentiation-grid points.
 ---
 
 ## Discussion
-
-

@@ -27,5 +27,3 @@ Differentiate a Chebyshev series in coefficient space.
 + `v_p`  coefficients of the derivative
 
 ## Discussion
-
-

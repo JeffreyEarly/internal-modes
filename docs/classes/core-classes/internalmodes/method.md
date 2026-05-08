@@ -15,5 +15,3 @@ Name of the selected concrete solver implementation.
 ---
 
 ## Discussion
-
-

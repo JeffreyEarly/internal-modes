@@ -17,5 +17,3 @@ Map Chebyshev coefficients to $$G_j$$ on the active internal grid.
 ---
 
 ## Discussion
-
-

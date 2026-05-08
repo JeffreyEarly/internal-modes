@@ -27,5 +27,3 @@ Test whether a supplied profile is close to the exponential benchmark.
 + `rho_params`  inferred `[N0 b rho0]` parameter vector
 
 ## Discussion
-
-

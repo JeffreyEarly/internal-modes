@@ -28,5 +28,3 @@ Project a profile onto the `G` modes at fixed horizontal wavenumber.
 + `G`  `G`-mode matrix used in the projection
 
 ## Discussion
-
-

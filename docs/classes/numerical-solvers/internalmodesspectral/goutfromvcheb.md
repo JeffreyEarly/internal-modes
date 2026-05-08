@@ -17,5 +17,3 @@ Map Chebyshev coefficients to $$G_j(z)$$ on the public output grid.
 ---
 
 ## Discussion
-
-

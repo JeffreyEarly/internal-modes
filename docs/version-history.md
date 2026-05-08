@@ -6,6 +6,19 @@ nav_order: 100
 
 # Version History
 
+## [1.4.0] - 2026-05-08
+- added component-role-aware `InternalModesBasis`, `InternalModesTransform`, and `InternalModesProjection` classes for vertical transforms, fixed-grid projections, observational projections, vertical spectra, and annotated persistence
+- added vertical-transform examples for wave-vortex-model integration sketches and component-role-aware modal spectra
+- added a direct `ClassAnnotations ^1.2.1` dependency for NetCDF-backed annotated persistence through `CAAnnotatedClass`
+
+## [1.3.0] - 2026-05-06
+- ported the spectral speedup refactor into the `@InternalModesSpectral` class-folder layout
+- added `modesAtQuadraturePoints` for computing resolved modes on mode-adapted quadrature points
+- refreshed spectral internal state when `nEVP` changes, including WKB stretched-grid derivative state
+- fixed `BSpline` initialization in `InternalModesBase`
+- added speedup exploration helpers under `Extras/SpeedupExploration`
+- expanded automated smoke coverage for quadrature points, `nEVP` refresh behavior, legacy quadrature wrappers, and spline initialization
+
 ## [1.2.0] - 2026-04-20
 - modernized the non-spectral constructors to explicit name-value initialization while preserving the `InternalModesSpectral` and `InternalModesWKBSpectral` constructor contracts
 - updated the `InternalModes` wrapper to forward constructor options through the new named-argument paths without breaking wrapper-level properties such as diagnostics and boundary-condition settings

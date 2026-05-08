@@ -17,5 +17,3 @@ Depth grid used for differentiation and the generalized EVP.
 ---
 
 ## Discussion
-
-

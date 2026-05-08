@@ -17,5 +17,3 @@ First-derivative finite-difference matrix.
 ---
 
 ## Discussion
-
-

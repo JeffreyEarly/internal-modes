@@ -17,5 +17,3 @@ Second-derivative finite-difference matrix.
 ---
 
 ## Discussion
-
-

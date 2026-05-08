@@ -17,5 +17,3 @@ Total span of the active spectral coordinate.
 ---
 
 ## Discussion
-
-

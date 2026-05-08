@@ -13,11 +13,14 @@ This section is the API reference for the `internal-modes` class hierarchy. Use 
 
 The class pages are organized so shared behavior lives on the highest class that defines it. In particular, [`InternalModesBase`](./core-classes/internalmodesbase) documents the common mode-normalization and boundary-condition contract, while solver subclasses focus on what changes in the numerical or analytical formulation.
 
+The vertical transform classes document the new API for turning solved modes into projection operators, reduced or fixed-grid transforms, observational projections, and vertical modal spectra. They deliberately stay focused on the vertical part of the problem.
+
 ## Choose a starting point
 
 | Class group | Use it when |
 | --- | --- |
 | [`Core classes`](./core-classes) | you want the wrapper API or the shared base-class contract |
+| [`Vertical transforms`](./vertical-transforms) | you want projection operators, grid-resolvability diagnostics, observation-grid projections, persistence-ready transform objects, or vertical modal spectra |
 | [`Numerical solvers`](./numerical-solvers) | you want direct control over the spectral, adaptive-grid, density-coordinate, WKB-coordinate, or finite-difference solvers |
 | [`Analytical and asymptotic models`](./analytical-models) | you want closed-form constant/exponential solutions or WKB approximations |
 | [`Supporting types`](./supporting-types) | you want the normalization and boundary-condition enumerations |
@@ -55,6 +58,7 @@ for fixed $$K$$.
 ## Reading the reference
 
 - [`InternalModes`](./core-classes/internalmodes) is the usual entry point when you want one API that chooses among the concrete implementations.
+- [`InternalModesBasis`](./vertical-transforms/internalmodesbasis), [`InternalModesTransform`](./vertical-transforms/internalmodestransform), and [`InternalModesProjection`](./vertical-transforms/internalmodesprojection) are the starting point when you already have modes and need canonical or numerical vertical transforms.
 - [`InternalModesSpectral`](./numerical-solvers/internalmodesspectral) is the reference page for the shared spectral machinery used by the stretched-coordinate subclasses.
 - [`InternalModesDensitySpectral`](./numerical-solvers/internalmodesdensityspectral) and [`InternalModesWKBSpectral`](./numerical-solvers/internalmodeswkbspectral) document the two main stretched coordinates from Sections 4.2 and 4.3 of the manuscript.
 - [`InternalModesAdaptiveSpectral`](./numerical-solvers/internalmodesadaptivespectral) documents the adaptive multi-region frequency-grid strategy from Section 4.4.

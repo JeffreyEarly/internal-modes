@@ -29,5 +29,3 @@ Compute mode-matrix condition numbers for selected truncation indices.
 + `modeIndices`  echo of the evaluated truncation indices
 
 ## Discussion
-
-

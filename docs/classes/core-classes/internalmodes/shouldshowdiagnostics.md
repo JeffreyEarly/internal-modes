@@ -17,5 +17,3 @@ Toggle diagnostic messages from the concrete solver.
 ---
 
 ## Discussion
-
-

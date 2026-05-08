@@ -29,5 +29,3 @@ Return quadrature points tailored to fixed-$$\omega$$ modes.
 + `z_g`  depth locations of the quadrature points
 
 ## Discussion
-
-

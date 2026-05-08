@@ -23,5 +23,3 @@ Plot benchmark relative errors for a built-in profile at fixed $$\omega$$.
 + `omega`  frequency in radians per second
 
 ## Discussion
-
-

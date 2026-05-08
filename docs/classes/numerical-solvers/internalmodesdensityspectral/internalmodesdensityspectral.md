@@ -34,5 +34,3 @@ Initialize the density-coordinate spectral solver.
 + `im`  density-coordinate spectral solver instance
 
 ## Discussion
-
-

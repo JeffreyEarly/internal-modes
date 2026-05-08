@@ -17,5 +17,3 @@ Derivative of $$N(z)$$ used when assembling the stretched-coordinate EVP.
 ---
 
 ## Discussion
-
-

@@ -3,7 +3,7 @@ layout: default
 title: xMin
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 63
+nav_order: 64
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Minimum value of the active spectral coordinate.
 ---
 
 ## Discussion
-
-

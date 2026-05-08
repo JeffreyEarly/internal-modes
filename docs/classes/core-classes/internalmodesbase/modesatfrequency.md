@@ -31,5 +31,3 @@ Return vertical modes for a fixed frequency.
 + `varargout`  additional outputs forwarded from the concrete solver
 
 ## Discussion
-
-

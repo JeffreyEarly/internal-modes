@@ -15,5 +15,3 @@ Exponential e-folding depth $$b$$ in meters.
 ---
 
 ## Discussion
-
-

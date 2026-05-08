@@ -26,5 +26,3 @@ Return the surface SQG mode at fixed horizontal wavenumber.
 + `psi`  surface SQG mode evaluated on `zOut`
 
 ## Discussion
-
-

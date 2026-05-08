@@ -3,7 +3,7 @@ layout: default
 title: xDomain
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 60
+nav_order: 61
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Bounds of the active spectral coordinate.
 ---
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ $$\partial_z N^2$$ sampled on the Lobatto grid in the density coordinate.
 ---
 
 ## Discussion
-
-

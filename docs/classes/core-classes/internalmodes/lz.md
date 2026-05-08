@@ -15,5 +15,3 @@ Total water-column depth.
 ---
 
 ## Discussion
-
-

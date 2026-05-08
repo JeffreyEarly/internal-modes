@@ -31,5 +31,3 @@ Return the requested analytical normalization factor for the barotropic branch.
 + `A`  normalization factor
 
 ## Discussion
-
-

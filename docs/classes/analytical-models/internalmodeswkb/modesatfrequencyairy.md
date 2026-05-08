@@ -28,5 +28,3 @@ Return the turning-point-aware Airy approximation for fixed $$\omega$$.
 + `h`  equivalent-depth row vector
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ Predicate that chooses between exact and approximate Bessel forms.
 ---
 
 ## Discussion
-
-

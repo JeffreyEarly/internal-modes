@@ -17,5 +17,3 @@ Last fixed frequency used to build an adaptive grid, when applicable.
 ---
 
 ## Discussion
-
-

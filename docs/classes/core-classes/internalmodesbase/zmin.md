@@ -15,5 +15,3 @@ Minimum depth in `zDomain`.
 ---
 
 ## Discussion
-
-

@@ -27,5 +27,3 @@ Assemble the fixed-$$\omega$$ generalized EVP on the spectral grid.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

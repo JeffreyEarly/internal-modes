@@ -3,7 +3,7 @@ layout: default
 title: z_xLobatto
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 66
+nav_order: 67
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Physical depths associated with `xLobatto`.
 ---
 
 ## Discussion
-
-

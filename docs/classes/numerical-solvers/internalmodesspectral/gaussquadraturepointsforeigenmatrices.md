@@ -30,13 +30,3 @@ Return quadrature points inferred from a generalized EVP.
 + `z_g`  depth locations of the quadrature points
 
 ## Discussion
-
-                  Now we just need to find the roots of the n+1 mode.
-  For constant stratification this should give back the
-  standard Fourier modes, i.e., an evenly spaced grid.
-
-  Note that if the boundary conditions are such that G(0)=0 and
-  G(-D)=0, then those two points do not encode any information.
-  As such, only the first (nPoints-2) modes will encode any
-  useful information. So we'd expect cond(G(:,1:(nPoints-2))))
-  to be good (low), but not the next.

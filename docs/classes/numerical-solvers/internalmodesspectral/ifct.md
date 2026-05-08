@@ -27,5 +27,3 @@ Compute the inverse fast Chebyshev transform.
 + `u`  values on a Chebyshev-Lobatto grid
 
 ## Discussion
-
-

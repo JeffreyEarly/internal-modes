@@ -38,5 +38,3 @@ Build a two-exponential pycnocline profile used by the built-in benchmarks.
 + `zIn`  depth domain for the constructed profile
 
 ## Discussion
-
-

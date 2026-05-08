@@ -29,5 +29,3 @@ Return the diagnostic MDA modes.
 + `h`  equivalent-depth row vector
 
 ## Discussion
-
-

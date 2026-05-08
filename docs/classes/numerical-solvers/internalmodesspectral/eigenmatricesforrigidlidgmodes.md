@@ -29,5 +29,3 @@ Assemble the rigid-lid geostrophic `G`-mode EVP.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

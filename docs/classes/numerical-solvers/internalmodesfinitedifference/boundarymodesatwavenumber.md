@@ -27,5 +27,3 @@ Return either the surface or bottom SQG mode at fixed horizontal wavenumber.
 + `psi`  requested boundary mode evaluated on `zOut`
 
 ## Discussion
-
-

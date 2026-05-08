@@ -27,5 +27,3 @@ Compute the fast Chebyshev transform of values on a Lobatto grid.
 + `uh`  Chebyshev coefficients
 
 ## Discussion
-
-

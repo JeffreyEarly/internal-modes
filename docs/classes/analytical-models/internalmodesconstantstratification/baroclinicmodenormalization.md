@@ -30,5 +30,3 @@ Return the requested analytical normalization factor for baroclinic modes.
 + `A`  normalization factor row vector
 
 ## Discussion
-
-

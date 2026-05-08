@@ -17,5 +17,3 @@ Transformation from `z_diff` functions to the public output grid.
 ---
 
 ## Discussion
-
-

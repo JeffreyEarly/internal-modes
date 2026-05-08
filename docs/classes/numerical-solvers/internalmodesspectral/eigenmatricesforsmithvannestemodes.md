@@ -29,5 +29,3 @@ Assemble the Smith-Vanneste SQG-like EVP used by a helper workflow.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ $$\omega$$-constant normalization functional.
 ---
 
 ## Discussion
-
-

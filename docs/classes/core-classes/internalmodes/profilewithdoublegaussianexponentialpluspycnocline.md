@@ -39,5 +39,3 @@ Build a mixed Gaussian-exponential pycnocline profile used by the built-in bench
 + `zIn`  depth domain for the constructed profile
 
 ## Discussion
-
-

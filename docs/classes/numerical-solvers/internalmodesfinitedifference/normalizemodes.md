@@ -34,5 +34,3 @@ Normalize finite-difference modes using the active convention.
 + `varargout`  requested quadratic-integral and normalization diagnostics
 
 ## Discussion
-
-

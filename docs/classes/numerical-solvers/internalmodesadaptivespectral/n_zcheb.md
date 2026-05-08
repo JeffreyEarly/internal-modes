@@ -17,5 +17,3 @@ Chebyshev coefficients of $$N(z)$$ on the reference grid.
 ---
 
 ## Discussion
-
-

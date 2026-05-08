@@ -15,5 +15,3 @@ Optional cap on the number of modes returned.
 ---
 
 ## Discussion
-
-

@@ -20,5 +20,3 @@ Function handle for the benchmark density profile $$\bar{\rho}(z)$$.
   built-in analytical and benchmark cases it stores the
   continuous background density used to initialize the concrete
   solver.
-
-

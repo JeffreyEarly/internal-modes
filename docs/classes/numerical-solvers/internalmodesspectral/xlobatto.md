@@ -3,7 +3,7 @@ layout: default
 title: xLobatto
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 61
+nav_order: 62
 mathjax: true
 ---
 
@@ -20,5 +20,3 @@ The 'x' refers to the stretched coordinate being used.
 Once x_function has been set, all the properties listed below are
   automatically created.
   Lobatto grid in the active spectral coordinate.
-
-

@@ -174,4 +174,3 @@ is not a good choice for this case. The depth-coordinate
 [`InternalModesSpectral`](../classes/numerical-solvers/internalmodesspectral)
 solver still works directly on the supplied profile, which makes it a
 convenient default for realistic profiles like this one.
-

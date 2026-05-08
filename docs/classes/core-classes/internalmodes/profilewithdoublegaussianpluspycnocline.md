@@ -38,5 +38,3 @@ Build a double-Gaussian pycnocline profile used by the built-in benchmarks.
 + `zIn`  depth domain for the constructed profile
 
 ## Discussion
-
-

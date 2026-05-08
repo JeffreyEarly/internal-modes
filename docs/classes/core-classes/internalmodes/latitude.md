@@ -15,5 +15,3 @@ in degrees used to compute `f0`.
 ---
 
 ## Discussion
-
-

@@ -23,5 +23,3 @@ Plot the lowest resolved modes at a fixed frequency.
 + `omega`  frequency in radians per second
 
 ## Discussion
-
-

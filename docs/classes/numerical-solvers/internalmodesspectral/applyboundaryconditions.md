@@ -30,5 +30,3 @@ Apply the active surface and bottom conditions to an EVP pair.
 + `B`  boundary-conditioned right matrix
 
 ## Discussion
-
-

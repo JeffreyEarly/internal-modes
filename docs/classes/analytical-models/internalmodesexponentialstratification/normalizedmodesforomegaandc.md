@@ -30,5 +30,3 @@ Evaluate and normalize analytical mode functions at `zOut`.
 + `varargout`  requested normalization and quadratic-integral diagnostics
 
 ## Discussion
-
-

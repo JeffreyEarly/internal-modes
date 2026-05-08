@@ -15,5 +15,3 @@ Second depth derivative of the background density sampled on `zOut`.
 ---
 
 ## Discussion
-
-

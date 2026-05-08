@@ -30,5 +30,3 @@ Return the geostrophic interior `F`-modes at fixed horizontal wavenumber.
 + `h`  equivalent-depth row vector
 
 ## Discussion
-
-

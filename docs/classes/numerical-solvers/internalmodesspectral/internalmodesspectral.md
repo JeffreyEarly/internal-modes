@@ -34,5 +34,3 @@ Initialize the spectral solver on depth coordinates.
 + `im`  spectral solver instance
 
 ## Discussion
-
-

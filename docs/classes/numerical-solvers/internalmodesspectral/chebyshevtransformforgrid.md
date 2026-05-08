@@ -29,5 +29,3 @@ Build a spectral interpolation map from a Lobatto grid to an output grid.
 + `doesOutputGridSpanDomain`  true when the output grid spans the full Lobatto domain
 
 ## Discussion
-
-

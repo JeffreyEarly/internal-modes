@@ -15,5 +15,3 @@ Planetary rotation rate in radians per second.
 ---
 
 ## Discussion
-
-

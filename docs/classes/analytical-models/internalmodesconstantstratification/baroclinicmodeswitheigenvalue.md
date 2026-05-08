@@ -35,5 +35,3 @@ Evaluate the analytical baroclinic mode shapes for given eigenvalues.
 + `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
 
 ## Discussion
-
-

@@ -15,5 +15,3 @@ Return the spectral Lobatto grid in physical depth coordinates.
 ---
 
 ## Discussion
-
-

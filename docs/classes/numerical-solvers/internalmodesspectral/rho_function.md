@@ -3,7 +3,7 @@ layout: default
 title: rho_function
 parent: InternalModesSpectral
 grand_parent: Classes
-nav_order: 57
+nav_order: 58
 mathjax: true
 ---
 
@@ -17,5 +17,3 @@ Density profile represented as a spline or functional object.
 ---
 
 ## Discussion
-
-

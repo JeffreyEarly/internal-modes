@@ -17,5 +17,3 @@ Toggle diagnostic messages from the active solver.
 ---
 
 ## Discussion
-
-

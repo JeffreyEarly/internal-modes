@@ -17,5 +17,3 @@ Background density sampled on `z_diff`.
 ---
 
 ## Discussion
-
-

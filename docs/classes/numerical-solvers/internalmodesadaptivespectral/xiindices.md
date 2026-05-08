@@ -17,5 +17,3 @@ Grid-point indices into the unique adaptive Lobatto grid.
 ---
 
 ## Discussion
-
-

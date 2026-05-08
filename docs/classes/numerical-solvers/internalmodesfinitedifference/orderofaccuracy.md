@@ -15,5 +15,3 @@ Formal order of accuracy for the finite-difference stencils.
 ---
 
 ## Discussion
-
-

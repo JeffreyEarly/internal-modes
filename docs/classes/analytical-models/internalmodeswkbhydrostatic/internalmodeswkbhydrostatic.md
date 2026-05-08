@@ -34,5 +34,3 @@ Initialize the hydrostatic WKB approximation.
 + `im`  hydrostatic WKB solver instance
 
 ## Discussion
-
-

@@ -17,5 +17,3 @@ Length of each coupled subdomain in the adaptive coordinate.
 ---
 
 ## Discussion
-
-

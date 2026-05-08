@@ -31,5 +31,3 @@ Return rigid-lid geostrophic modes with displaced boundaries.
 + `h`  equivalent-depth row vector
 
 ## Discussion
-
-

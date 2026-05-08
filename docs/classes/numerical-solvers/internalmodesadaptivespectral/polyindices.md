@@ -17,5 +17,3 @@ Column indices for each coupled Chebyshev block.
 ---
 
 ## Discussion
-
-

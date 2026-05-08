@@ -17,5 +17,3 @@ Adaptive stretched-coordinate grid sampled on the public Lobatto grid.
 ---
 
 ## Discussion
-
-

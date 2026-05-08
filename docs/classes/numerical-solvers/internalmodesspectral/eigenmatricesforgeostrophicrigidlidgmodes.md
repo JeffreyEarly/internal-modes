@@ -30,5 +30,3 @@ Assemble the rigid-lid geostrophic EVP with displaced boundaries.
 + `B`  right generalized-eigenproblem matrix
 
 ## Discussion
-
-

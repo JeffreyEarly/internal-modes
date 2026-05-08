@@ -28,5 +28,3 @@ Return the alternate WKB approximation for the surface SQG mode.
 + `psi`  approximate surface SQG mode evaluated on `zOut`
 
 ## Discussion
-
-

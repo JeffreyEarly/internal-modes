@@ -15,5 +15,3 @@ Return the spectral Lobatto samples of $$N^2(z)$$.
 ---
 
 ## Discussion
-
-

@@ -26,5 +26,3 @@ Test whether a supplied profile is close to constant stratification.
 + `flag`  logical scalar indicating whether the profile is approximately constant-stratification
 
 ## Discussion
-
-

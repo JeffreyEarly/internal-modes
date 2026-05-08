@@ -17,5 +17,3 @@ Target indices in `zOut` for each output transform.
 ---
 
 ## Discussion
-
-
