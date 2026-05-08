@@ -1,5 +1,10 @@
 # Version History
 
+## [1.4.0] - 2026-05-08
+- added component-role-aware `InternalModesBasis`, `InternalModesTransform`, and `InternalModesProjection` classes for vertical transforms, fixed-grid projections, observational projections, vertical spectra, and annotated persistence
+- added vertical-transform examples for wave-vortex-model integration sketches and component-role-aware modal spectra
+- added a direct `ClassAnnotations ^1.2.1` dependency for NetCDF-backed annotated persistence through `CAAnnotatedClass`
+
 ## [1.3.0] - 2026-05-06
 - ported the spectral speedup refactor into the `@InternalModesSpectral` class-folder layout
 - added `modesAtQuadraturePoints` for computing resolved modes on mode-adapted quadrature points
