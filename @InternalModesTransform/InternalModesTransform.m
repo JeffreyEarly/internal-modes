@@ -6,6 +6,12 @@ classdef InternalModesTransform < CAAnnotatedClass
     % scalar fields or modal coefficients; full wave-vortex state
     % projectors remain outside this package.
     %
+    % Public matrices use the full transform grid `z`. Some components are
+    % solved on component-specific active rows before being expanded back to
+    % that grid. For example, rigid-lid G transforms omit the zero Dirichlet
+    % endpoint rows during the solve, then store zero endpoint columns in the
+    % forward matrix and zero endpoint rows in the inverse matrix.
+    %
     % For modal coefficients $$p_j$$ and $$q_j$$, the vertical
     % cross-spectrum is
     %
@@ -97,10 +103,17 @@ classdef InternalModesTransform < CAAnnotatedClass
 
         % Forward G projection matrix from samples to modal coefficients.
         %
+        % For rigid-lid G modes, zero endpoint columns may be present so the
+        % matrix remains compatible with fields sampled on the full `z`
+        % grid while the projection itself uses the active interior rows.
+        %
         % - Topic: Inspect transform properties
         forwardG
 
         % Inverse G reconstruction matrix from coefficients to samples.
+        %
+        % For rigid-lid G modes, zero endpoint rows may be present so the
+        % matrix reconstructs onto the full `z` grid.
         %
         % - Topic: Inspect transform properties
         inverseG
@@ -342,7 +355,9 @@ classdef InternalModesTransform < CAAnnotatedClass
             %
             % The returned matrix maps samples on `z` to vertical modal
             % coefficients. Noncanonical wave-F projections are returned
-            % only when `allowNoncanonical=true`.
+            % only when `allowNoncanonical=true`. Components with inactive
+            % rows keep full-grid matrix shapes; those inactive columns are
+            % zero in the returned forward matrix.
             %
             % - Topic: Apply vertical transforms
             % - Declaration: matrix = forward(self,options)

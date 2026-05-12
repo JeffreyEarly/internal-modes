@@ -42,6 +42,64 @@ classdef InternalModesBasisTransformTests < matlab.unittest.TestCase
             testCase.verifyLessThan(transform.gramErrorG, 1e-3)
         end
 
+        function modeAdaptedRigidLidGUsesInteriorRows(testCase)
+            basis = testCase.geostrophicBasis(16);
+            transform = basis.nativeTransform(component="G",projectionMethod="auto");
+
+            inactiveRows = testCase.inactiveRowsForG(basis);
+            expectedRetained = length(basis.z) - length(inactiveRows);
+
+            testCase.verifyEqual(length(transform.retainedModesG), expectedRetained)
+            testCase.verifyEqual(transform.rejectedModesG, size(basis.G,2))
+            testCase.verifyEqual(size(transform.forwardG,2), length(basis.z))
+            testCase.verifyEqual(size(transform.inverseG,1), length(basis.z))
+            testCase.verifyEqual(transform.forwardG(:,inactiveRows), zeros(size(transform.forwardG,1),length(inactiveRows)), AbsTol=1e-14)
+            testCase.verifyEqual(transform.inverseG(inactiveRows,:), zeros(length(inactiveRows),size(transform.inverseG,2)), AbsTol=1e-12)
+            testCase.verifyLessThan(transform.gramErrorG, 1e-12)
+        end
+
+        function highRequestedModelGRetainsInteriorResolvableModes(testCase)
+            basis = testCase.geostrophicBasis(16);
+            transform = basis.modelTransform(component="G",nModes=size(basis.G,2),nonlinearAliasingPolicy="none",projectionTolerance=1e-2);
+
+            expectedRetained = length(basis.z) - length(testCase.inactiveRowsForG(basis));
+            testCase.verifyEqual(length(transform.retainedModesG), expectedRetained)
+            testCase.verifyEqual(transform.rejectedModesG, size(basis.G,2))
+            testCase.verifyEqual(transform.selectionReason, "projectionQualityLimit")
+            testCase.verifyLessThan(transform.gramErrorG, 1e-12)
+        end
+
+        function quadraticAliasingStillCapsModeAdaptedG(testCase)
+            nModes = 30;
+            basis = testCase.geostrophicBasis(nModes);
+            transform = basis.modelTransform(component="G",nModes=nModes,nonlinearAliasingPolicy="quadratic",projectionTolerance=1e-2);
+
+            expectedLimit = floor(2*nModes/3);
+            testCase.verifyEqual(length(transform.retainedModesG), expectedLimit)
+            testCase.verifyEqual(transform.nonlinearAliasLimit, expectedLimit)
+            testCase.verifyEqual(transform.selectionReason, "nonlinearAliasingLimit")
+            testCase.verifyLessThan(transform.gramErrorG, 1e-12)
+        end
+
+        function canonicalGeostrophicGUsesProjectionNormalization(testCase)
+            basis = testCase.geostrophicBasis(16);
+            transform = basis.nativeTransform(component="G",projectionMethod="canonical");
+
+            testCase.verifyEqual(transform.transformStatusG, "canonical")
+            testCase.verifyLessThan(transform.gramErrorG, 1e-2)
+        end
+
+        function canonicalWaveGDoesNotDivideBySpectrumWeight(testCase)
+            transform = testCase.waveBasis(12, 2*pi/150).nativeTransform(component="G",projectionMethod="canonical");
+
+            activeRows = find(max(abs(transform.inverseG),[],2) > 0);
+            expectedForward = zeros(size(transform.forwardG));
+            expectedForward(:,activeRows) = transform.inverseG(activeRows,:).' .* transform.weightsG(activeRows).';
+
+            testCase.verifyEqual(transform.transformStatusG, "canonical")
+            testCase.verifyEqual(transform.forwardG, expectedForward, AbsTol=1e-12)
+        end
+
         function waveBasisRejectsCanonicalFProjection(testCase)
             basis = testCase.waveBasis(12, 2*pi/150);
             transform = basis.nativeTransform(component="both",projectionMethod="weightedPseudoinverse",allowNoncanonical=true);
@@ -144,6 +202,12 @@ classdef InternalModesBasisTransformTests < matlab.unittest.TestCase
             im.normalization = Normalization.kConstant;
             im.upperBoundary = UpperBoundary.rigidLid;
             basis = InternalModesBasis.fromSolverAtWavenumber(im,kappa,nModes=nModes,g=9.81);
+        end
+
+        function rows = inactiveRowsForG(~, basis)
+            rowScale = max(abs(basis.G),[],2);
+            tolerance = sqrt(eps(max(1,max(rowScale))));
+            rows = find(rowScale <= tolerance);
         end
     end
 end

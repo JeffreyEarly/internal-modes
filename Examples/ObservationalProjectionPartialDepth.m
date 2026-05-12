@@ -1,20 +1,21 @@
 %% Project partial-depth observations onto resolvable vertical modes
-% Observations are an observation-specific inverse problem. The sampled
-% matrix is not the full modal inverse transform; it is the modal inverse
-% transform after applying the observation operator. This example uses
-% irregular point samples in the upper ocean, selects a well-conditioned
-% non-contiguous set of resolvable modes, and plots the true and recovered
-% modal coefficients.
+% Observations are an observation-specific inverse problem. The modal basis
+% and Parseval normalization are fixed before looking at the data. The
+% observation operator decides which coefficients can be recovered stably.
 %
-% For the G modes, the normalization
+% This example uses hydrostatic G modes, partial-depth irregular point
+% samples, and an equal-weight observation metric. QR with column pivoting is
+% used only to identify a well-conditioned subset of modes; the final
+% projection is built from the physically normalized modal columns.
 %
-%     (1/g) int N2(z) eta(z)^2 dz = sum_j eta_j^2
+% For these G modes,
 %
-% makes eta_j^2 the modal contribution to the normalized potential-energy
-% spectrum. The observation operator changes what part of that spectrum is
-% recoverable.
+%     (1/g) int N2(z) eta(z)^2 dz = sum_j eta_j^2,
+%
+% so eta_j^2 is the normalized potential-energy spectrum. The observation
+% operator changes what part of that spectrum is recoverable.
 
-%% Build a candidate mode basis
+%% Build a candidate hydrostatic G-mode basis
 Lz = 4000;
 N0 = 3*2*pi/3600;
 L_gm = 1300;
@@ -22,16 +23,17 @@ N2 = @(z) N0*N0*exp(2*z/L_gm);
 
 latitude = 31;
 g = 9.81;
-k = 0;
+omega = 0;
 nCandidateModes = 48;
 nEVP = max(256,ceil(2.1*(nCandidateModes + 1)));
 zDomain = [-Lz 0];
 zPlot = linspace(zDomain(1),zDomain(2),512).';
 
 imPlot = InternalModesWKBSpectral(N2=N2,zIn=zDomain,zOut=zPlot,latitude=latitude,nEVP=nEVP,nModes=nCandidateModes,g=g);
-imPlot.normalization = Normalization.kConstant;
+imPlot.normalization = Normalization.geostrophic;
 imPlot.upperBoundary = UpperBoundary.rigidLid;
-[~,GPlot] = imPlot.modesAtWavenumber(k);
+[~,GPlot] = imPlot.modesAtFrequency(omega);
+PhiPlot = GPlot(:,1:nCandidateModes);
 
 %% Define an irregular partial-depth observing grid
 zObsUniform = linspace(-1600,-80,26).';
@@ -39,51 +41,53 @@ zObs = zObsUniform + 35*sin((1:length(zObsUniform)).');
 zObs = sort(zObs);
 
 imObs = InternalModesWKBSpectral(N2=N2,zIn=zDomain,zOut=zObs,latitude=latitude,nEVP=nEVP,nModes=nCandidateModes,g=g);
-imObs.normalization = Normalization.kConstant;
+imObs.normalization = Normalization.geostrophic;
 imObs.upperBoundary = UpperBoundary.rigidLid;
-[~,GObs] = imObs.modesAtWavenumber(k);
-
-modeScale = max(abs(GPlot(:,1:nCandidateModes)),[],1);
-PhiPlot = GPlot(:,1:nCandidateModes)./modeScale;
-B = GObs(:,1:nCandidateModes)./modeScale;
+[~,GObs] = imObs.modesAtFrequency(omega);
+B = GObs(:,1:nCandidateModes);
+% B is nObs-by-nCandidateModes. Row r is the modal prediction at observation
+% r, and column j is the observational fingerprint of mode j.
 
 %% Select modes that are identifiable by the observation operator
-% The observation matrix B = H Phi maps modal coefficients to samples. QR
-% with column pivoting identifies a subset of columns that is independent
-% on this grid. The condition-number limit keeps the projection from
-% becoming a noise amplifier.
-weights = ones(size(zObs));
+% The observation matrix B = H Phi maps modal coefficients to samples. The
+% observation weights define the data-space metric, not the physical
+% Parseval quadrature. Here equal weights represent equal observation quality.
+weightsObs = ones(size(zObs));
+% weightsObs is the diagonal of W_obs. Use inverse variances here when
+% observations have different error levels.
 rankTolerance = 5e-2;
 maxConditionNumber = 10;
-[retainedModes,selectionDiagnostics] = selectResolvableModes(B, weights, rankTolerance, maxConditionNumber);
-rejectedModes = setdiff(1:nCandidateModes, retainedModes);
+[retainedModes,selectionDiagnostics] = selectResolvableModes(B, weightsObs, rankTolerance, maxConditionNumber);
+prefixModes = 1:length(retainedModes);
 
-[forwardProjection,resolutionMatrix,gramMatrix] = weightedProjection(B, weights, retainedModes);
-retainedError = norm(resolutionMatrix(:,retainedModes) - eye(length(retainedModes)),'fro')/sqrt(length(retainedModes));
-aliasingMatrix = resolutionMatrix(:,rejectedModes);
-aliasingColumnNorm = vecnorm(aliasingMatrix,2,1);
-maxAliasing = max(aliasingColumnNorm);
+retainedDiagnostics = projectionDiagnostics(B, weightsObs, retainedModes);
+prefixDiagnostics = projectionDiagnostics(B, weightsObs, prefixModes);
 
 fprintf('Observation grid has %d samples over %.0f m to %.0f m.\n', length(zObs), min(zObs), max(zObs));
-fprintf('Retained %d of %d candidate modes.\n', length(retainedModes), nCandidateModes);
-fprintf('Retained modes: %s\n', mat2str(retainedModes));
-fprintf('Condition number of retained Gram matrix: %.3e\n', cond(gramMatrix));
-fprintf('Condition number after column normalization: %.3e\n', selectionDiagnostics.conditionNumber);
-fprintf('Retained-mode round-trip error: %.3e\n', retainedError);
-fprintf('Maximum rejected-mode aliasing norm: %.3e\n', maxAliasing);
+fprintf('Candidate hydrostatic G modes: %d.\n', nCandidateModes);
+fprintf('Observed modal matrix B has size [%d observations x %d candidate modes].\n', size(B,1), size(B,2));
+fprintf('  Row r: modal prediction at observation r; column j: fingerprint of mode j.\n');
+fprintf('weightsObs defines diagonal W_obs in observation space; it is not physical quadrature.\n');
+fprintf('The retained set I contains mode fingerprints that remain independent on this grid.\n');
+fprintf('Rank-revealing retained modes: %s\n', mat2str(retainedModes));
+fprintf('Contiguous prefix comparison:  %s\n', mat2str(prefixModes));
 fprintf('QR relative pivot at final retained mode: %.3e\n', selectionDiagnostics.finalRelativePivot);
+fprintf('Condition number after QR column normalization: %.3e\n', selectionDiagnostics.conditionNumber);
+fprintf('Final projection is built from unscaled physical columns B(:,retainedModes).\n');
+
+fprintf('\nProjection diagnostics\n');
+printProjectionSummary("rank-revealing",retainedDiagnostics);
+printProjectionSummary("same-count prefix",prefixDiagnostics);
 
 %% Recover coefficients from synthetic observations
-% The least-squares solve uses scaled columns for conditioning. The
-% physical G-mode coefficients are the scaled coefficients divided by
-% modeScale. Those physical coefficients define the potential-energy
-% spectrum through eta_j^2.
+% The true and recovered coefficients are the physical hydrostatic G
+% coefficients. Their squares define the normalized potential-energy spectrum.
 trueCoefficients = zeros(nCandidateModes,1);
 retainedSignalModes = retainedModes(1:min(9,length(retainedModes)));
 retainedAmplitudes = [1.0 -0.65 0.42 -0.30 0.22 -0.16 0.11 -0.08 0.05].';
 trueCoefficients(retainedSignalModes) = retainedAmplitudes(1:length(retainedSignalModes));
 
-rejectedSignalModes = rejectedModes(rejectedModes <= 24);
+rejectedSignalModes = retainedDiagnostics.rejectedModes(retainedDiagnostics.rejectedModes <= 24);
 rejectedSignalModes = rejectedSignalModes(1:min(3,length(rejectedSignalModes)));
 rejectedAmplitudes = [0.12 -0.09 0.06].';
 trueCoefficients(rejectedSignalModes) = rejectedAmplitudes(1:length(rejectedSignalModes));
@@ -91,35 +95,27 @@ trueCoefficients(rejectedSignalModes) = rejectedAmplitudes(1:length(rejectedSign
 trueProfile = PhiPlot*trueCoefficients;
 observations = B*trueCoefficients;
 
-recoveredRetainedCoefficients = forwardProjection*observations;
+recoveredRetainedCoefficients = retainedDiagnostics.forwardProjection*observations;
 recoveredCoefficients = zeros(nCandidateModes,1);
 recoveredCoefficients(retainedModes) = recoveredRetainedCoefficients;
 
-predictedRecoveredCoefficients = resolutionMatrix*trueCoefficients;
-unresolvedBias = resolutionMatrix(:,rejectedModes)*trueCoefficients(rejectedModes);
+predictedRecoveredCoefficients = retainedDiagnostics.resolutionMatrix*trueCoefficients;
+unresolvedBias = retainedDiagnostics.resolutionMatrix(:,retainedDiagnostics.rejectedModes)*trueCoefficients(retainedDiagnostics.rejectedModes);
 selectedRelativeError = norm(recoveredRetainedCoefficients - trueCoefficients(retainedModes))/norm(trueCoefficients(retainedModes));
 
-modeScaleColumn = modeScale(:);
-truePhysicalCoefficients = trueCoefficients ./ modeScaleColumn;
-recoveredPhysicalCoefficients = recoveredCoefficients ./ modeScaleColumn;
-truePotentialEnergySpectrum = truePhysicalCoefficients.^2;
-recoveredPotentialEnergySpectrum = recoveredPhysicalCoefficients.^2;
-
-retainedModeScale = modeScaleColumn(retainedModes);
-physicalResolutionMatrix = (modeScaleColumn.' ./ retainedModeScale) .* resolutionMatrix;
-spectralWindow = physicalResolutionMatrix.^2;
+truePotentialEnergySpectrum = trueCoefficients.^2;
+recoveredPotentialEnergySpectrum = recoveredCoefficients.^2;
 expectedRecoveredSpectrum = zeros(nCandidateModes,1);
-expectedRecoveredSpectrum(retainedModes) = spectralWindow*truePotentialEnergySpectrum;
-% The spectral window maps a true potential-energy spectrum to the expected
-% recovered spectrum when modal coefficients are uncorrelated.
+expectedRecoveredSpectrum(retainedModes) = retainedDiagnostics.spectralWindow*truePotentialEnergySpectrum;
 
 fprintf('\nSynthetic recovery\n');
 fprintf('Relative error in retained coefficients: %.3e\n', selectedRelativeError);
 fprintf('Relative unresolved-mode bias: %.3e\n', norm(unresolvedBias)/norm(trueCoefficients(retainedModes)));
-fprintf('Deterministic resolution check: %.3e\n', norm(predictedRecoveredCoefficients - forwardProjection*observations));
+fprintf('Deterministic resolution check: %.3e\n', norm(predictedRecoveredCoefficients - retainedDiagnostics.forwardProjection*observations));
 fprintf('True normalized potential energy: %.3e\n', sum(truePotentialEnergySpectrum));
 fprintf('Recovered normalized potential energy: %.3e\n', sum(recoveredPotentialEnergySpectrum));
 fprintf('Expected recovered potential energy: %.3e\n', sum(expectedRecoveredSpectrum));
+fprintf('Expected spectrum assumes uncorrelated coefficients; deterministic recovery can include coherent aliasing.\n');
 
 %% Plot true and recovered coefficients with resolution diagnostics
 figure('Name','Partial-depth observational mode projection')
@@ -135,11 +131,11 @@ legend('truth','samples','Location','southwest')
 grid on
 
 nexttile
-stem(1:nCandidateModes,truePhysicalCoefficients,'k','DisplayName','true'), hold on
-stem(retainedModes,recoveredPhysicalCoefficients(retainedModes),'r','filled','DisplayName','recovered')
+stem(1:nCandidateModes,trueCoefficients,'k','DisplayName','true'), hold on
+stem(retainedModes,recoveredCoefficients(retainedModes),'r','filled','DisplayName','recovered')
 xlabel('mode number')
 ylabel('coefficient')
-title('Physical G-mode coefficients')
+title('Hydrostatic G-mode coefficients')
 legend('Location','northeast')
 grid on
 
@@ -154,22 +150,22 @@ legend('Location','northeast')
 grid on
 
 nexttile
-imagesc(1:nCandidateModes,1:length(retainedModes),abs(resolutionMatrix))
+imagesc(1:nCandidateModes,retainedModes,abs(retainedDiagnostics.resolutionMatrix))
 set(gca,'YDir','normal')
 xlabel('true mode number')
-ylabel('recovered coefficient row')
+ylabel('recovered mode number')
 title('|A B| resolution/aliasing matrix')
 colorbar
 
 nexttile
-stem(rejectedModes,aliasingColumnNorm,'filled')
+stem(retainedDiagnostics.rejectedModes,retainedDiagnostics.aliasingColumnNorm,'filled')
 xlabel('rejected mode number')
 ylabel('aliasing norm')
 title('Rejected-mode leakage into retained coefficients')
 grid on
 
 nexttile
-imagesc(1:nCandidateModes,retainedModes,spectralWindow)
+imagesc(1:nCandidateModes,retainedModes,retainedDiagnostics.spectralWindow)
 set(gca,'YDir','normal')
 xlabel('true mode number')
 ylabel('recovered mode number')
@@ -184,6 +180,9 @@ normalizedB = weightedB ./ columnNorms;
 [~,R,pivotOrder] = qr(normalizedB,0);
 relativePivots = abs(diag(R))/abs(R(1,1));
 nRank = find(relativePivots >= rankTolerance,1,'last');
+if isempty(nRank)
+    nRank = 0;
+end
 
 selectedInPivotOrder = [];
 for iPivot = 1:nRank
@@ -196,8 +195,28 @@ end
 
 retainedModes = sort(selectedInPivotOrder);
 diagnostics.relativePivots = relativePivots;
-diagnostics.finalRelativePivot = relativePivots(length(selectedInPivotOrder));
-diagnostics.conditionNumber = cond(normalizedB(:,retainedModes).'*normalizedB(:,retainedModes));
+if isempty(retainedModes)
+    diagnostics.finalRelativePivot = NaN;
+    diagnostics.conditionNumber = NaN;
+else
+    diagnostics.finalRelativePivot = relativePivots(length(selectedInPivotOrder));
+    diagnostics.conditionNumber = cond(normalizedB(:,retainedModes).'*normalizedB(:,retainedModes));
+end
+end
+
+function diagnostics = projectionDiagnostics(B, weights, retainedModes)
+nCandidateModes = size(B,2);
+diagnostics.retainedModes = retainedModes;
+diagnostics.rejectedModes = setdiff(1:nCandidateModes, retainedModes);
+[diagnostics.forwardProjection,diagnostics.resolutionMatrix,diagnostics.gramMatrix] = weightedProjection(B, weights, retainedModes);
+diagnostics.retainedError = norm(diagnostics.resolutionMatrix(:,retainedModes) - eye(length(retainedModes)),'fro')/sqrt(length(retainedModes));
+diagnostics.aliasingMatrix = diagnostics.resolutionMatrix(:,diagnostics.rejectedModes);
+diagnostics.aliasingColumnNorm = vecnorm(diagnostics.aliasingMatrix,2,1);
+diagnostics.maxAliasing = max([0 diagnostics.aliasingColumnNorm]);
+diagnostics.conditionNumber = cond(diagnostics.gramMatrix);
+diagnostics.spectralWindow = diagnostics.resolutionMatrix.^2;
+rejectedWindow = diagnostics.spectralWindow(:,diagnostics.rejectedModes);
+diagnostics.windowLeakage = sum(rejectedWindow(:))/size(diagnostics.spectralWindow,1);
 end
 
 function [A,resolutionMatrix,gramMatrix] = weightedProjection(B, weights, retainedModes)
@@ -206,4 +225,10 @@ weightedBS = weights .* BS;
 gramMatrix = BS.' * weightedBS;
 A = gramMatrix \ weightedBS.';
 resolutionMatrix = A*B;
+end
+
+function printProjectionSummary(label,diagnostics)
+fprintf('%-18s retained=%2d cond=%9.3e retained err=%9.3e max alias=%9.3e window leak=%9.3e\n', ...
+    label,length(diagnostics.retainedModes),diagnostics.conditionNumber, ...
+    diagnostics.retainedError,diagnostics.maxAliasing,diagnostics.windowLeakage);
 end

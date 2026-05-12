@@ -251,9 +251,12 @@ classdef InternalModesBasis < CAAnnotatedClass
             % Build a transform on the basis' native vertical grid.
             %
             % The native transform maps between modal coefficients and
-            % fields sampled at `basis.z`. With `projectionMethod="auto"`,
-            % a square, well-conditioned inverse matrix uses a direct
-            % inverse; otherwise the transform uses a weighted pseudoinverse.
+            % fields sampled at `basis.z`. Components with Dirichlet rows,
+            % such as rigid-lid G modes, are solved on their active interior
+            % rows and expanded back to full-grid matrices. With
+            % `projectionMethod="auto"`, a square, well-conditioned active
+            % inverse matrix uses a direct inverse; otherwise the transform
+            % uses a weighted pseudoinverse.
             %
             % - Topic: Build vertical transforms
             % - Declaration: transform = nativeTransform(self,options)
@@ -436,7 +439,8 @@ classdef InternalModesBasis < CAAnnotatedClass
             % For canonical geostrophic F modes this returns
             % $$\gamma_0=D$$ and $$\gamma_j=h_g^j$$. For canonical G modes
             % the current normalization gives a modal spectrum weighted by
-            % $$g$$.
+            % $$g$$. These Parseval spectrum weights are distinct from the
+            % normalization used by canonical forward projections.
             %
             % - Topic: Analyze vertical spectra
             % - Declaration: weights = spectralWeights(self,component,options)
@@ -499,9 +503,11 @@ classdef InternalModesBasis < CAAnnotatedClass
                     error("InternalModesBasis:NoncanonicalFProjection", ...
                         "This basis has no canonical F projection. Pass allowNoncanonical=true to build a numerical F transform.");
                 end
-                [PhiF,weightsF,modeNumbersF,hF,spectralWeightsF,componentRoleF,defaultStatusF] = self.componentMatrix("F", options.nModes);
-                [forwardF,transformStatusF,conditionNumberF,gramErrorF] = self.forwardMatrix(PhiF, weightsF, spectralWeightsF, options.projectionMethod, defaultStatusF, options.maxConditionNumber);
+                [PhiF,weightsF,modeNumbersF,hF,spectralWeightsF,componentRoleF,defaultStatusF,activeRowsF,projectionWeightsF] = self.componentMatrix("F", options.nModes);
+                [forwardF,transformStatusF,conditionNumberF,gramErrorF] = self.forwardMatrix(PhiF, weightsF, projectionWeightsF, options.projectionMethod, defaultStatusF, options.maxConditionNumber, activeRowsF);
                 inverseF = PhiF;
+                inactiveRowsF = setdiff((1:length(self.z)).', activeRowsF);
+                inverseF(inactiveRowsF,:) = 0;
                 retainedModesF = modeNumbersF(:);
                 rejectedModesF = setdiff((1:self.nAvailableModes("F")).', retainedModesF);
                 if options.preserveSize
@@ -530,9 +536,11 @@ classdef InternalModesBasis < CAAnnotatedClass
             gramErrorG = NaN;
 
             if includeG
-                [PhiG,weightsG,modeNumbersG,hG,spectralWeightsG,componentRoleG,defaultStatusG] = self.componentMatrix("G", options.nModes);
-                [forwardG,transformStatusG,conditionNumberG,gramErrorG] = self.forwardMatrix(PhiG, weightsG, spectralWeightsG, options.projectionMethod, defaultStatusG, options.maxConditionNumber);
+                [PhiG,weightsG,modeNumbersG,hG,spectralWeightsG,componentRoleG,defaultStatusG,activeRowsG,projectionWeightsG] = self.componentMatrix("G", options.nModes);
+                [forwardG,transformStatusG,conditionNumberG,gramErrorG] = self.forwardMatrix(PhiG, weightsG, projectionWeightsG, options.projectionMethod, defaultStatusG, options.maxConditionNumber, activeRowsG);
                 inverseG = PhiG;
+                inactiveRowsG = setdiff((1:length(self.z)).', activeRowsG);
+                inverseG(inactiveRowsG,:) = 0;
                 retainedModesG = modeNumbersG(:);
                 rejectedModesG = setdiff((1:self.nAvailableModes("G")).', retainedModesG);
                 if options.preserveSize
@@ -559,41 +567,49 @@ classdef InternalModesBasis < CAAnnotatedClass
                 problemType=self.problemType,sourceDescription=self.sourceDescription);
         end
 
-        function [Phi,weights,modeNumbers,modeHeights,spectrumWeights,componentRole,status] = componentMatrix(self, component, nModes)
+        function [Phi,weights,modeNumbers,modeHeights,spectrumWeights,componentRole,status,activeRows,projectionWeights] = componentMatrix(self, component, nModes)
             component = string(component);
             nAvailable = self.nAvailableModes(component);
-            if isempty(nModes)
-                nRetained = nAvailable;
-            else
-                nRetained = min(nAvailable, nModes);
-            end
 
             if component == "F"
                 if self.isGeostrophic()
                     PhiAll = cat(2,ones(length(self.z),1),self.F);
                     hAll = [self.D reshape(self.h,1,[])];
                     spectrumAll = hAll;
+                    projectionAll = hAll;
                 else
                     PhiAll = self.F;
                     hAll = reshape(self.h,1,[]);
                     spectrumAll = hAll;
+                    projectionAll = hAll;
                 end
                 componentRole = self.componentRoleF;
                 status = self.defaultStatusForComponent("F");
                 weights = self.quadratureWeights();
+                activeRows = (1:size(PhiAll,1)).';
             else
                 PhiAll = self.G;
                 hAll = reshape(self.h,1,[]);
                 spectrumAll = self.g * ones(1,size(PhiAll,2));
+                projectionAll = ones(1,size(PhiAll,2));
                 componentRole = self.componentRoleG;
                 status = self.defaultStatusForComponent("G");
                 weights = self.gQuadratureWeights();
+                activeRows = self.activeProjectionRows(PhiAll);
+            end
+
+            nTransformable = min(nAvailable, length(activeRows));
+            if isempty(nModes)
+                nRetained = nTransformable;
+            else
+                nRetained = min(nTransformable, nModes);
             end
 
             Phi = PhiAll(:,1:nRetained);
             modeNumbers = (1:nRetained).';
             modeHeights = reshape(hAll(1:nRetained),[],1);
             spectrumWeights = reshape(spectrumAll(1:nRetained),[],1);
+            projectionWeights = reshape(projectionAll(1:nRetained),[],1);
         end
 
         function n = nAvailableModes(self, component)
@@ -643,22 +659,25 @@ classdef InternalModesBasis < CAAnnotatedClass
                 return;
             end
 
-            [Phi,weights] = self.componentMatrix(component, []);
+            [Phi,weights,~,~,~,~,~,activeRows] = self.componentMatrix(component, []);
+            PhiActive = Phi(activeRows,:);
+            weightsActive = weights(activeRows);
             columnScale = max(abs(Phi),[],1);
             columnScale(columnScale == 0) = 1;
             Phi = Phi ./ columnScale;
+            PhiActive = PhiActive ./ columnScale;
             nAvailable = min(options.nModes, size(Phi,2));
             iTailEnd = min(size(Phi,2), nAvailable + options.nTailCheck);
             nResolved = 0;
             for n = 1:nAvailable
-                PhiN = Phi(:,1:n);
-                gram = PhiN.' * (weights .* PhiN);
+                PhiN = PhiActive(:,1:n);
+                gram = PhiN.' * (weightsActive .* PhiN);
                 if cond(gram) > options.maxConditionNumber
                     break;
                 end
-                A = gram \ (weights .* PhiN).';
+                A = gram \ (weightsActive .* PhiN).';
                 if n < iTailEnd
-                    leakage = A * Phi(:,n+1:iTailEnd);
+                    leakage = A * PhiActive(:,n+1:iTailEnd);
                     maxLeakage = max(vecnorm(leakage,2,1));
                 else
                     maxLeakage = 0;
@@ -667,6 +686,19 @@ classdef InternalModesBasis < CAAnnotatedClass
                     break;
                 end
                 nResolved = n;
+            end
+        end
+
+        function rows = activeProjectionRows(~, Phi)
+            if isempty(Phi)
+                rows = zeros(0,1);
+                return;
+            end
+            rowScale = max(abs(Phi),[],2);
+            tolerance = sqrt(eps(max(1,max(rowScale))));
+            rows = find(rowScale > tolerance);
+            if isempty(rows)
+                rows = (1:size(Phi,1)).';
             end
         end
 
@@ -752,12 +784,23 @@ classdef InternalModesBasis < CAAnnotatedClass
             end
         end
 
-        function [forward,status,conditionNumber,gramError] = forwardMatrix(~, Phi, weights, spectrumWeights, projectionMethod, defaultStatus, maxConditionNumber)
+        function [forward,status,conditionNumber,gramError] = forwardMatrix(~, Phi, weights, projectionWeights, projectionMethod, defaultStatus, maxConditionNumber, activeRows)
             projectionMethod = string(projectionMethod);
             status = string(defaultStatus);
-            conditionNumber = cond(Phi);
+            if nargin < 8 || isempty(activeRows)
+                activeRows = (1:size(Phi,1)).';
+            end
+            PhiActive = Phi(activeRows,:);
+            weightsActive = weights(activeRows);
+            if isempty(PhiActive) || size(PhiActive,2) == 0
+                forward = zeros(0,size(Phi,1));
+                conditionNumber = 0;
+                gramError = 0;
+                return;
+            end
+            conditionNumber = cond(PhiActive);
             if projectionMethod == "auto"
-                if size(Phi,1) == size(Phi,2) && conditionNumber <= maxConditionNumber
+                if size(PhiActive,1) == size(PhiActive,2) && conditionNumber <= maxConditionNumber
                     projectionMethod = "directInverse";
                 else
                     projectionMethod = "weightedPseudoinverse";
@@ -765,20 +808,22 @@ classdef InternalModesBasis < CAAnnotatedClass
             end
 
             if projectionMethod == "directInverse"
-                forward = inv(Phi);
+                forwardActive = inv(PhiActive);
                 status = "directInverse";
             elseif projectionMethod == "canonical"
-                forward = (Phi.' .* weights.') ./ spectrumWeights;
+                forwardActive = (PhiActive.' .* weightsActive.') ./ projectionWeights;
                 status = "canonical";
             elseif projectionMethod == "weightedPseudoinverse"
-                gram = Phi.' * (weights .* Phi);
-                forward = gram \ (weights .* Phi).';
+                gram = PhiActive.' * (weightsActive .* PhiActive);
+                forwardActive = gram \ (weightsActive .* PhiActive).';
                 status = "weightedPseudoinverse";
                 conditionNumber = cond(gram);
             else
                 error("InternalModesBasis:InvalidProjectionMethod", ...
                     "projectionMethod must be auto, directInverse, weightedPseudoinverse, or canonical.");
             end
+            forward = zeros(size(forwardActive,1),size(Phi,1));
+            forward(:,activeRows) = forwardActive;
             gramError = norm(forward*Phi - eye(size(Phi,2)),'fro')/max(1,norm(eye(size(Phi,2)),'fro'));
         end
 
