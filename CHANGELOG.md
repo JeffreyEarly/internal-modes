@@ -2,6 +2,9 @@
 
 ## Unreleased
 - expanded the partial-depth observational projection example with configurable sampling scenarios, Gaussian ensemble coefficient realizations, physical G-mode potential-energy spectra, observed-space completeness diagnostics, and spectral-window plots
+- added a hydrostatic quadrature accuracy comparison example that separates mode-shape, root, solver, retained-band, and positive-weight effects in Parseval diagnostics
+- added geostrophic normalization support and diagnostics for the analytical constant and exponential stratification solvers, with smoke-test coverage
+- updated the physical sampling quadrature optimization example to use geostrophic normalization
 
 ## [1.4.0] - 2026-05-08
 - added component-role-aware `InternalModesBasis`, `InternalModesTransform`, and `InternalModesProjection` classes for vertical transforms, fixed-grid projections, observational projections, vertical spectra, and annotated persistence

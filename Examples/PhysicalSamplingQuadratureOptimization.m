@@ -82,7 +82,7 @@ zDomain = [-Lz 0];
 if nodeRule == "G^{N+1}"
     zReference = linspace(zDomain(1),zDomain(2),1024).';
     imReference = InternalModesWKBSpectral(N2=N2,zIn=zDomain,zOut=zReference,latitude=latitude,nEVP=nEVP,g=g);
-    imReference.normalization = Normalization.kConstant;
+    imReference.normalization = Normalization.geostrophic;
     imReference.upperBoundary = UpperBoundary.rigidLid;
     z = imReference.GaussQuadraturePointsForModesAtFrequency(nPoints,omega);
 elseif nodeRule == "Chebyshev-Lobatto"
@@ -94,7 +94,7 @@ else
 end
 
 im = InternalModesWKBSpectral(N2=N2,zIn=zDomain,zOut=z,latitude=latitude,nEVP=nEVP,nModes=nModes,g=g);
-im.normalization = Normalization.kConstant;
+im.normalization = Normalization.geostrophic;
 im.upperBoundary = UpperBoundary.rigidLid;
 
 [F,G,h] = im.modesAtFrequency(omega);

@@ -152,7 +152,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
             self.GSolutionApprox = @(z,omega,c) besselj(b*(omega/c),(b*N0/c)*exp(z/self.b) );
             self.FSolutionApprox = @(z,omega,c) (N0*exp(z/b)*c/2/g) .* ( (besselj(b*(omega/c)-1,(b*N0/c)*exp(z/b)) - besselj(b*(omega/c) + 1,(b*N0/c)*exp(z/b))) );
     
-            fprintf('Using the analytical form for exponential stratification N0=%.7g and b=%d\n',self.N0,self.b);
+            % fprintf('Using the analytical form for exponential stratification N0=%.7g and b=%d\n',self.N0,self.b);
         end
                 
         function [F,G,h,omega,varargout] = modesAtWavenumber(self, k, varargin )
@@ -162,7 +162,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
             % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesExponentialStratification instance
             % - Parameter k: horizontal wavenumber
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
             % - Returns F: horizontal-velocity mode matrix on `zOut`
             % - Returns G: vertical-velocity mode matrix on `zOut`
             % - Returns h: equivalent-depth row vector
@@ -227,7 +227,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
             % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesExponentialStratification instance
             % - Parameter omega: frequency in radians per second
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
             % - Returns F: horizontal-velocity mode matrix on `zOut`
             % - Returns G: vertical-velocity mode matrix on `zOut`
             % - Returns h: equivalent-depth row vector
@@ -455,7 +455,7 @@ classdef InternalModesExponentialStratification < InternalModesBase
             % - Parameter self: InternalModesExponentialStratification instance
             % - Parameter omega: frequency row vector
             % - Parameter c: phase-speed row vector
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
             % - Returns F: normalized horizontal-velocity mode matrix
             % - Returns G: normalized vertical-velocity mode matrix
             % - Returns varargout: requested normalization and quadratic-integral diagnostics
@@ -492,6 +492,12 @@ classdef InternalModesExponentialStratification < InternalModesBase
                         if Ffunc(0,omega(j),c(j)) < 0
                             A = -A;
                         end
+                    case Normalization.geostrophic
+                        geostrophicNorm = integral(@(z) self.N0^2*exp(2*z/self.b).*Gfunc(z,omega(j),c(j)).^2/self.g, lowerIntegrationBound, 0);
+                        A = sqrt(geostrophicNorm);
+                        if Ffunc(0,omega(j),c(j)) < 0
+                            A = -A;
+                        end
                 end
                 
                 F(:,j) = Ffunc(self.z,omega(j),c(j))/A;
@@ -523,8 +529,15 @@ classdef InternalModesExponentialStratification < InternalModesBase
                             B = -B;
                         end
                         varargout{iArg}(j) = A/B;
+                    elseif  ( strcmp(varargin{iArg}, 'geostrophicNorm') )
+                        geostrophicNorm = integral(@(z) self.N0^2*exp(2*z/self.b).*Gfunc(z,omega(j),c(j)).^2/self.g, lowerIntegrationBound, 0);
+                        B = sqrt(geostrophicNorm);
+                        if Ffunc(0,omega(j),c(j)) < 0
+                            B = -B;
+                        end
+                        varargout{iArg}(j) = A/B;
                     else
-                        error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, omegaConstant');
+                        error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, omegaConstant, geostrophicNorm');
                     end
                 end
                     

@@ -118,6 +118,36 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
             testCase.verifyModes(F, G, h, zOut, 4)
         end
 
+        function constantAnalyticalModesSupportGeostrophicNormalization(testCase)
+            zIn = [-4000 0];
+            zOut = linspace(zIn(1), zIn(2), 33)';
+            N0 = 5.2e-3;
+            g = 9.81;
+
+            im = InternalModesConstantStratification(N0=N0, zIn=zIn, zOut=zOut, latitude=33, nModes=4, g=g);
+            im.upperBoundary = UpperBoundary.rigidLid;
+            im.normalization = Normalization.geostrophic;
+            [F, G, h, ~, N2G2, geostrophicRatio] = im.modesAtFrequency(0, 'N2G2', 'geostrophicNorm');
+
+            testCase.verifyModes(F, G, h, zOut, 4)
+            testCase.verifyEqual(N2G2/g, ones(size(N2G2)), AbsTol=1e-12)
+            testCase.verifyEqual(geostrophicRatio, ones(size(geostrophicRatio)), AbsTol=1e-12)
+        end
+
+        function exponentialAnalyticalModesSupportGeostrophicNormalization(testCase)
+            [~, ~, zIn, zOut, N0, b] = testCase.exponentialProfile();
+            g = 9.81;
+
+            im = InternalModesExponentialStratification(N0=N0, b=b, zIn=zIn, zOut=zOut, latitude=33, nModes=4, g=g);
+            im.upperBoundary = UpperBoundary.rigidLid;
+            im.normalization = Normalization.geostrophic;
+            [F, G, h, ~, N2G2, geostrophicRatio] = im.modesAtFrequency(0, 'N2G2', 'geostrophicNorm');
+
+            testCase.verifyModes(F, G, h, zOut, 4)
+            testCase.verifyEqual(N2G2/g, ones(size(N2G2)), RelTol=1e-10)
+            testCase.verifyEqual(geostrophicRatio, ones(size(geostrophicRatio)), AbsTol=1e-12)
+        end
+
         function spectralSurfaceModeComputesWithLowerCamelApi(testCase)
             [rhoFunction, ~, zIn, zOut, ~] = testCase.exponentialProfile();
 
