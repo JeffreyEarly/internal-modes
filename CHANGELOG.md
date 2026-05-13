@@ -1,5 +1,8 @@
 # Version History
 
+## Unreleased
+- expanded the partial-depth observational projection example with configurable sampling scenarios, Gaussian ensemble coefficient realizations, physical G-mode potential-energy spectra, observed-space completeness diagnostics, and spectral-window plots
+
 ## [1.4.0] - 2026-05-08
 - added component-role-aware `InternalModesBasis`, `InternalModesTransform`, and `InternalModesProjection` classes for vertical transforms, fixed-grid projections, observational projections, vertical spectra, and annotated persistence
 - added vertical-transform examples for wave-vortex-model integration sketches and component-role-aware modal spectra
