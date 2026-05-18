@@ -32,6 +32,9 @@ end
 if ~exist('nPositiveSignedModes','var')
     nPositiveSignedModes = 5;
 end
+if ~exist('fModePlotLimits','var')
+    fModePlotLimits = [];
+end
 if ~exist('windowModeNormalization','var')
     if exist('fWindowEigenmodes','var')
         switch string(fWindowEigenmodes)
@@ -196,6 +199,10 @@ PsiFfromGIntSignedPlot = PhiFAnalysisPlot*QFfromGIntSigned(:,plotIndexFfromGIntS
 PsiGPlot = PhiGAnalysisPlot*QG(:,plotIndexG);
 PsiGIntSignedPlot = PhiGAnalysisPlot*QGIntSigned(:,plotIndexGIntSigned);
 PsiGIntAbsEtaPlot = PhiGAnalysisPlot*QGIntAbsEta(:,plotIndexGIntAbsEta);
+if isempty(fModePlotLimits)
+    fModePlotLimits = symmetricProfileLimits([PsiFPlot(:,2:end), ...
+        PsiFfromGPlot(:,2:end),PsiFfromGIntSignedPlot(:,2:end)],1.15);
+end
 
 cF = QF.'*uAnalysisHat;
 cG = QG.'*etaAnalysisHat;
@@ -424,15 +431,15 @@ tiledlayout(2,3,TileSpacing="compact",Padding="compact")
 
 nexttile
 plotProfilesWithWindow(PsiFPlot,modeData.zPlot,windowBounds, ...
-    "F window modes, eigenvalue order",compose('%d: %.2g',plotIndexF(:),lambdaF(plotIndexF)))
+    "F window modes, eigenvalue order",compose('%d: %.2g',plotIndexF(:),lambdaF(plotIndexF)),fModePlotLimits)
 
 nexttile
 plotProfilesWithWindow(PsiFfromGPlot,modeData.zPlot,windowBounds, ...
-    "F from standard G window modes",compose('%d',plotIndexFfromG(:)))
+    "F from standard G window modes",compose('%d',plotIndexFfromG(:)),fModePlotLimits)
 
 nexttile
 plotProfilesWithWindow(PsiFfromGIntSignedPlot,modeData.zPlot,windowBounds, ...
-    "F from signed G window modes",plotLabelFfromGIntSigned)
+    "F from signed G window modes",plotLabelFfromGIntSigned,fModePlotLimits)
 
 nexttile
 plotProfilesWithWindow(PsiGPlot,modeData.zPlot,windowBounds, ...
@@ -947,10 +954,28 @@ function value = relativeDifference(a,b)
 value = abs(a - b)/max([abs(a),abs(b),eps]);
 end
 
-function plotProfilesWithWindow(profiles,z,windowBounds,plotTitle,legendLabels)
+function limits = symmetricProfileLimits(profiles,padding)
+if isempty(profiles)
+    limits = [-1 1];
+    return
+end
+maxAmplitude = max(abs(profiles(:)));
+if maxAmplitude == 0
+    limits = [-1 1];
+else
+    limits = padding*maxAmplitude*[-1 1];
+end
+end
+
+function plotProfilesWithWindow(profiles,z,windowBounds,plotTitle,legendLabels,xLimits)
+if nargin < 6 || isempty(xLimits)
+    shouldUseProfileLimits = true;
+else
+    shouldUseProfileLimits = false;
+end
 if isempty(profiles)
     xLimits = [-1 1];
-else
+elseif shouldUseProfileLimits
     xLimits = [min(profiles(:)) max(profiles(:))];
 end
 if diff(xLimits) == 0
@@ -959,17 +984,18 @@ end
 
 patch([xLimits(1) xLimits(2) xLimits(2) xLimits(1)], ...
     [windowBounds(1) windowBounds(1) windowBounds(2) windowBounds(2)], ...
-    [0.92 0.92 0.92],EdgeColor="none")
+    [0.92 0.92 0.92],EdgeColor="none",HandleVisibility="off")
 hold on
 if isempty(profiles)
     text(0,mean(windowBounds),"no modes retained",HorizontalAlignment="center")
 else
-    plot(profiles,z,LineWidth=1.1)
-    legend(legendLabels,Location="best")
+    lineHandles = plot(profiles,z,LineWidth=1.1);
+    legend(lineHandles,legendLabels,Location="best")
 end
 xlabel('mode amplitude')
 ylabel('z (m)')
 title(plotTitle)
+xlim(xLimits)
 grid on
 end
 
