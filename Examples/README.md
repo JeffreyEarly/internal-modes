@@ -21,7 +21,7 @@ These examples exercise the public modal-basis, transform, projection, and spect
 | `VerticalSpectraAndComponentRoles.m` | Demonstrates the vertical spectrum API and component roles: geostrophic F and G spectra are canonical, wave G is canonical, and wave F is numerical-only. |
 | `WaveVortexModelVerticalTransformSketch.m` | Sketches how wave-vortex-model can assemble vertical matrices from generic `InternalModesBasis` and `InternalModesTransform` objects without adding WVM coefficient projectors to `internal-modes`. |
 | `CosineHalfWindowEigenmodes.m` | Standalone analytic benchmark for half-window spectra using a finite full-depth cosine basis: first find the visible subspace, then order it with a proxy equivalent-depth operator. |
-| `HydrostaticWindowModeComparison.m` | Compares partial-window hydrostatic F/G mode bases built from the full barotropic-plus-baroclinic F set: visible-h modes, raw `Gamma_win` modes, and generalized F/G modes that diagonalize both window-energy matrices. |
+| `HydrostaticWindowModeComparison.m` | Compares continuous partial-window hydrostatic formulations from the notes: F/HKE, standard G/PE, signed G interior, and an absolute-eta interior variant. It includes a `windowModeNormalization` switch for unit versus equivalent-depth modal scaling, and plots window modes, spectra, full-depth continuations, and spatial-versus-spectral energy checks. |
 
 ## Hydrostatic Quadrature Investigations
 
