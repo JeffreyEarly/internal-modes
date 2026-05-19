@@ -1,6 +1,12 @@
 # Version History
 
 ## Unreleased
+
+## [2.0.0] - 2026-05-19
+- added the parallel v2 `InternalModesEVP` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `InternalModesBasisSet`
+- moved v2 modal normalization ownership to `InternalModesBasisSet` so solved native modes can be reinterpreted with different normalizations without re-solving the EVP
+- added index policies for active-boundary mode counts, including the manuscript positive-boundary and negative-boundary PE conventions
+- added v2 regression tests for coordinate pullbacks, index policies, finite-difference grid ownership, basis-owned normalization, partial-depth Gram matrices, and unsupported analytical-basis operations
 - expanded the partial-depth observational projection example with configurable sampling scenarios, Gaussian ensemble coefficient realizations, physical G-mode potential-energy spectra, observed-space completeness diagnostics, and spectral-window plots
 - added a hydrostatic quadrature accuracy comparison example that separates mode-shape, root, solver, retained-band, and positive-weight effects in Parseval diagnostics
 - added geostrophic normalization support and diagnostics for the analytical constant and exponential stratification solvers, with smoke-test coverage
