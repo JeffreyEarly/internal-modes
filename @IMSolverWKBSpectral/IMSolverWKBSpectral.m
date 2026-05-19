@@ -1,22 +1,22 @@
-classdef InternalModesSolverWKBSpectral < InternalModesSolverSpectral
+classdef IMSolverWKBSpectral < IMSolverSpectral
     % Solve physical-coordinate EVPs in the WKB stretched coordinate.
     %
     % The native coordinate satisfies $$dx/dz=N(z)$$. The inherited solver
     % applies this coordinate pullback automatically.
     %
     % ```matlab
-    % solver = InternalModesSolverWKBSpectral(N2=@(z) 1e-5*exp(z/1000), zDomain=[-1000 0], nEVP=64);
+    % solver = IMSolverWKBSpectral(N2=@(z) 1e-5*exp(z/1000), zDomain=[-1000 0], nEVP=64);
     % ```
     %
     % - Topic: Create solvers
-    % - Declaration: classdef InternalModesSolverWKBSpectral < InternalModesSolverSpectral
+    % - Declaration: classdef IMSolverWKBSpectral < IMSolverSpectral
 
     methods
-        function self = InternalModesSolverWKBSpectral(options)
+        function self = IMSolverWKBSpectral(options)
             % Create a WKB-coordinate spectral solver.
             %
             % - Topic: Create solvers
-            % - Declaration: solver = InternalModesSolverWKBSpectral(options)
+            % - Declaration: solver = IMSolverWKBSpectral(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nEVP: number of EVP coefficients
@@ -31,7 +31,7 @@ classdef InternalModesSolverWKBSpectral < InternalModesSolverSpectral
                 options.g (1,1) double {mustBePositive} = 9.81
             end
 
-            self@InternalModesSolverSpectral(N2=options.N2, zDomain=options.zDomain, ...
+            self@IMSolverSpectral(N2=options.N2, zDomain=options.zDomain, ...
                 nEVP=options.nEVP, f0=options.f0, g=options.g, coordinateKind="wkb");
         end
     end

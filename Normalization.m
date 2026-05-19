@@ -4,11 +4,13 @@ classdef Normalization
     % `Normalization` collects the normalization choices used throughout
     % the `internal-modes` hierarchy. Following Section 2.4 of Early,
     % Lelong, and Smith (2020), the main wave-mode norms are the
-    % `kConstant` norm based on the fixed-$$K$$ orthogonality relation and
-    % the `omegaConstant` norm based on the fixed-$$\omega$$ relation.
+    % `unity` norm based on the active EVP inner product, the `kConstant`
+    % norm based on the fixed-$$K$$ orthogonality relation, and the
+    % `omegaConstant` norm based on the fixed-$$\omega$$ relation.
     %
     % The valid values are:
     %
+    % - `Normalization.unity` for unit norm under the active EVP inner product
     % - `Normalization.kConstant` for the manuscript's $$K$$-constant norm
     % - `Normalization.omegaConstant` for the manuscript's
     %   $$\omega$$-constant norm
@@ -27,6 +29,6 @@ classdef Normalization
     % - Topic: Configure normalization and boundaries
     % - Declaration: classdef Normalization
     enumeration
-        kConstant, omegaConstant, uMax, wMax, surfacePressure, geostrophic
-    end    
+        unity, kConstant, omegaConstant, uMax, wMax, surfacePressure, geostrophic
+    end
 end

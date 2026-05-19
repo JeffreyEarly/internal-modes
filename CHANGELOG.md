@@ -3,8 +3,12 @@
 ## Unreleased
 
 ## [2.0.0] - 2026-05-19
-- added the parallel v2 `InternalModesEVP` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `InternalModesBasisSet`
-- moved v2 modal normalization ownership to `InternalModesBasisSet` so solved native modes can be reinterpreted with different normalizations without re-solving the EVP
+- added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`
+- moved v2 modal normalization ownership to `IMBasisSet` so solved native modes can be reinterpreted with different normalizations without re-solving the EVP
+- added the v2 `IMBasisSetConstantStratification` analytical solution set for constant stratification
+- renamed v2 wave EVPs to `waveModesAtWavenumber` and `waveModesAtFrequency`, with `hydrostaticGModes` now using the fixed-frequency wave EVP at `omega=0`
+- added native-coordinate v2 inner products for spectral, WKB spectral, and density spectral solvers, including endpoint surface and bottom weights outside the interior integral
+- added separate `UnitTestsV2` regression coverage and `ExamplesV2` scripts for the new IM stack
 - added index policies for active-boundary mode counts, including the manuscript positive-boundary and negative-boundary PE conventions
 - added v2 regression tests for coordinate pullbacks, index policies, finite-difference grid ownership, basis-owned normalization, partial-depth Gram matrices, and unsupported analytical-basis operations
 - expanded the partial-depth observational projection example with configurable sampling scenarios, Gaussian ensemble coefficient realizations, physical G-mode potential-energy spectra, observed-space completeness diagnostics, and spectral-window plots

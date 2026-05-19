@@ -1,4 +1,4 @@
-classdef InternalModesIndexPolicy
+classdef IMIndexPolicy
     % Specify the expected eigenvalue index of an EVP.
     %
     % The index records negative, zero, and positive eigenvalue counts.
@@ -7,12 +7,12 @@ classdef InternalModesIndexPolicy
     % directions represent baroclinic modes.
     %
     % ```matlab
-    % policy = InternalModesIndexPolicy.fromBoundarySigns([-1 -1]);
+    % policy = IMIndexPolicy.fromBoundarySigns([-1 -1]);
     % ```
     %
     % - Topic: Create index policies
     % - Topic: Validate index counts
-    % - Declaration: classdef InternalModesIndexPolicy
+    % - Declaration: classdef IMIndexPolicy
 
     properties
         % Expected number of negative directions.
@@ -39,11 +39,11 @@ classdef InternalModesIndexPolicy
     end
 
     methods
-        function self = InternalModesIndexPolicy(options)
+        function self = IMIndexPolicy(options)
             % Create an index policy.
             %
             % - Topic: Create index policies
-            % - Declaration: policy = InternalModesIndexPolicy(options)
+            % - Declaration: policy = IMIndexPolicy(options)
             % - Parameter options.expectedNegativeCount: expected negative count
             % - Parameter options.expectedZeroCount: expected zero count
             % - Parameter options.indexTolerance: tolerance for zero classification
@@ -129,12 +129,12 @@ classdef InternalModesIndexPolicy
                     index.negativeCount, index.zeroCount, index.expectedNegativeCount, index.expectedZeroCount);
                 switch self.validationMode
                     case "error"
-                        error("InternalModesIndexPolicy:IndexMismatch", "%s", message);
+                        error("IMIndexPolicy:IndexMismatch", "%s", message);
                     case "warning"
-                        warning("InternalModesIndexPolicy:IndexMismatch", "%s", message);
+                        warning("IMIndexPolicy:IndexMismatch", "%s", message);
                     case "none"
                     otherwise
-                        error("InternalModesIndexPolicy:InvalidValidationMode", ...
+                        error("IMIndexPolicy:InvalidValidationMode", ...
                             "Unknown validation mode ""%s"".", self.validationMode);
                 end
             end
@@ -146,21 +146,21 @@ classdef InternalModesIndexPolicy
             % Create a policy that records but does not validate index counts.
             %
             % - Topic: Create index policies
-            % - Declaration: policy = InternalModesIndexPolicy.none(options)
+            % - Declaration: policy = IMIndexPolicy.none(options)
             % - Parameter options.indexTolerance: tolerance for zero classification
             % - Returns policy: initialized index policy
             arguments
                 options.indexTolerance (1,1) double {mustBePositive} = 1e-10
             end
 
-            policy = InternalModesIndexPolicy(indexTolerance=options.indexTolerance, validationMode="none");
+            policy = IMIndexPolicy(indexTolerance=options.indexTolerance, validationMode="none");
         end
 
         function policy = fixed(options)
             % Create a policy with fixed expected negative and zero counts.
             %
             % - Topic: Create index policies
-            % - Declaration: policy = InternalModesIndexPolicy.fixed(options)
+            % - Declaration: policy = IMIndexPolicy.fixed(options)
             % - Parameter options.expectedNegativeCount: expected negative count
             % - Parameter options.expectedZeroCount: expected zero count
             % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`
@@ -171,7 +171,7 @@ classdef InternalModesIndexPolicy
                 options.validationMode {mustBeTextScalar} = "error"
             end
 
-            policy = InternalModesIndexPolicy(expectedNegativeCount=options.expectedNegativeCount, ...
+            policy = IMIndexPolicy(expectedNegativeCount=options.expectedNegativeCount, ...
                 expectedZeroCount=options.expectedZeroCount, validationMode=options.validationMode);
         end
 
@@ -181,7 +181,7 @@ classdef InternalModesIndexPolicy
             % Negative signs add one negative-index direction each.
             %
             % - Topic: Create index policies
-            % - Declaration: policy = InternalModesIndexPolicy.fromBoundarySigns(signs,options)
+            % - Declaration: policy = IMIndexPolicy.fromBoundarySigns(signs,options)
             % - Parameter signs: active-boundary signs
             % - Parameter options.expectedZeroCount: expected zero count
             % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`
@@ -192,7 +192,7 @@ classdef InternalModesIndexPolicy
                 options.validationMode {mustBeTextScalar} = "error"
             end
 
-            policy = InternalModesIndexPolicy.fixed(expectedNegativeCount=nnz(signs < 0), ...
+            policy = IMIndexPolicy.fixed(expectedNegativeCount=nnz(signs < 0), ...
                 expectedZeroCount=options.expectedZeroCount, validationMode=options.validationMode);
         end
     end

@@ -1,20 +1,22 @@
-classdef InternalModesSolverSpectral
+classdef IMSolverSpectral < IMSolver
     % Solve physical-coordinate EVPs with a Chebyshev spectral discretization.
     %
-    % `InternalModesSolverSpectral` owns the numerical coordinate, the
+    % `IMSolverSpectral` owns the numerical coordinate, the
     % Chebyshev grid, and the physical-coordinate pullback rules. It does
     % not own modal normalization.
     %
     % ```matlab
-    % solver = InternalModesSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-    % basisSet = solver.solveEVP(InternalModesEVP.hydrostaticGModes(k=1e-4));
+    % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
+    % basisSet = solver.solveEVP(IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4));
     % ```
     %
     % - Topic: Create solvers
+    % - Topic: Inspect solvers
     % - Topic: Solve EVPs
+    % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
     % - Topic: Developer topics
-    % - Declaration: classdef InternalModesSolverSpectral
+    % - Declaration: classdef IMSolverSpectral
 
     properties (SetAccess = private)
         % Number of native EVP coefficients.
@@ -106,11 +108,11 @@ classdef InternalModesSolverSpectral
     end
 
     methods
-        function self = InternalModesSolverSpectral(options)
+        function self = IMSolverSpectral(options)
             % Create a coordinate-aware spectral solver.
             %
             % - Topic: Create solvers
-            % - Declaration: solver = InternalModesSolverSpectral(options)
+            % - Declaration: solver = IMSolverSpectral(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nEVP: number of EVP coefficients
@@ -135,38 +137,6 @@ classdef InternalModesSolverSpectral
             self.coordinateKind = string(options.coordinateKind);
             self = self.setupCoordinate();
             self = self.setupNativeGrid();
-        end
-
-        function basisSet = solveEVP(self, evp, options)
-            % Solve an EVP and return a native-basis solution set.
-            %
-            % - Topic: Solve EVPs
-            % - Declaration: basisSet = solveEVP(solver,evp,options)
-            % - Parameter evp: physical-coordinate EVP descriptor
-            % - Parameter options.nModes: number of modes to retain
-            % - Returns basisSet: solved native basis set
-            arguments
-                self InternalModesSolverSpectral
-                evp InternalModesEVP
-                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 100
-            end
-
-            [A, B] = evp.assemble(self);
-            [V, D] = eig(A, B);
-            eigenvalues = diag(D);
-            valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
-            V = real(V(:,valid));
-            eigenvalues = real(eigenvalues(valid));
-            [eigenvalues, sortIndex] = self.sortEigenvalues(eigenvalues, evp.ordering);
-            V = V(:,sortIndex);
-
-            nRetain = min(options.nModes, length(eigenvalues));
-            eigenvalues = eigenvalues(1:nRetain);
-            V = V(:,1:nRetain);
-            h = evp.hFromEigenvalue(eigenvalues(:).');
-            index = evp.indexPolicy.classify(eigenvalues, self.context());
-            basisSet = InternalModesBasisSet(solver=self, evp=evp, nativeModes=V, ...
-                eigenvalues=eigenvalues(:).', h=h, index=index, normalization=Normalization.kConstant);
         end
 
         function context = context(self)
@@ -224,7 +194,7 @@ classdef InternalModesSolverSpectral
                 case 2
                     D = diag(q.*q)*self.Txx + diag(qz)*self.Tx;
                 otherwise
-                    error("InternalModesSolverSpectral:UnsupportedDerivativeOrder", ...
+                    error("IMSolverSpectral:UnsupportedDerivativeOrder", ...
                         "Derivative order %d is not supported.", derivativeOrder);
             end
         end
@@ -243,7 +213,7 @@ classdef InternalModesSolverSpectral
                 case "bottom"
                     index = self.nEVP;
                 otherwise
-                    error("InternalModesSolverSpectral:InvalidBoundaryLocation", ...
+                    error("IMSolverSpectral:InvalidBoundaryLocation", ...
                         "Boundary location must be ""surface"" or ""bottom"".");
             end
         end
@@ -256,9 +226,14 @@ classdef InternalModesSolverSpectral
             % - Parameter nativeModes: Chebyshev coefficient columns
             % - Parameter z: physical evaluation points
             % - Returns values: mode values at `z`
-            x = self.xOfZ(z(:));
-            transform = InternalModesSpectral.ChebyshevTransformForGrid(self.xNative, x);
-            values = transform(nativeModes);
+            z = z(:);
+            if self.isNativePhysicalGrid(z)
+                TOut = self.T;
+            else
+                x = self.clampNativeCoordinate(self.xOfZ(z));
+                TOut = self.chebyshevPolynomialsAtNativePoints(x);
+            end
+            values = TOut*nativeModes;
         end
 
         function values = evaluatePhysicalDerivative(self, nativeModes, z, derivativeOrder)
@@ -271,49 +246,85 @@ classdef InternalModesSolverSpectral
             % - Parameter derivativeOrder: physical derivative order
             % - Returns values: derivative values at `z`
             z = z(:);
-            x = self.xOfZ(z);
-            [~, TxOut, TxxOut] = InternalModesSpectral.ChebyshevPolynomialsOnGrid(x, self.nEVP);
+            if self.isNativePhysicalGrid(z)
+                TOut = self.T;
+                TxOut = self.Tx;
+                TxxOut = self.Txx;
+            else
+                x = self.clampNativeCoordinate(self.xOfZ(z));
+                [TOut, TxOut, TxxOut] = self.chebyshevPolynomialsAtNativePoints(x);
+            end
             q = self.qAtZ(z);
             qz = self.qzAtZ(z);
             switch derivativeOrder
                 case 0
-                    TOut = InternalModesSpectral.ChebyshevPolynomialsOnGrid(x, self.nEVP);
                     values = TOut*nativeModes;
                 case 1
                     values = diag(q)*TxOut*nativeModes;
                 case 2
                     values = (diag(q.*q)*TxxOut + diag(qz)*TxOut)*nativeModes;
                 otherwise
-                    error("InternalModesSolverSpectral:UnsupportedDerivativeOrder", ...
+                    error("IMSolverSpectral:UnsupportedDerivativeOrder", ...
                         "Derivative order %d is not supported.", derivativeOrder);
             end
         end
 
-        function gram = componentGramMatrix(self, basisSet, component, zBounds)
-            % Integrate a component Gram matrix in physical coordinates.
+        function z = innerProductGrid(self, zBounds)
+            % Return the native grid used for spectral inner products.
             %
             % - Topic: Evaluate native modes
-            % - Declaration: gram = componentGramMatrix(solver,basisSet,component,zBounds)
-            % - Parameter basisSet: basis set to evaluate
-            % - Parameter component: component name
+            % - Developer: true
+            % - Declaration: z = innerProductGrid(solver,zBounds)
             % - Parameter zBounds: physical integration bounds
-            % - Returns gram: component Gram matrix
-            nGrid = max(256, 4*self.nEVP);
-            z = linspace(min(zBounds), max(zBounds), nGrid).';
-            values = basisSet.evaluate(component, z);
-            switch string(component)
-                case "G"
-                    weight = self.N2(z)/self.g;
-                otherwise
-                    weight = ones(size(z));
+            % - Returns z: physical points corresponding to the native grid
+            arguments
+                self IMSolverSpectral
+                zBounds (1,2) double
             end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    value = trapz(z, weight(:).*values(:,iMode).*values(:,jMode));
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
+
+            z = self.zNative;
+        end
+
+        function value = integrateInnerProduct(self, z, integrand, zBounds)
+            % Integrate inner-product values in the native Chebyshev coordinate.
+            %
+            % The supplied `integrand` is a physical-coordinate integrand
+            % sampled at `z`. The method integrates
+            % $$f(z(x))\,q^{-1}(z(x))$$ in the native coordinate $$x$$,
+            % where $$q=dx/dz$$.
+            %
+            % - Topic: Evaluate native modes
+            % - Developer: true
+            % - Declaration: value = integrateInnerProduct(solver,z,integrand,zBounds)
+            % - Parameter z: physical points from `innerProductGrid`
+            % - Parameter integrand: physical-coordinate integrand values
+            % - Parameter zBounds: physical integration bounds
+            % - Returns value: definite integral over `zBounds`
+            arguments
+                self IMSolverSpectral
+                z (:,1) double
+                integrand (:,1) double
+                zBounds (1,2) double
+            end
+
+            if length(z) ~= self.nEVP || max(abs(z(:) - self.zNative(:))) > self.gridTolerance()
+                error("IMSolverSpectral:InvalidInnerProductGrid", ...
+                    "Spectral inner products must be evaluated on the solver's native grid.");
+            end
+            if length(integrand) ~= self.nEVP
+                error("IMSolverSpectral:InvalidIntegrandSize", ...
+                    "The integrand must have one value per native grid point.");
+            end
+
+            q = self.qAtZ(self.zNative);
+            integrandCheb = InternalModesSpectral.fct(integrand(:)./q(:));
+            if self.boundsCoverDomain(zBounds)
+                value = sum(self.chebyshevIntegrationWeights().*integrandCheb);
+            else
+                xBounds = self.xOfZ(sort(zBounds(:)));
+                xBounds = min(max(xBounds, min(self.xNative)), max(self.xNative));
+                value = InternalModesSpectral.IntegrateChebyshevVectorWithLimits( ...
+                    integrandCheb, self.xNative, min(xBounds), max(xBounds));
             end
         end
 
@@ -344,7 +355,7 @@ classdef InternalModesSolverSpectral
             self.zReference = linspace(self.zDomain(1), self.zDomain(2), nReference).';
             self.qReference = self.coordinateDerivative(self.zReference);
             if any(self.qReference <= 0)
-                error("InternalModesSolverSpectral:InvalidCoordinate", ...
+                error("IMSolverSpectral:InvalidCoordinate", ...
                     "The native coordinate derivative dx/dz must be positive.");
             end
             self.xReference = cumtrapz(self.zReference, self.qReference);
@@ -358,7 +369,7 @@ classdef InternalModesSolverSpectral
             self.zNative = self.zOfX(self.xNative);
             self.zNative(1) = self.zDomain(2);
             self.zNative(end) = self.zDomain(1);
-            [self.T, self.Tx, self.Txx] = InternalModesSpectral.ChebyshevPolynomialsOnGrid(self.xNative, self.nEVP);
+            [self.T, self.Tx, self.Txx] = self.chebyshevPolynomialsAtNativePoints(self.xNative);
         end
 
         function q = coordinateDerivative(self, z)
@@ -370,39 +381,82 @@ classdef InternalModesSolverSpectral
                 case "density"
                     q = self.N2(z);
                 otherwise
-                    error("InternalModesSolverSpectral:InvalidCoordinateKind", ...
+                    error("IMSolverSpectral:InvalidCoordinateKind", ...
                         "Unknown coordinate kind ""%s"".", self.coordinateKind);
             end
         end
 
         function q = qAtZ(self, z)
-            q = interp1(self.zReference, self.qReference, z, "pchip");
+            q = self.coordinateDerivative(z);
         end
 
         function qz = qzAtZ(self, z)
             qz = interp1(self.zReference, self.qzReference, z, "pchip");
         end
 
-        function [lambdaSorted, sortIndex] = sortEigenvalues(~, eigenvalues, ordering)
-            switch string(ordering)
-                case "ascendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "ascend");
-                case "descendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "descend");
-                case "indexThenAscending"
-                    [~, sortIndex] = sortrows([signWithZero(eigenvalues), abs(eigenvalues), eigenvalues]);
-                    lambdaSorted = eigenvalues(sortIndex);
-                otherwise
-                    error("InternalModesSolverSpectral:InvalidOrdering", ...
-                        "Unknown EVP ordering ""%s"".", ordering);
-            end
+        function x = clampNativeCoordinate(self, x)
+            x = min(max(x, min(self.xNative)), max(self.xNative));
         end
-    end
-end
 
-function signs = signWithZero(values)
-tolerance = 1e-10*max(1,max(abs(values)));
-signs = ones(size(values));
-signs(values < -tolerance) = -1;
-signs(abs(values) <= tolerance) = 0;
+        function value = isNativePhysicalGrid(self, z)
+            value = length(z) == self.nEVP && max(abs(z(:) - self.zNative(:))) <= self.gridTolerance();
+        end
+
+        function [T, Tx, Txx] = chebyshevPolynomialsAtNativePoints(self, x)
+            x = x(:);
+            xMin = min(self.xNative);
+            xMax = max(self.xNative);
+            L = xMax - xMin;
+            xNorm = (2/L)*(x - xMin) - 1;
+            xNorm = min(max(xNorm, -1), 1);
+            theta = acos(xNorm);
+
+            T = zeros(length(x), self.nEVP);
+            for iPoly = 0:(self.nEVP-1)
+                T(:,iPoly+1) = cos(iPoly*theta);
+            end
+
+            if nargout < 2
+                return
+            end
+
+            Tx = self.differentiateChebyshevBasis(T, L);
+            if nargout < 3
+                return
+            end
+
+            Txx = self.differentiateChebyshevBasis(Tx, L);
+        end
+
+        function Tx = differentiateChebyshevBasis(~, T, L)
+            nPolys = size(T,2);
+            Tx = zeros(size(T));
+            Tx(:,2) = T(:,1);
+            Tx(:,3) = 4*T(:,2);
+            for j = 4:nPolys
+                m = j - 1;
+                Tx(:,j) = (m/(m-2))*Tx(:,j-2) + 2*m*T(:,j-1);
+            end
+            Tx = (2/L)*Tx;
+        end
+
+        function weights = chebyshevIntegrationWeights(self)
+            np = (0:(self.nEVP-1)).';
+            weights = -(1+(-1).^np)./(np.*np - 1);
+            weights(2) = 0;
+            weights = (max(self.xNative) - min(self.xNative))*weights/2;
+        end
+
+        function value = boundsCoverDomain(self, zBounds)
+            tolerance = self.gridTolerance();
+            zBounds = sort(zBounds);
+            value = abs(zBounds(1) - self.zDomain(1)) <= tolerance && ...
+                abs(zBounds(2) - self.zDomain(2)) <= tolerance;
+        end
+
+        function tolerance = gridTolerance(self)
+            tolerance = 100*eps(max(1,max(abs(self.zDomain))));
+        end
+
+    end
 end

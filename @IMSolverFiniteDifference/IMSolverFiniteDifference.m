@@ -1,18 +1,21 @@
-classdef InternalModesSolverFiniteDifference
+classdef IMSolverFiniteDifference < IMSolver
     % Solve physical-coordinate EVPs on a supplied finite-difference grid.
     %
-    % `InternalModesSolverFiniteDifference` uses the user's physical `z`
+    % `IMSolverFiniteDifference` uses the user's physical `z`
     % grid as its native basis. It shares the v2 `solveEVP` interface with
     % the spectral solvers but evaluates modes by interpolation.
     %
     % ```matlab
-    % solver = InternalModesSolverFiniteDifference(z=linspace(-1000,0,65).');
+    % solver = IMSolverFiniteDifference(z=linspace(-1000,0,65).');
     % ```
     %
     % - Topic: Create solvers
+    % - Topic: Inspect solvers
     % - Topic: Solve EVPs
+    % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
-    % - Declaration: classdef InternalModesSolverFiniteDifference
+    % - Topic: Developer topics
+    % - Declaration: classdef IMSolverFiniteDifference
 
     properties (SetAccess = private)
         % Number of native EVP values.
@@ -73,11 +76,11 @@ classdef InternalModesSolverFiniteDifference
     end
 
     methods
-        function self = InternalModesSolverFiniteDifference(options)
+        function self = IMSolverFiniteDifference(options)
             % Create a finite-difference solver from a physical grid.
             %
             % - Topic: Create solvers
-            % - Declaration: solver = InternalModesSolverFiniteDifference(options)
+            % - Declaration: solver = IMSolverFiniteDifference(options)
             % - Parameter options.z: finite-difference grid
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.f0: Coriolis parameter
@@ -100,38 +103,6 @@ classdef InternalModesSolverFiniteDifference
             self.T = eye(self.nEVP);
             self.Tx = self.finiteDifferenceMatrix(1);
             self.Txx = self.finiteDifferenceMatrix(2);
-        end
-
-        function basisSet = solveEVP(self, evp, options)
-            % Solve an EVP and return a native-basis solution set.
-            %
-            % - Topic: Solve EVPs
-            % - Declaration: basisSet = solveEVP(solver,evp,options)
-            % - Parameter evp: physical-coordinate EVP descriptor
-            % - Parameter options.nModes: number of modes to retain
-            % - Returns basisSet: solved native basis set
-            arguments
-                self InternalModesSolverFiniteDifference
-                evp InternalModesEVP
-                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 100
-            end
-
-            [A, B] = evp.assemble(self);
-            [V, D] = eig(A, B);
-            eigenvalues = diag(D);
-            valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
-            V = real(V(:,valid));
-            eigenvalues = real(eigenvalues(valid));
-            [eigenvalues, sortIndex] = self.sortEigenvalues(eigenvalues, evp.ordering);
-            V = V(:,sortIndex);
-
-            nRetain = min(options.nModes, length(eigenvalues));
-            eigenvalues = eigenvalues(1:nRetain);
-            V = V(:,1:nRetain);
-            h = evp.hFromEigenvalue(eigenvalues(:).');
-            index = evp.indexPolicy.classify(eigenvalues, self.context());
-            basisSet = InternalModesBasisSet(solver=self, evp=evp, nativeModes=V, ...
-                eigenvalues=eigenvalues(:).', h=h, index=index, normalization=Normalization.kConstant);
         end
 
         function context = context(self)
@@ -187,7 +158,7 @@ classdef InternalModesSolverFiniteDifference
                 case 2
                     D = self.Txx;
                 otherwise
-                    error("InternalModesSolverFiniteDifference:UnsupportedDerivativeOrder", ...
+                    error("IMSolverFiniteDifference:UnsupportedDerivativeOrder", ...
                         "Derivative order %d is not supported.", derivativeOrder);
             end
         end
@@ -206,7 +177,7 @@ classdef InternalModesSolverFiniteDifference
                 case "bottom"
                     index = self.nEVP;
                 otherwise
-                    error("InternalModesSolverFiniteDifference:InvalidBoundaryLocation", ...
+                    error("IMSolverFiniteDifference:InvalidBoundaryLocation", ...
                         "Boundary location must be ""surface"" or ""bottom"".");
             end
         end
@@ -235,31 +206,44 @@ classdef InternalModesSolverFiniteDifference
             values = interp1(flip(self.zNative), flip(derivativeValues,1), z(:), "pchip");
         end
 
-        function gram = componentGramMatrix(self, basisSet, component, zBounds)
-            % Integrate a component Gram matrix in physical coordinates.
+        function z = innerProductGrid(self, zBounds)
+            % Return a bounded physical grid for finite-difference inner products.
             %
             % - Topic: Evaluate native modes
-            % - Declaration: gram = componentGramMatrix(solver,basisSet,component,zBounds)
-            % - Parameter basisSet: basis set to evaluate
-            % - Parameter component: component name
+            % - Developer: true
+            % - Declaration: z = innerProductGrid(solver,zBounds)
             % - Parameter zBounds: physical integration bounds
-            % - Returns gram: component Gram matrix
-            z = linspace(min(zBounds), max(zBounds), max(256,4*self.nEVP)).';
-            values = basisSet.evaluate(component, z);
-            switch string(component)
-                case "G"
-                    weight = self.N2(z)/self.g;
-                otherwise
-                    weight = ones(size(z));
+            % - Returns z: ascending physical integration grid
+            arguments
+                self IMSolverFiniteDifference
+                zBounds (1,2) double
             end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    value = trapz(z, weight(:).*values(:,iMode).*values(:,jMode));
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
+
+            zBounds = sort(zBounds);
+            zAscending = sort(self.zNative);
+            interior = zAscending > zBounds(1) & zAscending < zBounds(2);
+            z = unique([zBounds(1); zAscending(interior); zBounds(2)]);
+        end
+
+        function value = integrateInnerProduct(self, z, integrand, zBounds)
+            % Integrate finite-difference inner-product values with trapezoids.
+            %
+            % - Topic: Evaluate native modes
+            % - Developer: true
+            % - Declaration: value = integrateInnerProduct(solver,z,integrand,zBounds)
+            % - Parameter z: physical integration grid
+            % - Parameter integrand: physical-coordinate integrand values
+            % - Parameter zBounds: physical integration bounds
+            % - Returns value: definite integral over `zBounds`
+            arguments
+                self IMSolverFiniteDifference
+                z (:,1) double
+                integrand (:,1) double
+                zBounds (1,2) double
             end
+
+            [zSorted, sortIndex] = sort(z(:));
+            value = trapz(zSorted, integrand(sortIndex));
         end
 
         function x = xOfZ(~, z)
@@ -297,26 +281,5 @@ classdef InternalModesSolverFiniteDifference
             end
         end
 
-        function [lambdaSorted, sortIndex] = sortEigenvalues(~, eigenvalues, ordering)
-            switch string(ordering)
-                case "ascendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "ascend");
-                case "descendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "descend");
-                case "indexThenAscending"
-                    [~, sortIndex] = sortrows([localSignWithZero(eigenvalues), abs(eigenvalues), eigenvalues]);
-                    lambdaSorted = eigenvalues(sortIndex);
-                otherwise
-                    error("InternalModesSolverFiniteDifference:InvalidOrdering", ...
-                        "Unknown EVP ordering ""%s"".", ordering);
-            end
-        end
     end
-end
-
-function signs = localSignWithZero(values)
-tolerance = 1e-10*max(1,max(abs(values)));
-signs = ones(size(values));
-signs(values < -tolerance) = -1;
-signs(abs(values) <= tolerance) = 0;
 end
