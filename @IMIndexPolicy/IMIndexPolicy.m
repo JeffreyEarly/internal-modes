@@ -7,7 +7,8 @@ classdef IMIndexPolicy
     % directions represent baroclinic modes.
     %
     % ```matlab
-    % policy = IMIndexPolicy.fromBoundarySigns([-1 -1]);
+    % boundaryRows = IMBoundaryRow.partialDepthPE(boundarySign="negative");
+    % policy = IMIndexPolicy.fromBoundaryRows(boundaryRows);
     % ```
     %
     % - Topic: Create index policies
@@ -194,6 +195,35 @@ classdef IMIndexPolicy
 
             policy = IMIndexPolicy.fixed(expectedNegativeCount=nnz(signs < 0), ...
                 expectedZeroCount=options.expectedZeroCount, validationMode=options.validationMode);
+        end
+
+        function policy = fromBoundaryRows(boundaryRows, options)
+            % Create an index policy from boundary-row index metadata.
+            %
+            % Resolved boundary rows contribute their negative and zero index
+            % counts. Unresolved boundary rows do not contribute expected
+            % counts.
+            %
+            % - Topic: Create index policies
+            % - Declaration: policy = IMIndexPolicy.fromBoundaryRows(boundaryRows,options)
+            % - Parameter boundaryRows: boundary-row array
+            % - Parameter options.expectedZeroCount: additional expected zero count
+            % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`
+            % - Returns policy: initialized index policy
+            arguments
+                boundaryRows (:,1) IMBoundaryRow
+                options.expectedZeroCount (1,1) double {mustBeInteger, mustBeNonnegative} = 0
+                options.validationMode {mustBeTextScalar} = "error"
+            end
+
+            expectedNegativeCount = 0;
+            expectedZeroCount = options.expectedZeroCount;
+            for iBoundary = 1:length(boundaryRows)
+                expectedNegativeCount = expectedNegativeCount + boundaryRows(iBoundary).expectedNegativeCount();
+                expectedZeroCount = expectedZeroCount + boundaryRows(iBoundary).expectedZeroCount();
+            end
+            policy = IMIndexPolicy.fixed(expectedNegativeCount=expectedNegativeCount, ...
+                expectedZeroCount=expectedZeroCount, validationMode=options.validationMode);
         end
     end
 end

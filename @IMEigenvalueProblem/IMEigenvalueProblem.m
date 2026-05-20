@@ -1,7 +1,7 @@
 classdef IMEigenvalueProblem
     % Describe an internal-mode eigenvalue problem in physical coordinates.
     %
-    % `IMEigenvalueProblem` stores the physical operators, boundary conditions,
+    % `IMEigenvalueProblem` stores the physical operators, boundary laws,
     % component metadata, named normalization rules, eigenvalue
     % interpretation, and index policy needed by coordinate-aware solvers.
     %
@@ -48,10 +48,10 @@ classdef IMEigenvalueProblem
         % - Topic: Inspect EVP metadata
         normalizations = struct()
 
-        % Boundary-condition array.
+        % Resolved boundary-row array.
         %
         % - Topic: Assemble EVPs
-        boundaryConditions = IMBoundaryCondition.empty(0,1)
+        boundaryRows = IMBoundaryRow.empty(0,1)
 
         % Eigenvalue name.
         %
@@ -90,7 +90,7 @@ classdef IMEigenvalueProblem
             % - Parameter options.leftOperator: left physical operator
             % - Parameter options.rightOperator: right physical operator
             % - Parameter options.normalizations: named modal normalization rules
-            % - Parameter options.boundaryConditions: boundary conditions
+            % - Parameter options.boundaryRows: resolved boundary rows
             % - Parameter options.eigenvalueName: eigenvalue name
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
             % - Parameter options.ordering: eigenvalue ordering rule
@@ -103,7 +103,7 @@ classdef IMEigenvalueProblem
                 options.leftOperator IMOperator = IMOperator.strong()
                 options.rightOperator IMOperator = IMOperator.strong()
                 options.normalizations struct = struct()
-                options.boundaryConditions = IMBoundaryCondition.empty(0,1)
+                options.boundaryRows = IMBoundaryRow.empty(0,1)
                 options.eigenvalueName {mustBeTextScalar} = "lambda"
                 options.hFromEigenvalue = @(lambda) 1 ./ lambda
                 options.ordering {mustBeTextScalar} = "ascendingEigenvalue"
@@ -116,7 +116,7 @@ classdef IMEigenvalueProblem
             self.leftOperator = options.leftOperator;
             self.rightOperator = options.rightOperator;
             self.normalizations = options.normalizations;
-            self.boundaryConditions = options.boundaryConditions(:);
+            self.boundaryRows = options.boundaryRows(:);
             self.eigenvalueName = string(options.eigenvalueName);
             self.hFromEigenvalue = options.hFromEigenvalue;
             self.ordering = string(options.ordering);
@@ -136,8 +136,8 @@ classdef IMEigenvalueProblem
             % - Returns B: right generalized-EVP matrix
             A = self.leftOperator.matrix(solver);
             B = self.rightOperator.matrix(solver);
-            for iCondition = 1:length(self.boundaryConditions)
-                [A, B] = self.boundaryConditions(iCondition).apply(A, B, solver);
+            for iBoundary = 1:length(self.boundaryRows)
+                [A, B] = self.boundaryRows(iBoundary).apply(A, B, solver);
             end
         end
     end
@@ -154,15 +154,15 @@ classdef IMEigenvalueProblem
             % - Parameter options.k: horizontal wavenumber
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.upperBoundary: upper boundary condition
-            % - Parameter options.lowerBoundary: lower boundary condition
+            % - Parameter options.upperBoundary: location-free upper boundary law
+            % - Parameter options.lowerBoundary: location-free lower boundary law
             % - Returns evp: fixed-wavenumber wave-mode `G` EVP
             arguments
                 options.k (1,1) double {mustBeNonnegative}
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
-                options.upperBoundary {mustBeTextScalar} = "rigidLid"
-                options.lowerBoundary {mustBeTextScalar} = "rigid"
+                options.upperBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.lowerBoundary (1,1) IMBoundary = IMBoundary.rigid()
             end
 
             k = options.k;
@@ -170,27 +170,28 @@ classdef IMEigenvalueProblem
             g = options.g;
             left = IMOperator.strong().plus(derivativeOrder=2).plus(coefficient=-k*k, derivativeOrder=0);
             right = IMOperator.strong().plus(coefficient=@(z,ctx) (f0*f0 - ctx.N2(z))/g, derivativeOrder=0);
-            boundaryConditions = IMEigenvalueProblem.waveModeGBoundaries(options.upperBoundary, options.lowerBoundary);
+            context = struct("problemType", "waveModesAtWavenumber", "primaryComponent", "G", ...
+                "k", k, "omega", NaN, "f0", f0, "g", g);
+            lowerRow = options.lowerBoundary.resolve(endpoint="lower", context=context);
+            upperRow = options.upperBoundary.resolve(endpoint="upper", context=context);
+            boundaryRows = [lowerRow; upperRow];
             parameters = struct("problemType", "waveModesAtWavenumber", "k", k, "omega", NaN, ...
-                "f0", f0, "g", g, "upperBoundary", string(options.upperBoundary), "lowerBoundary", string(options.lowerBoundary));
+                "f0", f0, "g", g, ...
+                "upperBoundary", upperRow.family, "lowerBoundary", lowerRow.family);
             evp = IMEigenvalueProblem(name="waveModesAtWavenumber", primaryComponent="G", ...
-                leftOperator=left, rightOperator=right, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, boundaryRows=boundaryRows, ...
                 eigenvalueName="inverseEquivalentDepth", hFromEigenvalue=@(lambda) 1 ./ lambda, ...
-                ordering="ascendingEigenvalue", indexPolicy=IMIndexPolicy.none(), parameters=parameters);
+                ordering="ascendingEigenvalue", ...
+                indexPolicy=IMIndexPolicy.fromBoundaryRows(boundaryRows, validationMode="none"), parameters=parameters);
             evp.components.G.innerWeight = @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g;
-            evp.components.G.surfaceWeight = 1;
-            evp.components.G.bottomWeight = 0;
             evp.components.F.role = "diagnostic";
             evp.components.F.from = "G";
             evp.components.F.operator = IMOperator.strong().plus(derivativeOrder=1);
             evp.components.F.modalScale = "h";
-            evp.components.F.innerWeight = @(z,ctx) ones(size(z))/diff(ctx.zDomain);
-            evp.components.F.surfaceWeight = 0;
-            evp.components.F.bottomWeight = 0;
+            
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
             evp.normalizations.kConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
             evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.weightedNormFactor("G", iMode, @(z,ctx) ctx.N2(z)/ctx.g, 0, 0);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
         end
@@ -206,15 +207,15 @@ classdef IMEigenvalueProblem
             % - Parameter options.omega: fixed frequency in radians per second
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.upperBoundary: upper boundary condition
-            % - Parameter options.lowerBoundary: lower boundary condition
+            % - Parameter options.upperBoundary: location-free upper boundary law
+            % - Parameter options.lowerBoundary: location-free lower boundary law
             % - Returns evp: fixed-frequency wave-mode `G` EVP
             arguments
                 options.omega (1,1) double {mustBeNonnegative}
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
-                options.upperBoundary {mustBeTextScalar} = "rigidLid"
-                options.lowerBoundary {mustBeTextScalar} = "rigid"
+                options.upperBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.lowerBoundary (1,1) IMBoundary = IMBoundary.rigid()
             end
 
             omega = options.omega;
@@ -222,27 +223,29 @@ classdef IMEigenvalueProblem
             g = options.g;
             left = IMOperator.strong().plus(derivativeOrder=2);
             right = IMOperator.strong().plus(coefficient=@(z,ctx) (omega*omega - ctx.N2(z))/g, derivativeOrder=0);
-            boundaryConditions = IMEigenvalueProblem.waveModeGBoundaries(options.upperBoundary, options.lowerBoundary);
+            context = struct("problemType", "waveModesAtFrequency", "primaryComponent", "G", ...
+                "k", NaN, "omega", omega, "f0", f0, "g", g);
+            lowerRow = options.lowerBoundary.resolve(endpoint="lower", context=context);
+            upperRow = options.upperBoundary.resolve(endpoint="upper", context=context);
+            boundaryRows = [lowerRow; upperRow];
             parameters = struct("problemType", "waveModesAtFrequency", "k", NaN, "omega", omega, ...
-                "f0", f0, "g", g, "upperBoundary", string(options.upperBoundary), "lowerBoundary", string(options.lowerBoundary));
+                "f0", f0, "g", g, ...
+                "upperBoundary", upperRow.family, "lowerBoundary", lowerRow.family);
             evp = IMEigenvalueProblem(name="waveModesAtFrequency", primaryComponent="G", ...
-                leftOperator=left, rightOperator=right, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, boundaryRows=boundaryRows, ...
                 eigenvalueName="inverseEquivalentDepth", hFromEigenvalue=@(lambda) 1 ./ lambda, ...
-                ordering="ascendingEigenvalue", indexPolicy=IMIndexPolicy.none(), parameters=parameters);
+                ordering="ascendingEigenvalue", ...
+                indexPolicy=IMIndexPolicy.fromBoundaryRows(boundaryRows, validationMode="none"), parameters=parameters);
             evp.components.G.innerWeight = @(z,ctx) (ctx.N2(z) - ctx.omega*ctx.omega)/ctx.g;
-            evp.components.G.surfaceWeight = 1;
-            evp.components.G.bottomWeight = 0;
             evp.components.F.role = "diagnostic";
             evp.components.F.from = "G";
             evp.components.F.operator = IMOperator.strong().plus(derivativeOrder=1);
             evp.components.F.modalScale = "h";
             evp.components.F.innerWeight = @(z,ctx) ones(size(z))/diff(ctx.zDomain);
-            evp.components.F.surfaceWeight = 0;
-            evp.components.F.bottomWeight = 0;
+
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.weightedNormFactor("G", iMode, @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, 1, 0);
+            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.weightedNormFactorWithBoundaryTerms("G", iMode, @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g);
             evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.weightedNormFactor("G", iMode, @(z,ctx) ctx.N2(z)/ctx.g, 0, 0);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
         end
@@ -257,18 +260,17 @@ classdef IMEigenvalueProblem
             % - Declaration: evp = IMEigenvalueProblem.hydrostaticGModes(options)
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.upperBoundary: upper boundary condition
-            % - Parameter options.lowerBoundary: lower boundary condition
+            % - Parameter options.upperBoundary: location-free upper boundary law
+            % - Parameter options.lowerBoundary: location-free lower boundary law
             % - Returns evp: zero-frequency hydrostatic `G` EVP
             arguments
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
-                options.upperBoundary {mustBeTextScalar} = "rigidLid"
-                options.lowerBoundary {mustBeTextScalar} = "rigid"
+                options.upperBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.lowerBoundary (1,1) IMBoundary = IMBoundary.rigid()
             end
 
-            evp = IMEigenvalueProblem.waveModesAtFrequency(omega=0, f0=options.f0, g=options.g, ...
-                upperBoundary=options.upperBoundary, lowerBoundary=options.lowerBoundary);
+            evp = IMEigenvalueProblem.waveModesAtFrequency(omega=0, f0=options.f0, g=options.g, upperBoundary=options.upperBoundary, lowerBoundary=options.lowerBoundary);
         end
 
         function evp = hydrostaticFModes(options)
@@ -279,33 +281,38 @@ classdef IMEigenvalueProblem
             %
             % - Topic: Create EVPs
             % - Declaration: evp = IMEigenvalueProblem.hydrostaticFModes(options)
-            % - Parameter options.k: horizontal wavenumber
             % - Parameter options.g: gravitational acceleration
+            % - Parameter options.upperBoundary: location-free upper boundary law
+            % - Parameter options.lowerBoundary: location-free lower boundary law
             % - Returns evp: hydrostatic `F` EVP
             arguments
-                options.k (1,1) double {mustBeNonnegative} = 0
                 options.g (1,1) double {mustBePositive} = 9.81
+                options.upperBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.lowerBoundary (1,1) IMBoundary = IMBoundary.rigid()
             end
 
             g = options.g;
             left = IMOperator.strong().plus(derivativeOrder=2) ...
                 .plus(coefficient=@(z,ctx) -ctx.dzLogN2(z), derivativeOrder=1);
             right = IMOperator.strong().plus(coefficient=@(z,ctx) -ctx.N2(z)/g, derivativeOrder=0);
-            boundaryConditions = [
-                IMBoundaryCondition.neumann(location="bottom", component="F")
-                IMBoundaryCondition.neumann(location="surface", component="F")
-            ];
+            context = struct("problemType", "hydrostaticFModes", "primaryComponent", "F", "omega", NaN, "g", g);
+            lowerRow = options.lowerBoundary.resolve(endpoint="lower", context=context);
+            upperRow = options.upperBoundary.resolve(endpoint="upper", context=context);
+            boundaryRows = [lowerRow; upperRow];
             evp = IMEigenvalueProblem(name="hydrostaticFModes", primaryComponent="F", ...
-                leftOperator=left, rightOperator=right, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, boundaryRows=boundaryRows, ...
                 eigenvalueName="inverseEquivalentDepth", hFromEigenvalue=@(lambda) 1 ./ lambda, ...
-                ordering="indexThenAscending", indexPolicy=IMIndexPolicy.fixed(expectedZeroCount=1, validationMode="warning"), ...
-                parameters=struct("problemType", "hydrostaticFModes", "k", options.k, "omega", NaN, "g", g));
-            evp.components.F.innerWeight = @(z,ctx) ctx.N2(z)/ctx.g;
-            evp.components.F.surfaceWeight = 0;
-            evp.components.F.bottomWeight = 0;
+                ordering="indexThenAscending", ...
+                indexPolicy=IMIndexPolicy.fromBoundaryRows(boundaryRows, expectedZeroCount=1, validationMode="warning"), ...
+                parameters=struct("problemType", "hydrostaticFModes", "omega", NaN, "g", g, ...
+                "upperBoundary", upperRow.family, "lowerBoundary", lowerRow.family));
+            evp.components.F.innerWeight = @(z,ctx) ones(size(z))/diff(ctx.zDomain);
             evp.components.G.role = "diagnostic";
             evp.components.G.from = "F";
+            evp.components.G.operator = IMOperator.strong().plus( coefficient=@(z,ctx) -ctx.g./ctx.N2(z), derivativeOrder=1);
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
+            evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
+            evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
         end
 
         function policy = partialDepthPEIndexPolicy(options)
@@ -321,45 +328,9 @@ classdef IMEigenvalueProblem
                 options.validationMode {mustBeTextScalar} = "error"
             end
 
-            switch string(options.boundarySign)
-                case "positive"
-                    signs = [1; 1];
-                case "negative"
-                    signs = [-1; -1];
-                otherwise
-                    error("IMEigenvalueProblem:InvalidBoundarySign", ...
-                        "boundarySign must be ""positive"" or ""negative"".");
-            end
-            policy = IMIndexPolicy.fromBoundarySigns(signs, validationMode=options.validationMode);
+            boundaryRows = IMBoundaryRow.partialDepthPE(boundarySign=options.boundarySign);
+            policy = IMIndexPolicy.fromBoundaryRows(boundaryRows, validationMode=options.validationMode);
         end
     end
 
-    methods (Static, Access = private)
-        function boundaryConditions = waveModeGBoundaries(upperBoundary, lowerBoundary)
-            lowerBoundary = string(lowerBoundary);
-            upperBoundary = string(upperBoundary);
-            switch lowerBoundary
-                case {"rigid", "rigidLid", "freeSlip"}
-                    lower = IMBoundaryCondition.dirichlet(location="bottom", component="G");
-                otherwise
-                    error("IMEigenvalueProblem:UnsupportedBoundary", ...
-                        "Unsupported wave-mode G lower boundary ""%s"".", lowerBoundary);
-            end
-
-            switch upperBoundary
-                case {"rigid", "rigidLid"}
-                    upper = IMBoundaryCondition.dirichlet(location="surface", component="G");
-                case "freeSurface"
-                    left = IMOperator.strong().plus(derivativeOrder=1);
-                    right = IMOperator.strong().plus(derivativeOrder=0);
-                    upper = IMBoundaryCondition.robin(location="surface", component="G", ...
-                        operator=left, eigenvalueOperator=right);
-                otherwise
-                    error("IMEigenvalueProblem:UnsupportedBoundary", ...
-                        "Unsupported wave-mode G upper boundary ""%s"".", upperBoundary);
-            end
-
-            boundaryConditions = [lower; upper];
-        end
-    end
 end

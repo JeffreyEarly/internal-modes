@@ -72,20 +72,126 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(hydrostaticB, zeroFrequencyB, AbsTol=0)
         end
 
-        function waveModeMetadataSeparatesInnerWeightsAndNormalizations(testCase)
+        function waveModeMetadataSeparatesInnerWeightsBoundariesAndNormalizations(testCase)
             [~, ~, ~, f0, g] = testCase.profile();
             evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g);
 
             testCase.verifyTrue(isfield(evp.components.G, "innerWeight"))
             testCase.verifyTrue(isa(evp.components.G.innerWeight, "function_handle"))
-            testCase.verifyEqual(evp.components.G.surfaceWeight, 1, AbsTol=0)
-            testCase.verifyEqual(evp.components.G.bottomWeight, 0, AbsTol=0)
+            testCase.verifyFalse(isfield(evp.components.G, "surfaceWeight"))
+            testCase.verifyFalse(isfield(evp.components.G, "bottomWeight"))
+            testCase.verifyClass(evp.boundaryRows, "IMBoundaryRow")
+            testCase.verifyEqual([evp.boundaryRows.family], ["rigid" "rigid"])
             testCase.verifyFalse(isfield(evp.components.G, "gramWeight"))
             testCase.verifyFalse(isfield(evp.components.G, "normalizationWeights"))
             testCase.verifyFalse(isfield(evp.components.G, "normalizationBoundaryWeights"))
             testCase.verifyTrue(isfield(evp.normalizations, "unity"))
             testCase.verifyTrue(isfield(evp.normalizations, "kConstant"))
             testCase.verifyTrue(isa(evp.normalizations.unity, "function_handle"))
+        end
+
+        function boundaryLawsResolveImpliedComponents(testCase)
+            contextG = struct("primaryComponent", "G");
+            contextF = struct("primaryComponent", "F");
+            rigidG = IMBoundary.rigid().resolve(endpoint="upper", context=contextG);
+            rigidF = IMBoundary.rigid().resolve(endpoint="lower", context=contextF);
+            noSlipG = IMBoundary.noSlip().resolve(endpoint="upper", context=contextG);
+            noSlipF = IMBoundary.noSlip().resolve(endpoint="lower", context=contextF);
+            dirichletF = IMBoundary.dirichlet(component="F").resolve(endpoint="upper", context=contextF);
+            neumannG = IMBoundary.neumann(component="G").resolve(endpoint="lower", context=contextG);
+
+            testCase.verifyEqual(rigidG.component, "G")
+            testCase.verifyEqual(rigidG.family, "rigid")
+            testCase.verifyEqual(rigidG.endpoint, "upper")
+            testCase.verifyEqual(rigidF.component, "F")
+            testCase.verifyEqual(rigidF.leftOperator.terms(1).derivativeOrder, 1)
+            testCase.verifyEqual(noSlipG.component, "G")
+            testCase.verifyEqual(noSlipG.leftOperator.terms(1).derivativeOrder, 1)
+            testCase.verifyEqual(noSlipF.component, "F")
+            testCase.verifyEqual(noSlipF.leftOperator.terms(1).derivativeOrder, 0)
+            testCase.verifyEqual(dirichletF.component, "F")
+            testCase.verifyEqual(neumannG.component, "G")
+        end
+
+        function evpFactoriesAcceptUpperAndLowerBoundaryLaws(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=f0, g=g);
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
+            evpFrequency = IMEigenvalueProblem.waveModesAtFrequency(omega=0.8*5.2e-3, f0=f0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.noSlip());
+            evpG = IMEigenvalueProblem.hydrostaticGModes(f0=f0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
+            evpF = IMEigenvalueProblem.hydrostaticFModes(g=g, ...
+                upperBoundary=IMBoundary.noSlip(), lowerBoundary=IMBoundary.rigid());
+
+            [A, B] = evp.assemble(solver);
+            Dz = solver.physicalDerivativeMatrix(1);
+
+            testCase.verifyEqual(evpFrequency.parameters.upperBoundary, "free")
+            testCase.verifyEqual(evpFrequency.parameters.lowerBoundary, "noSlip")
+            testCase.verifyEqual(evpG.parameters.upperBoundary, "free")
+            testCase.verifyEqual(evpF.parameters.upperBoundary, "noSlip")
+            testCase.verifyEqual(evp.parameters.lowerBoundary, "rigid")
+            testCase.verifyEqual(evp.parameters.upperBoundary, "free")
+            testCase.verifyEqual([evp.boundaryRows.endpoint], ["lower" "upper"])
+            testCase.verifyEqual(A(1,:), Dz(1,:), AbsTol=1e-12)
+            testCase.verifyEqual(B(1,:), solver.T(1,:), AbsTol=1e-12)
+        end
+
+        function freeBoundaryDeclaresRowsAndEndpointTerms(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=f0, g=g);
+            upperBoundary = IMBoundary.free().resolve(endpoint="upper", context=struct("primaryComponent", "G"));
+            lowerBoundary = IMBoundary.free().resolve(endpoint="lower", context=struct("primaryComponent", "G"));
+
+            A = zeros(nEVP,nEVP);
+            B = zeros(nEVP,nEVP);
+            [A, B] = upperBoundary.apply(A, B, solver);
+            [A, B] = lowerBoundary.apply(A, B, solver);
+            upperTerm = upperBoundary.endpointTerms(1);
+            lowerTerm = lowerBoundary.endpointTerms(1);
+            Dz = solver.physicalDerivativeMatrix(1);
+
+            testCase.verifyEqual(A(1,:), Dz(1,:), AbsTol=1e-12)
+            testCase.verifyEqual(B(1,:), solver.T(1,:), AbsTol=1e-12)
+            testCase.verifyEqual(A(end,:), Dz(end,:), AbsTol=1e-12)
+            testCase.verifyEqual(B(end,:), solver.T(end,:), AbsTol=1e-12)
+            testCase.verifyEqual(upperTerm.innerProductComponent, "G")
+            testCase.verifyEqual(upperTerm.location, "surface")
+            testCase.verifyEqual(lowerTerm.location, "bottom")
+            testCase.verifyEqual(upperTerm.coefficient, 1, AbsTol=0)
+            testCase.verifyEqual(upperTerm.leftTrace.component, "G")
+            testCase.verifyEqual(upperTerm.rightTrace.component, "G")
+        end
+
+        function namedBoundaryLawsResolveForFModeRows(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, g=g);
+            freeF = IMBoundary.free().resolve(endpoint="upper", context=struct("primaryComponent", "F"));
+            noSlipF = IMBoundary.noSlip().resolve(endpoint="lower", context=struct("primaryComponent", "F"));
+
+            A = zeros(nEVP,nEVP);
+            B = zeros(nEVP,nEVP);
+            [A, B] = freeF.apply(A, B, solver);
+            [A, B] = noSlipF.apply(A, B, solver);
+            Dz = solver.physicalDerivativeMatrix(1);
+            expectedFreeRow = solver.T(1,:) + g/N2(zDomain(2))*Dz(1,:);
+
+            testCase.verifyEqual(A(1,:), expectedFreeRow, RelTol=1e-12)
+            testCase.verifyEqual(B(1,:), zeros(1,nEVP), AbsTol=0)
+            testCase.verifyEqual(A(end,:), solver.T(end,:), AbsTol=1e-12)
+            testCase.verifyEqual(B(end,:), zeros(1,nEVP), AbsTol=0)
+        end
+
+        function boundaryResolutionAvoidsOldHelperChain(testCase)
+            repoRoot = fileparts(fileparts(mfilename("fullpath")));
+            source = fileread(fullfile(repoRoot, "@IMBoundary", "IMBoundary.m"));
+            oldHelperNames = ["resolveAt" "resolveRigid" "resolveNoSlip" "resolveFree" "withResolvedLocation"];
+
+            for iName = 1:length(oldHelperNames)
+                testCase.verifyFalse(contains(source, oldHelperNames(iName)))
+            end
         end
 
         function wkbCoordinateAppliesJacobianToSecondDerivative(testCase)
@@ -165,6 +271,31 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyGreaterThan(norm(Gk - Gw, "fro"), 0)
         end
 
+        function solveEVPOrientsModesWithPositiveSurfaceF(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=f0, g=g);
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g);
+            basisSet = solver.solveEVP(evp, nModes=4);
+
+            FSurface = basisSet.evaluate("F", zDomain(2));
+
+            testCase.verifyTrue(all(FSurface > 0))
+        end
+
+        function signConventionFallsBackToPositiveSurfaceGWhenSurfaceFIsZero(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=f0, g=g);
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g, ...
+                upperBoundary=IMBoundary.noSlip(), lowerBoundary=IMBoundary.rigid());
+            basisSet = solver.solveEVP(evp, nModes=4);
+
+            FSurface = basisSet.evaluate("F", zDomain(2));
+            GSurface = basisSet.evaluate("G", zDomain(2));
+
+            testCase.verifyLessThan(max(abs(FSurface)), 1e-10)
+            testCase.verifyTrue(all(GSurface > 0))
+        end
+
         function finiteDifferenceSolverUsesSuppliedGrid(testCase)
             [N2, zDomain, ~, f0, g] = testCase.profile();
             z = linspace(zDomain(1), zDomain(2), 18).';
@@ -180,11 +311,11 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyNumElements(basisSet.h, 3)
         end
 
-        function partialDepthPEIndexPolicyCountsBoundaryModes(testCase)
-            positivePolicy = IMEigenvalueProblem.partialDepthPEIndexPolicy(boundarySign="positive");
+        function partialDepthPEBoundariesCountBoundaryModes(testCase)
+            positivePolicy = IMIndexPolicy.fromBoundaryRows(IMBoundaryRow.partialDepthPE(boundarySign="positive"));
             positiveIndex = positivePolicy.classify([1; 2; 3], struct());
 
-            negativePolicy = IMEigenvalueProblem.partialDepthPEIndexPolicy(boundarySign="negative");
+            negativePolicy = IMIndexPolicy.fromBoundaryRows(IMBoundaryRow.partialDepthPE(boundarySign="negative"));
             negativeIndex = negativePolicy.classify([-2; -1; 3], struct());
 
             testCase.verifyEqual(positiveIndex.expectedNegativeCount, 0)
@@ -194,7 +325,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         end
 
         function indexPolicyErrorsWhenObservedIndexDisagrees(testCase)
-            policy = IMEigenvalueProblem.partialDepthPEIndexPolicy(boundarySign="negative");
+            policy = IMIndexPolicy.fromBoundaryRows(IMBoundaryRow.partialDepthPE(boundarySign="negative"));
 
             testCase.verifyError(@() policy.classify([-1; 2; 3], struct()), ...
                 "IMIndexPolicy:IndexMismatch")
@@ -209,6 +340,31 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(index.expectedZeroCount, 1)
             testCase.verifyEqual(index.zeroCount, 1)
             testCase.verifyEqual(index.positiveCount, 3)
+        end
+
+        function hydrostaticFModeEVPDoesNotDeclareWavenumber(testCase)
+            [~, ~, ~, ~, g] = testCase.profile();
+            evp = IMEigenvalueProblem.hydrostaticFModes(g=g);
+
+            testCase.verifyFalse(isfield(evp.parameters, "k"))
+        end
+
+        function hydrostaticFModeEVPEvaluatesDiagnosticGFromFDerivative(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, g=g);
+            evp = IMEigenvalueProblem.hydrostaticFModes(g=g);
+            warningState = warning("off", "IMIndexPolicy:IndexMismatch");
+            cleanup = onCleanup(@() warning(warningState));
+            basisSet = solver.solveEVP(evp, nModes=4);
+            z = linspace(zDomain(1), zDomain(2), 24).';
+
+            Fz = solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
+            rawGExpected = (-g./N2(z)).*Fz;
+            factors = basisSet.normalizationFactors(Normalization.unity);
+            GExpected = rawGExpected ./ factors;
+
+            testCase.verifyTrue(isfield(evp.components.G, "operator"))
+            testCase.verifyEqual(basisSet.evaluate("G", z, normalization=Normalization.unity), GExpected, RelTol=1e-10)
         end
 
         function fullDepthPartialGramMatchesGramMatrix(testCase)
@@ -236,20 +392,21 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(diag(gram).', ones(1,4), AbsTol=1e-10)
         end
 
-        function freeSurfaceInnerProductAddsSurfaceWeightOutsideIntegral(testCase)
+        function freeBoundaryInnerProductAddsSurfaceWeightOutsideIntegral(testCase)
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*ones(size(z));
             zDomain = [-1300 0];
             nEVP = 48;
             g = 9.81;
             solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=0, g=g);
-            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=0, g=g, upperBoundary="freeSurface");
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
             basisSet = solver.solveEVP(evp, nModes=3);
             z = solver.innerProductGrid(zDomain);
             rawG = solver.T*basisSet.nativeModes;
             weight = IMOperator.evaluateCoefficient(evp.components.G.innerWeight, z, testCase.evpContext(solver, evp));
             interior = solver.integrateInnerProduct(z, weight.*rawG(:,1).*rawG(:,1), zDomain);
-            expectedFactor = sqrt(abs(interior + evp.components.G.surfaceWeight*rawG(1,1)*rawG(1,1)));
+            expectedFactor = sqrt(abs(interior + rawG(1,1)*rawG(1,1)));
 
             factors = basisSet.normalizationFactors(Normalization.unity);
             basisSet.normalization = Normalization.unity;
@@ -265,17 +422,99 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyGreaterThan(fullGram(1,1), partialGram(1,1))
         end
 
+        function fixedFrequencyKConstantUsesBoundaryEndpointTerms(testCase)
+            N0 = 5.2e-3;
+            N2 = @(z) N0*N0*ones(size(z));
+            zDomain = [-1300 0];
+            nEVP = 48;
+            f0 = 1e-4;
+            g = 9.81;
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=f0, g=g);
+            evp = IMEigenvalueProblem.waveModesAtFrequency(omega=0.8*N0, f0=f0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.free());
+            basisSet = solver.solveEVP(evp, nModes=3);
+            z = solver.innerProductGrid(zDomain);
+            rawG = solver.T*basisSet.nativeModes;
+            weight = IMOperator.evaluateCoefficient(@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
+                z, testCase.evpContext(solver, evp));
+            interior = solver.integrateInnerProduct(z, weight.*rawG(:,1).*rawG(:,1), zDomain);
+            expectedFactor = sqrt(abs(interior + rawG(1,1)*rawG(1,1) + rawG(end,1)*rawG(end,1)));
+
+            factors = basisSet.normalizationFactors(Normalization.kConstant);
+
+            testCase.verifyEqual(factors(1), expectedFactor, RelTol=1e-10)
+        end
+
+        function mixedEndpointTermsContributeToGramMatrix(testCase)
+            N0 = 5.2e-3;
+            N2 = @(z) N0*N0*ones(size(z));
+            zDomain = [-1300 0];
+            nEVP = 48;
+            g = 9.81;
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, f0=0, g=g);
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
+            mixedTerms = [
+                IMBoundaryRow.endpointTerm("G", "surface", 1, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("F"))
+                IMBoundaryRow.endpointTerm("G", "surface", 1, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("G"))
+            ];
+            evp.boundaryRows(end+1,1) = IMBoundaryRow.active(endpoint="upper", component="G", ...
+                indexSign=1, endpointTerms=mixedTerms);
+            basisSet = solver.solveEVP(evp, nModes=3);
+            basisSet.normalization = Normalization.unity;
+
+            z = solver.innerProductGrid(zDomain);
+            weight = IMOperator.evaluateCoefficient(evp.components.G.innerWeight, z, testCase.evpContext(solver, evp));
+            G = basisSet.evaluate("G", z);
+            interior = solver.integrateInnerProduct(z, weight.*G(:,1).*G(:,1), zDomain);
+            GSurface = basisSet.evaluate("G", zDomain(2));
+            FSurface = basisSet.evaluate("F", zDomain(2));
+            expected = interior + GSurface(1,1)*GSurface(1,1) ...
+                + GSurface(1,1)*FSurface(1,1) + FSurface(1,1)*GSurface(1,1);
+
+            gram = basisSet.gramMatrix("G");
+
+            testCase.verifyEqual(gram(1,1), expected, AbsTol=1e-10)
+        end
+
+        function linearBoundaryFamiliesDeclareTrustedEndpointTerms(testCase)
+            linearF = IMBoundary.linearF(c=2, d=3).resolve(endpoint="upper", context=struct("primaryComponent", "F"));
+            linearG = IMBoundary.linearG(a=2, b=3).resolve(endpoint="upper", context=struct("primaryComponent", "G"));
+
+            testCase.verifyEqual(linearF.orthogonalityStatus, "complete")
+            testCase.verifyEqual(linearF.endpointTerms(1).innerProductComponent, "G")
+            testCase.verifyEqual(linearF.endpointTerms(1).location, "surface")
+            testCase.verifyEqual(linearF.endpointTerms(1).coefficient, -1.5, AbsTol=0)
+            testCase.verifyEqual(linearG.orthogonalityStatus, "complete")
+            testCase.verifyEqual(linearG.endpointTerms(1).innerProductComponent, "G")
+            testCase.verifyEqual(linearG.endpointTerms(1).coefficient, 1.5, AbsTol=0)
+        end
+
+        function unresolvedLinearFamiliesWarnButStillAssembleRows(testCase)
+            testCase.verifyWarning(@() IMBoundary.linearF(a=1, b=2, c=3), ...
+                "IMBoundary:UnsupportedLinearFamily")
+            warningState = warning("off", "IMBoundary:UnsupportedLinearFamily");
+            cleanup = onCleanup(@() warning(warningState));
+            boundary = IMBoundary.linearF(a=1, b=2, c=3).resolve(endpoint="upper", context=struct("primaryComponent", "F"));
+
+            testCase.verifyEqual(boundary.orthogonalityStatus, "unresolved")
+            testCase.verifyEmpty(boundary.endpointTerms)
+            testCase.verifyError(@() IMBoundary.linearF(c=1).resolve(endpoint="upper", context=struct("primaryComponent", "G")), ...
+                "IMBoundary:UnsupportedResolution")
+        end
+
         function finiteDifferenceUnityNormalizationUsesBoundedTrapz(testCase)
             [N2, zDomain, ~, f0, g] = testCase.profile();
             solver = IMSolverFiniteDifference(z=linspace(zDomain(1), zDomain(2), 35).', N2=N2, f0=f0, g=g);
-            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g, upperBoundary="freeSurface");
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
             basisSet = solver.solveEVP(evp, nModes=3);
             z = solver.innerProductGrid(zDomain);
             rawG = solver.evaluateNativeModes(basisSet.nativeModes, z);
             weight = IMOperator.evaluateCoefficient(evp.components.G.innerWeight, z, testCase.evpContext(solver, evp));
             normValue = trapz(z, weight.*rawG(:,1).*rawG(:,1));
             surfaceValue = solver.evaluateNativeModes(basisSet.nativeModes(:,1), zDomain(2));
-            expectedFactor = sqrt(abs(normValue + evp.components.G.surfaceWeight*surfaceValue*surfaceValue));
+            expectedFactor = sqrt(abs(normValue + surfaceValue*surfaceValue));
 
             factors = basisSet.normalizationFactors(Normalization.unity);
 
@@ -349,14 +588,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.evaluate("F", z), FExpected, AbsTol=1e-10)
         end
 
-        function constantStratificationFreeSurfaceMatchesDirectSolution(testCase)
+        function constantStratificationFreeBoundaryMatchesDirectSolution(testCase)
             N0 = 5.2e-3;
             zDomain = [-1300 0];
             z = linspace(zDomain(1), zDomain(2), 65).';
             nModes = 6;
             k = 1e-4;
             g = 9.81;
-            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=k, f0=0, g=g, upperBoundary="freeSurface");
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=k, f0=0, g=g, ...
+                upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
             basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, zDomain=zDomain, nModes=nModes, g=g);
 
             direct = InternalModesConstantStratification(N0=N0, zIn=zDomain, zOut=z, latitude=0, nModes=nModes, g=g);
@@ -444,13 +684,43 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             rawG = solver.T*basisSet.nativeModes;
             weight = IMOperator.evaluateCoefficient(evp.components.G.innerWeight, z, testCase.evpContext(solver, evp));
             weights = testCase.chebyshevIntegrationWeights(solver);
+            [surfaceWeight, bottomWeight] = testCase.scalarEndpointWeights(evp, "G");
             factors = zeros(1,size(rawG,2));
             for iMode = 1:size(rawG,2)
                 integrandCheb = InternalModesSpectral.fct(weight.*rawG(:,iMode).*rawG(:,iMode)./q(:));
                 normValue = sum(weights.*integrandCheb);
-                normValue = normValue + evp.components.G.surfaceWeight*rawG(1,iMode)*rawG(1,iMode);
-                normValue = normValue + evp.components.G.bottomWeight*rawG(end,iMode)*rawG(end,iMode);
+                normValue = normValue + surfaceWeight*rawG(1,iMode)*rawG(1,iMode);
+                normValue = normValue + bottomWeight*rawG(end,iMode)*rawG(end,iMode);
                 factors(iMode) = sqrt(abs(normValue));
+            end
+        end
+
+        function [surfaceWeight, bottomWeight] = scalarEndpointWeights(~, evp, component)
+            surfaceWeight = 0;
+            bottomWeight = 0;
+            for iBoundary = 1:length(evp.boundaryRows)
+                terms = evp.boundaryRows(iBoundary).endpointTerms;
+                for iTerm = 1:length(terms)
+                    term = terms(iTerm);
+                    if string(term.innerProductComponent) ~= string(component)
+                        continue;
+                    end
+                    if ~isnumeric(term.coefficient) || ~isscalar(term.coefficient)
+                        continue;
+                    end
+                    if string(term.leftTrace.component) ~= string(component) ...
+                            || string(term.rightTrace.component) ~= string(component)
+                        continue;
+                    end
+                    if term.leftTrace.derivativeOrder ~= 0 || term.rightTrace.derivativeOrder ~= 0
+                        continue;
+                    end
+                    if string(term.location) == "surface"
+                        surfaceWeight = surfaceWeight + term.coefficient;
+                    elseif string(term.location) == "bottom"
+                        bottomWeight = bottomWeight + term.coefficient;
+                    end
+                end
             end
         end
 

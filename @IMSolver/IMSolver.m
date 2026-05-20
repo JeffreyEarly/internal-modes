@@ -41,6 +41,7 @@ classdef (Abstract) IMSolver
             basisSet = IMBasisSet(solver=self, evp=evp, nativeModes=V, ...
                 eigenvalues=eigenvalues(:).', h=h, index=index, normalization=Normalization.kConstant, ...
                 zDomain=self.zDomain, N2Function=@(z) self.N2(z), f0=self.f0, g=self.g);
+            basisSet = basisSet.orientModeSigns();
         end
     end
 

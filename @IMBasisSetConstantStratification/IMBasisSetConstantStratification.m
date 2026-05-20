@@ -339,11 +339,11 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             switch problemType
                 case "waveModesAtWavenumber"
                     [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtWavenumber(evp.parameters.k, N0, D, nModes, f0, g, upperBoundary);
-                    if upperBoundary == "freeSurface"
+                    if upperBoundary == "free"
                         [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.barotropicAtWavenumber(evp.parameters.k, N0, D, f0, g);
                         h = [h0 hBaroclinic(1:end-1)];
                         verticalWavenumbers = [k_z0 k_zBaroclinic(1:end-1)];
-                        solutionTypes = IMBasisSetConstantStratification.freeSurfaceSolutionTypes(solutionType0, nModes);
+                        solutionTypes = IMBasisSetConstantStratification.freeSolutionTypes(solutionType0, nModes);
                         isBarotropic = [true false(1,nModes-1)];
                         baroclinicNumbers = [0 1:(nModes-1)];
                     else
@@ -355,11 +355,11 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                     end
                 case "waveModesAtFrequency"
                     [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtFrequency(evp.parameters.omega, N0, D, nModes, upperBoundary, g);
-                    if upperBoundary == "freeSurface"
+                    if upperBoundary == "free"
                         [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.barotropicAtFrequency(evp.parameters.omega, N0, D, g);
                         h = [h0 hBaroclinic(1:end-1)];
                         verticalWavenumbers = [k_z0 k_zBaroclinic(1:end-1)];
-                        solutionTypes = IMBasisSetConstantStratification.freeSurfaceSolutionTypes(solutionType0, nModes);
+                        solutionTypes = IMBasisSetConstantStratification.freeSolutionTypes(solutionType0, nModes);
                         isBarotropic = [true false(1,nModes-1)];
                         baroclinicNumbers = [0 1:(nModes-1)];
                     else
@@ -377,7 +377,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
 
         function [h, k_z] = baroclinicAtWavenumber(k, N0, D, nModes, f0, g, upperBoundary)
             k_z = (1:nModes)*pi/D;
-            if upperBoundary == "freeSurface"
+            if upperBoundary == "free"
                 for iMode = 1:nModes
                     f = @(xi) (xi + iMode*pi)*(N0*N0 - f0*f0)*D - g*(k*k*D*D + (xi + iMode*pi)*(xi + iMode*pi))*tan(xi);
                     k_z(iMode) = k_z(iMode) + fzero(f, 0)/D;
@@ -386,14 +386,14 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             h = (N0*N0 - f0*f0)./(g*(k*k + k_z.*k_z));
         end
 
-        function solutionTypes = freeSurfaceSolutionTypes(barotropicType, nModes)
+        function solutionTypes = freeSolutionTypes(barotropicType, nModes)
             solutionTypes = repmat("baroclinic",1,nModes);
             solutionTypes(1) = barotropicType;
         end
 
         function [h, k_z] = baroclinicAtFrequency(omega, N0, D, nModes, upperBoundary, g)
             k_z = (1:nModes)*pi/D;
-            if upperBoundary == "freeSurface"
+            if upperBoundary == "free"
                 for iMode = 1:nModes
                     f = @(xi) g*tan(xi)/(xi + iMode*pi) - (N0*N0 - omega*omega)*D/((xi + iMode*pi)^2);
                     k_z(iMode) = k_z(iMode) + fzero(f, 0)/D;
@@ -460,7 +460,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                 error("IMBasisSetConstantStratification:UnsupportedBoundary", ...
                     "Unsupported constant-stratification lower boundary ""%s"".", lowerBoundary);
             end
-            if ~ismember(upperBoundary, ["rigid", "rigidLid", "freeSurface"])
+            if ~ismember(upperBoundary, ["rigid", "rigidLid", "free"])
                 error("IMBasisSetConstantStratification:UnsupportedBoundary", ...
                     "Unsupported constant-stratification upper boundary ""%s"".", upperBoundary);
             end

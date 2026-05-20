@@ -336,6 +336,44 @@ classdef IMBasisSet
     end
 
     methods (Hidden)
+        function self = orientModeSigns(self)
+            % Orient modes with a deterministic physical sign convention.
+            %
+            % Modes are signed so that the surface `F` trace is positive
+            % whenever it is nonzero. If the surface `F` trace is zero, the
+            % convention falls back to `G`, first at the surface and then at
+            % its largest resolved amplitude.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: basisSet = orientModeSigns(basisSet)
+            % - Returns basisSet: basis set with oriented native modes
+            if isempty(self.nativeModes)
+                return;
+            end
+
+            zSurface = self.zDomain(2);
+            zGrid = self.innerProductGrid(self.zDomain);
+            FSurface = self.rawComponentForSign("F", zSurface);
+            FGrid = self.rawComponentForSign("F", zGrid);
+            GSurface = self.rawComponentForSign("G", zSurface);
+            GGrid = self.rawComponentForSign("G", zGrid);
+            signs = ones(1,size(self.nativeModes,2));
+            for iMode = 1:size(self.nativeModes,2)
+                [reference, tolerance] = self.surfaceSignReference(FSurface, FGrid, iMode);
+                if ~isfinite(reference) || abs(reference) <= tolerance
+                    [reference, tolerance] = self.surfaceOrDominantSignReference(GSurface, GGrid, iMode);
+                end
+                if ~isfinite(reference) || abs(reference) <= tolerance
+                    reference = self.dominantNativeValue(iMode);
+                end
+                if reference < 0
+                    signs(iMode) = -1;
+                end
+            end
+            self.nativeModes = self.nativeModes .* signs;
+        end
+
         function factor = innerProductNormFactor(self, component, iMode)
             % Return the norm factor from a component's declared inner product.
             %
@@ -345,8 +383,14 @@ classdef IMBasisSet
             % - Parameter component: component name
             % - Parameter iMode: mode index
             % - Returns factor: divisor that makes the component unit norm
-            [innerWeight, surfaceWeight, bottomWeight] = self.componentInnerProductWeights(component);
-            factor = self.weightedNormFactor(component, iMode, innerWeight, surfaceWeight, bottomWeight);
+            innerWeight = self.componentInteriorWeight(component);
+            endpointTerms = self.componentEndpointTerms(component);
+            [surfaceWeight, bottomWeight, remainingTerms] = self.scalarEndpointWeights(component, endpointTerms);
+            if isempty(remainingTerms)
+                factor = self.weightedNormFactor(component, iMode, innerWeight, surfaceWeight, bottomWeight);
+            else
+                factor = self.weightedNormFactorWithEndpointTerms(component, iMode, innerWeight, endpointTerms);
+            end
         end
 
         function factor = weightedNormFactor(self, component, iMode, innerWeight, surfaceWeight, bottomWeight)
@@ -366,7 +410,56 @@ classdef IMBasisSet
             weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
             integrand = weight(:).*values(:,iMode).*values(:,iMode);
             normValue = self.integrateInnerProduct(z, integrand, self.zDomain);
-            normValue = normValue + self.endpointQuadraticValue(component, iMode, iMode, surfaceWeight, bottomWeight);
+            endpointTerms = IMBasisSet.scalarEndpointTerms(component, surfaceWeight, bottomWeight);
+            normValue = normValue + self.endpointQuadraticValue(endpointTerms, iMode, iMode, false);
+            factor = sqrt(abs(normValue));
+        end
+
+        function factor = weightedNormFactorWithBoundaryTerms(self, component, iMode, innerWeight)
+            % Return a norm factor using endpoint terms from resolved boundaries.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: factor = weightedNormFactorWithBoundaryTerms(basisSet,component,iMode,innerWeight)
+            % - Parameter component: component name
+            % - Parameter iMode: mode index
+            % - Parameter innerWeight: interior weight coefficient
+            % - Returns factor: divisor from the boundary-aware quadratic form
+            endpointTerms = self.componentEndpointTerms(component);
+            factor = self.weightedNormFactorWithEndpointTerms(component, iMode, innerWeight, endpointTerms);
+        end
+
+        function factor = weightedInteriorNormFactor(self, component, iMode, innerWeight)
+            % Return a norm factor from only an interior weighted integral.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: factor = weightedInteriorNormFactor(basisSet,component,iMode,innerWeight)
+            % - Parameter component: component name
+            % - Parameter iMode: mode index
+            % - Parameter innerWeight: interior weight coefficient
+            % - Returns factor: divisor from the interior quadratic form
+            factor = self.weightedNormFactorWithEndpointTerms( ...
+                component, iMode, innerWeight, IMBasisSet.emptyEndpointTerms());
+        end
+
+        function factor = weightedNormFactorWithEndpointTerms(self, component, iMode, innerWeight, endpointTerms)
+            % Return a norm factor from trace-pair endpoint terms.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: factor = weightedNormFactorWithEndpointTerms(basisSet,component,iMode,innerWeight,endpointTerms)
+            % - Parameter component: component name
+            % - Parameter iMode: mode index
+            % - Parameter innerWeight: interior weight coefficient
+            % - Parameter endpointTerms: endpoint trace-pair terms
+            % - Returns factor: divisor from the requested quadratic form
+            z = self.innerProductGrid(self.zDomain);
+            values = self.rawComponent(component, z);
+            weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
+            integrand = weight(:).*values(:,iMode).*values(:,iMode);
+            normValue = self.integrateInnerProduct(z, integrand, self.zDomain);
+            normValue = normValue + self.endpointQuadraticValue(endpointTerms, iMode, iMode, false);
             factor = sqrt(abs(normValue));
         end
 
@@ -424,16 +517,15 @@ classdef IMBasisSet
         function gram = componentGramMatrix(self, component, zBounds)
             z = self.innerProductGrid(zBounds);
             values = self.evaluate(component, z);
-            [innerWeight, surfaceWeight, bottomWeight] = self.componentInnerProductWeights(component);
+            innerWeight = self.componentInteriorWeight(component);
+            endpointTerms = self.componentEndpointTerms(component);
             weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
             gram = zeros(size(values,2), size(values,2));
             for iMode = 1:size(values,2)
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
                     value = self.integrateInnerProduct(z, integrand, zBounds);
-                    value = value + self.endpointGramValue(component, iMode, jMode, ...
-                        self.activeSurfaceWeight(zBounds, surfaceWeight), ...
-                        self.activeBottomWeight(zBounds, bottomWeight));
+                    value = value + self.endpointQuadraticValue(endpointTerms, iMode, jMode, true, zBounds);
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
@@ -456,7 +548,7 @@ classdef IMBasisSet
             end
         end
 
-        function [innerWeight, surfaceWeight, bottomWeight] = componentInnerProductWeights(self, component)
+        function innerWeight = componentInteriorWeight(self, component)
             metadata = self.componentMetadata(component);
             if isfield(metadata, "innerWeight")
                 innerWeight = metadata.innerWeight;
@@ -465,51 +557,118 @@ classdef IMBasisSet
             else
                 innerWeight = @(z,ctx) ones(size(z));
             end
+        end
+
+        function endpointTerms = componentEndpointTerms(self, component)
+            endpointTerms = IMBasisSet.emptyEndpointTerms();
+            if isempty(self.evp) || ~isprop(self.evp, "boundaryRows")
+                return;
+            end
+
+            component = string(component);
+            for iBoundary = 1:length(self.evp.boundaryRows)
+                terms = self.evp.boundaryRows(iBoundary).endpointTerms;
+                for iTerm = 1:length(terms)
+                    if string(terms(iTerm).innerProductComponent) == component
+                        endpointTerms(end+1,1) = terms(iTerm);
+                    end
+                end
+            end
+        end
+
+        function value = endpointQuadraticValue(self, endpointTerms, iMode, jMode, useNormalized, zBounds)
+            value = 0;
+            if nargin < 6
+                zBounds = self.zDomain;
+            end
+            for iTerm = 1:length(endpointTerms)
+                value = value + self.endpointTermValue(endpointTerms(iTerm), iMode, jMode, useNormalized, zBounds);
+            end
+        end
+
+        function value = endpointTermValue(self, term, iMode, jMode, useNormalized, zBounds)
+            value = 0;
+            switch string(term.location)
+                case "surface"
+                    zEndpoint = self.zDomain(2);
+                case "bottom"
+                    zEndpoint = self.zDomain(1);
+                otherwise
+                    error("IMBasisSet:InvalidEndpointLocation", ...
+                        "Unknown endpoint location ""%s"".", string(term.location));
+            end
+            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
+                return;
+            end
+
+            coefficient = self.endpointCoefficient(term.coefficient, zEndpoint);
+            leftValues = self.traceValues(term.leftTrace, zEndpoint, useNormalized);
+            rightValues = self.traceValues(term.rightTrace, zEndpoint, useNormalized);
+            value = coefficient*leftValues(:,iMode).*rightValues(:,jMode);
+        end
+
+        function values = traceValues(self, trace, z, useNormalized)
+            component = string(trace.component);
+            derivativeOrder = trace.derivativeOrder;
+            if derivativeOrder == 0
+                if useNormalized
+                    values = self.evaluate(component, z);
+                else
+                    values = self.rawComponent(component, z);
+                end
+                return;
+            end
+            if derivativeOrder ~= 1
+                error("IMBasisSet:UnsupportedTrace", ...
+                    "Endpoint traces currently support only component values and first derivatives.");
+            end
+            if isempty(self.evp) || component ~= self.evp.primaryComponent
+                self.unsupported("evaluate derivative traces for " + component);
+            end
+            self.requireSolver("evaluate derivative traces");
+            values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, derivativeOrder);
+            if useNormalized
+                values = values ./ self.normalizationFactors(self.normalization);
+            end
+        end
+
+        function coefficient = endpointCoefficient(self, coefficient, z)
+            if isa(coefficient, "function_handle")
+                context = self.context();
+                try
+                    coefficient = coefficient(context);
+                catch
+                    try
+                        coefficient = coefficient(z, context);
+                    catch
+                        coefficient = coefficient(z);
+                    end
+                end
+            end
+            if ~isscalar(coefficient)
+                coefficient = coefficient(1);
+            end
+        end
+
+        function [surfaceWeight, bottomWeight, remainingTerms] = scalarEndpointWeights(~, component, endpointTerms)
+            component = string(component);
             surfaceWeight = 0;
             bottomWeight = 0;
-            if isfield(metadata, "surfaceWeight")
-                surfaceWeight = metadata.surfaceWeight;
-            end
-            if isfield(metadata, "bottomWeight")
-                bottomWeight = metadata.bottomWeight;
-            end
-        end
-
-        function value = endpointQuadraticValue(self, component, iMode, jMode, surfaceWeight, bottomWeight)
-            value = 0;
-            if surfaceWeight ~= 0
-                surfaceValues = self.rawComponent(component, self.zDomain(2));
-                value = value + surfaceWeight*surfaceValues(:,iMode).*surfaceValues(:,jMode);
-            end
-            if bottomWeight ~= 0
-                bottomValues = self.rawComponent(component, self.zDomain(1));
-                value = value + bottomWeight*bottomValues(:,iMode).*bottomValues(:,jMode);
-            end
-        end
-
-        function value = endpointGramValue(self, component, iMode, jMode, surfaceWeight, bottomWeight)
-            value = 0;
-            if surfaceWeight ~= 0
-                surfaceValues = self.evaluate(component, self.zDomain(2));
-                value = value + surfaceWeight*surfaceValues(:,iMode).*surfaceValues(:,jMode);
-            end
-            if bottomWeight ~= 0
-                bottomValues = self.evaluate(component, self.zDomain(1));
-                value = value + bottomWeight*bottomValues(:,iMode).*bottomValues(:,jMode);
-            end
-        end
-
-        function weight = activeSurfaceWeight(self, zBounds, surfaceWeight)
-            weight = 0;
-            if self.boundsIncludeEndpoint(zBounds, self.zDomain(2))
-                weight = surfaceWeight;
-            end
-        end
-
-        function weight = activeBottomWeight(self, zBounds, bottomWeight)
-            weight = 0;
-            if self.boundsIncludeEndpoint(zBounds, self.zDomain(1))
-                weight = bottomWeight;
+            remainingTerms = IMBasisSet.emptyEndpointTerms();
+            for iTerm = 1:length(endpointTerms)
+                term = endpointTerms(iTerm);
+                leftTrace = term.leftTrace;
+                rightTrace = term.rightTrace;
+                isScalarTerm = isnumeric(term.coefficient) && isscalar(term.coefficient) ...
+                    && string(leftTrace.component) == component && string(rightTrace.component) == component ...
+                    && leftTrace.derivativeOrder == 0 && rightTrace.derivativeOrder == 0;
+                if isScalarTerm && string(term.location) == "surface"
+                    surfaceWeight = surfaceWeight + term.coefficient;
+                elseif isScalarTerm && string(term.location) == "bottom"
+                    bottomWeight = bottomWeight + term.coefficient;
+                else
+                    remainingTerms(end+1,1) = term;
+                end
             end
         end
 
@@ -523,6 +682,52 @@ classdef IMBasisSet
 
         function value = hasComponent(self, component)
             value = ~isempty(self.evp) && isfield(self.evp.components, char(string(component)));
+        end
+
+        function values = rawComponentForSign(self, component, z)
+            values = [];
+            if ~self.hasComponent(component)
+                return;
+            end
+            try
+                values = self.rawComponent(component, z);
+            catch exception
+                if string(exception.identifier) ~= "IMBasisSet:UnsupportedOperation"
+                    rethrow(exception)
+                end
+            end
+        end
+
+        function [reference, tolerance] = surfaceSignReference(~, surfaceValues, gridValues, iMode)
+            reference = NaN;
+            scale = 0;
+            if ~isempty(surfaceValues)
+                reference = surfaceValues(1,iMode);
+                scale = max(scale, abs(reference));
+            end
+            if ~isempty(gridValues)
+                scale = max(scale, max(abs(gridValues(:,iMode))));
+            end
+            tolerance = 1e-10*max(1,scale);
+        end
+
+        function [reference, tolerance] = surfaceOrDominantSignReference(self, surfaceValues, gridValues, iMode)
+            [reference, tolerance] = self.surfaceSignReference(surfaceValues, gridValues, iMode);
+            if isfinite(reference) && abs(reference) > tolerance
+                return;
+            end
+            if isempty(gridValues)
+                return;
+            end
+
+            [scale, index] = max(abs(gridValues(:,iMode)));
+            reference = gridValues(index,iMode);
+            tolerance = 1e-10*max(1,scale);
+        end
+
+        function value = dominantNativeValue(self, iMode)
+            [~, index] = max(abs(self.nativeModes(:,iMode)));
+            value = self.nativeModes(index,iMode);
         end
 
         function context = context(self)
@@ -581,6 +786,38 @@ classdef IMBasisSet
     end
 
     methods (Static)
+        function terms = emptyEndpointTerms()
+            % Create an empty endpoint-term structure.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: terms = IMBasisSet.emptyEndpointTerms()
+            % - Returns terms: empty endpoint-term structure
+            terms = struct("innerProductComponent", {}, "location", {}, "coefficient", {}, ...
+                "leftTrace", {}, "rightTrace", {});
+        end
+
+        function terms = scalarEndpointTerms(component, surfaceWeight, bottomWeight)
+            % Convert scalar endpoint weights to trace-pair terms.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: terms = IMBasisSet.scalarEndpointTerms(component,surfaceWeight,bottomWeight)
+            % - Parameter component: component name
+            % - Parameter surfaceWeight: surface endpoint weight
+            % - Parameter bottomWeight: bottom endpoint weight
+            % - Returns terms: endpoint trace-pair terms
+            terms = IMBasisSet.emptyEndpointTerms();
+            if surfaceWeight ~= 0
+                terms(end+1,1) = IMBoundaryRow.endpointTerm(component, "surface", surfaceWeight, ...
+                    IMBoundaryRow.trace(component), IMBoundaryRow.trace(component));
+            end
+            if bottomWeight ~= 0
+                terms(end+1,1) = IMBoundaryRow.endpointTerm(component, "bottom", bottomWeight, ...
+                    IMBoundaryRow.trace(component), IMBoundaryRow.trace(component));
+            end
+        end
+
         function basisSet = constantStratification(options)
             % Create an analytical constant-stratification basis set.
             %
