@@ -254,16 +254,28 @@ classdef IMSolverFiniteDifference < IMSolver
 
     methods (Access = private)
         function D = finiteDifferenceMatrix(self, derivativeOrder)
-            D = zeros(self.nEVP,self.nEVP);
-            for iColumn = 1:self.nEVP
-                e = zeros(self.nEVP,1);
-                e(iColumn) = 1;
-                values = e;
-                for iDerivative = 1:derivativeOrder
-                    values = gradient(values, self.zNative);
-                end
-                D(:,iColumn) = values;
+            if derivativeOrder == 0
+                D = eye(self.nEVP);
+                return;
             end
+
+            nStencil = min(self.nEVP, max(derivativeOrder+1, 5));
+            D = zeros(self.nEVP,self.nEVP);
+            for iRow = 1:self.nEVP
+                firstIndex = iRow - floor(nStencil/2);
+                firstIndex = max(1, min(firstIndex, self.nEVP - nStencil + 1));
+                stencilIndex = firstIndex:(firstIndex + nStencil - 1);
+                weights = self.finiteDifferenceWeights(self.zNative(iRow), self.zNative(stencilIndex), derivativeOrder);
+                D(iRow,stencilIndex) = weights;
+            end
+        end
+
+        function weights = finiteDifferenceWeights(~, z0, z, derivativeOrder)
+            powers = 0:(length(z)-1);
+            A = (z(:).' - z0).^powers(:);
+            b = zeros(length(z),1);
+            b(derivativeOrder+1) = factorial(derivativeOrder);
+            weights = (A\b).';
         end
 
     end

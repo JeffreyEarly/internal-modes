@@ -33,26 +33,53 @@ classdef (Abstract) IMSolver
             valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
-            if evp.ordering == "indexPolicyThenAscending"
-                selection = evp.indexPolicy.selectModes(eigenvalues, options.nModes, evp.contextForSolver(self));
-                eigenvalues = eigenvalues(selection.sortIndex);
-                V = V(:,selection.sortIndex);
-                modeIndex = selection.modeIndex;
-                index = selection.index;
-            else
-                [eigenvalues, sortIndex] = self.sortEigenvalues(eigenvalues, evp.ordering);
-                V = V(:,sortIndex);
-                nRetain = min(options.nModes, length(eigenvalues));
-                eigenvalues = eigenvalues(1:nRetain);
-                V = V(:,1:nRetain);
-                modeIndex = 1:length(eigenvalues);
-                index = evp.indexPolicy.classify(eigenvalues, evp.contextForSolver(self));
-            end
+            selection = evp.selectModes(eigenvalues, options.nModes, evp.contextForSolver(self));
+            eigenvalues = eigenvalues(selection.sortIndex);
+            V = V(:,selection.sortIndex);
+            modeNumber = selection.modeNumber;
+            index = selection.index;
             h = evp.hFromEigenvalue(eigenvalues(:).');
             basisSet = IMBasisSet(solver=self, evp=evp, nativeModes=V, ...
-                eigenvalues=eigenvalues(:).', h=h, modeIndex=modeIndex, index=index, ...
+                eigenvalues=eigenvalues(:).', h=h, modeNumber=modeNumber, index=index, ...
                 zDomain=self.zDomain, N2Function=@(z) self.N2(z));
             basisSet = basisSet.orientModeSigns();
+        end
+
+        function [A, B] = applyBoundaryCondition(self, A, B, boundaryCondition, options)
+            % Apply a placed boundary condition to a matrix pair.
+            %
+            % Active metadata-only boundary conditions do not replace matrix
+            % rows. Standard placed conditions replace the solver-native row
+            % associated with their physical location.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: [A,B] = applyBoundaryCondition(solver,A,B,boundaryCondition,options)
+            % - Parameter A: left EVP matrix
+            % - Parameter B: right EVP matrix
+            % - Parameter boundaryCondition: placed boundary condition
+            % - Parameter options.context: framework coefficient context
+            % - Returns A: boundary-conditioned left matrix
+            % - Returns B: boundary-conditioned right matrix
+            arguments
+                self IMSolver
+                A double
+                B double
+                boundaryCondition IMBoundary
+                options.context struct = struct()
+            end
+
+            if boundaryCondition.family == "active" || boundaryCondition.family == "partialDepthPE"
+                return;
+            end
+            if boundaryCondition.location == ""
+                error("IMSolver:UnplacedBoundaryCondition", ...
+                    "Boundary condition ""%s"" must be placed before assembly.", boundaryCondition.family);
+            end
+
+            index = self.boundaryIndex(boundaryCondition.location);
+            A(index,:) = boundaryCondition.leftOperator.boundaryRow(self, boundaryCondition.location, context=options.context);
+            B(index,:) = boundaryCondition.rightOperator.boundaryRow(self, boundaryCondition.location, context=options.context);
         end
     end
 
@@ -68,44 +95,4 @@ classdef (Abstract) IMSolver
         value = integrateInnerProduct(self, z, integrand, zBounds)
     end
 
-    methods (Access = protected)
-        function [lambdaSorted, sortIndex] = sortEigenvalues(~, eigenvalues, ordering)
-            % Sort generalized-EVP eigenvalues according to an EVP policy.
-            %
-            % - Topic: Developer topics
-            % - Declaration: [lambdaSorted,sortIndex] = sortEigenvalues(solver,eigenvalues,ordering)
-            % - Parameter eigenvalues: eigenvalue vector
-            % - Parameter ordering: ordering policy name
-            % - Returns lambdaSorted: sorted eigenvalues
-            % - Returns sortIndex: permutation indices
-            % - Developer: true
-            switch string(ordering)
-                case "ascendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "ascend");
-                case "descendingEigenvalue"
-                    [lambdaSorted, sortIndex] = sort(eigenvalues, "descend");
-                case "indexThenAscending"
-                    [~, sortIndex] = sortrows([IMSolver.signWithZero(eigenvalues), abs(eigenvalues), eigenvalues]);
-                    lambdaSorted = eigenvalues(sortIndex);
-                otherwise
-                    error("IMSolver:InvalidOrdering", ...
-                        "Unknown EVP ordering ""%s"".", ordering);
-            end
-        end
-    end
-
-    methods (Static, Access = private)
-        function signs = signWithZero(values)
-            nonzeroValues = abs(values(abs(values) > 0 & isfinite(values)));
-            if isempty(nonzeroValues)
-                scale = 1;
-            else
-                scale = max(1,median(nonzeroValues));
-            end
-            tolerance = 1e-10*scale;
-            signs = ones(size(values));
-            signs(values < -tolerance) = -1;
-            signs(abs(values) <= tolerance) = 0;
-        end
-    end
 end

@@ -13,11 +13,11 @@ nEVP = 96;
 z = linspace(zDomain(1), zDomain(2), 256).';
 
 solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-evp = IMEigenvalueProblem.hydrostaticGModes( upperBoundary=IMBoundary.rigid(), lowerBoundary=IMBoundary.rigid());
+evp = IMEigenvalueProblem.hydrostaticGModes(surfaceBoundary=IMBoundary.rigid(), bottomBoundary=IMBoundary.rigid());
 basisSet = solver.solveEVP(evp, nModes=nModes);
 
-G = basisSet.evaluate("G", z);
-F = basisSet.evaluate("F", z);
+G = basisSet.G(z);
+F = basisSet.F(z);
 modeLabels = "mode " + string(1:nModes);
 
 figure(Name="V2 hydrostatic modes: exponential stratification", Color="w");

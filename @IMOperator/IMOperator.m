@@ -9,7 +9,7 @@ classdef IMOperator
     % `ctx.zDomain`, and `ctx.coordinateKind`.
     %
     % ```matlab
-    % op = IMOperator.strong().plus(coefficient=@(z,ctx) ctx.N2(z), derivativeOrder=0);
+    % op = IMOperator().plus(coefficient=@(z,ctx) ctx.N2(z), derivativeOrder=0);
     % ```
     %
     % - Topic: Create operators
@@ -168,9 +168,14 @@ classdef IMOperator
         function op = strong()
             % Create a strong-form physical-coordinate operator.
             %
+            % `IMOperator()` is the canonical syntax for the current
+            % strong-form operator. This factory remains as an explicit
+            % developer convenience and compatibility alias.
+            %
             % - Topic: Create operators
             % - Declaration: op = IMOperator.strong()
             % - Returns op: empty strong-form operator
+            % - Developer: true
             op = IMOperator(form="strong");
         end
 
