@@ -22,7 +22,8 @@ classdef IMBasisSet
         % Active modal normalization.
         %
         % Changing this property rescales evaluated modes without solving a
-        % new EVP.
+        % new EVP. When omitted at construction, this is initialized from
+        % the EVP's declared default normalization.
         %
         % - Topic: Evaluate basis sets
         normalization = Normalization.kConstant
@@ -54,7 +55,11 @@ classdef IMBasisSet
         % - Topic: Inspect basis sets
         h
 
-        % Mode index coordinate.
+        % Scientific mode labels.
+        %
+        % Negative labels identify boundary modes, zero labels identify
+        % barotropic or null modes, and positive labels identify baroclinic
+        % modes.
         %
         % - Topic: Inspect basis sets
         modeIndex
@@ -74,15 +79,6 @@ classdef IMBasisSet
         % - Topic: Inspect basis sets
         zDomain
 
-        % Coriolis parameter.
-        %
-        % - Topic: Inspect basis sets
-        f0
-
-        % Gravitational acceleration.
-        %
-        % - Topic: Inspect basis sets
-        g
     end
 
     properties (Access = protected)
@@ -104,13 +100,12 @@ classdef IMBasisSet
             % - Parameter options.nativeModes: native mode columns
             % - Parameter options.eigenvalues: retained eigenvalues
             % - Parameter options.h: equivalent depths
+            % - Parameter options.modeIndex: scientific mode labels
             % - Parameter options.index: index summary
-            % - Parameter options.normalization: active normalization
+            % - Parameter options.normalization: active normalization; omitted uses the EVP default
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.N2Function: buoyancy frequency squared function
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
             % - Returns basisSet: initialized basis set
             arguments
                 options.solver = []
@@ -118,13 +113,12 @@ classdef IMBasisSet
                 options.nativeModes double = zeros(0,0)
                 options.eigenvalues double = zeros(1,0)
                 options.h double = zeros(1,0)
+                options.modeIndex double = []
                 options.index struct = struct()
-                options.normalization = Normalization.kConstant
+                options.normalization = []
                 options.metadata struct = struct()
                 options.zDomain (1,2) double = [NaN NaN]
                 options.N2Function = []
-                options.f0 (1,1) double = NaN
-                options.g (1,1) double = NaN
             end
 
             self.solver = options.solver;
@@ -132,14 +126,13 @@ classdef IMBasisSet
             self.nativeModes = options.nativeModes;
             self.eigenvalues = reshape(options.eigenvalues,1,[]);
             self.h = reshape(options.h,1,[]);
-            self.modeIndex = 1:max(size(options.nativeModes,2), length(self.h));
+            nModes = max(size(options.nativeModes,2), length(self.h));
+            self.modeIndex = IMBasisSet.resolveModeIndex(options.modeIndex, nModes);
             self.index = options.index;
-            self.normalization = options.normalization;
+            self.normalization = IMBasisSet.resolveDefaultNormalization(options.normalization, options.evp);
             self.metadata = options.metadata;
             self.zDomain = options.zDomain;
             self.N2Function = options.N2Function;
-            self.f0 = options.f0;
-            self.g = options.g;
 
             if ~isempty(self.solver)
                 if any(isnan(self.zDomain))
@@ -147,12 +140,6 @@ classdef IMBasisSet
                 end
                 if isempty(self.N2Function)
                     self.N2Function = @(z) self.solver.N2(z);
-                end
-                if isnan(self.f0)
-                    self.f0 = self.solver.f0;
-                end
-                if isnan(self.g)
-                    self.g = self.solver.g;
                 end
             end
         end
@@ -333,6 +320,32 @@ classdef IMBasisSet
             end
             values = self.N2Function(z);
         end
+
+        function values = dzLogN2(self, z)
+            % Evaluate $$\partial_z\log N^2$$ for this basis set.
+            %
+            % - Topic: Evaluate basis sets
+            % - Declaration: values = dzLogN2(basisSet,z)
+            % - Parameter z: physical coordinate
+            % - Returns values: vertical derivative of `log(N2)`
+            if ~isempty(self.solver)
+                values = self.solver.dzLogN2(z);
+                return;
+            end
+            if isempty(self.N2Function)
+                error("IMBasisSet:UnsupportedOperation", ...
+                    "The basis set does not have an N2 function.");
+            end
+
+            z = z(:);
+            if length(z) == 1
+                scale = max(1,abs(z));
+                dz = sqrt(eps)*scale;
+                values = (log(self.N2Function(z + dz)) - log(self.N2Function(z - dz)))/(2*dz);
+            else
+                values = gradient(log(self.N2Function(z)), z);
+            end
+        end
     end
 
     methods (Hidden)
@@ -384,12 +397,12 @@ classdef IMBasisSet
             % - Parameter iMode: mode index
             % - Returns factor: divisor that makes the component unit norm
             innerWeight = self.componentInteriorWeight(component);
-            endpointTerms = self.componentEndpointTerms(component);
-            [surfaceWeight, bottomWeight, remainingTerms] = self.scalarEndpointWeights(component, endpointTerms);
+            innerProductTerms = self.componentInnerProductTerms(component);
+            [surfaceWeight, bottomWeight, remainingTerms] = self.scalarEndpointWeights(component, innerProductTerms);
             if isempty(remainingTerms)
                 factor = self.weightedNormFactor(component, iMode, innerWeight, surfaceWeight, bottomWeight);
             else
-                factor = self.weightedNormFactorWithEndpointTerms(component, iMode, innerWeight, endpointTerms);
+                factor = self.weightedNormFactorWithInnerProductTerms(component, iMode, innerWeight, innerProductTerms);
             end
         end
 
@@ -410,13 +423,13 @@ classdef IMBasisSet
             weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
             integrand = weight(:).*values(:,iMode).*values(:,iMode);
             normValue = self.integrateInnerProduct(z, integrand, self.zDomain);
-            endpointTerms = IMBasisSet.scalarEndpointTerms(component, surfaceWeight, bottomWeight);
-            normValue = normValue + self.endpointQuadraticValue(endpointTerms, iMode, iMode, false);
+            innerProductTerms = IMBasisSet.scalarInnerProductTerms(component, surfaceWeight, bottomWeight);
+            normValue = normValue + self.endpointQuadraticValue(innerProductTerms, iMode, iMode, false);
             factor = sqrt(abs(normValue));
         end
 
         function factor = weightedNormFactorWithBoundaryTerms(self, component, iMode, innerWeight)
-            % Return a norm factor using endpoint terms from resolved boundaries.
+            % Return a norm factor using inner-product terms from resolved boundaries.
             %
             % - Topic: Developer topics
             % - Developer: true
@@ -425,8 +438,8 @@ classdef IMBasisSet
             % - Parameter iMode: mode index
             % - Parameter innerWeight: interior weight coefficient
             % - Returns factor: divisor from the boundary-aware quadratic form
-            endpointTerms = self.componentEndpointTerms(component);
-            factor = self.weightedNormFactorWithEndpointTerms(component, iMode, innerWeight, endpointTerms);
+            innerProductTerms = self.componentInnerProductTerms(component);
+            factor = self.weightedNormFactorWithInnerProductTerms(component, iMode, innerWeight, innerProductTerms);
         end
 
         function factor = weightedInteriorNormFactor(self, component, iMode, innerWeight)
@@ -439,28 +452,58 @@ classdef IMBasisSet
             % - Parameter iMode: mode index
             % - Parameter innerWeight: interior weight coefficient
             % - Returns factor: divisor from the interior quadratic form
-            factor = self.weightedNormFactorWithEndpointTerms( ...
-                component, iMode, innerWeight, IMBasisSet.emptyEndpointTerms());
+            factor = self.weightedNormFactorWithInnerProductTerms( ...
+                component, iMode, innerWeight, IMBasisSet.emptyInnerProductTerms());
         end
 
-        function factor = weightedNormFactorWithEndpointTerms(self, component, iMode, innerWeight, endpointTerms)
-            % Return a norm factor from trace-pair endpoint terms.
+        function factor = weightedNormFactorWithInnerProductTerms(self, component, iMode, innerWeight, innerProductTerms)
+            % Return a norm factor from boundary inner-product terms.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: factor = weightedNormFactorWithEndpointTerms(basisSet,component,iMode,innerWeight,endpointTerms)
+            % - Declaration: factor = weightedNormFactorWithInnerProductTerms(basisSet,component,iMode,innerWeight,innerProductTerms)
             % - Parameter component: component name
             % - Parameter iMode: mode index
             % - Parameter innerWeight: interior weight coefficient
-            % - Parameter endpointTerms: endpoint trace-pair terms
+            % - Parameter innerProductTerms: boundary inner-product terms
             % - Returns factor: divisor from the requested quadratic form
             z = self.innerProductGrid(self.zDomain);
             values = self.rawComponent(component, z);
             weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
             integrand = weight(:).*values(:,iMode).*values(:,iMode);
             normValue = self.integrateInnerProduct(z, integrand, self.zDomain);
-            normValue = normValue + self.endpointQuadraticValue(endpointTerms, iMode, iMode, false);
+            normValue = normValue + self.endpointQuadraticValue(innerProductTerms, iMode, iMode, false);
             factor = sqrt(abs(normValue));
+        end
+
+        function factor = geostrophicNormFactor(self, iMode)
+            % Return the hydrostatic geostrophic normalization factor.
+            %
+            % Baroclinic modes are normalized by the `G` metric
+            % $$g^{-1}\int N^2G^2\,dz$$. The `F`-solved barotropic mode is
+            % a null mode with `G=0`, so it is normalized by its RMS `F`
+            % amplitude and retains Parseval scale $$D$$.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
+            % - Parameter iMode: mode index
+            % - Returns factor: divisor for geostrophic normalization
+            jMode = self.modeIndex(iMode);
+            if jMode < 0 && self.hasUnknownBoundaryInnerProduct()
+                error("IMBasisSet:UnsupportedNormalization", ...
+                    "Geostrophic normalization for boundary mode %d requires known boundary inner-product metadata.", jMode);
+            end
+
+            fFactor = self.weightedInteriorNormFactor("F", iMode, @(z,ctx) ones(size(z)));
+            if jMode == 0
+                gFactor = self.weightedNormFactorWithBoundaryTerms("G", iMode, @(z,ctx) ctx.N2(z)/ctx.g);
+                self.validateHydrostaticFBarotropicNull(iMode, gFactor, fFactor);
+                factor = fFactor/sqrt(diff(self.zDomain));
+                return;
+            end
+
+            factor = self.weightedNormFactorWithBoundaryTerms("G", iMode, @(z,ctx) ctx.N2(z)/ctx.g);
         end
 
         function factor = maxAbsFactor(self, component, iMode)
@@ -499,7 +542,7 @@ classdef IMBasisSet
             end
 
             self.requireSolver("evaluate diagnostic components");
-            values = metadata.operator.evaluate(self.solver, self.nativeModes, z);
+            values = metadata.operator.evaluate(self.solver, self.nativeModes, z, context=self.context());
             if isfield(metadata, "modalScale")
                 values = self.applyModalScale(values, metadata.modalScale);
             end
@@ -518,14 +561,14 @@ classdef IMBasisSet
             z = self.innerProductGrid(zBounds);
             values = self.evaluate(component, z);
             innerWeight = self.componentInteriorWeight(component);
-            endpointTerms = self.componentEndpointTerms(component);
+            innerProductTerms = self.componentInnerProductTerms(component);
             weight = IMOperator.evaluateCoefficient(innerWeight, z, self.context());
             gram = zeros(size(values,2), size(values,2));
             for iMode = 1:size(values,2)
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
                     value = self.integrateInnerProduct(z, integrand, zBounds);
-                    value = value + self.endpointQuadraticValue(endpointTerms, iMode, jMode, true, zBounds);
+                    value = value + self.endpointQuadraticValue(innerProductTerms, iMode, jMode, true, zBounds);
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
@@ -559,34 +602,34 @@ classdef IMBasisSet
             end
         end
 
-        function endpointTerms = componentEndpointTerms(self, component)
-            endpointTerms = IMBasisSet.emptyEndpointTerms();
+        function innerProductTerms = componentInnerProductTerms(self, component)
+            innerProductTerms = IMBasisSet.emptyInnerProductTerms();
             if isempty(self.evp) || ~isprop(self.evp, "boundaryRows")
                 return;
             end
 
             component = string(component);
             for iBoundary = 1:length(self.evp.boundaryRows)
-                terms = self.evp.boundaryRows(iBoundary).endpointTerms;
+                terms = self.evp.boundaryRows(iBoundary).innerProductTerms;
                 for iTerm = 1:length(terms)
                     if string(terms(iTerm).innerProductComponent) == component
-                        endpointTerms(end+1,1) = terms(iTerm);
+                        innerProductTerms(end+1,1) = terms(iTerm);
                     end
                 end
             end
         end
 
-        function value = endpointQuadraticValue(self, endpointTerms, iMode, jMode, useNormalized, zBounds)
+        function value = endpointQuadraticValue(self, innerProductTerms, iMode, jMode, useNormalized, zBounds)
             value = 0;
             if nargin < 6
                 zBounds = self.zDomain;
             end
-            for iTerm = 1:length(endpointTerms)
-                value = value + self.endpointTermValue(endpointTerms(iTerm), iMode, jMode, useNormalized, zBounds);
+            for iTerm = 1:length(innerProductTerms)
+                value = value + self.innerProductTermValue(innerProductTerms(iTerm), iMode, jMode, useNormalized, zBounds);
             end
         end
 
-        function value = endpointTermValue(self, term, iMode, jMode, useNormalized, zBounds)
+        function value = innerProductTermValue(self, term, iMode, jMode, useNormalized, zBounds)
             value = 0;
             switch string(term.location)
                 case "surface"
@@ -650,13 +693,13 @@ classdef IMBasisSet
             end
         end
 
-        function [surfaceWeight, bottomWeight, remainingTerms] = scalarEndpointWeights(~, component, endpointTerms)
+        function [surfaceWeight, bottomWeight, remainingTerms] = scalarEndpointWeights(~, component, innerProductTerms)
             component = string(component);
             surfaceWeight = 0;
             bottomWeight = 0;
-            remainingTerms = IMBasisSet.emptyEndpointTerms();
-            for iTerm = 1:length(endpointTerms)
-                term = endpointTerms(iTerm);
+            remainingTerms = IMBasisSet.emptyInnerProductTerms();
+            for iTerm = 1:length(innerProductTerms)
+                term = innerProductTerms(iTerm);
                 leftTrace = term.leftTrace;
                 rightTrace = term.rightTrace;
                 isScalarTerm = isnumeric(term.coefficient) && isscalar(term.coefficient) ...
@@ -682,6 +725,43 @@ classdef IMBasisSet
 
         function value = hasComponent(self, component)
             value = ~isempty(self.evp) && isfield(self.evp.components, char(string(component)));
+        end
+
+        function tf = hasUnknownBoundaryInnerProduct(self)
+            tf = false;
+            if isempty(self.evp) || ~isprop(self.evp, "boundaryRows")
+                return;
+            end
+            if isempty(self.evp.boundaryRows)
+                return;
+            end
+            tf = any(~[self.evp.boundaryRows.hasKnownInnerProduct]);
+        end
+
+        function validateHydrostaticFBarotropicNull(self, iMode, gFactor, fFactor)
+            if isempty(self.evp) || self.evp.primaryComponent ~= "F"
+                error("IMBasisSet:UnsupportedNormalization", ...
+                    "Mode index 0 geostrophic normalization is only defined for hydrostatic F modes.");
+            end
+            if ~isfield(self.evp.parameters, "problemType") || string(self.evp.parameters.problemType) ~= "hydrostaticFModes"
+                error("IMBasisSet:UnsupportedNormalization", ...
+                    "Mode index 0 geostrophic normalization is only defined for hydrostatic F modes.");
+            end
+            if iMode > length(self.eigenvalues)
+                return;
+            end
+
+            positiveEigenvalues = self.eigenvalues(self.eigenvalues > 0 & isfinite(self.eigenvalues));
+            if isempty(positiveEigenvalues)
+                eigenvalueTolerance = 1e-10;
+            else
+                eigenvalueTolerance = 1e-8*max(1,min(positiveEigenvalues));
+            end
+            gTolerance = 1e-8*max(1,fFactor);
+            if abs(self.eigenvalues(iMode)) > eigenvalueTolerance || gFactor > gTolerance
+                warning("IMBasisSet:ModeIndexValidation", ...
+                    "Mode index 0 is expected to be a hydrostatic F null mode with lambda near zero and G near zero.");
+            end
         end
 
         function values = rawComponentForSign(self, component, z)
@@ -732,15 +812,20 @@ classdef IMBasisSet
 
         function context = context(self)
             context.N2 = @(z) self.N2(z);
-            context.f0 = self.f0;
-            context.g = self.g;
+            context.dzLogN2 = @(z) self.dzLogN2(z);
             context.zDomain = self.zDomain;
-            context.parameters = struct();
+            context.coordinateKind = "basisSet";
             if ~isempty(self.evp)
-                context.parameters = self.evp.parameters;
-                names = fieldnames(self.evp.parameters);
-                for iName = 1:length(names)
-                    context.(names{iName}) = self.evp.parameters.(names{iName});
+                context.f0 = self.evp.f0;
+                context.g = self.evp.g;
+            else
+                context.f0 = 0;
+                context.g = 9.81;
+            end
+            if ~isempty(self.solver)
+                solverContext = self.solver.context();
+                if isfield(solverContext, "coordinateKind")
+                    context.coordinateKind = solverContext.coordinateKind;
                 end
             end
         end
@@ -785,35 +870,71 @@ classdef IMBasisSet
         end
     end
 
-    methods (Static)
-        function terms = emptyEndpointTerms()
-            % Create an empty endpoint-term structure.
+    methods (Static, Access = private)
+        function modeIndex = resolveModeIndex(requestedModeIndex, nModes)
+            if isempty(requestedModeIndex)
+                modeIndex = 1:nModes;
+                return;
+            end
+            modeIndex = reshape(requestedModeIndex,1,[]);
+            if length(modeIndex) ~= nModes
+                error("IMBasisSet:InvalidModeIndex", ...
+                    "modeIndex must have one entry for each retained mode.");
+            end
+        end
+
+        function normalization = resolveDefaultNormalization(requestedNormalization, evp)
+            % Resolve an omitted normalization from the EVP default.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: terms = IMBasisSet.emptyEndpointTerms()
-            % - Returns terms: empty endpoint-term structure
+            % - Declaration: normalization = IMBasisSet.resolveDefaultNormalization(requestedNormalization,evp)
+            % - Parameter requestedNormalization: caller-specified normalization or empty
+            % - Parameter evp: EVP descriptor
+            % - Returns normalization: resolved normalization
+            if ~isempty(requestedNormalization)
+                normalization = requestedNormalization;
+                return;
+            end
+
+            if ~isempty(evp) && isprop(evp, "defaultNormalization") && ~isempty(evp.defaultNormalization)
+                normalization = evp.defaultNormalization;
+                return;
+            end
+
+            normalization = Normalization.kConstant;
+        end
+    end
+
+    methods (Static)
+        function terms = emptyInnerProductTerms()
+            % Create an empty boundary inner-product-term structure.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: terms = IMBasisSet.emptyInnerProductTerms()
+            % - Returns terms: empty boundary inner-product-term structure
             terms = struct("innerProductComponent", {}, "location", {}, "coefficient", {}, ...
                 "leftTrace", {}, "rightTrace", {});
         end
 
-        function terms = scalarEndpointTerms(component, surfaceWeight, bottomWeight)
-            % Convert scalar endpoint weights to trace-pair terms.
+        function terms = scalarInnerProductTerms(component, surfaceWeight, bottomWeight)
+            % Convert scalar endpoint weights to boundary inner-product terms.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: terms = IMBasisSet.scalarEndpointTerms(component,surfaceWeight,bottomWeight)
+            % - Declaration: terms = IMBasisSet.scalarInnerProductTerms(component,surfaceWeight,bottomWeight)
             % - Parameter component: component name
             % - Parameter surfaceWeight: surface endpoint weight
             % - Parameter bottomWeight: bottom endpoint weight
-            % - Returns terms: endpoint trace-pair terms
-            terms = IMBasisSet.emptyEndpointTerms();
+            % - Returns terms: boundary inner-product terms
+            terms = IMBasisSet.emptyInnerProductTerms();
             if surfaceWeight ~= 0
-                terms(end+1,1) = IMBoundaryRow.endpointTerm(component, "surface", surfaceWeight, ...
+                terms(end+1,1) = IMBoundaryRow.innerProductTerm(component, "surface", surfaceWeight, ...
                     IMBoundaryRow.trace(component), IMBoundaryRow.trace(component));
             end
             if bottomWeight ~= 0
-                terms(end+1,1) = IMBoundaryRow.endpointTerm(component, "bottom", bottomWeight, ...
+                terms(end+1,1) = IMBoundaryRow.innerProductTerm(component, "bottom", bottomWeight, ...
                     IMBoundaryRow.trace(component), IMBoundaryRow.trace(component));
             end
         end
@@ -830,9 +951,7 @@ classdef IMBasisSet
             % - Parameter options.N0: constant buoyancy frequency
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nModes: number of modes
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.normalization: active normalization
+            % - Parameter options.normalization: active normalization; omitted uses the EVP default
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: analytical constant-stratification basis set
             arguments
@@ -840,15 +959,13 @@ classdef IMBasisSet
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double = [-1 0]
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
-                options.f0 (1,1) double = NaN
-                options.g (1,1) double = NaN
-                options.normalization = Normalization.kConstant
+                options.normalization = []
                 options.metadata struct = struct()
             end
 
             basisSet = IMBasisSetConstantStratification(evp=options.evp, N0=options.N0, ...
-                zDomain=options.zDomain, nModes=options.nModes, f0=options.f0, g=options.g, ...
-                normalization=options.normalization, metadata=options.metadata);
+                zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, ...
+                metadata=options.metadata);
         end
 
         function basisSet = exponentialStratification(options)

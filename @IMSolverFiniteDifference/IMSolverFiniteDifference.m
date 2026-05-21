@@ -55,16 +55,6 @@ classdef IMSolverFiniteDifference < IMSolver
         % - Topic: Developer topics
         % - Developer: true
         Txx
-
-        % Coriolis parameter.
-        %
-        % - Topic: Inspect solvers
-        f0
-
-        % Gravitational acceleration.
-        %
-        % - Topic: Inspect solvers
-        g
     end
 
     properties (Access = private)
@@ -83,14 +73,10 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Declaration: solver = IMSolverFiniteDifference(options)
             % - Parameter options.z: finite-difference grid
             % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
             % - Returns solver: initialized finite-difference solver
             arguments
                 options.z (:,1) double
                 options.N2 function_handle = @(z) 1e-5*ones(size(z))
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
             end
 
             self.zNative = sort(options.z(:), "descend");
@@ -98,24 +84,23 @@ classdef IMSolverFiniteDifference < IMSolver
             self.zDomain = [min(self.zNative) max(self.zNative)];
             self.nEVP = length(self.zNative);
             self.N2Function = options.N2;
-            self.f0 = options.f0;
-            self.g = options.g;
             self.T = eye(self.nEVP);
             self.Tx = self.finiteDifferenceMatrix(1);
             self.Txx = self.finiteDifferenceMatrix(2);
         end
 
         function context = context(self)
-            % Return coefficient functions used by physical operators.
+            % Return the framework coefficient context.
+            %
+            % Solvers provide medium and discretization fields. EVPs add
+            % physical constants such as `ctx.g` and `ctx.f0`.
             %
             % - Topic: Solve EVPs
             % - Developer: true
             % - Declaration: context = context(solver)
-            % - Returns context: solver context structure
+            % - Returns context: framework coefficient context
             context.N2 = @(z) self.N2(z);
             context.dzLogN2 = @(z) self.dzLogN2(z);
-            context.f0 = self.f0;
-            context.g = self.g;
             context.zDomain = self.zDomain;
             context.coordinateKind = "finiteDifference";
         end

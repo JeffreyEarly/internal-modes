@@ -1,15 +1,26 @@
 classdef IMBoundary
     % Describe a location-free boundary law for a v2 internal-mode EVP.
     %
-    % `IMBoundary` stores the physical law a user wants to impose. EVP
-    % factories place that law at the upper or lower endpoint by calling
-    % `resolve`, which returns an `IMBoundaryRow` with explicit row
-    % operators, endpoint trace terms, and index metadata.
+    % `IMBoundary` stores the physical law a user wants to impose, not the
+    % placed matrix row. Users normally pass boundary laws to EVP factories:
     %
     % ```matlab
     % evp = IMEigenvalueProblem.waveModesAtWavenumber( ...
     %     k=1e-4, upperBoundary=IMBoundary.free(), lowerBoundary=IMBoundary.rigid());
     % ```
+    %
+    % The factory places the law at the upper or lower endpoint and resolves
+    % it for the EVP primary component. For example, `IMBoundary.dirichlet()`
+    % acts on the primary component, while `IMBoundary.dirichlet(on="F")`
+    % is an explicit advanced override. The resolved developer object is an
+    % `IMBoundaryRow`, which owns the matrix row, boundary inner-product
+    % terms, and index metadata.
+    %
+    % Boundary inner-product terms are not boundary conditions. They are the
+    % boundary trace products added to modal inner products so the EVP
+    % remains orthogonal under the chosen boundary law. Examples include
+    % scalar products like $$G_iG_j$$ and mixed products like
+    % $$G_iF_j+F_iG_j$$.
     %
     % - Topic: Create boundary laws
     % - Topic: Resolve boundary laws
@@ -17,125 +28,55 @@ classdef IMBoundary
     % - Topic: Developer topics
     % - Declaration: classdef IMBoundary
 
-    properties
-        % Short boundary-law name.
-        %
-        % - Topic: Inspect boundary laws
-        name = "boundary"
-
-        % Boundary family name.
+    properties (SetAccess = private)
+        % Boundary family identifier.
         %
         % Examples include `"rigid"`, `"noSlip"`, `"free"`, `"linearF"`,
-        % and `"linearG"`.
+        % and `"linearG"`. This is the stable public identifier recorded in
+        % EVP metadata and resolved boundary rows.
         %
         % - Topic: Inspect boundary laws
-        family = "custom"
+        family = "operator"
+    end
 
-        % Component used by explicit developer-level laws.
-        %
-        % Named physical laws such as `rigid`, `noSlip`, and `free` choose
-        % their component when resolved for a `G` or `F` EVP.
-        %
-        % - Topic: Inspect boundary laws
-        component = ""
-
-        % Left-side boundary functional for explicit laws.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
+    properties (Access = private)
+        on = "primary"
         leftOperator = IMOperator.strong()
-
-        % Right-side eigenvalue boundary functional for explicit laws.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
         rightOperator = IMOperator.strong()
-
-        % Endpoint trace terms for explicit or linear laws before placement.
-        %
-        % Terms whose location is empty are placed at the resolved endpoint.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
-        endpointTerms = IMBoundaryRow.emptyEndpointTerms()
-
-        % Status of the associated orthogonality metadata.
-        %
-        % Values are `"complete"` or `"unresolved"`. Unresolved linear
-        % families can still assemble EVP rows, but their endpoint inner
-        % products and index metadata are incomplete.
-        %
-        % - Topic: Inspect boundary laws
-        orthogonalityStatus = "complete"
-
-        % Family-specific coefficients for location-free laws.
-        %
-        % `linearF` stores fields `a`, `b`, `c`, and `d`. `linearG` stores
-        % fields `a`, `b`, `c`, and `e`.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
+        innerProductTerms = IMBoundaryRow.emptyInnerProductTerms()
+        hasKnownInnerProduct = true
         coefficients = struct()
     end
 
-    methods
-        function self = IMBoundary(options)
-            % Create a location-free boundary law.
-            %
-            % - Topic: Create boundary laws
-            % - Declaration: boundary = IMBoundary(options)
-            % - Parameter options.name: short boundary-law name
-            % - Parameter options.family: boundary family name
-            % - Parameter options.component: constrained component for explicit laws
-            % - Parameter options.leftOperator: left-side boundary functional
-            % - Parameter options.rightOperator: right-side eigenvalue functional
-            % - Parameter options.endpointTerms: endpoint trace-pair terms
-            % - Parameter options.orthogonalityStatus: endpoint-form status
-            % - Parameter options.coefficients: family-specific coefficient metadata
-            % - Returns boundary: initialized boundary law
-            arguments
-                options.name {mustBeTextScalar} = "boundary"
-                options.family {mustBeTextScalar} = "custom"
-                options.component {mustBeTextScalar} = ""
-                options.leftOperator IMOperator = IMOperator.strong()
-                options.rightOperator IMOperator = IMOperator.strong()
-                options.endpointTerms struct = IMBoundaryRow.emptyEndpointTerms()
-                options.orthogonalityStatus {mustBeTextScalar} = "complete"
-                options.coefficients struct = struct()
-            end
-
-            self.name = string(options.name);
-            self.family = string(options.family);
-            self.component = string(options.component);
-            self.leftOperator = options.leftOperator;
-            self.rightOperator = options.rightOperator;
-            self.endpointTerms = options.endpointTerms(:);
-            self.orthogonalityStatus = string(options.orthogonalityStatus);
-            self.coefficients = options.coefficients;
-        end
-
+    methods (Hidden)
         function row = resolve(self, options)
             % Resolve this boundary law at one endpoint.
             %
-            % The returned `IMBoundaryRow` is the explicit object consumed
-            % by EVP assembly, basis-set endpoint inner products, and index
-            % policies. `context.primaryComponent` determines how named
-            % physical laws resolve for `G` and `F` EVPs.
+            % This is a developer-facing method used by EVP factories and
+            % tests. `endpoint` determines the placement, and
+            % `primaryComponent` determines how `"primary"` component laws
+            % such as `dirichlet()` and `neumann()` are interpreted.
+            %
+            % ```matlab
+            % row = IMBoundary.dirichlet().resolve(endpoint="upper", primaryComponent="G");
+            % row.component  % "G"
+            % ```
             %
             % - Topic: Resolve boundary laws
+            % - Developer: true
             % - Declaration: row = resolve(boundary,options)
             % - Parameter options.endpoint: `"upper"` or `"lower"`
-            % - Parameter options.context: EVP construction context
+            % - Parameter options.primaryComponent: primary EVP component, `"G"` or `"F"`
             % - Returns row: resolved boundary row
             arguments
                 self IMBoundary
                 options.endpoint {mustBeTextScalar}
-                options.context struct = struct()
+                options.primaryComponent {mustBeTextScalar} = "G"
             end
 
             endpoint = string(options.endpoint);
             location = IMBoundaryRow.locationForEndpoint(endpoint);
-            primaryComponent = IMBoundary.contextString(options.context, "primaryComponent", "G");
+            primaryComponent = IMBoundary.validateComponent(options.primaryComponent);
 
             switch self.family
                 case "rigid"
@@ -161,68 +102,47 @@ classdef IMBoundary
                             IMBoundary.unsupportedResolution(self.family, primaryComponent);
                     end
                 case "free"
-                    endpointTerm = IMBoundaryRow.endpointTerm("G", location, 1, ...
+                    innerProductTerm = IMBoundaryRow.innerProductTerm("G", location, 1, ...
                         IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
                     switch primaryComponent
                         case "G"
                             left = IMOperator.strong().plus(derivativeOrder=1);
                             right = IMOperator.strong().plus(derivativeOrder=0);
                             row = IMBoundaryRow(family="free", endpoint=endpoint, component="G", ...
-                                leftOperator=left, rightOperator=right, endpointTerms=endpointTerm);
+                                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerm);
                         case "F"
                             left = IMOperator.strong() ...
                                 .plus(derivativeOrder=0) ...
                                 .plus(coefficient=@(z,ctx) ctx.g./ctx.N2(z), derivativeOrder=1);
                             row = IMBoundaryRow(family="free", endpoint=endpoint, component="F", ...
-                                leftOperator=left, endpointTerms=endpointTerm);
+                                leftOperator=left, innerProductTerms=innerProductTerm);
                         otherwise
                             IMBoundary.unsupportedResolution(self.family, primaryComponent);
                     end
                 case "dirichlet"
                     left = IMOperator.strong().plus(derivativeOrder=0);
-                    row = IMBoundaryRow(family="dirichlet", endpoint=endpoint, component=self.component, leftOperator=left);
+                    component = self.resolvedComponent(primaryComponent);
+                    row = IMBoundaryRow(family="dirichlet", endpoint=endpoint, component=component, leftOperator=left);
                 case "neumann"
                     left = IMOperator.strong().plus(derivativeOrder=1);
-                    row = IMBoundaryRow(family="neumann", endpoint=endpoint, component=self.component, leftOperator=left);
-                case "robin"
-                    endpointTerms = IMBoundary.resolveEndpointLocations(self.endpointTerms, location);
-                    row = IMBoundaryRow(family="robin", endpoint=endpoint, component=self.component, ...
-                        leftOperator=self.leftOperator, rightOperator=self.rightOperator, endpointTerms=endpointTerms);
+                    component = self.resolvedComponent(primaryComponent);
+                    row = IMBoundaryRow(family="neumann", endpoint=endpoint, component=component, leftOperator=left);
+                case "operator"
+                    component = self.resolvedComponent(primaryComponent);
+                    innerProductTerms = IMBoundary.placeInnerProductTerms(self.innerProductTerms, location);
+                    row = IMBoundaryRow(family="operator", endpoint=endpoint, component=component, ...
+                        leftOperator=self.leftOperator, rightOperator=self.rightOperator, ...
+                        innerProductTerms=innerProductTerms, hasKnownInnerProduct=self.hasKnownInnerProduct);
                 case "linearF"
                     if primaryComponent ~= "F"
                         IMBoundary.unsupportedResolution(self.family, primaryComponent);
                     end
-                    c = self.coefficients;
-                    left = IMOperator.strong() ...
-                        .plus(coefficient=-c.a, derivativeOrder=0) ...
-                        .plus(coefficient=@(z,ctx) c.b./ctx.N2(z), derivativeOrder=1);
-                    right = IMOperator.strong() ...
-                        .plus(coefficient=@(~,ctx) c.c/ctx.g, derivativeOrder=0) ...
-                        .plus(coefficient=@(z,ctx) -c.d./(ctx.g*ctx.N2(z)), derivativeOrder=1);
-                    endpointTerms = IMBoundary.resolveEndpointLocations(self.endpointTerms, location);
-                    row = IMBoundaryRow(family="linearF", endpoint=endpoint, component="F", ...
-                        leftOperator=left, rightOperator=right, endpointTerms=endpointTerms, ...
-                        orthogonalityStatus=self.orthogonalityStatus);
+                    row = self.resolveLinearF(endpoint, location);
                 case "linearG"
                     if primaryComponent ~= "G"
                         IMBoundary.unsupportedResolution(self.family, primaryComponent);
                     end
-                    c = self.coefficients;
-                    left = IMOperator.strong() ...
-                        .plus(coefficient=-c.e, derivativeOrder=0) ...
-                        .plus(coefficient=c.a, derivativeOrder=1);
-                    right = IMOperator.strong() ...
-                        .plus(coefficient=@(~,ctx) c.b/ctx.g, derivativeOrder=0) ...
-                        .plus(coefficient=@(~,ctx) -c.c/ctx.g, derivativeOrder=1);
-                    endpointTerms = IMBoundary.resolveEndpointLocations(self.endpointTerms, location);
-                    row = IMBoundaryRow(family="linearG", endpoint=endpoint, component="G", ...
-                        leftOperator=left, rightOperator=right, endpointTerms=endpointTerms, ...
-                        orthogonalityStatus=self.orthogonalityStatus);
-                case "custom"
-                    endpointTerms = IMBoundary.resolveEndpointLocations(self.endpointTerms, location);
-                    row = IMBoundaryRow(family="custom", endpoint=endpoint, component=self.component, ...
-                        leftOperator=self.leftOperator, rightOperator=self.rightOperator, endpointTerms=endpointTerms, ...
-                        orthogonalityStatus=self.orthogonalityStatus);
+                    row = self.resolveLinearG(endpoint, location);
                 otherwise
                     error("IMBoundary:UnsupportedResolution", ...
                         "Boundary family ""%s"" cannot be resolved by the v2 boundary API.", self.family);
@@ -234,53 +154,76 @@ classdef IMBoundary
         function boundary = dirichlet(options)
             % Create a location-free homogeneous Dirichlet boundary law.
             %
+            % By default this constrains the EVP primary component. Use
+            % `on="F"` or `on="G"` for advanced overrides.
+            %
+            % ```matlab
+            % IMBoundary.dirichlet()        % primary component
+            % IMBoundary.dirichlet(on="F")  % explicit F condition
+            % ```
+            %
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.dirichlet(options)
-            % - Parameter options.component: constrained component
+            % - Parameter options.on: component target, `"primary"`, `"F"`, or `"G"`
             % - Returns boundary: initialized boundary law
             arguments
-                options.component {mustBeTextScalar} = "G"
+                options.on {mustBeTextScalar} = "primary"
             end
 
-            boundary = IMBoundary(name=string(options.component) + "Dirichlet", family="dirichlet", ...
-                component=options.component);
+            boundary = IMBoundary(family="dirichlet", on=options.on);
         end
 
         function boundary = neumann(options)
             % Create a location-free homogeneous Neumann boundary law.
             %
-            % - Topic: Create boundary laws
-            % - Declaration: boundary = IMBoundary.neumann(options)
-            % - Parameter options.component: constrained component
-            % - Returns boundary: initialized boundary law
-            arguments
-                options.component {mustBeTextScalar} = "G"
-            end
-
-            boundary = IMBoundary(name=string(options.component) + "Neumann", family="neumann", ...
-                component=options.component);
-        end
-
-        function boundary = robin(options)
-            % Create a location-free homogeneous Robin boundary law.
+            % By default this constrains the EVP primary component. Use
+            % `on="F"` or `on="G"` for advanced overrides.
             %
             % - Topic: Create boundary laws
-            % - Declaration: boundary = IMBoundary.robin(options)
-            % - Parameter options.component: constrained component
-            % - Parameter options.leftOperator: left-side boundary functional
-            % - Parameter options.rightOperator: right-side eigenvalue functional
-            % - Parameter options.endpointTerms: endpoint trace-pair terms
+            % - Declaration: boundary = IMBoundary.neumann(options)
+            % - Parameter options.on: component target, `"primary"`, `"F"`, or `"G"`
             % - Returns boundary: initialized boundary law
             arguments
-                options.component {mustBeTextScalar} = "G"
-                options.leftOperator IMOperator
-                options.rightOperator IMOperator = IMOperator.strong()
-                options.endpointTerms struct = IMBoundaryRow.emptyEndpointTerms()
+                options.on {mustBeTextScalar} = "primary"
             end
 
-            boundary = IMBoundary(name=string(options.component) + "Robin", family="robin", ...
-                component=options.component, leftOperator=options.leftOperator, ...
-                rightOperator=options.rightOperator, endpointTerms=options.endpointTerms);
+            boundary = IMBoundary(family="neumann", on=options.on);
+        end
+
+        function boundary = operator(options)
+            % Create a manual location-free operator boundary law.
+            %
+            % The law applies `left = lambda right` to the resolved component
+            % at whichever endpoint the EVP factory places it. By default it
+            % acts on the EVP primary component.
+            %
+            % ```matlab
+            % boundary = IMBoundary.operator(left=IMOperator.strong().plus(derivativeOrder=1));
+            % ```
+            %
+            % `innerProductTerms` are optional boundary trace products
+            % associated with the law. If a term is passed with an empty
+            % location, it is placed at the resolved endpoint.
+            %
+            % - Topic: Create boundary laws
+            % - Declaration: boundary = IMBoundary.operator(options)
+            % - Parameter options.left: left-side boundary functional
+            % - Parameter options.right: right-side eigenvalue functional
+            % - Parameter options.innerProductTerms: boundary inner-product terms
+            % - Parameter options.hasKnownInnerProduct: true when the compatible boundary inner product is known
+            % - Parameter options.on: component target, `"primary"`, `"F"`, or `"G"`
+            % - Returns boundary: initialized boundary law
+            arguments
+                options.left IMOperator
+                options.right IMOperator = IMOperator.strong()
+                options.innerProductTerms struct = IMBoundaryRow.emptyInnerProductTerms()
+                options.hasKnownInnerProduct (1,1) logical = true
+                options.on {mustBeTextScalar} = "primary"
+            end
+
+            boundary = IMBoundary(family="operator", on=options.on, leftOperator=options.left, ...
+                rightOperator=options.right, innerProductTerms=options.innerProductTerms, ...
+                hasKnownInnerProduct=options.hasKnownInnerProduct);
         end
 
         function boundary = rigid()
@@ -292,7 +235,7 @@ classdef IMBoundary
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.rigid()
             % - Returns boundary: initialized rigid boundary law
-            boundary = IMBoundary(name="rigid", family="rigid");
+            boundary = IMBoundary(family="rigid");
         end
 
         function boundary = noSlip()
@@ -304,7 +247,7 @@ classdef IMBoundary
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.noSlip()
             % - Returns boundary: initialized no-slip boundary law
-            boundary = IMBoundary(name="noSlip", family="noSlip");
+            boundary = IMBoundary(family="noSlip");
         end
 
         function boundary = free()
@@ -317,16 +260,18 @@ classdef IMBoundary
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.free()
             % - Returns boundary: initialized free boundary law
-            boundary = IMBoundary(name="free", family="free");
+            boundary = IMBoundary(family="free");
         end
 
         function boundary = linearF(options)
             % Create a location-free linear `F` boundary law.
             %
             % When resolved, the assembled boundary row represents
-            % $$-(aF-bF_z/N^2)=\lambda(cF-dF_z/N^2)/g$$. Trusted pairwise
-            % cases include endpoint terms; unresolved cases warn and leave
-            % orthogonality metadata incomplete.
+            % $$-(aF-bF_z/N^2)=\lambda(cF-dF_z/N^2)/g$$. Supported pairwise
+            % cases also declare the compatible boundary inner-product
+            % terms. General unresolved coefficient patterns can still be
+            % solved, but resolving them warns because their inner-product
+            % contribution is unknown.
             %
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.linearF(options)
@@ -342,19 +287,19 @@ classdef IMBoundary
                 options.d (1,1) double = 0
             end
 
-            [endpointTerms, status] = IMBoundary.linearFEndpointTerms("", options.a, options.b, options.c, options.d);
             coefficients = struct("a", options.a, "b", options.b, "c", options.c, "d", options.d);
-            boundary = IMBoundary(name="linearF", family="linearF", component="F", ...
-                endpointTerms=endpointTerms, orthogonalityStatus=status, coefficients=coefficients);
+            boundary = IMBoundary(family="linearF", coefficients=coefficients);
         end
 
         function boundary = linearG(options)
             % Create a location-free linear `G` boundary law.
             %
             % When resolved, the assembled boundary row represents
-            % $$-(eG-aG_z)=\lambda(bG-cG_z)/g$$. Trusted pairwise cases
-            % include endpoint terms; unresolved cases warn and leave
-            % orthogonality metadata incomplete.
+            % $$-(eG-aG_z)=\lambda(bG-cG_z)/g$$. Supported pairwise cases
+            % also declare the compatible boundary inner-product terms.
+            % General unresolved coefficient patterns can still be solved,
+            % but resolving them warns because their inner-product
+            % contribution is unknown.
             %
             % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.linearG(options)
@@ -370,73 +315,121 @@ classdef IMBoundary
                 options.e (1,1) double = 0
             end
 
-            [endpointTerms, status] = IMBoundary.linearGEndpointTerms("", options.a, options.b, options.c, options.e);
             coefficients = struct("a", options.a, "b", options.b, "c", options.c, "e", options.e);
-            boundary = IMBoundary(name="linearG", family="linearG", component="G", ...
-                endpointTerms=endpointTerms, orthogonalityStatus=status, coefficients=coefficients);
+            boundary = IMBoundary(family="linearG", coefficients=coefficients);
+        end
+    end
+
+    methods (Access = private)
+        function self = IMBoundary(options)
+            arguments
+                options.family {mustBeTextScalar} = "operator"
+                options.on {mustBeTextScalar} = "primary"
+                options.leftOperator IMOperator = IMOperator.strong()
+                options.rightOperator IMOperator = IMOperator.strong()
+                options.innerProductTerms struct = IMBoundaryRow.emptyInnerProductTerms()
+                options.hasKnownInnerProduct (1,1) logical = true
+                options.coefficients struct = struct()
+            end
+
+            self.family = string(options.family);
+            self.on = IMBoundary.validateTarget(options.on);
+            self.leftOperator = options.leftOperator;
+            self.rightOperator = options.rightOperator;
+            self.innerProductTerms = options.innerProductTerms(:);
+            self.hasKnownInnerProduct = options.hasKnownInnerProduct;
+            self.coefficients = options.coefficients;
+        end
+
+        function row = resolveLinearF(self, endpoint, location)
+            c = self.coefficients;
+            left = IMOperator.strong() ...
+                .plus(coefficient=-c.a, derivativeOrder=0) ...
+                .plus(coefficient=@(z,ctx) c.b./ctx.N2(z), derivativeOrder=1);
+            right = IMOperator.strong() ...
+                .plus(coefficient=@(~,ctx) c.c/ctx.g, derivativeOrder=0) ...
+                .plus(coefficient=@(z,ctx) -c.d./(ctx.g*ctx.N2(z)), derivativeOrder=1);
+            [innerProductTerms, hasKnownInnerProduct] = IMBoundary.linearFInnerProductTerms(location, c.a, c.b, c.c, c.d);
+            row = IMBoundaryRow(family="linearF", endpoint=endpoint, component="F", ...
+                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerms, ...
+                hasKnownInnerProduct=hasKnownInnerProduct);
+        end
+
+        function row = resolveLinearG(self, endpoint, location)
+            c = self.coefficients;
+            left = IMOperator.strong() ...
+                .plus(coefficient=-c.e, derivativeOrder=0) ...
+                .plus(coefficient=c.a, derivativeOrder=1);
+            right = IMOperator.strong() ...
+                .plus(coefficient=@(~,ctx) c.b/ctx.g, derivativeOrder=0) ...
+                .plus(coefficient=@(~,ctx) -c.c/ctx.g, derivativeOrder=1);
+            [innerProductTerms, hasKnownInnerProduct] = IMBoundary.linearGInnerProductTerms(location, c.a, c.b, c.c, c.e);
+            row = IMBoundaryRow(family="linearG", endpoint=endpoint, component="G", ...
+                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerms, ...
+                hasKnownInnerProduct=hasKnownInnerProduct);
+        end
+
+        function component = resolvedComponent(self, primaryComponent)
+            if self.on == "primary"
+                component = primaryComponent;
+            else
+                component = self.on;
+            end
         end
     end
 
     methods (Static, Access = private)
-        function [terms, status] = linearFEndpointTerms(location, a, b, c, d)
+        function [terms, hasKnownInnerProduct] = linearFInnerProductTerms(location, a, b, c, d)
             nonzero = abs([a b c d]) > 0;
-            terms = IMBoundaryRow.emptyEndpointTerms();
-            status = "complete";
+            terms = IMBoundaryRow.emptyInnerProductTerms();
+            hasKnownInnerProduct = true;
             if nnz(nonzero) > 2
-                IMBoundary.warnUnresolved("linearF");
-                status = "unresolved";
+                IMBoundary.warnUnknownInnerProduct("linearF");
+                hasKnownInnerProduct = false;
                 return;
             end
 
             g = @(ctx) ctx.g;
             if ~nonzero(1) && ~nonzero(2) && nonzero(3) && nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("G", location, -d/c, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
+                terms = IMBoundaryRow.innerProductTerm("G", location, -d/c, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
             elseif nonzero(1) && nonzero(2) && ~nonzero(3) && ~nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("G", location, @(ctx) -b/(g(ctx)*a), ...
+                terms = IMBoundaryRow.innerProductTerm("G", location, @(ctx) -b/(g(ctx)*a), ...
                     IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
             elseif ~nonzero(1) && nonzero(2) && nonzero(3) && ~nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("F", location, c/b, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
+                terms = IMBoundaryRow.innerProductTerm("F", location, c/b, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
             elseif nonzero(1) && ~nonzero(2) && ~nonzero(3) && nonzero(4)
                 terms = [
-                    IMBoundaryRow.endpointTerm("F", location, @(ctx) -d/(g(ctx)*g(ctx)*a), ...
+                    IMBoundaryRow.innerProductTerm("F", location, @(ctx) -d/(g(ctx)*g(ctx)*a), ...
                         IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"))
-                    IMBoundaryRow.endpointTerm("G", location, 1, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("F"))
-                    IMBoundaryRow.endpointTerm("G", location, 1, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("G"))
+                    IMBoundaryRow.innerProductTerm("G", location, 1, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("F"))
+                    IMBoundaryRow.innerProductTerm("G", location, 1, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("G"))
                 ];
-            elseif nnz(nonzero) <= 2
-            else
-                IMBoundary.warnUnresolved("linearF");
-                status = "unresolved";
             end
         end
 
-        function [terms, status] = linearGEndpointTerms(location, a, b, c, e)
+        function [terms, hasKnownInnerProduct] = linearGInnerProductTerms(location, a, b, c, e)
             nonzero = abs([a b c e]) > 0;
-            terms = IMBoundaryRow.emptyEndpointTerms();
-            status = "complete";
+            terms = IMBoundaryRow.emptyInnerProductTerms();
+            hasKnownInnerProduct = true;
             if nnz(nonzero) > 2
-                IMBoundary.warnUnresolved("linearG");
-                status = "unresolved";
+                IMBoundary.warnUnknownInnerProduct("linearG");
+                hasKnownInnerProduct = false;
                 return;
             end
 
             if ~nonzero(1) && ~nonzero(2) && nonzero(3) && nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("G", location, -c/e, ...
+                terms = IMBoundaryRow.innerProductTerm("G", location, -c/e, ...
                     IMBoundaryRow.trace("G", derivativeOrder=1), IMBoundaryRow.trace("G", derivativeOrder=1));
             elseif nonzero(1) && nonzero(2) && ~nonzero(3) && ~nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("G", location, b/a, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
+                terms = IMBoundaryRow.innerProductTerm("G", location, b/a, IMBoundaryRow.trace("G"), IMBoundaryRow.trace("G"));
             elseif nonzero(1) && ~nonzero(2) && ~nonzero(3) && nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("F", location, -a/e, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
+                terms = IMBoundaryRow.innerProductTerm("F", location, -a/e, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
             elseif ~nonzero(1) && nonzero(2) && nonzero(3) && ~nonzero(4)
-                terms = IMBoundaryRow.endpointTerm("F", location, -c/b, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
-            elseif nnz(nonzero) <= 2
-            else
-                IMBoundary.warnUnresolved("linearG");
-                status = "unresolved";
+                terms = IMBoundaryRow.innerProductTerm("F", location, -c/b, IMBoundaryRow.trace("F"), IMBoundaryRow.trace("F"));
             end
         end
 
-        function terms = resolveEndpointLocations(terms, location)
+        function terms = placeInnerProductTerms(terms, location)
             for iTerm = 1:length(terms)
                 if string(terms(iTerm).location) == ""
                     terms(iTerm).location = string(location);
@@ -444,11 +437,19 @@ classdef IMBoundary
             end
         end
 
-        function value = contextString(context, name, defaultValue)
-            if isfield(context, name)
-                value = string(context.(name));
-            else
-                value = string(defaultValue);
+        function component = validateComponent(component)
+            component = string(component);
+            if component ~= "F" && component ~= "G"
+                error("IMBoundary:InvalidComponent", ...
+                    "component must be ""F"" or ""G"".");
+            end
+        end
+
+        function target = validateTarget(target)
+            target = string(target);
+            if target ~= "primary" && target ~= "F" && target ~= "G"
+                error("IMBoundary:InvalidTarget", ...
+                    "on must be ""primary"", ""F"", or ""G"".");
             end
         end
 
@@ -458,9 +459,10 @@ classdef IMBoundary
                 string(family), string(primaryComponent));
         end
 
-        function warnUnresolved(family)
-            warning("IMBoundary:UnsupportedLinearFamily", ...
-                "%s can assemble this boundary row, but its orthogonality and index metadata are unresolved.", family);
+        function warnUnknownInnerProduct(family)
+            warning("IMBoundary:UnknownInnerProduct", ...
+                "%s can assemble this boundary row, but its compatible boundary inner-product contribution is unknown.", ...
+                family);
         end
     end
 end

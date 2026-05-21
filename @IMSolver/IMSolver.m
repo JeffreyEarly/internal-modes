@@ -4,6 +4,9 @@ classdef (Abstract) IMSolver
     % `IMSolver` owns the solver-independent generalized EVP
     % workflow. Concrete subclasses provide the native grid, physical
     % derivative matrices, boundary rows, and native-mode evaluation.
+    % Solvers own the numerical medium and discretization. EVPs own the
+    % physical constants and combine them with solver context during
+    % assembly.
     %
     % - Topic: Solve EVPs
     % - Topic: Developer topics
@@ -30,17 +33,25 @@ classdef (Abstract) IMSolver
             valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
-            [eigenvalues, sortIndex] = self.sortEigenvalues(eigenvalues, evp.ordering);
-            V = V(:,sortIndex);
-
-            nRetain = min(options.nModes, length(eigenvalues));
-            eigenvalues = eigenvalues(1:nRetain);
-            V = V(:,1:nRetain);
+            if evp.ordering == "indexPolicyThenAscending"
+                selection = evp.indexPolicy.selectModes(eigenvalues, options.nModes, evp.contextForSolver(self));
+                eigenvalues = eigenvalues(selection.sortIndex);
+                V = V(:,selection.sortIndex);
+                modeIndex = selection.modeIndex;
+                index = selection.index;
+            else
+                [eigenvalues, sortIndex] = self.sortEigenvalues(eigenvalues, evp.ordering);
+                V = V(:,sortIndex);
+                nRetain = min(options.nModes, length(eigenvalues));
+                eigenvalues = eigenvalues(1:nRetain);
+                V = V(:,1:nRetain);
+                modeIndex = 1:length(eigenvalues);
+                index = evp.indexPolicy.classify(eigenvalues, evp.contextForSolver(self));
+            end
             h = evp.hFromEigenvalue(eigenvalues(:).');
-            index = evp.indexPolicy.classify(eigenvalues, self.context());
             basisSet = IMBasisSet(solver=self, evp=evp, nativeModes=V, ...
-                eigenvalues=eigenvalues(:).', h=h, index=index, normalization=Normalization.kConstant, ...
-                zDomain=self.zDomain, N2Function=@(z) self.N2(z), f0=self.f0, g=self.g);
+                eigenvalues=eigenvalues(:).', h=h, modeIndex=modeIndex, index=index, ...
+                zDomain=self.zDomain, N2Function=@(z) self.N2(z));
             basisSet = basisSet.orientModeSigns();
         end
     end
@@ -85,7 +96,13 @@ classdef (Abstract) IMSolver
 
     methods (Static, Access = private)
         function signs = signWithZero(values)
-            tolerance = 1e-10*max(1,max(abs(values)));
+            nonzeroValues = abs(values(abs(values) > 0 & isfinite(values)));
+            if isempty(nonzeroValues)
+                scale = 1;
+            else
+                scale = max(1,median(nonzeroValues));
+            end
+            tolerance = 1e-10*scale;
             signs = ones(size(values));
             signs(values < -tolerance) = -1;
             signs(abs(values) <= tolerance) = 0;

@@ -4,6 +4,9 @@ classdef IMOperator
     % `IMOperator` stores structured terms of the form
     % $$a_p(z)\partial_z^p$$. Coordinate-aware solvers pull these terms
     % back to their native coordinate when assembling EVP matrices.
+    % Coefficient handles receive the EVP-built framework context `ctx`,
+    % including `ctx.N2(z)`, `ctx.dzLogN2(z)`, `ctx.g`, `ctx.f0`,
+    % `ctx.zDomain`, and `ctx.coordinateKind`.
     %
     % ```matlab
     % op = IMOperator.strong().plus(coefficient=@(z,ctx) ctx.N2(z), derivativeOrder=0);
@@ -65,13 +68,20 @@ classdef IMOperator
             self.terms(end+1) = term;
         end
 
-        function M = matrix(self, solver)
+        function M = matrix(self, solver, options)
             % Assemble the operator on a solver's native basis.
             %
             % - Topic: Assemble operators
             % - Declaration: M = matrix(op,solver)
             % - Parameter solver: coordinate-aware internal-mode solver
+            % - Parameter options.context: framework coefficient context
             % - Returns M: assembled matrix
+            arguments
+                self IMOperator
+                solver
+                options.context struct = struct()
+            end
+
             if self.form ~= "strong"
                 error("IMOperator:UnsupportedForm", ...
                     "Only strong-form operators are currently supported.");
@@ -79,7 +89,7 @@ classdef IMOperator
 
             n = solver.nEVP;
             M = zeros(n,n);
-            context = solver.context();
+            context = IMOperator.resolveContext(solver, options.context);
             z = solver.zNative;
             for iTerm = 1:length(self.terms)
                 coefficient = IMOperator.evaluateCoefficient(self.terms(iTerm).coefficient, z, context);
@@ -88,18 +98,20 @@ classdef IMOperator
             end
         end
 
-        function row = boundaryRow(self, solver, location)
+        function row = boundaryRow(self, solver, location, options)
             % Assemble a boundary functional row.
             %
             % - Topic: Assemble operators
-            % - Declaration: row = boundaryRow(op,solver,location)
+            % - Declaration: row = boundaryRow(op,solver,location,options)
             % - Parameter solver: coordinate-aware internal-mode solver
             % - Parameter location: boundary location, `"surface"` or `"bottom"`
+            % - Parameter options.context: framework coefficient context
             % - Returns row: assembled boundary row
             arguments
                 self IMOperator
                 solver
                 location {mustBeTextScalar}
+                options.context struct = struct()
             end
 
             if self.form ~= "strong"
@@ -109,7 +121,7 @@ classdef IMOperator
 
             index = solver.boundaryIndex(location);
             z = solver.zNative(index);
-            context = solver.context();
+            context = IMOperator.resolveContext(solver, options.context);
             row = zeros(1,solver.nEVP);
             for iTerm = 1:length(self.terms)
                 coefficient = IMOperator.evaluateCoefficient(self.terms(iTerm).coefficient, z, context);
@@ -118,21 +130,23 @@ classdef IMOperator
             end
         end
 
-        function values = evaluate(self, solver, nativeModes, z)
+        function values = evaluate(self, solver, nativeModes, z, options)
             % Evaluate an operator applied to native mode columns.
             %
             % - Topic: Assemble operators
             % - Developer: true
-            % - Declaration: values = evaluate(op,solver,nativeModes,z)
+            % - Declaration: values = evaluate(op,solver,nativeModes,z,options)
             % - Parameter solver: coordinate-aware internal-mode solver
             % - Parameter nativeModes: native mode columns
             % - Parameter z: physical-coordinate evaluation points
+            % - Parameter options.context: framework coefficient context
             % - Returns values: evaluated operator values
             arguments
                 self IMOperator
                 solver
                 nativeModes double
                 z (:,1) double
+                options.context struct = struct()
             end
 
             if self.form ~= "strong"
@@ -141,7 +155,7 @@ classdef IMOperator
             end
 
             values = zeros(length(z), size(nativeModes,2));
-            context = solver.context();
+            context = IMOperator.resolveContext(solver, options.context);
             for iTerm = 1:length(self.terms)
                 coefficient = IMOperator.evaluateCoefficient(self.terms(iTerm).coefficient, z, context);
                 derivativeValues = solver.evaluatePhysicalDerivative(nativeModes, z, self.terms(iTerm).derivativeOrder);
@@ -168,7 +182,7 @@ classdef IMOperator
             % - Declaration: values = IMOperator.evaluateCoefficient(coefficient,z,context)
             % - Parameter coefficient: scalar, vector, or function handle coefficient
             % - Parameter z: physical-coordinate evaluation points
-            % - Parameter context: solver context
+            % - Parameter context: framework coefficient context
             % - Returns values: coefficient values matching `z`
             if isa(coefficient, "function_handle")
                 try
@@ -184,6 +198,12 @@ classdef IMOperator
                 values = values*ones(size(z));
             end
             values = values(:);
+        end
+
+        function context = resolveContext(solver, context)
+            if isempty(fieldnames(context))
+                context = solver.context();
+            end
         end
     end
 end

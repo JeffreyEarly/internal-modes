@@ -140,6 +140,69 @@ classdef IMIndexPolicy
                 end
             end
         end
+
+        function selection = selectModes(self, eigenvalues, nModes, context)
+            % Select and label retained modes according to the index policy.
+            %
+            % The returned `modeIndex` uses negative labels for boundary
+            % modes, zero for barotropic or null modes, and positive labels
+            % for baroclinic modes.
+            %
+            % - Topic: Validate index counts
+            % - Declaration: selection = selectModes(policy,eigenvalues,nModes,context)
+            % - Parameter eigenvalues: candidate eigenvalues
+            % - Parameter nModes: number of modes to retain
+            % - Parameter context: solver or EVP context
+            % - Returns selection: structure with `sortIndex`, `modeIndex`, and `index`
+            lambda = real(eigenvalues(:));
+            expectedNegativeCount = self.expectedNegativeCount(context);
+            expectedZeroCount = self.expectedZeroCount(context);
+            if isnan(expectedNegativeCount) || isnan(expectedZeroCount)
+                [~, sortIndex] = sortrows([IMIndexPolicy.signWithZero(lambda, self.indexTolerance), abs(lambda), lambda]);
+                sortIndex = sortIndex(1:min(nModes, length(sortIndex)));
+                selection.sortIndex = sortIndex(:).';
+                selection.modeIndex = 1:length(selection.sortIndex);
+                selection.index = self.classify(lambda(sortIndex), context);
+                return;
+            end
+
+            signs = IMIndexPolicy.signWithZero(lambda, self.indexTolerance);
+            negativeIndex = find(signs < 0);
+            zeroIndex = find(signs == 0);
+            positiveIndex = find(signs > 0);
+
+            [~, negativeOrder] = sort(abs(lambda(negativeIndex)), "ascend");
+            [~, zeroOrder] = sort(abs(lambda(zeroIndex)), "ascend");
+            [~, positiveOrder] = sort(lambda(positiveIndex), "ascend");
+            negativeIndex = negativeIndex(negativeOrder);
+            zeroIndex = zeroIndex(zeroOrder);
+            positiveIndex = positiveIndex(positiveOrder);
+
+            selectedNegativeCount = min(expectedNegativeCount, length(negativeIndex));
+            selectedZeroCount = min(expectedZeroCount, length(zeroIndex));
+            selectedNegative = negativeIndex(1:selectedNegativeCount);
+            selectedZero = zeroIndex(1:selectedZeroCount);
+            remainingNegative = negativeIndex((selectedNegativeCount+1):end);
+            remainingZero = zeroIndex((selectedZeroCount+1):end);
+
+            sortIndex = [selectedNegative(:); selectedZero(:); positiveIndex(:); remainingZero(:); remainingNegative(:)];
+            missingZeroCount = expectedZeroCount - selectedZeroCount;
+            if missingZeroCount > 0
+                unusedIndex = setdiff((1:length(lambda)).', sortIndex, "stable");
+                [~, unusedOrder] = sort(abs(lambda(unusedIndex)), "ascend");
+                promotedZero = unusedIndex(unusedOrder(1:min(missingZeroCount, length(unusedOrder))));
+                sortIndex = [selectedNegative(:); selectedZero(:); promotedZero(:); positiveIndex(:); remainingZero(:); remainingNegative(:)];
+            end
+            if length(sortIndex) < nModes
+                unusedIndex = setdiff((1:length(lambda)).', sortIndex, "stable");
+                sortIndex = [sortIndex(:); unusedIndex(:)];
+            end
+            sortIndex = sortIndex(1:min(nModes, length(sortIndex)));
+
+            selection.sortIndex = sortIndex(:).';
+            selection.modeIndex = self.labelsForSelection(length(sortIndex), expectedNegativeCount, expectedZeroCount);
+            selection.index = self.classify(lambda(sortIndex), context);
+        end
     end
 
     methods (Static)
@@ -224,6 +287,33 @@ classdef IMIndexPolicy
             end
             policy = IMIndexPolicy.fixed(expectedNegativeCount=expectedNegativeCount, ...
                 expectedZeroCount=expectedZeroCount, validationMode=options.validationMode);
+        end
+    end
+
+    methods (Access = private)
+        function modeIndex = labelsForSelection(~, nModes, expectedNegativeCount, expectedZeroCount)
+            selectedNegativeCount = min(expectedNegativeCount, nModes);
+            negativeLabels = -selectedNegativeCount:-1;
+            remainingCount = nModes - selectedNegativeCount;
+            selectedZeroCount = min(expectedZeroCount, remainingCount);
+            zeroLabels = zeros(1,selectedZeroCount);
+            positiveCount = nModes - selectedNegativeCount - selectedZeroCount;
+            modeIndex = [negativeLabels, zeroLabels, 1:positiveCount];
+        end
+    end
+
+    methods (Static, Access = private)
+        function signs = signWithZero(values, indexTolerance)
+            nonzeroValues = abs(values(abs(values) > 0 & isfinite(values)));
+            if isempty(nonzeroValues)
+                scale = 1;
+            else
+                scale = max(1,median(nonzeroValues));
+            end
+            tolerance = indexTolerance*scale;
+            signs = ones(size(values));
+            signs(values < -tolerance) = -1;
+            signs(abs(values) <= tolerance) = 0;
         end
     end
 end

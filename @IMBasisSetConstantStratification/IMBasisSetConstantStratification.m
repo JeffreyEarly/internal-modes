@@ -58,9 +58,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             % - Parameter options.N0: constant buoyancy frequency
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nModes: number of retained modes
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.normalization: active normalization
+            % - Parameter options.normalization: active normalization; omitted uses the EVP default
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact constant-stratification basis set
             arguments
@@ -68,18 +66,17 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double = [-1 0]
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
-                options.f0 (1,1) double = NaN
-                options.g (1,1) double = NaN
-                options.normalization = Normalization.kConstant
+                options.normalization = []
                 options.metadata struct = struct()
             end
 
             zDomain = sort(options.zDomain);
-            [f0, g] = IMBasisSetConstantStratification.resolvedParameters(options.evp, options.f0, options.g);
-            [h, verticalWavenumbers, solutionTypes, isBarotropic, baroclinicNumbers] = ...
+            [f0, g] = IMBasisSetConstantStratification.physicalConstants(options.evp);
+            [h, verticalWavenumbers, solutionTypes, isBarotropic, baroclinicNumbers, modeIndex] = ...
                 IMBasisSetConstantStratification.solveSpectrum(options.evp, options.N0, zDomain, options.nModes, f0, g);
             eigenvalues = 1 ./ h;
             context.N2 = @(z) options.N0*options.N0*ones(size(z));
+            context.dzLogN2 = @(z) zeros(size(z));
             context.f0 = f0;
             context.g = g;
             context.zDomain = zDomain;
@@ -89,9 +86,8 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             metadata.analyticalBasis = "constantStratification";
 
             self@IMBasisSet(evp=options.evp, nativeModes=zeros(0,length(h)), ...
-                eigenvalues=eigenvalues, h=h, index=index, normalization=options.normalization, ...
-                metadata=metadata, zDomain=zDomain, N2Function=@(z) options.N0*options.N0*ones(size(z)), ...
-                f0=f0, g=g);
+                eigenvalues=eigenvalues, h=h, modeIndex=modeIndex, index=index, normalization=options.normalization, ...
+                metadata=metadata, zDomain=zDomain, N2Function=@(z) options.N0*options.N0*ones(size(z)));
             self.N0 = options.N0;
             self.verticalWavenumbers = verticalWavenumbers;
             self.solutionTypes = solutionTypes;
@@ -307,19 +303,9 @@ classdef IMBasisSetConstantStratification < IMBasisSet
     end
 
     methods (Static, Access = private)
-        function [f0, g] = resolvedParameters(evp, f0, g)
-            if isnan(f0) && isfield(evp.parameters, "f0")
-                f0 = evp.parameters.f0;
-            elseif isnan(f0)
-                f0 = 0;
-            end
-
-            if isnan(g) && isfield(evp.parameters, "g")
-                g = evp.parameters.g;
-            elseif isnan(g)
-                g = 9.81;
-            end
-
+        function [f0, g] = physicalConstants(evp)
+            f0 = evp.f0;
+            g = evp.g;
             if ~(isscalar(f0) && isfinite(f0))
                 error("IMBasisSetConstantStratification:InvalidCoriolis", ...
                     "The Coriolis parameter must be finite.");
@@ -330,7 +316,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             end
         end
 
-        function [h, verticalWavenumbers, solutionTypes, isBarotropic, baroclinicNumbers] = solveSpectrum(evp, N0, zDomain, nModes, f0, g)
+        function [h, verticalWavenumbers, solutionTypes, isBarotropic, baroclinicNumbers, modeIndex] = solveSpectrum(evp, N0, zDomain, nModes, f0, g)
             IMBasisSetConstantStratification.validateEVP(evp);
             D = diff(zDomain);
             problemType = string(evp.parameters.problemType);
@@ -369,10 +355,16 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                         isBarotropic = false(1,nModes);
                         baroclinicNumbers = 1:nModes;
                     end
+                case "hydrostaticGModes"
+                    [h, verticalWavenumbers] = IMBasisSetConstantStratification.baroclinicAtFrequency(0, N0, D, nModes, upperBoundary, g);
+                    solutionTypes = repmat("baroclinic",1,nModes);
+                    isBarotropic = false(1,nModes);
+                    baroclinicNumbers = 1:nModes;
                 otherwise
                     error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                        "Constant stratification supports fixed-wavenumber and fixed-frequency wave-mode G EVPs.");
+                        "Constant stratification supports fixed-wavenumber, fixed-frequency, and hydrostatic G EVPs.");
             end
+            modeIndex = baroclinicNumbers;
         end
 
         function [h, k_z] = baroclinicAtWavenumber(k, N0, D, nModes, f0, g, upperBoundary)

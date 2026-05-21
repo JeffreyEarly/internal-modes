@@ -61,16 +61,6 @@ classdef IMSolverSpectral < IMSolver
         % - Topic: Developer topics
         % - Developer: true
         Txx
-
-        % Coriolis parameter.
-        %
-        % - Topic: Inspect solvers
-        f0
-
-        % Gravitational acceleration.
-        %
-        % - Topic: Inspect solvers
-        g
     end
 
     properties (SetAccess = private)
@@ -116,40 +106,35 @@ classdef IMSolverSpectral < IMSolver
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nEVP: number of EVP coefficients
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
             % - Parameter options.coordinateKind: native coordinate kind
             % - Returns solver: initialized spectral solver
             arguments
                 options.N2 function_handle = @(z) 1e-5*ones(size(z))
                 options.zDomain (1,2) double = [-1 0]
                 options.nEVP (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.nEVP, 4)} = 64
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
                 options.coordinateKind {mustBeTextScalar} = "z"
             end
 
             self.N2Function = options.N2;
             self.zDomain = sort(options.zDomain);
             self.nEVP = options.nEVP;
-            self.f0 = options.f0;
-            self.g = options.g;
             self.coordinateKind = string(options.coordinateKind);
             self = self.setupCoordinate();
             self = self.setupNativeGrid();
         end
 
         function context = context(self)
-            % Return coefficient functions used by physical operators.
+            % Return the framework coefficient context.
+            %
+            % Solvers provide medium and discretization fields. EVPs add
+            % physical constants such as `ctx.g` and `ctx.f0`.
             %
             % - Topic: Assemble EVPs
             % - Developer: true
             % - Declaration: context = context(solver)
-            % - Returns context: solver context structure
+            % - Returns context: framework coefficient context
             context.N2 = @(z) self.N2(z);
             context.dzLogN2 = @(z) self.dzLogN2(z);
-            context.f0 = self.f0;
-            context.g = self.g;
             context.zDomain = self.zDomain;
             context.coordinateKind = self.coordinateKind;
         end

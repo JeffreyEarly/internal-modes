@@ -2,11 +2,11 @@ classdef IMBoundaryRow
     % Store a resolved endpoint row for a v2 internal-mode EVP.
     %
     % `IMBoundaryRow` is the placed form of an `IMBoundary` law. It owns the
-    % matrix row contribution, endpoint trace terms used in inner products,
+    % matrix row contribution, boundary trace terms used in inner products,
     % and boundary index metadata for one endpoint.
     %
     % ```matlab
-    % row = IMBoundary.rigid().resolve(endpoint="upper", context=struct("primaryComponent","G"));
+    % row = IMBoundary.rigid().resolve(endpoint="upper", primaryComponent="G");
     % ```
     %
     % - Topic: Create boundary rows
@@ -43,13 +43,13 @@ classdef IMBoundaryRow
         % - Topic: Apply boundary rows
         rightOperator = IMOperator.strong()
 
-        % Endpoint trace terms implied by this boundary row.
+        % Boundary terms implied by this boundary row for modal inner products.
         %
         % Each term has an inner-product component, physical location,
         % coefficient, left trace, and right trace.
         %
         % - Topic: Inspect boundary rows
-        endpointTerms = IMBoundaryRow.emptyEndpointTerms()
+        innerProductTerms = IMBoundaryRow.emptyInnerProductTerms()
 
         % Sign of the boundary index contribution.
         %
@@ -63,12 +63,14 @@ classdef IMBoundaryRow
         % - Topic: Inspect boundary rows
         indexRank = 0
 
-        % Status of the associated orthogonality metadata.
+        % True when the compatible boundary inner-product contribution is known.
         %
-        % Values are `"complete"` or `"unresolved"`.
+        % A row can still assemble when this is false, but Gram matrices,
+        % normalization, and index metadata may be incomplete for boundary
+        % modes.
         %
         % - Topic: Inspect boundary rows
-        orthogonalityStatus = "complete"
+        hasKnownInnerProduct = true
     end
 
     methods
@@ -82,10 +84,10 @@ classdef IMBoundaryRow
             % - Parameter options.component: constrained component
             % - Parameter options.leftOperator: left-side boundary functional
             % - Parameter options.rightOperator: right-side eigenvalue functional
-            % - Parameter options.endpointTerms: endpoint trace-pair terms
+            % - Parameter options.innerProductTerms: boundary inner-product terms
             % - Parameter options.indexSign: index contribution sign
             % - Parameter options.indexRank: index contribution rank
-            % - Parameter options.orthogonalityStatus: endpoint-form status
+            % - Parameter options.hasKnownInnerProduct: true when the compatible boundary inner product is known
             % - Returns row: initialized boundary row
             arguments
                 options.family {mustBeTextScalar} = "custom"
@@ -93,10 +95,10 @@ classdef IMBoundaryRow
                 options.component {mustBeTextScalar} = ""
                 options.leftOperator IMOperator = IMOperator.strong()
                 options.rightOperator IMOperator = IMOperator.strong()
-                options.endpointTerms struct = IMBoundaryRow.emptyEndpointTerms()
+                options.innerProductTerms struct = IMBoundaryRow.emptyInnerProductTerms()
                 options.indexSign (1,1) double = 0
                 options.indexRank (1,1) double {mustBeInteger, mustBeNonnegative} = 0
-                options.orthogonalityStatus {mustBeTextScalar} = "complete"
+                options.hasKnownInnerProduct (1,1) logical = true
             end
 
             self.family = string(options.family);
@@ -104,41 +106,50 @@ classdef IMBoundaryRow
             self.component = string(options.component);
             self.leftOperator = options.leftOperator;
             self.rightOperator = options.rightOperator;
-            self.endpointTerms = options.endpointTerms(:);
+            self.innerProductTerms = options.innerProductTerms(:);
             self.indexSign = sign(options.indexSign);
             self.indexRank = options.indexRank;
-            self.orthogonalityStatus = string(options.orthogonalityStatus);
+            self.hasKnownInnerProduct = options.hasKnownInnerProduct;
         end
 
-        function [A, B] = apply(self, A, B, solver)
+        function [A, B] = apply(self, A, B, solver, options)
             % Apply the boundary row to a matrix pair.
             %
             % Active metadata-only rows do not replace matrix rows.
             %
             % - Topic: Apply boundary rows
-            % - Declaration: [A,B] = apply(row,A,B,solver)
+            % - Declaration: [A,B] = apply(row,A,B,solver,options)
             % - Parameter A: left EVP matrix
             % - Parameter B: right EVP matrix
             % - Parameter solver: coordinate-aware internal-mode solver
+            % - Parameter options.context: framework coefficient context
             % - Returns A: boundary-conditioned left matrix
             % - Returns B: boundary-conditioned right matrix
+            arguments
+                self IMBoundaryRow
+                A double
+                B double
+                solver
+                options.context struct = struct()
+            end
+
             if self.family == "active" || self.family == "partialDepthPE"
                 return;
             end
 
             location = IMBoundaryRow.locationForEndpoint(self.endpoint);
             index = solver.boundaryIndex(location);
-            A(index,:) = self.leftOperator.boundaryRow(solver, location);
-            B(index,:) = self.rightOperator.boundaryRow(solver, location);
+            A(index,:) = self.leftOperator.boundaryRow(solver, location, context=options.context);
+            B(index,:) = self.rightOperator.boundaryRow(solver, location, context=options.context);
         end
 
-        function tf = hasEndpointTerms(self)
-            % Return true when this row contributes endpoint terms.
+        function tf = hasInnerProductTerms(self)
+            % Return true when this row contributes boundary inner-product terms.
             %
             % - Topic: Inspect boundary rows
-            % - Declaration: tf = hasEndpointTerms(row)
-            % - Returns tf: true when endpoint terms are present
-            tf = ~isempty(self.endpointTerms);
+            % - Declaration: tf = hasInnerProductTerms(row)
+            % - Returns tf: true when boundary inner-product terms are present
+            tf = ~isempty(self.innerProductTerms);
         end
 
         function count = expectedNegativeCount(self)
@@ -147,7 +158,7 @@ classdef IMBoundaryRow
             % - Topic: Inspect boundary rows
             % - Declaration: count = expectedNegativeCount(row)
             % - Returns count: expected negative count contribution
-            if self.orthogonalityStatus == "unresolved"
+            if ~self.hasKnownInnerProduct
                 count = 0;
             elseif self.indexSign < 0
                 count = self.indexRank;
@@ -162,7 +173,7 @@ classdef IMBoundaryRow
             % - Topic: Inspect boundary rows
             % - Declaration: count = expectedZeroCount(row)
             % - Returns count: expected zero count contribution
-            if self.orthogonalityStatus == "unresolved"
+            if ~self.hasKnownInnerProduct
                 count = 0;
             elseif self.indexSign == 0
                 count = self.indexRank;
@@ -185,18 +196,18 @@ classdef IMBoundaryRow
             % - Parameter options.component: active component
             % - Parameter options.indexSign: active-boundary sign
             % - Parameter options.indexRank: number of active directions
-            % - Parameter options.endpointTerms: endpoint trace-pair terms
+            % - Parameter options.innerProductTerms: boundary inner-product terms
             % - Returns row: initialized active boundary row
             arguments
                 options.endpoint {mustBeTextScalar}
                 options.component {mustBeTextScalar} = "G"
                 options.indexSign (1,1) double {mustBeMember(options.indexSign, [-1 1])}
                 options.indexRank (1,1) double {mustBeInteger, mustBePositive} = 1
-                options.endpointTerms struct = IMBoundaryRow.emptyEndpointTerms()
+                options.innerProductTerms struct = IMBoundaryRow.emptyInnerProductTerms()
             end
 
             row = IMBoundaryRow(family="active", endpoint=options.endpoint, component=options.component, ...
-                endpointTerms=options.endpointTerms, indexSign=options.indexSign, indexRank=options.indexRank);
+                innerProductTerms=options.innerProductTerms, indexSign=options.indexSign, indexRank=options.indexRank);
         end
 
         function rows = partialDepthPE(options)
@@ -248,32 +259,32 @@ classdef IMBoundaryRow
             trace = struct("component", string(component), "derivativeOrder", options.derivativeOrder);
         end
 
-        function term = endpointTerm(innerProductComponent, location, coefficient, leftTrace, rightTrace)
-            % Create an endpoint trace-pair term.
+        function term = innerProductTerm(innerProductComponent, location, coefficient, leftTrace, rightTrace)
+            % Create a boundary inner-product trace-pair term.
             %
             % The term contributes `coefficient*leftTrace_i*rightTrace_j`
-            % to the named component's inner product.
+            % at a boundary endpoint to the named component's inner product.
             %
             % - Topic: Create boundary rows
-            % - Declaration: term = IMBoundaryRow.endpointTerm(innerProductComponent,location,coefficient,leftTrace,rightTrace)
+            % - Declaration: term = IMBoundaryRow.innerProductTerm(innerProductComponent,location,coefficient,leftTrace,rightTrace)
             % - Parameter innerProductComponent: component whose inner product receives the term
             % - Parameter location: boundary location
             % - Parameter coefficient: scalar or context function handle
             % - Parameter leftTrace: trace evaluated for the left mode
             % - Parameter rightTrace: trace evaluated for the right mode
-            % - Returns term: endpoint trace-pair term
+            % - Returns term: boundary inner-product term
             term = struct("innerProductComponent", string(innerProductComponent), ...
                 "location", string(location), "coefficient", coefficient, ...
                 "leftTrace", leftTrace, "rightTrace", rightTrace);
         end
 
-        function terms = emptyEndpointTerms()
-            % Return an empty endpoint-term structure.
+        function terms = emptyInnerProductTerms()
+            % Return an empty boundary inner-product-term structure.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: terms = IMBoundaryRow.emptyEndpointTerms()
-            % - Returns terms: empty endpoint-term structure
+            % - Declaration: terms = IMBoundaryRow.emptyInnerProductTerms()
+            % - Returns terms: empty boundary inner-product-term structure
             terms = struct("innerProductComponent", {}, "location", {}, "coefficient", {}, ...
                 "leftTrace", {}, "rightTrace", {});
         end
