@@ -32,6 +32,9 @@ Build a transform on the basis' native vertical grid.
 ## Discussion
 
   The native transform maps between modal coefficients and
-  fields sampled at `basis.z`. With `projectionMethod="auto"`,
-  a square, well-conditioned inverse matrix uses a direct
-  inverse; otherwise the transform uses a weighted pseudoinverse.
+  fields sampled at `basis.z`. Components with Dirichlet rows,
+  such as rigid-lid G modes, are solved on their active interior
+  rows and expanded back to full-grid matrices. With
+  `projectionMethod="auto"`, a square, well-conditioned active
+  inverse matrix uses a direct inverse; otherwise the transform
+  uses a weighted pseudoinverse.

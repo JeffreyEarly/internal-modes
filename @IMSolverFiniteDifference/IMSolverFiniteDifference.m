@@ -2,7 +2,7 @@ classdef IMSolverFiniteDifference < IMSolver
     % Solve physical-coordinate EVPs on a supplied finite-difference grid.
     %
     % `IMSolverFiniteDifference` uses the user's physical `z`
-    % grid as its native basis. It shares the v2 `solveEVP` interface with
+    % grid as its native basis. It shares the `solveEVP` interface with
     % the spectral solvers but evaluates modes by interpolation.
     %
     % ```matlab

@@ -1067,7 +1067,7 @@ classdef IMBasisSet
             end
 
             error("IMBasisSet:AnalyticalBasisNotImplemented", ...
-                "The WKB v2 analytical basis set is not implemented yet.");
+                "The WKB analytical basis set is not implemented yet.");
         end
     end
 end

@@ -18,3 +18,6 @@ Inverse G reconstruction matrix from coefficients to samples.
 Real valued property with dimensions $$(zIndex,modeG)$$ and no units.
 
 ## Discussion
+
+  For rigid-lid G modes, zero endpoint rows may be present so the
+  matrix reconstructs onto the full `z` grid.

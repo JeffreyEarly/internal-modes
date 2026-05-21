@@ -33,5 +33,6 @@ Evaluate the analytical baroclinic mode shapes for given eigenvalues.
 + `wMaxRatio`  ratio from the active normalization to `wMax`
 + `kConstantRatio`  ratio from the active normalization to `kConstant`
 + `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
++ `geostrophicRatio`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

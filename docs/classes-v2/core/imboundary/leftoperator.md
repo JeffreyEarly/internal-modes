@@ -1,0 +1,20 @@
+---
+layout: default
+title: leftOperator
+parent: IMBoundary
+grand_parent: Classes
+nav_order: 19
+mathjax: true
+---
+
+#  leftOperator
+
+Left-side boundary functional.
+
+
+---
+
+## Discussion
+
+  The assembled condition is `leftOperator = lambda rightOperator`
+  at the boundary location.

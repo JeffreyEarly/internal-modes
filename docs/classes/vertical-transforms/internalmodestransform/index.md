@@ -27,6 +27,12 @@ operators for one `InternalModesBasis`. It works only on vertical
 scalar fields or modal coefficients; full wave-vortex state
 projectors remain outside this package.
 
+Public matrices use the full transform grid `z`. Some components are
+solved on component-specific active rows before being expanded back to
+that grid. For example, rigid-lid G transforms omit the zero Dirichlet
+endpoint rows during the solve, then store zero endpoint columns in the
+forward matrix and zero endpoint rows in the inverse matrix.
+
 For modal coefficients $$p_j$$ and $$q_j$$, the vertical
 cross-spectrum is
 

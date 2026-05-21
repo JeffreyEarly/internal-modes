@@ -1,0 +1,15 @@
+---
+layout: default
+title: integrateInnerProduct
+parent: IMSolver
+grand_parent: Classes
+nav_order: 10
+mathjax: true
+---
+
+#  integrateInnerProduct
+
+
+
+
+---

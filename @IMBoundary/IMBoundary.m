@@ -1,5 +1,5 @@
 classdef IMBoundary
-    % Describe a v2 internal-mode boundary condition.
+    % Describe an internal-mode boundary condition.
     %
     % `IMBoundary` stores a mathematical boundary condition. A boundary can
     % be location-free, such as `IMBoundary.free()`, or placed at a physical
@@ -223,7 +223,7 @@ classdef IMBoundary
                     boundary = self.placeLinearG(location);
                 otherwise
                     error("IMBoundary:UnsupportedPlacement", ...
-                        "Boundary family ""%s"" cannot be placed by the v2 boundary API.", self.family);
+                        "Boundary family ""%s"" cannot be placed by the boundary API.", self.family);
             end
         end
 

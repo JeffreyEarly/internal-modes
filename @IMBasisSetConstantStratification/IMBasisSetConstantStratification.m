@@ -1,10 +1,10 @@
 classdef IMBasisSetConstantStratification < IMBasisSet
-    % Evaluate exact v2 basis sets for constant stratification.
+    % Evaluate exact basis sets for constant stratification.
     %
     % `IMBasisSetConstantStratification` stores exact
     % constant-stratification basis sets for $$N^2(z)=N_0^2$$. The class
     % implements the same `F`, `G`, and normalization contract as numerical
-    % v2 basis sets, without storing a solver reference.
+    % basis sets, without storing a solver reference.
     %
     % ```matlab
     % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4);

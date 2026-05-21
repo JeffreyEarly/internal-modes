@@ -1,11 +1,11 @@
 classdef IMBasisSetExponentialStratification < IMBasisSet
-    % Evaluate exact v2 basis sets for exponential stratification.
+    % Evaluate exact basis sets for exponential stratification.
     %
     % `IMBasisSetExponentialStratification` stores exact rigid-bottom
     % `G`-formulation basis sets for rigid or free surfaces with
     % $$N^2(z)=N_0^2 e^{2z/b}$$ on domains with surface at $$z=0$$. Mode
     % roots are found with a local scanner and `fzero`, without requiring
-    % an external spectral-function root finder at v2 runtime.
+    % an external spectral-function root finder at runtime.
     %
     % ```matlab
     % evp = IMEigenvalueProblem.hydrostaticGModes();

@@ -22,7 +22,7 @@ Evaluate and normalize analytical mode functions at `zOut`.
 + `self`  InternalModesExponentialStratification instance
 + `omega`  frequency row vector
 + `c`  phase-speed row vector
-+ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
++ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
 
 ## Returns
 + `F`  normalized horizontal-velocity mode matrix

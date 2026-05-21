@@ -33,5 +33,6 @@ Return the analytical barotropic mode branch for fixed $$K$$.
 + `wMaxRatio0`  ratio from the active normalization to `wMax`
 + `kConstantRatio0`  ratio from the active normalization to `kConstant`
 + `omegaConstantRatio0`  ratio from the active normalization to `omegaConstant`
++ `geostrophicRatio0`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

@@ -1,5 +1,5 @@
 classdef (Abstract) IMSolver
-    % Define the shared protocol for v2 internal-mode solvers.
+    % Define the shared protocol for internal-mode solvers.
     %
     % `IMSolver` owns the solver-independent generalized EVP
     % workflow. Concrete subclasses provide the native grid, physical

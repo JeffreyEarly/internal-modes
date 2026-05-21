@@ -1,0 +1,17 @@
+---
+layout: default
+title: zDomain
+parent: IMSolverFiniteDifference
+grand_parent: Classes
+nav_order: 8
+mathjax: true
+---
+
+#  zDomain
+
+Physical vertical domain.
+
+
+---
+
+## Discussion

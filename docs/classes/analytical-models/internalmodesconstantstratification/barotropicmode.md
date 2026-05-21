@@ -36,5 +36,6 @@ Evaluate a chosen analytical barotropic branch.
 + `wMaxRatio`  ratio from the active normalization to `wMax`
 + `kConstantRatio`  ratio from the active normalization to `kConstant`
 + `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
++ `geostrophicRatio`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

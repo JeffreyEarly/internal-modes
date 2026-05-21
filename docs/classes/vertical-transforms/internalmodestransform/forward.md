@@ -30,4 +30,6 @@ Return a forward vertical projection matrix.
 
   The returned matrix maps samples on `z` to vertical modal
   coefficients. Noncanonical wave-F projections are returned
-  only when `allowNoncanonical=true`.
+  only when `allowNoncanonical=true`. Components with inactive
+  rows keep full-grid matrix shapes; those inactive columns are
+  zero in the returned forward matrix.
