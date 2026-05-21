@@ -569,6 +569,34 @@ classdef IMBasisSet
             values = self.rawVariable(variable, z);
             factor = max(abs(values(:,iMode)));
         end
+
+        function factor = surfacePressureNormFactor(self, iMode)
+            % Return the surface-pressure normalization factor.
+            %
+            % Surface-pressure normalization divides by the raw surface
+            % trace of `F`,
+            % $$A_j=F_j^\mathrm{raw}(z_\mathrm{surface})$$, so that
+            % $$F_j^\mathrm{surfacePressure}(z)=F_j^\mathrm{raw}(z)/A_j$$
+            % and $$F_j^\mathrm{surfacePressure}(z_\mathrm{surface})=1$$.
+            %
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
+            % - Parameter iMode: mode index
+            % - Returns factor: raw surface `F` trace
+            zSurface = self.zDomain(2);
+            surfaceValues = self.rawVariable("F", zSurface);
+            surfaceValue = surfaceValues(1,iMode);
+            z = self.integrationGrid(self.zDomain);
+            values = self.rawVariable("F", z);
+            scale = max([1 abs(surfaceValue) max(abs(values(:,iMode)))]);
+            tolerance = 1e-10*scale;
+            if ~isfinite(surfaceValue) || abs(surfaceValue) <= tolerance
+                error("IMBasisSet:UnsupportedNormalization", ...
+                    "Surface-pressure normalization requires a finite nonzero surface F trace for mode %d.", iMode);
+            end
+            factor = surfaceValue;
+        end
     end
 
     methods (Access = protected)

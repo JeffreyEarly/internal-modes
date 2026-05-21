@@ -1,8 +1,8 @@
 classdef IMBasisSetExponentialStratification < IMBasisSet
     % Evaluate exact v2 basis sets for exponential stratification.
     %
-    % `IMBasisSetExponentialStratification` stores exact rigid-endpoint
-    % `G`-formulation basis sets for
+    % `IMBasisSetExponentialStratification` stores exact rigid-bottom
+    % `G`-formulation basis sets for rigid or free surfaces with
     % $$N^2(z)=N_0^2 e^{2z/b}$$ on domains with surface at $$z=0$$. Mode
     % roots are found with a local scanner and `fzero`, without requiring
     % an external spectral-function root finder at v2 runtime.
@@ -49,6 +49,14 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
         %
         % - Topic: Inspect basis sets
         signFactors
+
+        % Internal analytical branch kind for each retained mode.
+        %
+        % Values are `"bessel"` for ordinary exponential modes and
+        % `"null"` for the hydrostatic `F` null mode.
+        %
+        % - Topic: Inspect basis sets
+        modeKinds
     end
 
     methods
@@ -78,11 +86,11 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             zDomain = sort(options.zDomain);
             IMBasisSetExponentialStratification.validateDomain(zDomain);
             [f0, g] = IMBasisSetExponentialStratification.physicalConstants(options.evp);
-            [h, roots, frequencies] = IMBasisSetExponentialStratification.solveSpectrum( ...
+            [h, roots, frequencies, modeNumber, modeKinds] = IMBasisSetExponentialStratification.solveSpectrum( ...
                 options.evp, options.N0, options.b, zDomain, options.nModes, f0, g);
             phaseSpeeds = sqrt(g*h);
             signFactors = IMBasisSetExponentialStratification.surfaceSignFactors( ...
-                options.N0, options.b, zDomain, frequencies, phaseSpeeds, g);
+                options.N0, options.b, zDomain, frequencies, phaseSpeeds, g, modeKinds);
             eigenvalues = 1 ./ h;
 
             context.N2 = @(z) options.N0*options.N0*exp(2*z/options.b);
@@ -96,7 +104,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             metadata.analyticalBasis = "exponentialStratification";
 
             self@IMBasisSet(evp=options.evp, nativeModes=zeros(0,length(h)), ...
-                eigenvalues=eigenvalues, h=h, modeNumber=1:length(h), index=index, ...
+                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
                 N2Function=@(z) options.N0*options.N0*exp(2*z/options.b));
             self.N0 = options.N0;
@@ -105,6 +113,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             self.phaseSpeeds = phaseSpeeds;
             self.frequencies = frequencies;
             self.signFactors = signFactors;
+            self.modeKinds = modeKinds;
         end
     end
 
@@ -118,9 +127,14 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             z = z(:);
             values = zeros(length(z), length(self.h));
             for iMode = 1:length(self.h)
-                [G, F] = IMBasisSetExponentialStratification.rawModeValues( ...
-                    z, self.N0, self.b, self.zDomain, self.frequencies(iMode), ...
-                    self.phaseSpeeds(iMode), self.evp.g);
+                if self.modeKinds(iMode) == "null"
+                    G = zeros(size(z));
+                    F = ones(size(z));
+                else
+                    [G, F] = IMBasisSetExponentialStratification.rawModeValues( ...
+                        z, self.N0, self.b, self.zDomain, self.frequencies(iMode), ...
+                        self.phaseSpeeds(iMode), self.evp.g);
+                end
                 G = self.signFactors(iMode)*G;
                 F = self.signFactors(iMode)*F;
                 if variable == "G"
@@ -154,8 +168,8 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             end
         end
 
-        function [h, roots, frequencies] = solveSpectrum(evp, N0, b, zDomain, nModes, f0, g)
-            IMBasisSetExponentialStratification.validateEVP(evp);
+        function [h, roots, frequencies, modeNumber, modeKinds] = solveSpectrum(evp, N0, b, zDomain, nModes, f0, g)
+            surfaceBoundary = IMBasisSetExponentialStratification.validateEVP(evp);
             evpName = string(evp.name);
             switch evpName
                 case "waveModesAtWavenumber"
@@ -164,8 +178,15 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                             "A fixed-wavenumber EVP must include parameters.k.");
                     end
                     k = evp.parameters.k;
-                    roots = IMBasisSetExponentialStratification.rootsAtWavenumber(k, N0, b, zDomain, nModes, f0);
+                    nInteriorModes = IMBasisSetExponentialStratification.nInteriorModes(nModes, surfaceBoundary);
+                    roots = IMBasisSetExponentialStratification.rootsAtWavenumber( ...
+                        k, N0, b, zDomain, nInteriorModes, f0, g, surfaceBoundary);
                     h = (b*N0./roots).^2/g;
+                    if surfaceBoundary == "free"
+                        root0 = IMBasisSetExponentialStratification.surfaceRootAtWavenumber(k, N0, b, zDomain, f0, g);
+                        roots = [root0 roots];
+                        h = [(b*N0/root0)^2/g h];
+                    end
                     frequencies = sqrt(g*h*k*k + f0*f0);
                 case "waveModesAtFrequency"
                     if ~isfield(evp.parameters, "omega")
@@ -173,27 +194,62 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                             "A fixed-frequency EVP must include parameters.omega.");
                     end
                     omega = evp.parameters.omega;
-                    [roots, eta] = IMBasisSetExponentialStratification.rootsAtFrequency(omega, N0, b, zDomain, nModes);
-                    h = (b*eta./roots).^2/g;
+                    if omega >= N0 && surfaceBoundary == "free"
+                        root0 = IMBasisSetExponentialStratification.surfaceRootAtFrequency(omega, N0, b, zDomain, g);
+                        roots = root0;
+                        h = (b*N0/root0)^2/g;
+                    else
+                        nInteriorModes = IMBasisSetExponentialStratification.nInteriorModes(nModes, surfaceBoundary);
+                        [roots, eta] = IMBasisSetExponentialStratification.rootsAtFrequency( ...
+                            omega, N0, b, zDomain, nInteriorModes, g, surfaceBoundary);
+                        h = (b*eta./roots).^2/g;
+                        if surfaceBoundary == "free"
+                            root0 = IMBasisSetExponentialStratification.surfaceRootAtFrequency(omega, N0, b, zDomain, g);
+                            roots = [root0 roots];
+                            h = [(b*N0/root0)^2/g h];
+                        end
+                    end
                     frequencies = omega*ones(size(h));
                 case "hydrostaticGModes"
                     omega = 0;
-                    [roots, eta] = IMBasisSetExponentialStratification.rootsAtFrequency(omega, N0, b, zDomain, nModes);
+                    nInteriorModes = IMBasisSetExponentialStratification.nInteriorModes(nModes, surfaceBoundary);
+                    [roots, eta] = IMBasisSetExponentialStratification.rootsAtFrequency( ...
+                        omega, N0, b, zDomain, nInteriorModes, g, surfaceBoundary);
                     h = (b*eta./roots).^2/g;
+                    if surfaceBoundary == "free"
+                        root0 = IMBasisSetExponentialStratification.surfaceRootAtFrequency(omega, N0, b, zDomain, g);
+                        roots = [root0 roots];
+                        h = [(b*N0/root0)^2/g h];
+                    end
+                    frequencies = zeros(size(h));
+                case "hydrostaticFModes"
+                    omega = 0;
+                    nInteriorModes = max(nModes - 1,0);
+                    [rootsInterior, eta] = IMBasisSetExponentialStratification.rootsAtFrequency( ...
+                        omega, N0, b, zDomain, nInteriorModes, g, "rigid");
+                    hInterior = (b*eta./rootsInterior).^2/g;
+                    roots = [NaN rootsInterior];
+                    h = [Inf hInterior];
                     frequencies = zeros(size(h));
                 otherwise
                     error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
                         "Exponential stratification supports fixed-wavenumber, fixed-frequency, " + ...
-                        "and hydrostatic G EVPs.");
+                        "hydrostatic G, and hydrostatic F EVPs.");
+            end
+            if evpName == "hydrostaticFModes"
+                modeKinds = ["null" repmat("bessel",1,length(h)-1)];
+            else
+                modeKinds = repmat("bessel",1,length(h));
+            end
+            [roots, h, frequencies, modeKinds] = IMBasisSetExponentialStratification.truncateModes( ...
+                roots, h, frequencies, modeKinds, nModes);
+            modeNumber = IMBasisSetExponentialStratification.modeNumberFor(surfaceBoundary, length(h));
+            if evpName == "hydrostaticFModes"
+                modeNumber = 0:(length(h)-1);
             end
         end
 
-        function validateEVP(evp)
-            if evp.formulation ~= "G"
-                error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                    "Exponential stratification currently supports only G-formulation EVPs.");
-            end
-
+        function surfaceBoundary = validateEVP(evp)
             surfaceFamilies = strings(0,1);
             bottomFamilies = strings(0,1);
             for iBoundary = 1:length(evp.boundaryConditions)
@@ -216,13 +272,38 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                 error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
                     "Exponential stratification requires exactly one placed surface and one placed bottom boundary.");
             end
-            if surfaceFamilies(1) ~= "rigid" || bottomFamilies(1) ~= "rigid"
+            surfaceBoundary = surfaceFamilies(1);
+            bottomBoundary = bottomFamilies(1);
+            if evp.formulation == "F"
+                if evp.name ~= "hydrostaticFModes"
+                    error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
+                        "Exponential stratification supports F-formulation EVPs only for hydrostatic F modes.");
+                end
+                if surfaceBoundary ~= "rigid" || bottomBoundary ~= "rigid"
+                    error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
+                        "Hydrostatic F exponential-stratification modes currently require rigid surface and rigid bottom boundaries.");
+                end
+                return;
+            end
+            if evp.formulation ~= "G"
+                error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
+                    "Exponential stratification supports only F or G formulations.");
+            end
+            if bottomBoundary ~= "rigid"
                 error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
-                    "Exponential stratification currently supports only rigid surface and rigid bottom boundaries.");
+                    "Exponential stratification currently supports only rigid bottom boundaries.");
+            end
+            if ~ismember(surfaceBoundary, ["rigid", "free"])
+                error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
+                    "Exponential stratification currently supports rigid or free surface boundaries.");
             end
         end
 
-        function roots = rootsAtWavenumber(k, N0, b, zDomain, nModes, f0)
+        function roots = rootsAtWavenumber(k, N0, b, zDomain, nModes, f0, g, surfaceBoundary)
+            if nModes == 0
+                roots = zeros(1,0);
+                return;
+            end
             D = diff(zDomain);
             epsilon = f0/N0;
             lambda = k*b;
@@ -242,10 +323,10 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             nu = @(x) sqrt(epsilon*epsilon*x.*x + lambda*lambda);
             s = @(x) x;
             roots = IMBasisSetExponentialStratification.findEnoughRoots(nu, s, ...
-                [lowerBound upperBound], exp(-D/b), nModes);
+                [lowerBound upperBound], exp(-D/b), nModes, surfaceBoundary, N0, b, g);
         end
 
-        function [roots, eta] = rootsAtFrequency(omega, N0, b, zDomain, nModes)
+        function [roots, eta] = rootsAtFrequency(omega, N0, b, zDomain, nModes, g, surfaceBoundary)
             D = diff(zDomain);
             expMinusDOverB = exp(-D/b);
             if omega >= N0
@@ -262,12 +343,48 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
 
             nu = @(x) omega*x/eta;
             s = @(x) N0*x/eta;
+            if nModes == 0
+                roots = zeros(1,0);
+                return;
+            end
             roots = IMBasisSetExponentialStratification.findEnoughRoots(nu, s, ...
-                [0.5 nModes+1], expMinusDOverB, nModes);
+                [0.5 nModes+1], expMinusDOverB, nModes, surfaceBoundary, N0, b, g);
         end
 
-        function roots = findEnoughRoots(nu, s, bounds, expMinusDOverB, nModes)
-            roots = IMBasisSetExponentialStratification.findRootsInRange(nu, s, bounds, expMinusDOverB);
+        function root = surfaceRootAtWavenumber(k, N0, b, zDomain, f0, g)
+            D = diff(zDomain);
+            kSafe = max(k,1e-15);
+            rootEstimate = b*N0/sqrt(g*tanh(kSafe*D)/kSafe);
+            epsilon = f0/N0;
+            lambda = k*b;
+            nu = @(x) sqrt(epsilon*epsilon*x.*x + lambda*lambda);
+            s = @(x) x;
+            root = IMBasisSetExponentialStratification.findFirstRoot( ...
+                nu, s, [0.95 1.05]*rootEstimate, exp(-D/b), "free", N0, b, g);
+        end
+
+        function root = surfaceRootAtFrequency(omega, N0, b, zDomain, g)
+            D = diff(zDomain);
+            rootEstimate = max(b*N0*omega/g, b*N0/sqrt(g*D));
+            nu = @(x) omega*x/N0;
+            s = @(x) x;
+            root = IMBasisSetExponentialStratification.findFirstRoot( ...
+                nu, s, [0.95 1.5]*rootEstimate, exp(-D/b), "free", N0, b, g);
+        end
+
+        function root = findFirstRoot(nu, s, bounds, expMinusDOverB, surfaceBoundary, N0, b, g)
+            roots = IMBasisSetExponentialStratification.findRootsInRange( ...
+                nu, s, bounds, expMinusDOverB, surfaceBoundary, N0, b, g);
+            if isempty(roots)
+                error("IMBasisSetExponentialStratification:RootSearchFailed", ...
+                    "Could not find the exponential free-surface root.");
+            end
+            root = roots(1);
+        end
+
+        function roots = findEnoughRoots(nu, s, bounds, expMinusDOverB, nModes, surfaceBoundary, N0, b, g)
+            roots = IMBasisSetExponentialStratification.findRootsInRange( ...
+                nu, s, bounds, expMinusDOverB, surfaceBoundary, N0, b, g);
             iteration = 0;
             while length(roots) < nModes && iteration < 20
                 iteration = iteration + 1;
@@ -282,7 +399,8 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                     nModes - length(roots) + 1);
                 bounds = [oldUpperBound oldUpperBound + dx*nSearchModes];
                 roots = IMBasisSetExponentialStratification.deduplicateRoots( ...
-                    [roots; IMBasisSetExponentialStratification.findRootsInRange(nu, s, bounds, expMinusDOverB)]);
+                    [roots; IMBasisSetExponentialStratification.findRootsInRange( ...
+                    nu, s, bounds, expMinusDOverB, surfaceBoundary, N0, b, g)]);
             end
             if length(roots) < nModes
                 error("IMBasisSetExponentialStratification:RootSearchFailed", ...
@@ -291,7 +409,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             roots = reshape(roots(1:nModes),1,[]);
         end
 
-        function roots = findRootsInRange(nu, s, bounds, expMinusDOverB)
+        function roots = findRootsInRange(nu, s, bounds, expMinusDOverB, surfaceBoundary, N0, b, g)
             x = linspace(bounds(1), bounds(2), IMBasisSetExponentialStratification.nInitialSearchModes()).';
             intervals = zeros(0,2);
 
@@ -316,26 +434,46 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                     continue;
                 end
                 if iInterval == 1 && ~isempty(bigNuIndices)
-                    residual = @(x) IMBasisSetExponentialStratification.bigNuResidual(nu, s, expMinusDOverB, x);
+                    residual = @(x) IMBasisSetExponentialStratification.bigNuResidual( ...
+                        nu, s, expMinusDOverB, x, surfaceBoundary, N0, b, g);
                 else
-                    residual = @(x) IMBasisSetExponentialStratification.smallNuResidual(nu, s, expMinusDOverB, x);
+                    residual = @(x) IMBasisSetExponentialStratification.smallNuResidual( ...
+                        nu, s, expMinusDOverB, x, surfaceBoundary, N0, b, g);
                 end
                 roots = [roots; IMBasisSetExponentialStratification.scanRoots(residual, interval)];
             end
             roots = IMBasisSetExponentialStratification.deduplicateRoots(roots);
         end
 
-        function values = smallNuResidual(nu, s, expMinusDOverB, x)
-            A = bessely(nu(x), s(x));
-            B = -besselj(nu(x), s(x));
-            values = A.*besselj(nu(x), expMinusDOverB*s(x)) + B.*bessely(nu(x), expMinusDOverB*s(x));
+        function values = smallNuResidual(nu, s, expMinusDOverB, x, surfaceBoundary, N0, b, g)
+            [A, B] = IMBasisSetExponentialStratification.surfaceCoefficients(nu, s, x, surfaceBoundary, N0, b, g);
+            values = A.*besselj(nu(x), expMinusDOverB*s(x)) ...
+                + B.*bessely(nu(x), expMinusDOverB*s(x));
         end
 
-        function values = bigNuResidual(nu, s, expMinusDOverB, x)
-            A = bessely(nu(x), s(x));
-            B = -besselj(nu(x), s(x));
+        function values = bigNuResidual(nu, s, expMinusDOverB, x, surfaceBoundary, N0, b, g)
+            [A, B] = IMBasisSetExponentialStratification.surfaceCoefficients(nu, s, x, surfaceBoundary, N0, b, g);
             denominator = bessely(nu(x), expMinusDOverB*s(x));
             values = (A./denominator).*besselj(nu(x), expMinusDOverB*s(x)) + B;
+        end
+
+        function [A, B] = surfaceCoefficients(nu, s, x, surfaceBoundary, N0, b, g)
+            order = nu(x);
+            argument = s(x);
+            switch surfaceBoundary
+                case "rigid"
+                    A = bessely(order, argument);
+                    B = -besselj(order, argument);
+                case "free"
+                    surfaceCoefficient = b*N0*N0/(2*g);
+                    A = bessely(order, argument) - (surfaceCoefficient./argument) ...
+                        .*(bessely(order-1, argument) - bessely(order+1, argument));
+                    B = -besselj(order, argument) + (surfaceCoefficient./argument) ...
+                        .*(besselj(order-1, argument) - besselj(order+1, argument));
+                otherwise
+                    error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
+                        "Unsupported exponential surface boundary ""%s"".", surfaceBoundary);
+            end
         end
 
         function roots = scanRoots(residual, interval)
@@ -410,9 +548,12 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             end
         end
 
-        function signFactors = surfaceSignFactors(N0, b, zDomain, frequencies, phaseSpeeds, g)
+        function signFactors = surfaceSignFactors(N0, b, zDomain, frequencies, phaseSpeeds, g, modeKinds)
             signFactors = ones(1,length(frequencies));
             for iMode = 1:length(frequencies)
+                if modeKinds(iMode) == "null"
+                    continue;
+                end
                 [~, FSurface] = IMBasisSetExponentialStratification.rawModeValues( ...
                     0, N0, b, zDomain, frequencies(iMode), phaseSpeeds(iMode), g);
                 if FSurface < 0
@@ -423,6 +564,30 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
 
         function value = nInitialSearchModes()
             value = 128;
+        end
+
+        function nModes = nInteriorModes(totalModes, surfaceBoundary)
+            if surfaceBoundary == "free"
+                nModes = max(0,totalModes - 1);
+            else
+                nModes = totalModes;
+            end
+        end
+
+        function [roots, h, frequencies, modeKinds] = truncateModes(roots, h, frequencies, modeKinds, nModes)
+            keep = 1:min(nModes,length(h));
+            roots = roots(keep);
+            h = h(keep);
+            frequencies = frequencies(keep);
+            modeKinds = modeKinds(keep);
+        end
+
+        function modeNumber = modeNumberFor(surfaceBoundary, nModes)
+            if surfaceBoundary == "free"
+                modeNumber = [-1 1:(nModes-1)];
+            else
+                modeNumber = 1:nModes;
+            end
         end
     end
 end

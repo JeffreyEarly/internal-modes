@@ -406,17 +406,27 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                             "A fixed-frequency EVP must include parameters.omega.");
                     end
                     omega = evp.parameters.omega;
-                    [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtFrequency( ...
-                        omega, N0, D, nModes, surfaceBoundary, g);
                     if surfaceBoundary == "free"
-                        [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.surfaceBoundaryAtFrequency( ...
-                            omega, N0, D, g);
-                        h = [h0 hBaroclinic(1:end-1)];
-                        verticalWavenumbers = [k_z0 k_zBaroclinic(1:end-1)];
-                        solutionTypes = IMBasisSetConstantStratification.freeSolutionTypes(solutionType0, nModes);
-                        isBoundaryMode = [true false(1,nModes-1)];
-                        baroclinicNumbers = [0 1:(nModes-1)];
+                        [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.surfaceBoundaryAtFrequency(omega, N0, D, g);
+                        if omega < N0
+                            [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.freeSurfaceBaroclinicAtFrequency( ...
+                                omega, N0, D, max(nModes - 1,0), g);
+                        else
+                            hBaroclinic = zeros(1,0);
+                            k_zBaroclinic = zeros(1,0);
+                        end
+                        h = [h0 hBaroclinic];
+                        verticalWavenumbers = [k_z0 k_zBaroclinic];
+                        solutionTypes = IMBasisSetConstantStratification.freeSolutionTypes(solutionType0, length(h));
+                        isBoundaryMode = [true false(1,length(h)-1)];
+                        baroclinicNumbers = [0 1:(length(h)-1)];
                     else
+                        if omega >= N0
+                            error("IMBasisSetConstantStratification:UnsupportedFrequency", ...
+                                "Rigid-surface fixed-frequency constant-stratification modes require omega < N0.");
+                        end
+                        [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtFrequency( ...
+                            omega, N0, D, nModes, g);
                         h = hBaroclinic;
                         verticalWavenumbers = k_zBaroclinic;
                         solutionTypes = repmat("baroclinic",1,nModes);
@@ -424,11 +434,23 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                         baroclinicNumbers = 1:nModes;
                     end
                 case "hydrostaticGModes"
-                    [h, verticalWavenumbers] = IMBasisSetConstantStratification.baroclinicAtFrequency( ...
-                        0, N0, D, nModes, surfaceBoundary, g);
-                    solutionTypes = repmat("baroclinic",1,nModes);
-                    isBoundaryMode = false(1,nModes);
-                    baroclinicNumbers = 1:nModes;
+                    if surfaceBoundary == "free"
+                        [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.surfaceBoundaryAtFrequency( ...
+                            0, N0, D, g);
+                        [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.freeSurfaceBaroclinicAtFrequency( ...
+                            0, N0, D, max(nModes - 1,0), g);
+                        h = [h0 hBaroclinic];
+                        verticalWavenumbers = [k_z0 k_zBaroclinic];
+                        solutionTypes = IMBasisSetConstantStratification.freeSolutionTypes(solutionType0, length(h));
+                        isBoundaryMode = [true false(1,length(h)-1)];
+                        baroclinicNumbers = [0 1:(length(h)-1)];
+                    else
+                        [h, verticalWavenumbers] = IMBasisSetConstantStratification.baroclinicAtFrequency( ...
+                            0, N0, D, nModes, g);
+                        solutionTypes = repmat("baroclinic",1,nModes);
+                        isBoundaryMode = false(1,nModes);
+                        baroclinicNumbers = 1:nModes;
+                    end
                 case "hydrostaticFModes"
                     if surfaceBoundary ~= "rigid" || bottomBoundary ~= "rigid"
                         error("IMBasisSetConstantStratification:UnsupportedBoundary", ...
@@ -466,19 +488,26 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             solutionTypes(1) = boundaryType;
         end
 
-        function [h, k_z] = baroclinicAtFrequency(omega, N0, D, nModes, surfaceBoundary, g)
+        function [h, k_z] = baroclinicAtFrequency(omega, N0, D, nModes, g)
             k_z = (1:nModes)*pi/D;
-            if surfaceBoundary == "free"
-                for iMode = 1:nModes
-                    f = @(xi) g*tan(xi)/(xi + iMode*pi) - (N0*N0 - omega*omega)*D/((xi + iMode*pi)^2);
-                    k_z(iMode) = k_z(iMode) + fzero(f, 0)/D;
-                end
+            if omega >= N0
+                error("IMBasisSetConstantStratification:UnsupportedFrequency", ...
+                    "Interior fixed-frequency constant-stratification modes require omega < N0.");
             end
             h = (N0*N0 - omega*omega)./(g*k_z.*k_z);
+        end
+
+        function [h, k_z] = freeSurfaceBaroclinicAtFrequency(omega, N0, D, nModes, g)
             if omega >= N0
-                k_z = zeros(size(k_z));
-                h = zeros(size(h));
+                error("IMBasisSetConstantStratification:UnsupportedFrequency", ...
+                    "Free-surface interior fixed-frequency constant-stratification modes require omega < N0.");
             end
+            k_z = (1:nModes)*pi/D;
+            for iMode = 1:nModes
+                f = @(xi) g*tan(xi)/(xi + iMode*pi) - (N0*N0 - omega*omega)*D/((xi + iMode*pi)^2);
+                k_z(iMode) = k_z(iMode) + fzero(f, 0)/D;
+            end
+            h = (N0*N0 - omega*omega)./(g*k_z.*k_z);
         end
 
         function [h0, k_z, solutionType] = surfaceBoundaryAtWavenumber(k, N0, D, f0, g)

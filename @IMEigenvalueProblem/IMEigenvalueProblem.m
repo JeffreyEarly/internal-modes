@@ -319,6 +319,7 @@ classdef IMEigenvalueProblem
             evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
+            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
         end
 
         function evp = waveModesAtFrequency(options)
@@ -363,6 +364,7 @@ classdef IMEigenvalueProblem
             evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
+            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
         end
 
         function evp = hydrostaticGModes(options)
@@ -401,6 +403,7 @@ classdef IMEigenvalueProblem
             evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
+            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
         end
 
         function evp = hydrostaticFModes(options)
@@ -437,6 +440,7 @@ classdef IMEigenvalueProblem
             evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
+            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
         end
 
         function policy = partialDepthPEIndexPolicy(options)

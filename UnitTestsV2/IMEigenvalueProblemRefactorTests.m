@@ -96,7 +96,24 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual([evp.boundaryConditions.family], ["rigid" "rigid"])
             testCase.verifyTrue(isfield(evp.normalizations, "unity"))
             testCase.verifyTrue(isfield(evp.normalizations, "kConstant"))
+            testCase.verifyTrue(isfield(evp.normalizations, "surfacePressure"))
             testCase.verifyTrue(isa(evp.normalizations.unity, "function_handle"))
+        end
+
+        function evpFactoriesDeclareSurfacePressureNormalization(testCase)
+            [~, ~, ~, f0, g] = testCase.profile();
+            evps = {
+                IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g)
+                IMEigenvalueProblem.waveModesAtFrequency(omega=1e-3, f0=f0, g=g)
+                IMEigenvalueProblem.hydrostaticGModes(f0=f0, g=g)
+                IMEigenvalueProblem.hydrostaticFModes(g=g)
+            };
+
+            for iEVP = 1:length(evps)
+                evp = evps{iEVP};
+                testCase.verifyTrue(isfield(evp.normalizations, "surfacePressure"))
+                testCase.verifyTrue(isa(evp.normalizations.surfacePressure, "function_handle"))
+            end
         end
 
         function defaultOperatorSyntaxCreatesStrongFormOperator(testCase)
@@ -837,6 +854,18 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             factors = basisSet.normalizationFactors(Normalization.unity);
 
             testCase.verifyEqual(factors(1), expectedFactor, RelTol=1e-10)
+        end
+
+        function surfacePressureNormalizationRequiresNonzeroSurfaceF(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
+            evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=f0, g=g, ...
+                surfaceBoundary=IMBoundary.noSlip(), bottomBoundary=IMBoundary.rigid());
+            basisSet = solver.solveEVP(evp, nModes=3);
+
+            testCase.verifyLessThan(max(abs(basisSet.F(zDomain(2), normalization=Normalization.uMax))), 1e-8)
+            testCase.verifyError(@() basisSet.normalizationFactors(Normalization.surfacePressure), ...
+                "IMBasisSet:UnsupportedNormalization")
         end
 
         function constantStratificationFactoryReturnsAnalyticalBasisSet(testCase)

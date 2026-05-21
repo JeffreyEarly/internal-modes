@@ -16,8 +16,8 @@ classdef Normalization
     %   $$\omega$$-constant norm
     % - `Normalization.uMax` to scale each mode so $$\max F_j = 1$$
     % - `Normalization.wMax` to scale each mode so $$\max G_j = 1$$
-    % - `Normalization.surfacePressure` to scale by the surface value of
-    %   $$F$$
+    % - `Normalization.surfacePressure` to scale by the raw surface value
+    %   of $$F$$ so $$F_j^\mathrm{surfacePressure}(z_\mathrm{surface})=1$$
     % - `Normalization.geostrophic` for the near-geostrophic interior mode
     %   normalization used by some helper workflows
     %

@@ -79,6 +79,34 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(GExpected, -(g/(N0*N0))*dFdzExpected, AbsTol=1e-12)
         end
 
+        function surfacePressureNormalizationScalesRigidConstantModes(testCase)
+            [N0, zDomain, ~, nModes, f0, g] = testCase.profile();
+            D = diff(zDomain);
+            m = (1:nModes)*pi/D;
+            k = 1e-4;
+            omega = 0.8*N0;
+            fixedKFactors = ((N0*N0 - f0*f0)./(g*(k*k + m.*m))).*m;
+            fixedOmegaFactors = ((N0*N0 - omega*omega)./(g*m.*m)).*m;
+            hydrostaticGFactors = ((N0*N0)./(g*m.*m)).*m;
+            cases = {
+                IMEigenvalueProblem.waveModesAtWavenumber(k=k, f0=f0, g=g), fixedKFactors
+                IMEigenvalueProblem.waveModesAtFrequency(omega=omega, f0=0, g=g), fixedOmegaFactors
+                IMEigenvalueProblem.hydrostaticGModes(f0=f0, g=g), hydrostaticGFactors
+                IMEigenvalueProblem.hydrostaticFModes(g=g), ones(1,nModes)
+            };
+
+            for iCase = 1:size(cases,1)
+                evp = cases{iCase,1};
+                basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+                    zDomain=zDomain, nModes=nModes);
+                factors = basisSet.normalizationFactors(Normalization.surfacePressure);
+                basisSet.normalization = Normalization.surfacePressure;
+
+                testCase.verifyEqual(factors, cases{iCase,2}, RelTol=1e-12, AbsTol=1e-12)
+                testCase.verifyEqual(basisSet.F(zDomain(2)), ones(1,nModes), AbsTol=1e-12)
+            end
+        end
+
         function hydrostaticFGeostrophicGramMatchesExactMetrics(testCase)
             [N0, zDomain, ~, nModes, ~, g] = testCase.profile();
             evp = IMEigenvalueProblem.hydrostaticFModes(g=g);
@@ -114,6 +142,83 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.F(z), FExpected, AbsTol=1e-8)
             testCase.verifyLessThan(max(abs(basisSet.G(zDomain(1)))), 1e-10)
             testCase.verifyLessThan(max(abs(basisSet.F(zDomain(2)) - basisSet.G(zDomain(2)))), 1e-8)
+        end
+
+        function freeSurfaceWavenumberRegimesMatchV1Oracle(testCase)
+            [N0, zDomain, z, nModes, f0, g] = testCase.profile();
+            kStar = sqrt((N0*N0 - f0*f0)/(g*diff(zDomain)));
+            for k = [0.1*kStar kStar 10*kStar]
+                evp = IMEigenvalueProblem.waveModesAtWavenumber(k=k, f0=f0, g=g, ...
+                    surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
+                basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+                    zDomain=zDomain, nModes=nModes, normalization=Normalization.surfacePressure);
+                direct = testCase.v1FreeSurfaceOracle(N0, zDomain, z, nModes, f0, g);
+                direct.normalization = Normalization.kConstant;
+                [FExpected, GExpected, hExpected] = direct.modesAtWavenumber(k);
+                expectedScale = FExpected(end,:);
+                FExpected = FExpected ./ expectedScale;
+                GExpected = GExpected ./ expectedScale;
+
+                testCase.verifyEquivalentDepths(basisSet.h, hExpected, 1e-10)
+                testCase.verifyEqual(basisSet.modeNumber, [-1 1:(nModes-1)])
+                testCase.verifyEqual(basisSet.G(z), GExpected, AbsTol=1e-8)
+                testCase.verifyEqual(basisSet.F(z), FExpected, AbsTol=1e-8)
+                testCase.verifyFreeSurfaceBoundaryResiduals(basisSet, zDomain, 1e-8)
+            end
+        end
+
+        function freeSurfaceFrequencyRegimesMatchV1SurfaceBranch(testCase)
+            [N0, zDomain, z, nModes, f0, g] = testCase.profile();
+            for omega = [0.1*N0 N0 10*N0]
+                evp = IMEigenvalueProblem.waveModesAtFrequency(omega=omega, f0=f0, g=g, ...
+                    surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
+                basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+                    zDomain=zDomain, nModes=nModes, normalization=Normalization.surfacePressure);
+                direct = testCase.v1FreeSurfaceOracle(N0, zDomain, z, nModes, f0, g);
+                direct.normalization = Normalization.kConstant;
+                [FExpected, GExpected, hExpected] = direct.modesAtFrequency(omega);
+                expectedScale = FExpected(end,:);
+                FExpected = FExpected ./ expectedScale;
+                GExpected = GExpected ./ expectedScale;
+                nExpected = size(basisSet.F(z),2);
+
+                testCase.verifyEquivalentDepths(basisSet.h, hExpected(1:nExpected), 1e-10)
+                if omega < N0
+                    testCase.verifyEqual(basisSet.modeNumber, [-1 1:(nModes-1)])
+                else
+                    testCase.verifyEqual(basisSet.modeNumber, -1)
+                end
+                testCase.verifyEqual(basisSet.G(z), GExpected(:,1:nExpected), AbsTol=1e-8)
+                testCase.verifyEqual(basisSet.F(z), FExpected(:,1:nExpected), AbsTol=1e-8)
+                testCase.verifyFreeSurfaceBoundaryResiduals(basisSet, zDomain, 1e-8)
+            end
+        end
+
+        function hydrostaticFreeSurfaceGModesMatchFixedFrequencyLimit(testCase)
+            [N0, zDomain, z, nModes, f0, g] = testCase.profile();
+            evp = IMEigenvalueProblem.hydrostaticGModes(f0=f0, g=g, ...
+                surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
+            frequencyEVP = IMEigenvalueProblem.waveModesAtFrequency(omega=0, f0=f0, g=g, ...
+                surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
+            basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, zDomain=zDomain, ...
+                nModes=nModes, normalization=Normalization.surfacePressure);
+            frequencyBasis = IMBasisSet.constantStratification(evp=frequencyEVP, N0=N0, ...
+                zDomain=zDomain, nModes=nModes, normalization=Normalization.surfacePressure);
+
+            testCase.verifyEquivalentDepths(basisSet.h, frequencyBasis.h, 1e-12)
+            testCase.verifyEqual(basisSet.modeNumber, [-1 1:(nModes-1)])
+            testCase.verifyEqual(basisSet.G(z), frequencyBasis.G(z), AbsTol=1e-12)
+            testCase.verifyEqual(basisSet.F(z), frequencyBasis.F(z), AbsTol=1e-12)
+            testCase.verifyFreeSurfaceBoundaryResiduals(basisSet, zDomain, 1e-10)
+        end
+
+        function rigidSurfaceFixedFrequencyAtOrAboveN0Throws(testCase)
+            [N0, zDomain, ~, nModes, f0, g] = testCase.profile();
+            for omega = [N0 10*N0]
+                evp = IMEigenvalueProblem.waveModesAtFrequency(omega=omega, f0=f0, g=g);
+                testCase.verifyError(@() IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+                    zDomain=zDomain, nModes=nModes), "IMBasisSetConstantStratification:UnsupportedFrequency")
+            end
         end
 
         function unsupportedHydrostaticFAnalyticalBoundariesThrow(testCase)
@@ -156,6 +261,33 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
                 gram = basisSet.gramMatrix("G");
                 testCase.verifyLessThan(max(abs(diag(gram).' - 1)), gramTolerance)
                 testCase.verifyLessThan(testCase.offDiagonalNorm(gram), gramTolerance)
+
+                basisSet.normalization = Normalization.surfacePressure;
+                testCase.verifyLessThan(max(abs(basisSet.F(zDomain(2)) - 1)), shapeTolerance)
+            end
+        end
+
+        function allSolversMatchConstantFreeSurfaceFrequencySurfaceBranch(testCase)
+            [N0, zDomain, z, ~, f0, g] = testCase.profile();
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMEigenvalueProblem.waveModesAtFrequency(omega=10*N0, f0=f0, g=g, ...
+                surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
+            exactBasis = IMBasisSet.constantStratification(evp=evp, N0=N0, zDomain=zDomain, ...
+                nModes=1, normalization=Normalization.surfacePressure);
+            cases = testCase.solverCases(N2, zDomain);
+
+            for iCase = 1:size(cases,1)
+                solver = cases{iCase,2};
+                hTolerance = max(cases{iCase,3}, 1e-3);
+                shapeTolerance = max(cases{iCase,4}, 1e-3);
+                basisSet = solver.solveEVP(evp, nModes=1);
+                basisSet.normalization = Normalization.surfacePressure;
+
+                testCase.verifyEquivalentDepths(basisSet.h, exactBasis.h, hTolerance)
+                testCase.verifyEqual(basisSet.modeNumber, -1)
+                testCase.verifyLessThan(norm(basisSet.G(z) - exactBasis.G(z), "fro")/norm(exactBasis.G(z), "fro"), shapeTolerance)
+                testCase.verifyLessThan(norm(basisSet.F(z) - exactBasis.F(z), "fro")/norm(exactBasis.F(z), "fro"), shapeTolerance)
+                testCase.verifyFreeSurfaceBoundaryResiduals(basisSet, zDomain, shapeTolerance)
             end
         end
 
@@ -257,6 +389,20 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
         function solver = finiteDifferenceSolver(~, N2, zDomain, nGrid)
             z = linspace(zDomain(1), zDomain(2), nGrid).';
             solver = IMSolverFiniteDifference(z=z, N2=N2);
+        end
+
+        function direct = v1FreeSurfaceOracle(~, N0, zDomain, z, nModes, f0, g)
+            rotationRate = 7.2921e-5;
+            latitude = asind(f0/(2*rotationRate));
+            direct = InternalModesConstantStratification(N0=N0, zIn=zDomain, zOut=z, ...
+                latitude=latitude, nModes=nModes, g=g, rotationRate=rotationRate);
+            direct.upperBoundary = UpperBoundary.freeSurface;
+        end
+
+        function verifyFreeSurfaceBoundaryResiduals(testCase, basisSet, zDomain, tolerance)
+            testCase.verifyGreaterThan(basisSet.F(zDomain(2)), zeros(size(basisSet.F(zDomain(2)))))
+            testCase.verifyLessThan(max(abs(basisSet.F(zDomain(2)) - basisSet.G(zDomain(2)))), tolerance)
+            testCase.verifyLessThan(max(abs(basisSet.G(zDomain(1)))), tolerance)
         end
     end
 
