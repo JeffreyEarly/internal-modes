@@ -2,7 +2,7 @@
 layout: default
 title: partialGramMatrix
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 25
 mathjax: true
 ---

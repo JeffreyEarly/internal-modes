@@ -2,7 +2,7 @@
 layout: default
 title: boundaryRow
 parent: IMOperator
-grand_parent: Classes
+grand_parent: Core
 nav_order: 2
 mathjax: true
 ---

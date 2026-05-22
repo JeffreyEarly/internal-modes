@@ -1,18 +1,42 @@
 classdef IMEigenvalueProblem
-    % Describe an internal-mode eigenvalue problem in physical coordinates.
+    % Describe a vertical-mode generalized eigenvalue problem.
     %
-    % `IMEigenvalueProblem` stores the physical operators, boundary laws,
-    % formulation, inner-product weights, named normalization rules,
-    % default normalization, equivalent-depth interpretation, and
-    % index-selection metadata needed by coordinate-aware solvers.
+    % `IMEigenvalueProblem` is the solver-independent contract for a
+    % vertical-mode eigenvalue problem. A solver owns the stratification,
+    % physical domain, coordinate mapping, and derivative matrices. The EVP
+    % owns the physical constants, differential operators, boundary laws,
+    % inner-product weights, normalization rules, equivalent-depth mapping,
+    % and mode-index policy.
+    %
+    % Assembly combines those responsibilities in the solver native basis:
+    % $$Aq_j=\lambda_jBq_j,\qquad h_j=\mathrm{hFromEigenvalue}(\lambda_j).$$
+    % The retained columns become an `IMBasisSet`. The basis set evaluates the
+    % solved variable and its linked diagnostic variable; `F` and `G` are not
+    % independent mode families. In a `G` formulation,
+    % $$F_j=h_j\partial_zG_j,$$
+    % and in an `F` formulation,
+    % $$G_j=-gN^{-2}\partial_zF_j.$$
+    %
+    % Use the static factories for standard wave and hydrostatic mode
+    % problems. Use the constructor directly when defining a custom operator,
+    % boundary, inner-product, or normalization contract.
     %
     % ```matlab
+    % N2 = @(z) 1e-5*ones(size(z));
+    % solver = IMSolverSpectral(N2=N2, zDomain=[-1000 0], nEVP=64);
     % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=1e-4);
+    % basisSet = solver.solveEVP(evp, nModes=4);
+    % z = linspace(-1000, 0, 128).';
+    % G = basisSet.G(z);
+    % h = basisSet.h;
     % ```
     %
-    % - Topic: Create EVPs
+    % - Topic: Create standard EVPs
+    % - Topic: Build custom EVPs
     % - Topic: Assemble EVPs
     % - Topic: Inspect EVP metadata
+    % - Topic: Select retained modes
+    % - Topic: Developer topics
     % - Declaration: classdef IMEigenvalueProblem
 
     properties (SetAccess = private)
@@ -39,65 +63,97 @@ classdef IMEigenvalueProblem
     end
 
     properties (SetAccess = private)
-        % Coriolis parameter owned by this EVP.
+        % Coriolis parameter.
         %
-        % Solvers provide the medium and discretization; the EVP owns the
-        % physical constants that define the mathematical problem.
+        % `f0` has units of radians per second. Solvers provide `N2` and the
+        % vertical domain; the EVP provides the physical constants used by the
+        % operators, boundaries, and normalization rules.
         %
         % - Topic: Inspect EVP metadata
         f0 = 0
 
-        % Gravitational acceleration owned by this EVP.
+        % Gravitational acceleration.
+        %
+        % `g` has units of meters per second squared. Operator coefficient and
+        % diagnostic-variable functions read this value through the assembly
+        % context as `ctx.g`.
         %
         % - Topic: Inspect EVP metadata
         g = 9.81
     end
 
     properties
-        % Left physical operator.
+        % Left differential operator.
+        %
+        % `leftOperator` contributes the matrix `A` in
+        % $$Aq=\lambda Bq.$$
+        % Coefficients are evaluated with the context returned by
+        % `contextForSolver`, so coefficient functions may use solver-owned
+        % fields such as `ctx.N2` and EVP-owned fields such as `ctx.g`.
         %
         % - Topic: Assemble EVPs
         leftOperator = IMOperator()
 
-        % Right physical operator.
+        % Right differential operator.
+        %
+        % `rightOperator` contributes the matrix `B` in the generalized EVP.
+        % Standard factories use it for the weighted side of the strong form,
+        % for example `@(z,ctx) (ctx.f0*ctx.f0 - ctx.N2(z))/ctx.g` in the
+        % fixed-wavenumber wave problem.
         %
         % - Topic: Assemble EVPs
         rightOperator = IMOperator()
 
         % Inner-product weights for `F` and `G`.
         %
-        % Each field stores the interior weight in
-        % $$\int w(z)X_i(z)X_j(z)\,dz$$ for variable `F` or `G`. Boundary
-        % trace terms are stored on boundary conditions.
+        % `innerWeights.F` and `innerWeights.G` are function handles with
+        % signature `w = weight(z,ctx)`. Each handle returns the interior
+        % weight in
+        % $$\langle X_i,X_j\rangle_w=\int w(z)X_i(z)X_j(z)\,dz.$$
+        % Boundary trace terms belong to the boundary conditions so that each
+        % normalization can include the same endpoint convention as the EVP.
         %
         % - Topic: Inspect EVP metadata
         innerWeights = struct()
 
         % Named modal normalization rules.
         %
-        % Each field stores a function handle that returns the divisor for
-        % one raw mode column.
+        % Each field stores a function handle with signature
+        % `scale = rule(basisSet,iMode)`. The returned scale divides one raw
+        % mode column after the solver has assembled, selected, and linked the
+        % retained modes. Factory-created EVPs populate names such as
+        % `unity`, `kConstant`, `omegaConstant`, `geostrophic`, `wMax`,
+        % `uMax`, and `surfacePressure` when those rules are meaningful.
         %
         % - Topic: Inspect EVP metadata
         normalizations = struct()
 
         % Natural default normalization for this EVP.
         %
-        % Empty means the EVP does not declare a problem-specific default,
-        % and basis sets should use the package fallback.
+        % This is a `Normalization` value or `[]`. Empty means the EVP does
+        % not declare a problem-specific default and the basis-set layer may
+        % use its package fallback.
         %
         % - Topic: Inspect EVP metadata
         defaultNormalization = []
 
         % Placed boundary-condition array.
         %
+        % The array stores location-aware `IMBoundary` values. Standard
+        % factories accept location-free `surfaceBoundary` and `bottomBoundary`
+        % laws and place them on the solved variable. During assembly each
+        % placed boundary replaces the appropriate boundary row in `A` and `B`
+        % and contributes endpoint metadata for indexing and normalization.
+        %
         % - Topic: Assemble EVPs
         boundaryConditions = IMBoundary.empty(0,1)
 
         % Equivalent-depth conversion function.
         %
-        % This maps generalized-EVP eigenvalues $$\lambda$$ to equivalent
-        % depths $$h_j$$.
+        % `hFromEigenvalue` is a function handle with signature
+        % `h = hFromEigenvalue(lambda)`. Standard EVPs use
+        % $$h_j=1/\lambda_j,$$
+        % so `lambda` has inverse-depth units in those problems.
         %
         % - Topic: Inspect EVP metadata
         hFromEigenvalue = @(lambda) 1 ./ lambda
@@ -106,30 +162,33 @@ classdef IMEigenvalueProblem
     properties (SetAccess = private)
         % Number of true null modes.
         %
-        % Null modes are zero-eigenvalue modes selected after boundary
-        % modes and before positive interior modes. In the hydrostatic `F`
-        % EVP, this is the depth-uniform mode with $$F_0(z)=1$$ and
-        % $$G_0(z)=0$$.
+        % Null modes are genuine zero-eigenvalue modes selected after
+        % boundary-index modes and before positive interior modes. In the
+        % hydrostatic `F` EVP, this is the depth-uniform barotropic mode
+        % $$F_0(z)=1,\qquad G_0(z)=0.$$
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Select retained modes
         nNullModes = 0
 
         % Index validation behavior.
         %
-        % Values are `"error"`, `"warning"`, or `"none"`.
+        % Values are `"error"`, `"warning"`, or `"none"`. The mode-index
+        % policy uses this value when the observed boundary, null, or interior
+        % counts differ from the counts declared by the EVP and its boundary
+        % conditions.
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Select retained modes
         indexValidationMode = "none"
     end
 
     properties
         % Stored factory-specific physical inputs.
         %
-        % `parameters` records physical inputs supplied to a factory but not
-        % otherwise stored as first-class EVP properties, such as `k` or
-        % `omega`. The EVP identity is `name`, boundary laws live in
-        % `boundaryConditions`, and physical constants live in `f0` and `g`.
-        % Core EVP assembly does not consume this struct.
+        % `parameters` records physical inputs supplied to a standard factory
+        % but not otherwise stored as first-class EVP properties, such as
+        % `parameters.k` or `parameters.omega`. The EVP identity is `name`,
+        % boundary laws live in `boundaryConditions`, and physical constants
+        % live in `f0` and `g`. Core EVP assembly does not consume this struct.
         %
         % - Topic: Inspect EVP metadata
         parameters = struct()
@@ -139,16 +198,34 @@ classdef IMEigenvalueProblem
         function self = IMEigenvalueProblem(options)
             % Create a physical-coordinate EVP descriptor.
             %
-            % - Topic: Create EVPs
+            % The constructor is the low-level entry point for custom EVPs.
+            % Provide the solved `formulation`, the operators defining
+            % $$Aq=\lambda Bq,$$
+            % the placed boundary conditions for that formulation, the
+            % interior inner-product weights, and any normalizations that an
+            % `IMBasisSet` should expose. The standard factories are preferred
+            % for the built-in wave and hydrostatic problems because they set
+            % the operator, boundary, normalization, and mode-index metadata as
+            % one coherent contract.
+            %
+            % ```matlab
+            % left = IMOperator().plus(derivativeOrder=2);
+            % right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
+            % evp = IMEigenvalueProblem(name="customG", formulation="G", ...
+            %     leftOperator=left, rightOperator=right, ...
+            %     boundaryConditions=IMBoundary.conditions(formulation="G"));
+            % ```
+            %
+            % - Topic: Build custom EVPs
             % - Declaration: evp = IMEigenvalueProblem(options)
             % - Parameter options.name: short EVP name
             % - Parameter options.formulation: solved variable, `"F"` or `"G"`
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.leftOperator: left physical operator
-            % - Parameter options.rightOperator: right physical operator
-            % - Parameter options.innerWeights: interior inner-product weights for `F` and `G`
-            % - Parameter options.normalizations: named modal normalization rules
+            % - Parameter options.f0: Coriolis parameter in radians per second
+            % - Parameter options.g: gravitational acceleration in meters per second squared
+            % - Parameter options.leftOperator: operator that builds the generalized-EVP matrix `A`
+            % - Parameter options.rightOperator: operator that builds the generalized-EVP matrix `B`
+            % - Parameter options.innerWeights: interior inner-product weight handles for `F` and `G`
+            % - Parameter options.normalizations: named modal normalization handles
             % - Parameter options.defaultNormalization: natural default normalization for this EVP
             % - Parameter options.boundaryConditions: placed boundary conditions
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
@@ -195,7 +272,16 @@ classdef IMEigenvalueProblem
         end
 
         function [A, B] = assemble(self, solver)
-            % Assemble the EVP on a solver's native basis.
+            % Build generalized-EVP matrices on a solver's native basis.
+            %
+            % `assemble` evaluates `leftOperator` and `rightOperator` with the
+            % merged solver/EVP context and returns the matrices for
+            % $$Aq=\lambda Bq.$$
+            % Interior rows come from the operator discretization. Boundary
+            % rows are then replaced by the placed boundary conditions through
+            % the solver, so a rigid `G` boundary imposes the trace row for
+            % `G=0` while active or free boundaries can also declare endpoint
+            % contributions used by normalization and mode indexing.
             %
             % - Topic: Assemble EVPs
             % - Declaration: [A,B] = assemble(evp,solver)
@@ -213,8 +299,12 @@ classdef IMEigenvalueProblem
         function context = contextForSolver(self, solver)
             % Return the coefficient context for this EVP and solver.
             %
-            % The solver supplies medium and discretization fields; the EVP
-            % supplies physical constants.
+            % The returned struct starts with the solver context, including
+            % fields such as `N2`, `dzLogN2`, `zDomain`, and `coordinateKind`.
+            % The EVP then adds physical constants as `f0` and `g`. Operator
+            % coefficients, boundary rows, inner-product weights, and
+            % normalization rules read this context but do not own the solver
+            % discretization.
             %
             % - Topic: Assemble EVPs
             % - Declaration: context = contextForSolver(evp,solver)
@@ -228,12 +318,14 @@ classdef IMEigenvalueProblem
         function selection = selectModes(self, eigenvalues, nModes, context)
             % Select and label retained eigenmodes.
             %
-            % Boundary conditions provide boundary-mode index metadata.
-            % `nNullModes` provides expected zero-eigenvalue null modes. The
-            % selected modes are ordered as boundary modes, null modes, then
-            % positive interior modes.
+            % The index policy first classifies candidate eigenvalues using
+            % boundary metadata, expected null modes, and positive interior
+            % modes. Retained modes are ordered as boundary-index modes, true
+            % null modes, then positive interior modes. Their labels define
+            % the `modeNumber` metadata carried by the resulting `IMBasisSet`.
             %
-            % - Topic: Assemble EVPs
+            % - Topic: Select retained modes
+            % - Topic: Developer topics
             % - Declaration: selection = selectModes(evp,eigenvalues,nModes,context)
             % - Parameter eigenvalues: candidate generalized-EVP eigenvalues
             % - Parameter nModes: number of modes to retain
@@ -246,7 +338,14 @@ classdef IMEigenvalueProblem
         function index = classifyEigenvalues(self, eigenvalues, context)
             % Classify eigenvalues using this EVP's index metadata.
             %
-            % - Topic: Assemble EVPs
+            % Classification reports the detected boundary-index directions,
+            % true null modes, positive interior modes, and any validation
+            % mismatch. Negative boundary directions can be expected by the
+            % declared boundary policy; they are not automatically treated as
+            % numerical failures.
+            %
+            % - Topic: Select retained modes
+            % - Topic: Developer topics
             % - Declaration: index = classifyEigenvalues(evp,eigenvalues,context)
             % - Parameter eigenvalues: generalized-EVP eigenvalues
             % - Parameter context: solver or analytical context
@@ -281,14 +380,29 @@ classdef IMEigenvalueProblem
         function evp = waveModesAtWavenumber(options)
             % Create the wave-mode `G` EVP at fixed horizontal wavenumber.
             %
-            % The physical-coordinate strong form is
-            % $$G_{zz}-K^2G=\lambda(f_0^2-N^2)G/g$$.
+            % This factory fixes the horizontal wavenumber `K=options.k` and
+            % solves the physical-coordinate strong form
+            % $$G_{zz}-K^2G=\lambda(f_0^2-N^2)G/g,\qquad h=1/\lambda.$$
+            % The solved variable is `G`; the linked diagnostic variable is
+            % $$F=hG_z.$$
+            % The factory stores `parameters.k`, uses the default
+            % `Normalization.kConstant` normalization, and places the supplied
+            % location-free boundary laws on the surface and bottom. Omitted
+            % boundaries are rigid `G=0` boundaries.
             %
-            % - Topic: Create EVPs
+            % ```matlab
+            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-500 0], nEVP=48);
+            % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=1e-4);
+            % basisSet = solver.solveEVP(evp, nModes=6);
+            % h = basisSet.h;
+            % modeNumber = basisSet.modeNumber;
+            % ```
+            %
+            % - Topic: Create standard EVPs
             % - Declaration: evp = IMEigenvalueProblem.waveModesAtWavenumber(options)
-            % - Parameter options.k: horizontal wavenumber
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.k: horizontal wavenumber in radians per meter
+            % - Parameter options.f0: Coriolis parameter in radians per second
+            % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.surfaceBoundary: location-free surface boundary law
             % - Parameter options.bottomBoundary: location-free bottom boundary law
             % - Returns evp: fixed-wavenumber wave-mode `G` EVP
@@ -325,14 +439,31 @@ classdef IMEigenvalueProblem
         function evp = waveModesAtFrequency(options)
             % Create the wave-mode `G` EVP at fixed frequency.
             %
-            % The physical-coordinate strong form is
-            % $$G_{zz}=\lambda(\omega^2-N^2)G/g$$.
+            % This factory fixes the frequency `omega=options.omega` and
+            % solves the physical-coordinate strong form
+            % $$G_{zz}=\lambda(\omega^2-N^2)G/g,\qquad h=1/\lambda.$$
+            % The solved variable is `G`; the linked diagnostic variable is
+            % $$F=hG_z.$$
+            % The factory stores `parameters.omega`, uses the default
+            % `Normalization.omegaConstant` normalization, and places the
+            % supplied location-free boundary laws on the surface and bottom.
+            % Omitted boundaries are rigid `G=0` boundaries. The `kConstant`
+            % normalization remains available for fixed-frequency basis sets
+            % and includes boundary trace terms when the boundary laws provide
+            % them.
             %
-            % - Topic: Create EVPs
+            % ```matlab
+            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-500 0], nEVP=48);
+            % evp = IMEigenvalueProblem.waveModesAtFrequency(omega=1.2e-3, f0=1e-4);
+            % basisSet = solver.solveEVP(evp, nModes=6);
+            % F = basisSet.F(linspace(-500, 0, 100).');
+            % ```
+            %
+            % - Topic: Create standard EVPs
             % - Declaration: evp = IMEigenvalueProblem.waveModesAtFrequency(options)
             % - Parameter options.omega: fixed frequency in radians per second
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.f0: Coriolis parameter in radians per second
+            % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.surfaceBoundary: location-free surface boundary law
             % - Parameter options.bottomBoundary: location-free bottom boundary law
             % - Returns evp: fixed-frequency wave-mode `G` EVP
@@ -370,14 +501,27 @@ classdef IMEigenvalueProblem
         function evp = hydrostaticGModes(options)
             % Create the hydrostatic `G`-mode EVP.
             %
-            % Hydrostatic `G` modes satisfy
-            % $$G_{zz}=-\lambda N^2G/g$$ and have no nontrivial null `G`
-            % mode.
+            % Hydrostatic `G` modes are the zero-frequency wave-mode problem
+            % written directly as
+            % $$G_{zz}=-\lambda N^2G/g,\qquad h=1/\lambda.$$
+            % The solved variable is `G`; the linked diagnostic variable is
+            % $$F=hG_z.$$
+            % There is no nontrivial null `G` mode, so retained modes are the
+            % boundary-index modes declared by the boundary laws followed by
+            % positive interior baroclinic modes. The default normalization is
+            % `Normalization.geostrophic`.
             %
-            % - Topic: Create EVPs
+            % ```matlab
+            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
+            % evp = IMEigenvalueProblem.hydrostaticGModes();
+            % basisSet = solver.solveEVP(evp, nModes=4);
+            % G = basisSet.G(linspace(-1000, 0, 128).');
+            % ```
+            %
+            % - Topic: Create standard EVPs
             % - Declaration: evp = IMEigenvalueProblem.hydrostaticGModes(options)
-            % - Parameter options.f0: Coriolis parameter
-            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.f0: Coriolis parameter in radians per second
+            % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.surfaceBoundary: location-free surface boundary law
             % - Parameter options.bottomBoundary: location-free bottom boundary law
             % - Returns evp: zero-frequency hydrostatic `G` EVP
@@ -410,11 +554,25 @@ classdef IMEigenvalueProblem
             % Create the geostrophic hydrostatic `F`-mode EVP.
             %
             % The physical-coordinate strong form is
-            % $$F_{zz}-(\partial_z\log N^2)F_z=-\lambda N^2F/g$$.
+            % $$F_{zz}-(\partial_z\log N^2)F_z=-\lambda N^2F/g,\qquad h=1/\lambda.$$
+            % The solved variable is `F`; the linked diagnostic variable is
+            % $$G=-gN^{-2}F_z.$$
+            % This EVP declares one true null mode,
+            % $$F_0(z)=1,\qquad G_0(z)=0,$$
+            % so the barotropic mode is retained before the positive
+            % baroclinic modes. The default normalization is
+            % `Normalization.geostrophic`.
             %
-            % - Topic: Create EVPs
+            % ```matlab
+            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
+            % evp = IMEigenvalueProblem.hydrostaticFModes();
+            % basisSet = solver.solveEVP(evp, nModes=4);
+            % F = basisSet.F(linspace(-1000, 0, 128).');
+            % ```
+            %
+            % - Topic: Create standard EVPs
             % - Declaration: evp = IMEigenvalueProblem.hydrostaticFModes(options)
-            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.surfaceBoundary: location-free surface boundary law
             % - Parameter options.bottomBoundary: location-free bottom boundary law
             % - Returns evp: hydrostatic `F` EVP
@@ -444,9 +602,17 @@ classdef IMEigenvalueProblem
         end
 
         function policy = partialDepthPEIndexPolicy(options)
-            % Return the manuscript partial-depth PE index policy.
+            % Return the partial-depth potential-energy index policy.
             %
-            % - Topic: Create EVPs
+            % Partial-depth potential-energy forms can declare endpoint
+            % directions through active boundary metadata. With
+            % `boundarySign="positive"`, endpoint contributions use the
+            % positive boundary convention. With `boundarySign="negative"`,
+            % endpoint contributions use the negative boundary convention and
+            % the resulting negative index directions are expected by the
+            % policy rather than treated as numerical failures.
+            %
+            % - Topic: Select retained modes
             % - Declaration: policy = IMEigenvalueProblem.partialDepthPEIndexPolicy(options)
             % - Parameter options.boundarySign: `"positive"` or `"negative"`
             % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`

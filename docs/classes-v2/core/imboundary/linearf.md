@@ -2,7 +2,7 @@
 layout: default
 title: linearF
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 20
 mathjax: true
 ---

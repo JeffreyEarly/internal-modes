@@ -2,7 +2,7 @@
 layout: default
 title: selectModes
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 22
 mathjax: true
 ---
@@ -30,7 +30,8 @@ Select and label retained eigenmodes.
 
 ## Discussion
 
-  Boundary conditions provide boundary-mode index metadata.
-  `nNullModes` provides expected zero-eigenvalue null modes. The
-  selected modes are ordered as boundary modes, null modes, then
-  positive interior modes.
+  The index policy first classifies candidate eigenvalues using
+  boundary metadata, expected null modes, and positive interior
+  modes. Retained modes are ordered as boundary-index modes, true
+  null modes, then positive interior modes. Their labels define
+  the `modeNumber` metadata carried by the resulting `IMBasisSet`.

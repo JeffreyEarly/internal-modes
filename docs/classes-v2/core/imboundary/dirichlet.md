@@ -2,7 +2,7 @@
 layout: default
 title: dirichlet
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 7
 mathjax: true
 ---

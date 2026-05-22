@@ -2,7 +2,7 @@
 layout: default
 title: xReference
 parent: IMSolverSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 11
 mathjax: true
 ---

@@ -2,7 +2,7 @@
 layout: default
 title: partialWindowModes
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 26
 mathjax: true
 ---

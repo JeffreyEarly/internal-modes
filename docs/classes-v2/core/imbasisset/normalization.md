@@ -2,7 +2,7 @@
 layout: default
 title: normalization
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 21
 mathjax: true
 ---

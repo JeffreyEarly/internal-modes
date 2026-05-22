@@ -2,7 +2,7 @@
 layout: default
 title: boundaryModeNumber
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 4
 mathjax: true
 ---

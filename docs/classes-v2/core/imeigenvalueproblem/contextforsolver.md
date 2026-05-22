@@ -2,7 +2,7 @@
 layout: default
 title: contextForSolver
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 5
 mathjax: true
 ---
@@ -26,5 +26,9 @@ Return the coefficient context for this EVP and solver.
 
 ## Discussion
 
-  The solver supplies medium and discretization fields; the EVP
-  supplies physical constants.
+  The returned struct starts with the solver context, including
+  fields such as `N2`, `dzLogN2`, `zDomain`, and `coordinateKind`.
+  The EVP then adds physical constants as `f0` and `g`. Operator
+  coefficients, boundary rows, inner-product weights, and
+  normalization rules read this context but do not own the solver
+  discretization.

@@ -2,7 +2,7 @@
 layout: default
 title: IMSolverWKBSpectral
 parent: IMSolverWKBSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 1
 mathjax: true
 ---

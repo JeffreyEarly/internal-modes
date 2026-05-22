@@ -2,7 +2,7 @@
 layout: default
 title: defaultNormalization
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 6
 mathjax: true
 ---
@@ -16,5 +16,6 @@ Natural default normalization for this EVP.
 
 ## Discussion
 
-  Empty means the EVP does not declare a problem-specific default,
-  and basis sets should use the package fallback.
+  This is a `Normalization` value or `[]`. Empty means the EVP does
+  not declare a problem-specific default and the basis-set layer may
+  use its package fallback.

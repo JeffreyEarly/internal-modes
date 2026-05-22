@@ -2,7 +2,7 @@
 layout: default
 title: innerWeights
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 14
 mathjax: true
 ---
@@ -16,6 +16,9 @@ Inner-product weights for `F` and `G`.
 
 ## Discussion
 
-  Each field stores the interior weight in
-  $$\int w(z)X_i(z)X_j(z)\,dz$$ for variable `F` or `G`. Boundary
-  trace terms are stored on boundary conditions.
+  `innerWeights.F` and `innerWeights.G` are function handles with
+  signature `w = weight(z,ctx)`. Each handle returns the interior
+  weight in
+  $$\langle X_i,X_j\rangle_w=\int w(z)X_i(z)X_j(z)\,dz.$$
+  Boundary trace terms belong to the boundary conditions so that each
+  normalization can include the same endpoint convention as the EVP.

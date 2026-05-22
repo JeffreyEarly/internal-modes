@@ -2,7 +2,7 @@
 layout: default
 title: Txx
 parent: IMSolverSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 4
 mathjax: true
 ---

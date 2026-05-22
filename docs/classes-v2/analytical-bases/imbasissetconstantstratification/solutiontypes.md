@@ -2,7 +2,7 @@
 layout: default
 title: solutionTypes
 parent: IMBasisSetConstantStratification
-grand_parent: Classes
+grand_parent: Analytical bases
 nav_order: 4
 mathjax: true
 ---

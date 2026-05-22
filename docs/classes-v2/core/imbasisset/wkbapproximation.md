@@ -2,7 +2,7 @@
 layout: default
 title: wkbApproximation
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 30
 mathjax: true
 ---

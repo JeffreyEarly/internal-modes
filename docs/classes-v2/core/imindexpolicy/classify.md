@@ -2,7 +2,7 @@
 layout: default
 title: classify
 parent: IMIndexPolicy
-grand_parent: Classes
+grand_parent: Core
 nav_order: 3
 mathjax: true
 ---

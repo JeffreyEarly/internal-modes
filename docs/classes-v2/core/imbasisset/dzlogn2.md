@@ -2,7 +2,7 @@
 layout: default
 title: dzLogN2
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 7
 mathjax: true
 ---

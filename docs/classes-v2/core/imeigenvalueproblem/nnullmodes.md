@@ -2,7 +2,7 @@
 layout: default
 title: nNullModes
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 16
 mathjax: true
 ---
@@ -16,7 +16,7 @@ Number of true null modes.
 
 ## Discussion
 
-  Null modes are zero-eigenvalue modes selected after boundary
-  modes and before positive interior modes. In the hydrostatic `F`
-  EVP, this is the depth-uniform mode with $$F_0(z)=1$$ and
-  $$G_0(z)=0$$.
+  Null modes are genuine zero-eigenvalue modes selected after
+  boundary-index modes and before positive interior modes. In the
+  hydrostatic `F` EVP, this is the depth-uniform barotropic mode
+  $$F_0(z)=1,\qquad G_0(z)=0.$$

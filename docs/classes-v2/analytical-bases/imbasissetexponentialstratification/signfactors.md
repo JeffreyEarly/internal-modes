@@ -2,7 +2,7 @@
 layout: default
 title: signFactors
 parent: IMBasisSetExponentialStratification
-grand_parent: Classes
+grand_parent: Analytical bases
 nav_order: 8
 mathjax: true
 ---

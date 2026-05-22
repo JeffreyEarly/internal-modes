@@ -2,7 +2,7 @@
 layout: default
 title: scalarInnerProductTerms
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 27
 mathjax: true
 ---

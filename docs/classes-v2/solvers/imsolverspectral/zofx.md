@@ -2,7 +2,7 @@
 layout: default
 title: zOfX
 parent: IMSolverSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 14
 mathjax: true
 ---

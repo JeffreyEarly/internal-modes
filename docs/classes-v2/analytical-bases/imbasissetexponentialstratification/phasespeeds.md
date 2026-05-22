@@ -2,7 +2,7 @@
 layout: default
 title: phaseSpeeds
 parent: IMBasisSetExponentialStratification
-grand_parent: Classes
+grand_parent: Analytical bases
 nav_order: 6
 mathjax: true
 ---

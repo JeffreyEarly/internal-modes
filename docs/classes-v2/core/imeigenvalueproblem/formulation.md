@@ -2,7 +2,7 @@
 layout: default
 title: formulation
 parent: IMEigenvalueProblem
-grand_parent: Classes
+grand_parent: Core
 nav_order: 8
 mathjax: true
 ---

@@ -2,7 +2,7 @@
 layout: default
 title: expectedPositiveCount
 parent: IMIndexPolicy
-grand_parent: Classes
+grand_parent: Core
 nav_order: 6
 mathjax: true
 ---

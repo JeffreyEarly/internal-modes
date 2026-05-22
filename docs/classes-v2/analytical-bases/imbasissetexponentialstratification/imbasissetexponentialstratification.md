@@ -2,7 +2,7 @@
 layout: default
 title: IMBasisSetExponentialStratification
 parent: IMBasisSetExponentialStratification
-grand_parent: Classes
+grand_parent: Analytical bases
 nav_order: 1
 mathjax: true
 ---

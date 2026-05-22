@@ -2,7 +2,7 @@
 layout: default
 title: terms
 parent: IMOperator
-grand_parent: Classes
+grand_parent: Core
 nav_order: 10
 mathjax: true
 ---

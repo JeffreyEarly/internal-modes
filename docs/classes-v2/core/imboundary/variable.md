@@ -2,7 +2,7 @@
 layout: default
 title: variable
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 29
 mathjax: true
 ---

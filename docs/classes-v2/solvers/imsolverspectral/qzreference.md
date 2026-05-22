@@ -2,7 +2,7 @@
 layout: default
 title: qzReference
 parent: IMSolverSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 8
 mathjax: true
 ---

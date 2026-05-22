@@ -2,7 +2,7 @@
 layout: default
 title: observationProjection
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 24
 mathjax: true
 ---

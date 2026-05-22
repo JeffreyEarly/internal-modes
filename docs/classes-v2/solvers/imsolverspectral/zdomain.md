@@ -2,7 +2,7 @@
 layout: default
 title: zDomain
 parent: IMSolverSpectral
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 12
 mathjax: true
 ---

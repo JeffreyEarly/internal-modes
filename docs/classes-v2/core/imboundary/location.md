@@ -2,7 +2,7 @@
 layout: default
 title: location
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 22
 mathjax: true
 ---

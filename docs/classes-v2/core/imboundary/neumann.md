@@ -2,7 +2,7 @@
 layout: default
 title: neumann
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 23
 mathjax: true
 ---

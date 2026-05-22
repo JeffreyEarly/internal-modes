@@ -2,7 +2,7 @@
 layout: default
 title: Tx
 parent: IMSolverFiniteDifference
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 3
 mathjax: true
 ---

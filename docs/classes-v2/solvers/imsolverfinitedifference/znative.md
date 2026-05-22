@@ -2,7 +2,7 @@
 layout: default
 title: zNative
 parent: IMSolverFiniteDifference
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 9
 mathjax: true
 ---

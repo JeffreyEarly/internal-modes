@@ -2,7 +2,7 @@
 layout: default
 title: expectedNegativeCount
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 9
 mathjax: true
 ---

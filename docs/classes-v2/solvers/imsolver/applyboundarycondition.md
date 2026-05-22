@@ -2,7 +2,7 @@
 layout: default
 title: applyBoundaryCondition
 parent: IMSolver
-grand_parent: Classes
+grand_parent: Solvers
 nav_order: 3
 mathjax: true
 ---

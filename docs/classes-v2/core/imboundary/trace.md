@@ -2,7 +2,7 @@
 layout: default
 title: trace
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 28
 mathjax: true
 ---

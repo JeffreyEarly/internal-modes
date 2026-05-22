@@ -2,7 +2,7 @@
 layout: default
 title: innerProductTerm
 parent: IMBoundary
-grand_parent: Classes
+grand_parent: Core
 nav_order: 17
 mathjax: true
 ---

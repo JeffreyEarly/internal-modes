@@ -2,7 +2,7 @@
 layout: default
 title: constantStratification
 parent: IMBasisSet
-grand_parent: Classes
+grand_parent: Core
 nav_order: 5
 mathjax: true
 ---
