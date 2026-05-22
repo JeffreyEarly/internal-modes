@@ -597,13 +597,13 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(selection.index.zeroCount, 1)
         end
 
-        function hydrostaticFModeEVPDeclaresNullMode(testCase)
+        function hydrostaticFModeEVPDeclaresBarotropicMode(testCase)
             [~, ~, ~, ~, g] = testCase.profile();
             evp = IMEigenvalueProblem.hydrostaticFModes(g=g);
 
             index = evp.classifyEigenvalues([0; 1; 2; 3], struct());
 
-            testCase.verifyEqual(evp.nNullModes, 1)
+            testCase.verifyTrue(evp.hasBarotropicMode)
             testCase.verifyEqual(evp.indexValidationMode, "warning")
             testCase.verifyEqual(index.expectedZeroCount, 1)
             testCase.verifyEqual(index.zeroCount, 1)

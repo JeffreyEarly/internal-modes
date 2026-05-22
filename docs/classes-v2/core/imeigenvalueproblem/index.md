@@ -80,8 +80,8 @@ h = basisSet.h;
   + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named modal normalization rules.
   + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Stored factory-specific physical inputs.
 + Select retained modes
+  + [`hasBarotropicMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/hasbarotropicmode.html) Whether the EVP declares the barotropic mode.
   + [`indexValidationMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/indexvalidationmode.html) Index validation behavior.
-  + [`nNullModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/nnullmodes.html) Number of true null modes.
   + [`partialDepthPEIndexPolicy`](/internal-modes/classes-v2/core/imeigenvalueproblem/partialdepthpeindexpolicy.html) Return the partial-depth potential-energy index policy.
 
 

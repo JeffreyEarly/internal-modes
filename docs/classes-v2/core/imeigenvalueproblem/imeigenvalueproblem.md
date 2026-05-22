@@ -30,7 +30,7 @@ Create a physical-coordinate EVP descriptor.
 + `options.defaultNormalization`  natural default normalization for this EVP
 + `options.boundaryConditions`  placed boundary conditions
 + `options.hFromEigenvalue`  equivalent-depth conversion
-+ `options.nNullModes`  number of true null modes
++ `options.hasBarotropicMode`  whether the EVP declares the barotropic mode
 + `options.indexValidationMode`  `"error"`, `"warning"`, or `"none"`
 + `options.parameters`  stored factory-specific physical inputs
 

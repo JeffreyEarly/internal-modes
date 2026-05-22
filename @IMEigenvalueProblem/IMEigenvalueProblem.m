@@ -160,22 +160,24 @@ classdef IMEigenvalueProblem
     end
 
     properties (SetAccess = private)
-        % Number of true null modes.
+        % Whether the EVP declares the barotropic mode.
         %
-        % Null modes are genuine zero-eigenvalue modes selected after
-        % boundary-index modes and before positive interior modes. In the
-        % hydrostatic `F` EVP, this is the depth-uniform barotropic mode
+        % When `true`, the mode-index policy expects the depth-uniform
+        % zero-eigenvalue barotropic mode
         % $$F_0(z)=1,\qquad G_0(z)=0.$$
+        % The barotropic mode is selected after boundary-index modes and
+        % before positive baroclinic modes. Hydrostatic `F` modes declare this
+        % mode; wave-mode and hydrostatic `G` EVPs do not.
         %
         % - Topic: Select retained modes
-        nNullModes = 0
+        hasBarotropicMode = false
 
         % Index validation behavior.
         %
         % Values are `"error"`, `"warning"`, or `"none"`. The mode-index
-        % policy uses this value when the observed boundary, null, or interior
-        % counts differ from the counts declared by the EVP and its boundary
-        % conditions.
+        % policy uses this value when the observed boundary, barotropic, or
+        % interior counts differ from the counts declared by the EVP and its
+        % boundary conditions.
         %
         % - Topic: Select retained modes
         indexValidationMode = "none"
@@ -229,7 +231,7 @@ classdef IMEigenvalueProblem
             % - Parameter options.defaultNormalization: natural default normalization for this EVP
             % - Parameter options.boundaryConditions: placed boundary conditions
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
-            % - Parameter options.nNullModes: number of true null modes
+            % - Parameter options.hasBarotropicMode: whether the EVP declares the barotropic mode
             % - Parameter options.indexValidationMode: `"error"`, `"warning"`, or `"none"`
             % - Parameter options.parameters: stored factory-specific physical inputs
             % - Returns evp: initialized EVP descriptor
@@ -245,7 +247,7 @@ classdef IMEigenvalueProblem
                 options.defaultNormalization = []
                 options.boundaryConditions = IMBoundary.empty(0,1)
                 options.hFromEigenvalue = @(lambda) 1 ./ lambda
-                options.nNullModes (1,1) double {mustBeInteger, mustBeNonnegative} = 0
+                options.hasBarotropicMode (1,1) logical = false
                 options.indexValidationMode {mustBeTextScalar} = "none"
                 options.parameters struct = struct()
             end
@@ -262,7 +264,7 @@ classdef IMEigenvalueProblem
             self.boundaryConditions = options.boundaryConditions(:);
             self.validateBoundaryConditions();
             self.hFromEigenvalue = options.hFromEigenvalue;
-            self.nNullModes = options.nNullModes;
+            self.hasBarotropicMode = options.hasBarotropicMode;
             self.indexValidationMode = IMEigenvalueProblem.validateIndexValidationMode(options.indexValidationMode);
             self.parameters = options.parameters;
             metadataFieldsToRemove = intersect(fieldnames(self.parameters), {'f0'; 'g'});
@@ -319,10 +321,11 @@ classdef IMEigenvalueProblem
             % Select and label retained eigenmodes.
             %
             % The index policy first classifies candidate eigenvalues using
-            % boundary metadata, expected null modes, and positive interior
-            % modes. Retained modes are ordered as boundary-index modes, true
-            % null modes, then positive interior modes. Their labels define
-            % the `modeNumber` metadata carried by the resulting `IMBasisSet`.
+            % boundary metadata, the optional barotropic mode, and positive
+            % interior modes. Retained modes are ordered as boundary-index
+            % modes, the barotropic mode when declared, then positive
+            % baroclinic modes. Their labels define the `modeNumber` metadata
+            % carried by the resulting `IMBasisSet`.
             %
             % - Topic: Select retained modes
             % - Topic: Developer topics
@@ -339,10 +342,10 @@ classdef IMEigenvalueProblem
             % Classify eigenvalues using this EVP's index metadata.
             %
             % Classification reports the detected boundary-index directions,
-            % true null modes, positive interior modes, and any validation
-            % mismatch. Negative boundary directions can be expected by the
-            % declared boundary policy; they are not automatically treated as
-            % numerical failures.
+            % the optional barotropic direction, positive interior modes, and
+            % any validation mismatch. Negative boundary directions can be
+            % expected by the declared boundary policy; they are not
+            % automatically treated as numerical failures.
             %
             % - Topic: Select retained modes
             % - Topic: Developer topics
@@ -358,7 +361,7 @@ classdef IMEigenvalueProblem
     methods (Access = private)
         function policy = indexPolicy(self)
             policy = IMIndexPolicy.fromBoundaryConditions(self.boundaryConditions, ...
-                expectedZeroCount=self.nNullModes, validationMode=self.indexValidationMode);
+                expectedZeroCount=double(self.hasBarotropicMode), validationMode=self.indexValidationMode);
         end
 
         function validateBoundaryConditions(self)
@@ -557,7 +560,7 @@ classdef IMEigenvalueProblem
             % $$F_{zz}-(\partial_z\log N^2)F_z=-\lambda N^2F/g,\qquad h=1/\lambda.$$
             % The solved variable is `F`; the linked diagnostic variable is
             % $$G=-gN^{-2}F_z.$$
-            % This EVP declares one true null mode,
+            % This EVP declares the barotropic mode,
             % $$F_0(z)=1,\qquad G_0(z)=0,$$
             % so the barotropic mode is retained before the positive
             % baroclinic modes. The default normalization is
@@ -593,7 +596,7 @@ classdef IMEigenvalueProblem
                 g=g, ...
                 leftOperator=left, rightOperator=right, innerWeights=innerWeights, boundaryConditions=boundaryConditions, ...
                 defaultNormalization=Normalization.geostrophic, ...
-                hFromEigenvalue=@(lambda) 1 ./ lambda, nNullModes=1, indexValidationMode="warning");
+                hFromEigenvalue=@(lambda) 1 ./ lambda, hasBarotropicMode=true, indexValidationMode="warning");
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
             evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);

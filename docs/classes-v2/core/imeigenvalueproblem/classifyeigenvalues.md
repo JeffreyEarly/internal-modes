@@ -30,7 +30,7 @@ Classify eigenvalues using this EVP's index metadata.
 ## Discussion
 
   Classification reports the detected boundary-index directions,
-  true null modes, positive interior modes, and any validation
-  mismatch. Negative boundary directions can be expected by the
-  declared boundary policy; they are not automatically treated as
-  numerical failures.
+  the optional barotropic direction, positive interior modes, and
+  any validation mismatch. Negative boundary directions can be
+  expected by the declared boundary policy; they are not
+  automatically treated as numerical failures.

@@ -31,7 +31,8 @@ Select and label retained eigenmodes.
 ## Discussion
 
   The index policy first classifies candidate eigenvalues using
-  boundary metadata, expected null modes, and positive interior
-  modes. Retained modes are ordered as boundary-index modes, true
-  null modes, then positive interior modes. Their labels define
-  the `modeNumber` metadata carried by the resulting `IMBasisSet`.
+  boundary metadata, the optional barotropic mode, and positive
+  interior modes. Retained modes are ordered as boundary-index
+  modes, the barotropic mode when declared, then positive
+  baroclinic modes. Their labels define the `modeNumber` metadata
+  carried by the resulting `IMBasisSet`.

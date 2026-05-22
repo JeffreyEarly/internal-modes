@@ -3,7 +3,7 @@ layout: default
 title: indexValidationMode
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 
@@ -17,6 +17,6 @@ Index validation behavior.
 ## Discussion
 
   Values are `"error"`, `"warning"`, or `"none"`. The mode-index
-  policy uses this value when the observed boundary, null, or interior
-  counts differ from the counts declared by the EVP and its boundary
-  conditions.
+  policy uses this value when the observed boundary, barotropic, or
+  interior counts differ from the counts declared by the EVP and its
+  boundary conditions.

@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticFModes
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 11
+nav_order: 12
 mathjax: true
 ---
 
@@ -32,7 +32,7 @@ Create the geostrophic hydrostatic `F`-mode EVP.
   $$F_{zz}-(\partial_z\log N^2)F_z=-\lambda N^2F/g,\qquad h=1/\lambda.$$
   The solved variable is `F`; the linked diagnostic variable is
   $$G=-gN^{-2}F_z.$$
-  This EVP declares one true null mode,
+  This EVP declares the barotropic mode,
   $$F_0(z)=1,\qquad G_0(z)=0,$$
   so the barotropic mode is retained before the positive
   baroclinic modes. The default normalization is
