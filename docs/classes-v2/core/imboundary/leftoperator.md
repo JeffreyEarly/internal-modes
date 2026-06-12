@@ -3,7 +3,7 @@ layout: default
 title: leftOperator
 parent: IMBoundary
 grand_parent: Core
-nav_order: 19
+nav_order: 10
 mathjax: true
 ---
 

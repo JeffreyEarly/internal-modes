@@ -3,7 +3,7 @@ layout: default
 title: innerWeights
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 15
+nav_order: 17
 mathjax: true
 ---
 
@@ -20,5 +20,5 @@ Inner-product weights for `F` and `G`.
   signature `w = weight(z,ctx)`. Each handle returns the interior
   weight in
   $$\langle X_i,X_j\rangle_w=\int w(z)X_i(z)X_j(z)\,dz.$$
-  Boundary trace terms belong to the boundary conditions so that each
+  Endpoint contributions belong to the boundary laws so that each
   normalization can include the same endpoint convention as the EVP.

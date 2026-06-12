@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtFrequency
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 23
+nav_order: 27
 mathjax: true
 ---
 
@@ -40,7 +40,7 @@ Create the wave-mode `G` EVP at fixed frequency.
   supplied location-free boundary laws on the surface and bottom.
   Omitted boundaries are rigid `G=0` boundaries. The `kConstant`
   normalization remains available for fixed-frequency basis sets
-  and includes boundary trace terms when the boundary laws provide
+  and includes boundary weights when the boundary laws provide
   them.
 
   ```matlab

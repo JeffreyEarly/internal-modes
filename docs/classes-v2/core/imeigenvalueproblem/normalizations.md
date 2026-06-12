@@ -3,7 +3,7 @@ layout: default
 title: normalizations
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 18
+nav_order: 20
 mathjax: true
 ---
 

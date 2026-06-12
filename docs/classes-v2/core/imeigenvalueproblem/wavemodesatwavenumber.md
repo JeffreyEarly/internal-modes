@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtWavenumber
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 24
+nav_order: 28
 mathjax: true
 ---
 

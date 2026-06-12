@@ -8,4 +8,4 @@ permalink: /classes-v2/solvers
 mathjax: true
 ---
 
-Reference pages for solvers that assemble vertical eigenvalue problems, apply boundary conditions, solve the discrete system, and return normalized basis sets.
+Reference pages for solvers that assemble vertical eigenvalue problems, apply resolved endpoint laws, solve the discrete system, and return normalized basis sets.

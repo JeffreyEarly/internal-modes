@@ -3,7 +3,7 @@ layout: default
 title: selectModes
 parent: IMIndexPolicy
 grand_parent: Core
-nav_order: 14
+nav_order: 13
 mathjax: true
 ---
 

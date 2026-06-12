@@ -3,7 +3,7 @@ layout: default
 title: linearG
 parent: IMBoundary
 grand_parent: Core
-nav_order: 21
+nav_order: 12
 mathjax: true
 ---
 
@@ -25,14 +25,14 @@ Create a location-free linear `G` boundary law.
 + `options.e`  coefficient multiplying `G`
 
 ## Returns
-+ `boundary`  initialized linear `G` boundary condition
++ `boundary`  initialized linear `G` boundary law
 
 ## Discussion
 
-  When placed, the assembled boundary condition represents
+  When placed, the assembled boundary law represents
   $$-(eG-aG_z)=\lambda(bG-cG_z)/g$$. Supported pairwise cases
-  also declare compatible boundary inner-product terms. General
+  also declare compatible boundary weights. General
   unresolved coefficient patterns can still be solved, but
-  placing them warns because their inner-product contribution is
+  placing them warns because their endpoint contribution is
   unknown. The derivative $$G_z$$ always means
   $$\partial_z G$$ at either endpoint.

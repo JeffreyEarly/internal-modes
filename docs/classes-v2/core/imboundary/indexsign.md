@@ -3,7 +3,7 @@ layout: default
 title: indexSign
 parent: IMBoundary
 grand_parent: Core
-nav_order: 16
+nav_order: 9
 mathjax: true
 ---
 

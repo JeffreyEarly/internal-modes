@@ -3,7 +3,7 @@ layout: default
 title: rigid
 parent: IMBoundary
 grand_parent: Core
-nav_order: 27
+nav_order: 17
 mathjax: true
 ---
 
@@ -19,7 +19,7 @@ Create a location-free rigid boundary law.
  boundary = IMBoundary.rigid()
 ```
 ## Returns
-+ `boundary`  initialized rigid boundary condition
++ `boundary`  initialized rigid boundary law
 
 ## Discussion
 

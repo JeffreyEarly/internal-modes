@@ -3,18 +3,18 @@ layout: default
 title: variable
 parent: IMBoundary
 grand_parent: Core
-nav_order: 29
+nav_order: 18
 mathjax: true
 ---
 
 #  variable
 
-constrained by this boundary condition.
+constrained by this boundary law.
 
 
 ---
 
 ## Discussion
 
-  Location-free boundary conditions may use `"formulation"` as a
-  target placeholder. Placed boundary conditions use `"F"` or `"G"`.
+  Location-free laws may use `"formulation"` as a target placeholder.
+  Resolved laws use `"F"` or `"G"`.

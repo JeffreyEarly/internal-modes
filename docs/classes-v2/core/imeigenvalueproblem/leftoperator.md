@@ -3,7 +3,7 @@ layout: default
 title: leftOperator
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 16
+nav_order: 18
 mathjax: true
 ---
 

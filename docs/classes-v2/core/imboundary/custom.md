@@ -3,7 +3,7 @@ layout: default
 title: custom
 parent: IMBoundary
 grand_parent: Core
-nav_order: 6
+nav_order: 3
 mathjax: true
 ---
 
@@ -21,15 +21,15 @@ Create a custom location-free operator boundary law.
 ## Parameters
 + `options.left`  left-side boundary functional
 + `options.right`  right-side eigenvalue functional
-+ `options.innerProductTerms`  boundary inner-product terms
-+ `options.hasKnownInnerProductTerms`  true when the compatible boundary inner-product terms are known
++ `options.boundaryWeights`  endpoint weights implied by this law
++ `options.hasKnownBoundaryWeights`  true when the compatible boundary weights are known
 + `options.variable`  variable target, `"formulation"`, `"F"`, or `"G"`
 + `options.indexSign`  expected boundary-mode eigenvalue sign, `-1`, `0`, or `1`
 + `options.indexRank`  number of boundary-mode directions; currently must be `1` when `boundaryModeNumber` is supplied
 + `options.boundaryModeNumber`  explicit endpoint mode number, `-1` for surface or `-2` for bottom
 
 ## Returns
-+ `boundary`  initialized boundary condition
++ `boundary`  initialized boundary law
 
 ## Discussion
 
@@ -37,8 +37,8 @@ Create a custom location-free operator boundary law.
   the EVP factory places it. Both operators are written with the
   physical coordinate derivative $$\partial_z$$ at the endpoint.
 
-  `innerProductTerms` are optional boundary trace products
-  associated with the law. If a term is passed with an empty
-  location, it is placed at the resolved endpoint and receives
-  the endpoint orientation sign from Green's identity. Explicitly
-  located terms are treated as final and are not reoriented.
+  `boundaryWeights` are optional endpoint contributions associated
+  with the law. Location-free weights are placed at the endpoint
+  and receive the endpoint orientation sign from Green's identity.
+  Explicitly located weights must match the endpoint where the law
+  is resolved.

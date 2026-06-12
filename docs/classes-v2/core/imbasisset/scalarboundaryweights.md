@@ -1,15 +1,15 @@
 ---
 layout: default
-title: scalarInnerProductTerms
+title: scalarBoundaryWeights
 parent: IMBasisSet
 grand_parent: Core
 nav_order: 27
 mathjax: true
 ---
 
-#  scalarInnerProductTerms
+#  scalarBoundaryWeights
 
-Convert scalar endpoint weights to boundary inner-product terms.
+Convert scalar endpoint weights to boundary-weight objects.
 
 > Developer documentation: this item describes internal implementation details.
 
@@ -18,7 +18,7 @@ Convert scalar endpoint weights to boundary inner-product terms.
 
 ## Declaration
 ```matlab
- terms = IMBasisSet.scalarInnerProductTerms(variable,surfaceWeight,bottomWeight)
+ weights = IMBasisSet.scalarBoundaryWeights(variable,surfaceWeight,bottomWeight)
 ```
 ## Parameters
 + `variable`  variable name
@@ -26,6 +26,6 @@ Convert scalar endpoint weights to boundary inner-product terms.
 + `bottomWeight`  bottom endpoint weight
 
 ## Returns
-+ `terms`  boundary inner-product terms
++ `weights`  boundary-weight array
 
 ## Discussion

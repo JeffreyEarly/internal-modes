@@ -3,7 +3,7 @@ layout: default
 title: indexTolerance
 parent: IMIndexPolicy
 grand_parent: Core
-nav_order: 12
+nav_order: 11
 mathjax: true
 ---
 

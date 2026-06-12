@@ -279,8 +279,8 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             evpRigidTooFast = IMEigenvalueProblem.waveModesAtFrequency(omega=N0, g=g);
             evpNoSlipBottom = IMEigenvalueProblem.hydrostaticGModes(g=g, bottomBoundary=IMBoundary.noSlip());
             evpFreeBottom = IMEigenvalueProblem.hydrostaticGModes(g=g, bottomBoundary=IMBoundary.free());
-            evpActive = IMEigenvalueProblem.hydrostaticGModes(g=g);
-            evpActive.boundaryConditions(end+1,1) = IMBoundary.active(location="surface", variable="G", indexSign=1);
+            customSurface = IMBoundary.custom(left=IMOperator().plus(derivativeOrder=0));
+            evpCustomSurface = IMEigenvalueProblem.hydrostaticGModes(g=g, surfaceBoundary=customSurface);
 
             testCase.verifyError(@() IMBasisSet.exponentialStratification(evp=evpFreeSurfaceF, N0=N0, b=b, ...
                 zDomain=zDomain, nModes=nModes), "IMBasisSetExponentialStratification:UnsupportedBoundary")
@@ -290,7 +290,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
                 zDomain=zDomain, nModes=nModes), "IMBasisSetExponentialStratification:UnsupportedBoundary")
             testCase.verifyError(@() IMBasisSet.exponentialStratification(evp=evpFreeBottom, N0=N0, b=b, ...
                 zDomain=zDomain, nModes=nModes), "IMBasisSetExponentialStratification:UnsupportedBoundary")
-            testCase.verifyError(@() IMBasisSet.exponentialStratification(evp=evpActive, N0=N0, b=b, ...
+            testCase.verifyError(@() IMBasisSet.exponentialStratification(evp=evpCustomSurface, N0=N0, b=b, ...
                 zDomain=zDomain, nModes=nModes), "IMBasisSetExponentialStratification:UnsupportedBoundary")
         end
 

@@ -31,7 +31,7 @@ Build generalized-EVP matrices on a solver's native basis.
   merged solver/EVP context and returns the matrices for
   $$Aq=\lambda Bq.$$
   Interior rows come from the operator discretization. Boundary
-  rows are then replaced by the placed boundary conditions through
-  the solver, so a rigid `G` boundary imposes the trace row for
+  rows are then replaced by the resolved endpoint laws through
+  the solver, so a rigid `G` boundary imposes the endpoint-value row for
   `G=0` while active or free boundaries can also declare endpoint
   contributions used by normalization and mode indexing.

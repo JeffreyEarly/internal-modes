@@ -3,7 +3,7 @@ layout: default
 title: noSlip
 parent: IMBoundary
 grand_parent: Core
-nav_order: 24
+nav_order: 15
 mathjax: true
 ---
 
@@ -19,7 +19,7 @@ Create a location-free no-slip boundary law.
  boundary = IMBoundary.noSlip()
 ```
 ## Returns
-+ `boundary`  initialized no-slip boundary condition
++ `boundary`  initialized no-slip boundary law
 
 ## Discussion
 

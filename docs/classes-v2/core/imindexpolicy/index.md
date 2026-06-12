@@ -6,7 +6,7 @@ has_toc: false
 mathjax: true
 parent: Core
 grand_parent: Class documentation V2
-nav_order: 5
+nav_order: 6
 ---
 
 #  IMIndexPolicy
@@ -29,8 +29,7 @@ identifies a true null mode, and positive labels identify interior
 baroclinic modes.
 
 ```matlab
-boundaryConditions = IMBoundary.partialDepthPE(boundarySign="negative");
-policy = IMIndexPolicy.fromBoundaryConditions(boundaryConditions);
+policy = IMEigenvalueProblem.partialDepthPEIndexPolicy(boundarySign="negative");
 ```
 
 
@@ -40,7 +39,6 @@ policy = IMIndexPolicy.fromBoundaryConditions(boundaryConditions);
 + Create index policies
   + [`IMIndexPolicy`](/internal-modes/classes-v2/core/imindexpolicy/imindexpolicy.html) Create an index policy.
   + [`fixed`](/internal-modes/classes-v2/core/imindexpolicy/fixed.html) Create a policy with fixed expected negative and zero counts.
-  + [`fromBoundaryConditions`](/internal-modes/classes-v2/core/imindexpolicy/fromboundaryconditions.html) Create an index policy from boundary-condition index metadata.
   + [`fromBoundarySigns`](/internal-modes/classes-v2/core/imindexpolicy/fromboundarysigns.html) Create an index policy from active-boundary signs.
   + [`none`](/internal-modes/classes-v2/core/imindexpolicy/none.html) Create a policy that records but does not validate index counts.
 + Validate index counts

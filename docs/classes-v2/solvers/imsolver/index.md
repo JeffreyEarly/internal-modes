@@ -51,7 +51,7 @@ assembly.
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + [`applyBoundaryCondition`](/internal-modes/classes-v2/solvers/imsolver/applyboundarycondition.html) Apply a placed boundary condition to a matrix pair.
+  + [`applyEndpointLaw`](/internal-modes/classes-v2/solvers/imsolver/applyendpointlaw.html) Apply a resolved endpoint law to a matrix pair.
 
 
 ---

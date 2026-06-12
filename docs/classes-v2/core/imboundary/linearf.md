@@ -3,7 +3,7 @@ layout: default
 title: linearF
 parent: IMBoundary
 grand_parent: Core
-nav_order: 20
+nav_order: 11
 mathjax: true
 ---
 
@@ -25,14 +25,14 @@ Create a location-free linear `F` boundary law.
 + `options.d`  eigenvalue coefficient multiplying `F_z/N2`
 
 ## Returns
-+ `boundary`  initialized linear `F` boundary condition
++ `boundary`  initialized linear `F` boundary law
 
 ## Discussion
 
-  When placed, the assembled boundary condition represents
+  When placed, the assembled boundary law represents
   $$-(aF-bF_z/N^2)=\lambda(cF-dF_z/N^2)/g$$. Supported pairwise
-  cases also declare compatible boundary inner-product terms.
+  cases also declare compatible boundary weights.
   General unresolved coefficient patterns can still be solved,
-  but placing them warns because their inner-product contribution
+  but placing them warns because their endpoint contribution
   is unknown. The derivative $$F_z$$ always means
   $$\partial_z F$$ at either endpoint.

@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticFModes
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 12
+nav_order: 13
 mathjax: true
 ---
 

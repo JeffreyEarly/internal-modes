@@ -65,20 +65,24 @@ h = basisSet.h;
   + [`IMEigenvalueProblem`](/internal-modes/classes-v2/core/imeigenvalueproblem/imeigenvalueproblem.html) Create a physical-coordinate EVP descriptor.
 + Assemble EVPs
   + [`assemble`](/internal-modes/classes-v2/core/imeigenvalueproblem/assemble.html) Build generalized-EVP matrices on a solver's native basis.
-  + [`boundaryConditions`](/internal-modes/classes-v2/core/imeigenvalueproblem/boundaryconditions.html) Placed boundary-condition array.
+  + [`bottomBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomboundary.html) Bottom boundary law.
   + [`contextForSolver`](/internal-modes/classes-v2/core/imeigenvalueproblem/contextforsolver.html) Return the coefficient context for this EVP and solver.
   + [`leftOperator`](/internal-modes/classes-v2/core/imeigenvalueproblem/leftoperator.html) Left differential operator.
   + [`rightOperator`](/internal-modes/classes-v2/core/imeigenvalueproblem/rightoperator.html) Right differential operator.
+  + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface boundary law.
 + Inspect EVP metadata
+  + [`bottomWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomweights.html) Bottom endpoint weights implied by the bottom boundary law.
   + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization for this EVP.
   + [`f0`](/internal-modes/classes-v2/core/imeigenvalueproblem/f0.html) Coriolis parameter.
   + [`formulation`](/internal-modes/classes-v2/core/imeigenvalueproblem/formulation.html) Solved vertical-structure formulation.
   + [`g`](/internal-modes/classes-v2/core/imeigenvalueproblem/g.html) Gravitational acceleration.
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/imeigenvalueproblem/hfromeigenvalue.html) Equivalent-depth conversion function.
+  + [`innerProduct`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerproduct.html) Return the declared inner-product recipe for a variable.
   + [`innerWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerweights.html) Inner-product weights for `F` and `G`.
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
   + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named modal normalization rules.
   + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Stored factory-specific physical inputs.
+  + [`surfaceWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceweights.html) Surface endpoint weights implied by the surface boundary law.
 + Select retained modes
   + [`hasBarotropicMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/hasbarotropicmode.html) Whether the EVP declares the barotropic mode.
   + [`indexValidationMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/indexvalidationmode.html) Index validation behavior.

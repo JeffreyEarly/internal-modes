@@ -3,7 +3,7 @@ layout: default
 title: indexRank
 parent: IMBoundary
 grand_parent: Core
-nav_order: 15
+nav_order: 8
 mathjax: true
 ---
 

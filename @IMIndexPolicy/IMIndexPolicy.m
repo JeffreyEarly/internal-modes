@@ -8,8 +8,7 @@ classdef IMIndexPolicy
     % baroclinic modes.
     %
     % ```matlab
-    % boundaryConditions = IMBoundary.partialDepthPE(boundarySign="negative");
-    % policy = IMIndexPolicy.fromBoundaryConditions(boundaryConditions);
+    % policy = IMEigenvalueProblem.partialDepthPEIndexPolicy(boundarySign="negative");
     % ```
     %
     % - Topic: Create index policies
@@ -312,36 +311,6 @@ classdef IMIndexPolicy
                 expectedZeroCount=options.expectedZeroCount, validationMode=options.validationMode);
         end
 
-        function policy = fromBoundaryConditions(boundaryConditions, options)
-            % Create an index policy from boundary-condition index metadata.
-            %
-            % Placed boundary conditions contribute their negative and zero
-            % index counts. Conditions with unknown compatible inner-product
-            % terms do not contribute expected counts.
-            %
-            % - Topic: Create index policies
-            % - Declaration: policy = IMIndexPolicy.fromBoundaryConditions(boundaryConditions,options)
-            % - Parameter boundaryConditions: boundary-condition array
-            % - Parameter options.expectedZeroCount: additional expected zero count
-            % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`
-            % - Returns policy: initialized index policy
-            arguments
-                boundaryConditions (:,1) IMBoundary
-                options.expectedZeroCount (1,1) double {mustBeInteger, mustBeNonnegative} = 0
-                options.validationMode {mustBeTextScalar} = "error"
-            end
-
-            expectedNegativeCount = 0;
-            expectedZeroCount = options.expectedZeroCount;
-            boundaryModes = struct("modeNumber", {}, "indexSign", {});
-            for iBoundary = 1:length(boundaryConditions)
-                expectedNegativeCount = expectedNegativeCount + boundaryConditions(iBoundary).expectedNegativeCount();
-                expectedZeroCount = expectedZeroCount + boundaryConditions(iBoundary).expectedZeroCount();
-                boundaryModes = [boundaryModes; boundaryConditions(iBoundary).boundaryModeDescriptors()]; %#ok<AGROW>
-            end
-            policy = IMIndexPolicy(expectedNegativeCount=expectedNegativeCount, ...
-                expectedZeroCount=expectedZeroCount, validationMode=options.validationMode, boundaryModes=boundaryModes);
-        end
     end
 
     methods (Static, Access = private)

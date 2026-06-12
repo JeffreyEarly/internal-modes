@@ -250,30 +250,8 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
         end
 
         function surfaceBoundary = validateEVP(evp)
-            surfaceFamilies = strings(0,1);
-            bottomFamilies = strings(0,1);
-            for iBoundary = 1:length(evp.boundaryConditions)
-                boundaryCondition = evp.boundaryConditions(iBoundary);
-                if boundaryCondition.family == "active" || boundaryCondition.family == "partialDepthPE"
-                    error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
-                        "Exponential stratification does not support active analytical boundary modes.");
-                end
-                if boundaryCondition.variable ~= evp.formulation
-                    continue;
-                end
-                switch boundaryCondition.location
-                    case "surface"
-                        surfaceFamilies(end+1,1) = boundaryCondition.family;
-                    case "bottom"
-                        bottomFamilies(end+1,1) = boundaryCondition.family;
-                end
-            end
-            if length(surfaceFamilies) ~= 1 || length(bottomFamilies) ~= 1
-                error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                    "Exponential stratification requires exactly one placed surface and one placed bottom boundary.");
-            end
-            surfaceBoundary = surfaceFamilies(1);
-            bottomBoundary = bottomFamilies(1);
+            surfaceBoundary = evp.surfaceBoundary.family;
+            bottomBoundary = evp.bottomBoundary.family;
             if evp.formulation == "F"
                 if evp.name ~= "hydrostaticFModes"
                     error("IMBasisSetExponentialStratification:UnsupportedEVP", ...

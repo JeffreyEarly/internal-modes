@@ -74,8 +74,8 @@ G = basisSet.G(linspace(-1000,0,64).');
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + [`emptyInnerProductTerms`](/internal-modes/classes-v2/core/imbasisset/emptyinnerproductterms.html) Create an empty boundary inner-product-term structure.
-  + [`scalarInnerProductTerms`](/internal-modes/classes-v2/core/imbasisset/scalarinnerproductterms.html) Convert scalar endpoint weights to boundary inner-product terms.
+  + [`emptyBoundaryWeights`](/internal-modes/classes-v2/core/imbasisset/emptyboundaryweights.html) Create an empty boundary-weight array.
+  + [`scalarBoundaryWeights`](/internal-modes/classes-v2/core/imbasisset/scalarboundaryweights.html) Convert scalar endpoint weights to boundary-weight objects.
 
 
 ---

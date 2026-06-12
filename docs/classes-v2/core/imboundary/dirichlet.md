@@ -3,7 +3,7 @@ layout: default
 title: dirichlet
 parent: IMBoundary
 grand_parent: Core
-nav_order: 7
+nav_order: 4
 mathjax: true
 ---
 
@@ -19,7 +19,7 @@ Create a location-free homogeneous Dirichlet boundary law.
  boundary = IMBoundary.dirichlet()
 ```
 ## Returns
-+ `boundary`  initialized boundary condition
++ `boundary`  initialized boundary law
 
 ## Discussion
 

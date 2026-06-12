@@ -28,7 +28,8 @@ Create a physical-coordinate EVP descriptor.
 + `options.innerWeights`  interior inner-product weight handles for `F` and `G`
 + `options.normalizations`  named modal normalization handles
 + `options.defaultNormalization`  natural default normalization for this EVP
-+ `options.boundaryConditions`  placed boundary conditions
++ `options.surfaceBoundary`  surface boundary law
++ `options.bottomBoundary`  bottom boundary law
 + `options.hFromEigenvalue`  equivalent-depth conversion
 + `options.hasBarotropicMode`  whether the EVP declares the barotropic mode
 + `options.indexValidationMode`  `"error"`, `"warning"`, or `"none"`
@@ -42,7 +43,7 @@ Create a physical-coordinate EVP descriptor.
   The constructor is the low-level entry point for custom EVPs.
   Provide the solved `formulation`, the operators defining
   $$Aq=\lambda Bq,$$
-  the placed boundary conditions for that formulation, the
+  the surface and bottom boundary laws, the
   interior inner-product weights, and any normalizations that an
   `IMBasisSet` should expose. The standard factories are preferred
   for the built-in wave and hydrostatic problems because they set
@@ -54,5 +55,5 @@ Create a physical-coordinate EVP descriptor.
   right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
   evp = IMEigenvalueProblem(name="customG", formulation="G", ...
       leftOperator=left, rightOperator=right, ...
-      boundaryConditions=IMBoundary.conditions(formulation="G"));
+      surfaceBoundary=IMBoundary.rigid(), bottomBoundary=IMBoundary.rigid());
   ```

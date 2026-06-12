@@ -1,34 +1,34 @@
 classdef IMBoundary
-    % Describe an internal-mode boundary condition.
+    % Describe an internal-mode boundary law.
     %
-    % `IMBoundary` stores a mathematical boundary condition. A boundary can
-    % be location-free, such as `IMBoundary.free()`, or placed at a physical
-    % endpoint, such as `IMBoundary.free().at("surface",formulation="G")`.
-    % EVP factories normally accept location-free surface and bottom laws
-    % and place them through `IMBoundary.conditions(...)`.
+    % `IMBoundary` stores the physical boundary law supplied to an
+    % `IMEigenvalueProblem`. Standard EVPs keep one law at the surface and
+    % one law at the bottom. When an EVP is assembled, each law is resolved
+    % with the EVP formulation and endpoint to produce the operator row,
+    % endpoint weights, and mode-index metadata needed by the solver and
+    % basis-set layers.
     %
     % Boundary operators use the physical coordinate derivative
-    % $$\partial_z$$ at both endpoints. A boundary functional has the form
+    % $$\partial_z$$. A boundary functional has the form
     % $$\sum_p a_p(z_\ell)\partial_z^p u(z_\ell)$$ at endpoint
     % $$z_\ell$$; no outward-normal derivative sign is inserted at the
     % bottom.
     %
-    % Boundary inner-product terms are not boundary conditions. They are the
-    % boundary trace products added to modal inner products so the EVP
-    % remains orthogonal under the chosen boundary law. Endpoint orientation
-    % enters through Green's identity:
+    % Boundary weights are not boundary laws. They are endpoint products
+    % added to modal inner products so the EVP remains orthogonal under the
+    % chosen boundary law. Endpoint orientation enters through Green's
+    % identity:
     % $$s_\ell=+1$$ at the surface and $$s_\ell=-1$$ at the bottom, so a
     % generated term with coefficient $$c$$ contributes
     % $$s_\ell c\,u_i(z_\ell)v_j(z_\ell)$$.
     %
     % ```matlab
-    % boundaryConditions = IMBoundary.conditions(formulation="G", ...
-    %     surface=IMBoundary.free(), bottom=IMBoundary.rigid());
+    % evp = IMEigenvalueProblem.hydrostaticGModes( ...
+    %     surfaceBoundary=IMBoundary.free(), bottomBoundary=IMBoundary.rigid());
     % ```
     %
-    % - Topic: Create boundary conditions
-    % - Topic: Place boundary conditions
-    % - Topic: Inspect boundary conditions
+    % - Topic: Create boundary laws
+    % - Topic: Inspect boundary laws
     % - Topic: Developer topics
     % - Declaration: classdef IMBoundary
 
@@ -38,23 +38,23 @@ classdef IMBoundary
         % Examples include `"rigid"`, `"noSlip"`, `"free"`, `"linearF"`,
         % `"linearG"`, and `"custom"`.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         family = "custom"
 
         % Physical endpoint location.
         %
-        % Empty for location-free boundary conditions. Placed boundary
-        % conditions use `"surface"` or `"bottom"`.
+        % Empty for location-free boundary laws. Internally resolved laws
+        % use `"surface"` or `"bottom"`.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         location = ""
 
-        % Variable constrained by this boundary condition.
+        % Variable constrained by this boundary law.
         %
-        % Location-free boundary conditions may use `"formulation"` as a
-        % target placeholder. Placed boundary conditions use `"F"` or `"G"`.
+        % Location-free laws may use `"formulation"` as a target placeholder.
+        % Resolved laws use `"F"` or `"G"`.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         variable = "formulation"
 
         % Left-side boundary functional.
@@ -62,30 +62,31 @@ classdef IMBoundary
         % The assembled condition is `leftOperator = lambda rightOperator`
         % at the boundary location.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         leftOperator = IMOperator()
 
         % Right-side eigenvalue boundary functional.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         rightOperator = IMOperator()
 
-        % Boundary terms implied by this condition for modal inner products.
+        % Endpoint weights implied by this law for modal inner products.
         %
-        % Each term has an inner-product variable, physical location,
-        % coefficient, left trace, and right trace.
+        % Resolved endpoint laws store `IMBoundaryWeight` arrays. Each
+        % weight selects the inner product that receives the contribution
+        % and the endpoint factors used in the bilinear product.
         %
-        % - Topic: Inspect boundary conditions
-        innerProductTerms = IMBoundary.emptyInnerProductTerms()
+        % - Topic: Inspect boundary laws
+        boundaryWeights = IMBoundaryWeight.empty(0,1)
 
-        % True when the compatible boundary inner-product terms are known.
+        % True when the compatible boundary weights are known.
         %
-        % A condition can still assemble when this is false, but Gram
+        % A law can still assemble when this is false, but Gram
         % matrices, normalization, and index metadata may be incomplete for
         % boundary modes.
         %
-        % - Topic: Inspect boundary conditions
-        hasKnownInnerProductTerms = true
+        % - Topic: Inspect boundary laws
+        hasKnownBoundaryWeights = true
 
         % Sign of the boundary-mode eigenvalue contribution.
         %
@@ -93,12 +94,12 @@ classdef IMBoundary
         % branch. Negative signs also contribute to the expected negative
         % eigenvalue index.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         indexSign = 0
 
         % Rank of the boundary-mode eigenvalue contribution.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         indexRank = 0
 
         % Physical mode number for an endpoint boundary branch.
@@ -108,7 +109,7 @@ classdef IMBoundary
         % `-2`, and `NaN` means this condition does not declare a boundary
         % branch.
         %
-        % - Topic: Inspect boundary conditions
+        % - Topic: Inspect boundary laws
         boundaryModeNumber = NaN
     end
 
@@ -116,9 +117,9 @@ classdef IMBoundary
         coefficients = struct()
     end
 
-    methods
+    methods (Hidden)
         function boundary = at(self, location, options)
-            % Place a boundary condition at a physical endpoint.
+            % Resolve a boundary law at a physical endpoint.
             %
             % Location-free families such as `rigid`, `free`, and `noSlip`
             % resolve their variable-dependent formulas when placed. The
@@ -129,11 +130,12 @@ classdef IMBoundary
             % condition = IMBoundary.free().at("surface", formulation="G");
             % ```
             %
-            % - Topic: Place boundary conditions
+            % - Topic: Developer topics
+            % - Developer: true
             % - Declaration: boundary = at(boundary,location,options)
             % - Parameter location: `"surface"` or `"bottom"`
             % - Parameter options.formulation: EVP formulation, `"F"` or `"G"`
-            % - Returns boundary: placed boundary condition
+            % - Returns boundary: resolved boundary law
             arguments
                 self IMBoundary
                 location {mustBeTextScalar}
@@ -144,7 +146,7 @@ classdef IMBoundary
             if self.location ~= ""
                 if self.location ~= location
                     error("IMBoundary:AlreadyPlaced", ...
-                        "Boundary condition is already placed at ""%s"".", self.location);
+                        "Boundary law is already placed at ""%s"".", self.location);
                 end
                 boundary = self;
                 return;
@@ -156,7 +158,7 @@ classdef IMBoundary
             end
             if requestedVariable == "formulation"
                 error("IMBoundary:MissingVariable", ...
-                    "A location-free boundary condition must be placed with formulation=""F"" or formulation=""G"".");
+                    "A location-free boundary law must be placed with formulation=""F"" or formulation=""G"".");
             end
             formulation = IMBoundary.validateVariable(requestedVariable);
             variable = self.resolvedVariable(formulation);
@@ -182,14 +184,14 @@ classdef IMBoundary
                             boundary = IMBoundary(family="noSlip", location=location, variable="F", leftOperator=left);
                     end
                 case "free"
-                    innerProductTerm = IMBoundary.innerProductTerm("G", location, endpointSign, ...
-                        IMBoundary.trace("G"), IMBoundary.trace("G"));
+                    boundaryWeight = IMBoundaryWeight(innerProduct="G", location=location, ...
+                        coefficient=endpointSign, leftVariable="G", rightVariable="G");
                     switch variable
                         case "G"
                             left = IMOperator().plus(derivativeOrder=1);
                             right = IMOperator().plus(derivativeOrder=0);
                             boundary = IMBoundary(family="free", location=location, variable="G", ...
-                                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerm, ...
+                                leftOperator=left, rightOperator=right, boundaryWeights=boundaryWeight, ...
                                 indexSign=endpointSign, indexRank=1, ...
                                 boundaryModeNumber=IMBoundary.boundaryModeNumberForLocation(location));
                         case "F"
@@ -197,7 +199,7 @@ classdef IMBoundary
                                 .plus(derivativeOrder=0) ...
                                 .plus(coefficient=@(z,ctx) ctx.g./ctx.N2(z), derivativeOrder=1);
                             boundary = IMBoundary(family="free", location=location, variable="F", ...
-                                leftOperator=left, innerProductTerms=innerProductTerm);
+                                leftOperator=left, boundaryWeights=boundaryWeight);
                     end
                 case "dirichlet"
                     left = IMOperator().plus(derivativeOrder=0);
@@ -206,10 +208,10 @@ classdef IMBoundary
                     left = IMOperator().plus(derivativeOrder=1);
                     boundary = IMBoundary(family="neumann", location=location, variable=variable, leftOperator=left);
                 case "custom"
-                    innerProductTerms = IMBoundary.placeInnerProductTerms(self.innerProductTerms, location);
+                    boundaryWeights = IMBoundary.placeBoundaryWeights(self.boundaryWeights, location);
                     boundary = IMBoundary(family="custom", location=location, variable=variable, ...
                         leftOperator=self.leftOperator, rightOperator=self.rightOperator, ...
-                        innerProductTerms=innerProductTerms, hasKnownInnerProductTerms=self.hasKnownInnerProductTerms, ...
+                        boundaryWeights=boundaryWeights, hasKnownBoundaryWeights=self.hasKnownBoundaryWeights, ...
                         indexSign=self.indexSign, indexRank=self.indexRank, boundaryModeNumber=self.boundaryModeNumber);
                 case "linearF"
                     if formulation ~= "F"
@@ -227,13 +229,14 @@ classdef IMBoundary
             end
         end
 
-        function tf = hasInnerProductTerms(self)
-            % Return true when this condition contributes inner-product terms.
+        function tf = hasBoundaryWeights(self)
+            % Return true when this law contributes boundary weights.
             %
-            % - Topic: Inspect boundary conditions
-            % - Declaration: tf = hasInnerProductTerms(boundary)
-            % - Returns tf: true when boundary inner-product terms are present
-            tf = ~isempty(self.innerProductTerms);
+            % - Topic: Developer topics
+            % - Developer: true
+            % - Declaration: tf = hasBoundaryWeights(boundary)
+            % - Returns tf: true when boundary weights are present
+            tf = ~isempty(self.boundaryWeights);
         end
 
         function count = expectedNegativeCount(self)
@@ -242,10 +245,11 @@ classdef IMBoundary
             % Only conditions that declare an endpoint boundary mode
             % contribute expected index counts.
             %
-            % - Topic: Inspect boundary conditions
+            % - Topic: Developer topics
+            % - Developer: true
             % - Declaration: count = expectedNegativeCount(boundary)
             % - Returns count: expected negative count contribution
-            if ~self.hasKnownInnerProductTerms || isnan(self.boundaryModeNumber)
+            if ~self.hasKnownBoundaryWeights || isnan(self.boundaryModeNumber)
                 count = 0;
             elseif self.indexSign < 0
                 count = self.indexRank;
@@ -260,10 +264,11 @@ classdef IMBoundary
             % Only conditions that declare an endpoint boundary mode
             % contribute expected index counts.
             %
-            % - Topic: Inspect boundary conditions
+            % - Topic: Developer topics
+            % - Developer: true
             % - Declaration: count = expectedZeroCount(boundary)
             % - Returns count: expected zero count contribution
-            if ~self.hasKnownInnerProductTerms || isnan(self.boundaryModeNumber)
+            if ~self.hasKnownBoundaryWeights || isnan(self.boundaryModeNumber)
                 count = 0;
             elseif self.indexSign == 0
                 count = self.indexRank;
@@ -280,11 +285,12 @@ classdef IMBoundary
             % eigenvalue and the physical mode number are intentionally
             % separate concepts.
             %
-            % - Topic: Inspect boundary conditions
+            % - Topic: Developer topics
+            % - Developer: true
             % - Declaration: descriptors = boundaryModeDescriptors(boundary)
             % - Returns descriptors: structure array with `modeNumber` and `indexSign`
             descriptors = struct("modeNumber", {}, "indexSign", {});
-            if ~self.hasKnownInnerProductTerms || self.indexRank == 0 || isnan(self.boundaryModeNumber)
+            if ~self.hasKnownBoundaryWeights || self.indexRank == 0 || isnan(self.boundaryModeNumber)
                 return;
             end
             descriptors = struct("modeNumber", self.boundaryModeNumber, "indexSign", self.indexSign);
@@ -292,39 +298,14 @@ classdef IMBoundary
     end
 
     methods (Static)
-        function boundaryConditions = conditions(options)
-            % Place bottom and surface boundary conditions for one variable.
-            %
-            % The returned array is ordered bottom first and surface second,
-            % matching the usual vertical domain order.
-            %
-            % - Topic: Place boundary conditions
-            % - Declaration: boundaryConditions = IMBoundary.conditions(options)
-            % - Parameter options.formulation: EVP formulation, `"F"` or `"G"`
-            % - Parameter options.surface: location-free surface boundary law
-            % - Parameter options.bottom: location-free bottom boundary law
-            % - Returns boundaryConditions: placed boundary-condition array
-            arguments
-                options.formulation {mustBeTextScalar}
-                options.surface (1,1) IMBoundary
-                options.bottom (1,1) IMBoundary
-            end
-
-            variable = IMBoundary.validateVariable(options.formulation);
-            boundaryConditions = [
-                options.bottom.at("bottom", formulation=variable)
-                options.surface.at("surface", formulation=variable)
-            ];
-        end
-
         function boundary = dirichlet()
             % Create a location-free homogeneous Dirichlet boundary law.
             %
             % This constrains the EVP formulation when placed.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.dirichlet()
-            % - Returns boundary: initialized boundary condition
+            % - Returns boundary: initialized boundary law
             boundary = IMBoundary(family="dirichlet");
         end
 
@@ -333,9 +314,9 @@ classdef IMBoundary
             %
             % This constrains the EVP formulation when placed.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.neumann()
-            % - Returns boundary: initialized boundary condition
+            % - Returns boundary: initialized boundary law
             boundary = IMBoundary(family="neumann");
         end
 
@@ -346,28 +327,28 @@ classdef IMBoundary
             % the EVP factory places it. Both operators are written with the
             % physical coordinate derivative $$\partial_z$$ at the endpoint.
             %
-            % `innerProductTerms` are optional boundary trace products
-            % associated with the law. If a term is passed with an empty
-            % location, it is placed at the resolved endpoint and receives
-            % the endpoint orientation sign from Green's identity. Explicitly
-            % located terms are treated as final and are not reoriented.
+            % `boundaryWeights` are optional endpoint contributions associated
+            % with the law. Location-free weights are placed at the endpoint
+            % and receive the endpoint orientation sign from Green's identity.
+            % Explicitly located weights must match the endpoint where the law
+            % is resolved.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.custom(options)
             % - Parameter options.left: left-side boundary functional
             % - Parameter options.right: right-side eigenvalue functional
-            % - Parameter options.innerProductTerms: boundary inner-product terms
-            % - Parameter options.hasKnownInnerProductTerms: true when the compatible boundary inner-product terms are known
+            % - Parameter options.boundaryWeights: endpoint weights implied by this law
+            % - Parameter options.hasKnownBoundaryWeights: true when the compatible boundary weights are known
             % - Parameter options.variable: variable target, `"formulation"`, `"F"`, or `"G"`
             % - Parameter options.indexSign: expected boundary-mode eigenvalue sign, `-1`, `0`, or `1`
             % - Parameter options.indexRank: number of boundary-mode directions; currently must be `1` when `boundaryModeNumber` is supplied
             % - Parameter options.boundaryModeNumber: explicit endpoint mode number, `-1` for surface or `-2` for bottom
-            % - Returns boundary: initialized boundary condition
+            % - Returns boundary: initialized boundary law
             arguments
                 options.left IMOperator
                 options.right IMOperator = IMOperator()
-                options.innerProductTerms struct = IMBoundary.emptyInnerProductTerms()
-                options.hasKnownInnerProductTerms (1,1) logical = true
+                options.boundaryWeights IMBoundaryWeight = IMBoundaryWeight.empty(0,1)
+                options.hasKnownBoundaryWeights (1,1) logical = true
                 options.variable {mustBeTextScalar} = "formulation"
                 options.indexSign (1,1) double {mustBeMember(options.indexSign, [-1 0 1])} = 0
                 options.indexRank (1,1) double {mustBeInteger, mustBeNonnegative} = 0
@@ -376,8 +357,8 @@ classdef IMBoundary
 
             boundary = IMBoundary(family="custom", variable=options.variable, ...
                 leftOperator=options.left, rightOperator=options.right, ...
-                innerProductTerms=options.innerProductTerms, ...
-                hasKnownInnerProductTerms=options.hasKnownInnerProductTerms, ...
+                boundaryWeights=options.boundaryWeights, ...
+                hasKnownBoundaryWeights=options.hasKnownBoundaryWeights, ...
                 indexSign=options.indexSign, indexRank=options.indexRank, ...
                 boundaryModeNumber=options.boundaryModeNumber);
         end
@@ -388,9 +369,9 @@ classdef IMBoundary
             % In a `G` EVP, `rigid` resolves to $$G=0$$. In an `F` EVP, it
             % resolves to $$F_z=0$$.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.rigid()
-            % - Returns boundary: initialized rigid boundary condition
+            % - Returns boundary: initialized rigid boundary law
             boundary = IMBoundary(family="rigid");
         end
 
@@ -400,9 +381,9 @@ classdef IMBoundary
             % In a `G` EVP, `noSlip` resolves to $$G_z=0$$. In an `F` EVP,
             % it resolves to $$F=0$$.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.noSlip()
-            % - Returns boundary: initialized no-slip boundary condition
+            % - Returns boundary: initialized no-slip boundary law
             boundary = IMBoundary(family="noSlip");
         end
 
@@ -416,30 +397,30 @@ classdef IMBoundary
             % boundary branch with mode number `-1` at the surface or `-2`
             % at the bottom.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.free()
-            % - Returns boundary: initialized free boundary condition
+            % - Returns boundary: initialized free boundary law
             boundary = IMBoundary(family="free");
         end
 
         function boundary = linearF(options)
             % Create a location-free linear `F` boundary law.
             %
-            % When placed, the assembled boundary condition represents
+            % When placed, the assembled boundary law represents
             % $$-(aF-bF_z/N^2)=\lambda(cF-dF_z/N^2)/g$$. Supported pairwise
-            % cases also declare compatible boundary inner-product terms.
+            % cases also declare compatible boundary weights.
             % General unresolved coefficient patterns can still be solved,
-            % but placing them warns because their inner-product contribution
+            % but placing them warns because their endpoint contribution
             % is unknown. The derivative $$F_z$$ always means
             % $$\partial_z F$$ at either endpoint.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.linearF(options)
             % - Parameter options.a: coefficient multiplying `F`
             % - Parameter options.b: coefficient multiplying `F_z/N2`
             % - Parameter options.c: eigenvalue coefficient multiplying `F`
             % - Parameter options.d: eigenvalue coefficient multiplying `F_z/N2`
-            % - Returns boundary: initialized linear `F` boundary condition
+            % - Returns boundary: initialized linear `F` boundary law
             arguments
                 options.a (1,1) double = 0
                 options.b (1,1) double = 0
@@ -454,21 +435,21 @@ classdef IMBoundary
         function boundary = linearG(options)
             % Create a location-free linear `G` boundary law.
             %
-            % When placed, the assembled boundary condition represents
+            % When placed, the assembled boundary law represents
             % $$-(eG-aG_z)=\lambda(bG-cG_z)/g$$. Supported pairwise cases
-            % also declare compatible boundary inner-product terms. General
+            % also declare compatible boundary weights. General
             % unresolved coefficient patterns can still be solved, but
-            % placing them warns because their inner-product contribution is
+            % placing them warns because their endpoint contribution is
             % unknown. The derivative $$G_z$$ always means
             % $$\partial_z G$$ at either endpoint.
             %
-            % - Topic: Create boundary conditions
+            % - Topic: Create boundary laws
             % - Declaration: boundary = IMBoundary.linearG(options)
             % - Parameter options.a: coefficient multiplying `G_z`
             % - Parameter options.b: eigenvalue coefficient multiplying `G`
             % - Parameter options.c: eigenvalue coefficient multiplying `G_z`
             % - Parameter options.e: coefficient multiplying `G`
-            % - Returns boundary: initialized linear `G` boundary condition
+            % - Returns boundary: initialized linear `G` boundary law
             arguments
                 options.a (1,1) double = 0
                 options.b (1,1) double = 0
@@ -478,119 +459,6 @@ classdef IMBoundary
 
             coefficients = struct("a", options.a, "b", options.b, "c", options.c, "e", options.e);
             boundary = IMBoundary(family="linearG", variable="G", coefficients=coefficients);
-        end
-
-        function boundary = active(options)
-            % Create an active metadata-only boundary condition.
-            %
-            % Active conditions are already placed because their trace terms
-            % refer to an endpoint of a partial-depth interval. They declare
-            % endpoint boundary-mode numbers using `-1` at the surface and
-            % `-2` at the bottom.
-            %
-            % - Topic: Create boundary conditions
-            % - Declaration: boundary = IMBoundary.active(options)
-            % - Parameter options.location: `"surface"` or `"bottom"`
-            % - Parameter options.variable: active variable
-            % - Parameter options.indexSign: active-boundary sign
-            % - Parameter options.indexRank: number of active directions
-            % - Parameter options.innerProductTerms: boundary inner-product terms
-            % - Returns boundary: initialized active boundary condition
-            arguments
-                options.location {mustBeTextScalar}
-                options.variable {mustBeTextScalar} = "G"
-                options.indexSign (1,1) double {mustBeMember(options.indexSign, [-1 1])}
-                options.indexRank (1,1) double {mustBeInteger, mustBePositive} = 1
-                options.innerProductTerms struct = IMBoundary.emptyInnerProductTerms()
-            end
-
-            boundary = IMBoundary(family="active", location=options.location, variable=options.variable, ...
-                innerProductTerms=options.innerProductTerms, indexSign=options.indexSign, indexRank=options.indexRank, ...
-                boundaryModeNumber=IMBoundary.boundaryModeNumberForLocation(options.location));
-        end
-
-        function boundaryConditions = partialDepthPE(options)
-            % Create partial-depth potential-energy active boundary conditions.
-            %
-            % Positive boundary signs add no negative index directions.
-            % Negative boundary signs add one negative direction at each
-            % window endpoint.
-            %
-            % - Topic: Create boundary conditions
-            % - Declaration: boundaryConditions = IMBoundary.partialDepthPE(options)
-            % - Parameter options.boundarySign: `"positive"` or `"negative"`
-            % - Returns boundaryConditions: bottom and surface active conditions
-            arguments
-                options.boundarySign {mustBeTextScalar} = "positive"
-            end
-
-            switch string(options.boundarySign)
-                case "positive"
-                    indexSign = 1;
-                case "negative"
-                    indexSign = -1;
-                otherwise
-                    error("IMBoundary:InvalidBoundarySign", ...
-                        "boundarySign must be ""positive"" or ""negative"".");
-            end
-            boundaryConditions = [
-                IMBoundary(family="partialDepthPE", location="bottom", variable="G", ...
-                    indexSign=indexSign, indexRank=1, boundaryModeNumber=-2)
-                IMBoundary(family="partialDepthPE", location="surface", variable="G", ...
-                    indexSign=indexSign, indexRank=1, boundaryModeNumber=-1)
-            ];
-        end
-
-        function trace = trace(variable, options)
-            % Create an endpoint trace descriptor.
-            %
-            % A trace describes which variable value or first derivative is
-            % evaluated at a boundary endpoint.
-            %
-            % - Topic: Create boundary conditions
-            % - Declaration: trace = IMBoundary.trace(variable,options)
-            % - Parameter variable: variable name
-            % - Parameter options.derivativeOrder: physical derivative order
-            % - Returns trace: endpoint trace descriptor
-            arguments
-                variable {mustBeTextScalar}
-                options.derivativeOrder (1,1) double {mustBeInteger, mustBeNonnegative} = 0
-            end
-
-            trace = struct("variable", IMBoundary.validateVariable(variable), "derivativeOrder", options.derivativeOrder);
-        end
-
-        function term = innerProductTerm(innerProductVariable, location, coefficient, leftTrace, rightTrace)
-            % Create a boundary inner-product trace-pair term.
-            %
-            % The term contributes `coefficient*leftTrace_i*rightTrace_j`
-            % at a boundary endpoint to the named variable's inner product.
-            %
-            % - Topic: Create boundary conditions
-            % - Declaration: term = IMBoundary.innerProductTerm(innerProductVariable,location,coefficient,leftTrace,rightTrace)
-            % - Parameter innerProductVariable: variable whose inner product receives the term
-            % - Parameter location: boundary location
-            % - Parameter coefficient: scalar or context function handle
-            % - Parameter leftTrace: trace evaluated for the left mode
-            % - Parameter rightTrace: trace evaluated for the right mode
-            % - Returns term: boundary inner-product term
-            location = string(location);
-            if location ~= ""
-                location = IMBoundary.validateLocation(location);
-            end
-            term = struct("innerProductVariable", IMBoundary.validateVariable(innerProductVariable), ...
-                "location", location, "coefficient", coefficient, "leftTrace", leftTrace, "rightTrace", rightTrace);
-        end
-
-        function terms = emptyInnerProductTerms()
-            % Return an empty boundary inner-product-term structure.
-            %
-            % - Topic: Developer topics
-            % - Developer: true
-            % - Declaration: terms = IMBoundary.emptyInnerProductTerms()
-            % - Returns terms: empty boundary inner-product-term structure
-            terms = struct("innerProductVariable", {}, "location", {}, "coefficient", {}, ...
-                "leftTrace", {}, "rightTrace", {});
         end
     end
 
@@ -602,8 +470,8 @@ classdef IMBoundary
                 options.variable {mustBeTextScalar} = "formulation"
                 options.leftOperator IMOperator = IMOperator()
                 options.rightOperator IMOperator = IMOperator()
-                options.innerProductTerms struct = IMBoundary.emptyInnerProductTerms()
-                options.hasKnownInnerProductTerms (1,1) logical = true
+                options.boundaryWeights IMBoundaryWeight = IMBoundaryWeight.empty(0,1)
+                options.hasKnownBoundaryWeights (1,1) logical = true
                 options.indexSign (1,1) double = 0
                 options.indexRank (1,1) double {mustBeInteger, mustBeNonnegative} = 0
                 options.boundaryModeNumber (1,1) double = NaN
@@ -622,8 +490,8 @@ classdef IMBoundary
             end
             self.leftOperator = options.leftOperator;
             self.rightOperator = options.rightOperator;
-            self.innerProductTerms = options.innerProductTerms(:);
-            self.hasKnownInnerProductTerms = options.hasKnownInnerProductTerms;
+            self.boundaryWeights = options.boundaryWeights(:);
+            self.hasKnownBoundaryWeights = options.hasKnownBoundaryWeights;
             self.indexSign = sign(options.indexSign);
             self.indexRank = options.indexRank;
             self.boundaryModeNumber = IMBoundary.validateBoundaryModeNumber(options.boundaryModeNumber);
@@ -642,10 +510,10 @@ classdef IMBoundary
             right = IMOperator() ...
                 .plus(coefficient=@(~,ctx) c.c/ctx.g, derivativeOrder=0) ...
                 .plus(coefficient=@(z,ctx) -c.d./(ctx.g*ctx.N2(z)), derivativeOrder=1);
-            [innerProductTerms, hasKnownInnerProductTerms] = IMBoundary.linearFInnerProductTerms(location, c.a, c.b, c.c, c.d);
+            [boundaryWeights, hasKnownBoundaryWeights] = IMBoundary.linearFBoundaryWeights(location, c.a, c.b, c.c, c.d);
             boundary = IMBoundary(family="linearF", location=location, variable="F", ...
-                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerms, ...
-                hasKnownInnerProductTerms=hasKnownInnerProductTerms);
+                leftOperator=left, rightOperator=right, boundaryWeights=boundaryWeights, ...
+                hasKnownBoundaryWeights=hasKnownBoundaryWeights);
         end
 
         function boundary = placeLinearG(self, location)
@@ -656,10 +524,10 @@ classdef IMBoundary
             right = IMOperator() ...
                 .plus(coefficient=@(~,ctx) c.b/ctx.g, derivativeOrder=0) ...
                 .plus(coefficient=@(~,ctx) -c.c/ctx.g, derivativeOrder=1);
-            [innerProductTerms, hasKnownInnerProductTerms] = IMBoundary.linearGInnerProductTerms(location, c.a, c.b, c.c, c.e);
+            [boundaryWeights, hasKnownBoundaryWeights] = IMBoundary.linearGBoundaryWeights(location, c.a, c.b, c.c, c.e);
             boundary = IMBoundary(family="linearG", location=location, variable="G", ...
-                leftOperator=left, rightOperator=right, innerProductTerms=innerProductTerms, ...
-                hasKnownInnerProductTerms=hasKnownInnerProductTerms);
+                leftOperator=left, rightOperator=right, boundaryWeights=boundaryWeights, ...
+                hasKnownBoundaryWeights=hasKnownBoundaryWeights);
         end
 
         function variable = resolvedVariable(self, formulation)
@@ -672,77 +540,67 @@ classdef IMBoundary
     end
 
     methods (Static, Access = private)
-        function [terms, hasKnownInnerProductTerms] = linearFInnerProductTerms(location, a, b, c, d)
+        function [weights, hasKnownBoundaryWeights] = linearFBoundaryWeights(location, a, b, c, d)
             nonzero = abs([a b c d]) > 0;
-            terms = IMBoundary.emptyInnerProductTerms();
-            hasKnownInnerProductTerms = true;
+            weights = IMBoundaryWeight.empty(0,1);
+            hasKnownBoundaryWeights = true;
             if nnz(nonzero) > 2
-                IMBoundary.warnUnknownInnerProduct("linearF");
-                hasKnownInnerProductTerms = false;
+                IMBoundary.warnUnknownBoundaryWeights("linearF");
+                hasKnownBoundaryWeights = false;
                 return;
             end
 
             endpointSign = IMBoundary.endpointSign(location);
             g = @(ctx) ctx.g;
             if ~nonzero(1) && ~nonzero(2) && nonzero(3) && nonzero(4)
-                terms = IMBoundary.innerProductTerm("G", location, endpointSign*(-d/c), ...
-                    IMBoundary.trace("G"), IMBoundary.trace("G"));
+                weights = IMBoundaryWeight(innerProduct="G", location=location, coefficient=endpointSign*(-d/c), ...
+                    leftVariable="G", rightVariable="G");
             elseif nonzero(1) && nonzero(2) && ~nonzero(3) && ~nonzero(4)
-                terms = IMBoundary.innerProductTerm("G", location, @(ctx) endpointSign*(-b/(g(ctx)*a)), ...
-                    IMBoundary.trace("G"), IMBoundary.trace("G"));
+                weights = IMBoundaryWeight(innerProduct="G", location=location, coefficient=@(ctx) endpointSign*(-b/(g(ctx)*a)), ...
+                    leftVariable="G", rightVariable="G");
             elseif ~nonzero(1) && nonzero(2) && nonzero(3) && ~nonzero(4)
-                terms = IMBoundary.innerProductTerm("F", location, endpointSign*(c/b), ...
-                    IMBoundary.trace("F"), IMBoundary.trace("F"));
+                weights = IMBoundaryWeight(innerProduct="F", location=location, coefficient=endpointSign*(c/b), ...
+                    leftVariable="F", rightVariable="F");
             elseif nonzero(1) && ~nonzero(2) && ~nonzero(3) && nonzero(4)
-                terms = [
-                    IMBoundary.innerProductTerm("F", location, @(ctx) endpointSign*(-d/(g(ctx)*g(ctx)*a)), ...
-                        IMBoundary.trace("G"), IMBoundary.trace("G"))
-                    IMBoundary.innerProductTerm("G", location, endpointSign, IMBoundary.trace("G"), IMBoundary.trace("F"))
-                    IMBoundary.innerProductTerm("G", location, endpointSign, IMBoundary.trace("F"), IMBoundary.trace("G"))
+                weights = [
+                    IMBoundaryWeight(innerProduct="F", location=location, coefficient=@(ctx) endpointSign*(-d/(g(ctx)*g(ctx)*a)), ...
+                        leftVariable="G", rightVariable="G")
+                    IMBoundaryWeight(innerProduct="G", location=location, coefficient=endpointSign, ...
+                        leftVariable="G", rightVariable="F")
+                    IMBoundaryWeight(innerProduct="G", location=location, coefficient=endpointSign, ...
+                        leftVariable="F", rightVariable="G")
                 ];
             end
         end
 
-        function [terms, hasKnownInnerProductTerms] = linearGInnerProductTerms(location, a, b, c, e)
+        function [weights, hasKnownBoundaryWeights] = linearGBoundaryWeights(location, a, b, c, e)
             nonzero = abs([a b c e]) > 0;
-            terms = IMBoundary.emptyInnerProductTerms();
-            hasKnownInnerProductTerms = true;
+            weights = IMBoundaryWeight.empty(0,1);
+            hasKnownBoundaryWeights = true;
             if nnz(nonzero) > 2
-                IMBoundary.warnUnknownInnerProduct("linearG");
-                hasKnownInnerProductTerms = false;
+                IMBoundary.warnUnknownBoundaryWeights("linearG");
+                hasKnownBoundaryWeights = false;
                 return;
             end
 
             endpointSign = IMBoundary.endpointSign(location);
             if ~nonzero(1) && ~nonzero(2) && nonzero(3) && nonzero(4)
-                terms = IMBoundary.innerProductTerm("G", location, endpointSign*(-c/e), ...
-                    IMBoundary.trace("G", derivativeOrder=1), IMBoundary.trace("G", derivativeOrder=1));
+                weights = IMBoundaryWeight(innerProduct="G", location=location, coefficient=endpointSign*(-c/e), ...
+                    leftVariable="G", leftDerivativeOrder=1, rightVariable="G", rightDerivativeOrder=1);
             elseif nonzero(1) && nonzero(2) && ~nonzero(3) && ~nonzero(4)
-                terms = IMBoundary.innerProductTerm("G", location, endpointSign*(b/a), ...
-                    IMBoundary.trace("G"), IMBoundary.trace("G"));
+                weights = IMBoundaryWeight(innerProduct="G", location=location, coefficient=endpointSign*(b/a), ...
+                    leftVariable="G", rightVariable="G");
             elseif nonzero(1) && ~nonzero(2) && ~nonzero(3) && nonzero(4)
-                terms = IMBoundary.innerProductTerm("F", location, endpointSign*(-a/e), ...
-                    IMBoundary.trace("F"), IMBoundary.trace("F"));
+                weights = IMBoundaryWeight(innerProduct="F", location=location, coefficient=endpointSign*(-a/e), ...
+                    leftVariable="F", rightVariable="F");
             elseif ~nonzero(1) && nonzero(2) && nonzero(3) && ~nonzero(4)
-                terms = IMBoundary.innerProductTerm("F", location, endpointSign*(-c/b), ...
-                    IMBoundary.trace("F"), IMBoundary.trace("F"));
+                weights = IMBoundaryWeight(innerProduct="F", location=location, coefficient=endpointSign*(-c/b), ...
+                    leftVariable="F", rightVariable="F");
             end
         end
 
-        function terms = placeInnerProductTerms(terms, location)
-            for iTerm = 1:length(terms)
-                if string(terms(iTerm).location) == ""
-                    terms(iTerm).location = string(location);
-                    if string(location) == "bottom"
-                        coefficient = terms(iTerm).coefficient;
-                        if isa(coefficient, "function_handle")
-                            terms(iTerm).coefficient = @(varargin) -coefficient(varargin{:});
-                        else
-                            terms(iTerm).coefficient = -coefficient;
-                        end
-                    end
-                end
-            end
+        function weights = placeBoundaryWeights(weights, location)
+            weights = weights.at(location);
         end
 
         function signValue = endpointSign(location)
@@ -803,9 +661,9 @@ classdef IMBoundary
                 string(family), string(variable));
         end
 
-        function warnUnknownInnerProduct(family)
-            warning("IMBoundary:UnknownInnerProduct", ...
-                "%s can assemble this boundary condition, but its compatible boundary inner-product contribution is unknown.", ...
+        function warnUnknownBoundaryWeights(family)
+            warning("IMBoundary:UnknownBoundaryWeights", ...
+                "%s can assemble this boundary law, but its compatible boundary weights are unknown.", ...
                 family);
         end
     end

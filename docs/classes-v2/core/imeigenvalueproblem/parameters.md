@@ -3,7 +3,7 @@ layout: default
 title: parameters
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 19
+nav_order: 21
 mathjax: true
 ---
 
@@ -19,5 +19,5 @@ Stored factory-specific physical inputs.
   `parameters` records physical inputs supplied to a standard factory
   but not otherwise stored as first-class EVP properties, such as
   `parameters.k` or `parameters.omega`. The EVP identity is `name`,
-  boundary laws live in `boundaryConditions`, and physical constants
+  boundary laws live in `surfaceBoundary` and `bottomBoundary`, and physical constants
   live in `f0` and `g`. Core EVP assembly does not consume this struct.

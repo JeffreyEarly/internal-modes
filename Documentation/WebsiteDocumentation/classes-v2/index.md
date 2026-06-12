@@ -9,7 +9,7 @@ mathjax: true
 
 # Class Documentation V2
 
-This section is the API reference for building eigenvalue problems, applying boundary conditions, solving vertical modes, and evaluating basis sets in `internal-modes`.
+This section is the API reference for building eigenvalue problems, applying boundary laws, solving vertical modes, and evaluating basis sets in `internal-modes`.
 
 The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, and analytical basis classes provide exact references for common stratifications.
 
@@ -17,7 +17,7 @@ The pages are organized around the objects that own each part of the calculation
 
 | Class group | Use it when |
 | --- | --- |
-| [`Core`](./core) | you want eigenvalue-problem descriptors, basis-set containers, boundary conditions, operators, or mode-index policies |
+| [`Core`](./core) | you want eigenvalue-problem descriptors, basis-set containers, boundary laws, endpoint weights, operators, or mode-index policies |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification basis sets |
 | [`Supporting types`](./supporting-types) | you want shared normalization conventions |
@@ -39,7 +39,7 @@ The reference pages use the standard vertical-mode variables:
 
 ## Reading the reference
 
-- [`IMEigenvalueProblem`](./core/imeigenvalueproblem) defines the equation family, independent variable, normalization default, boundary conditions, and mode-index policy.
+- [`IMEigenvalueProblem`](./core/imeigenvalueproblem) defines the equation family, independent variable, normalization default, endpoint boundary laws, endpoint weights, and mode-index policy.
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) objects.
-- [`IMBoundary`](./core/imboundary), [`IMOperator`](./core/imoperator), and [`IMIndexPolicy`](./core/imindexpolicy) describe boundary terms, differential operators, and modal selection.
+- [`IMBoundary`](./core/imboundary), [`IMBoundaryWeight`](./core/imboundaryweight), [`IMOperator`](./core/imoperator), and [`IMIndexPolicy`](./core/imindexpolicy) describe boundary laws, endpoint inner-product terms, differential operators, and modal selection.
 - [`IMBasisSetConstantStratification`](./analytical-bases/imbasissetconstantstratification) and [`IMBasisSetExponentialStratification`](./analytical-bases/imbasissetexponentialstratification) provide exact basis sets for common stratification profiles.

@@ -45,41 +45,37 @@ classdef (Abstract) IMSolver
             basisSet = basisSet.orientModeSigns();
         end
 
-        function [A, B] = applyBoundaryCondition(self, A, B, boundaryCondition, options)
-            % Apply a placed boundary condition to a matrix pair.
+        function [A, B] = applyEndpointLaw(self, A, B, endpointLaw, options)
+            % Apply a resolved endpoint law to a matrix pair.
             %
-            % Active metadata-only boundary conditions do not replace matrix
-            % rows. Standard placed conditions replace the solver-native row
-            % associated with their physical location.
+            % Resolved endpoint laws replace the solver-native row associated
+            % with their physical location.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: [A,B] = applyBoundaryCondition(solver,A,B,boundaryCondition,options)
+            % - Declaration: [A,B] = applyEndpointLaw(solver,A,B,endpointLaw,options)
             % - Parameter A: left EVP matrix
             % - Parameter B: right EVP matrix
-            % - Parameter boundaryCondition: placed boundary condition
+            % - Parameter endpointLaw: resolved endpoint law
             % - Parameter options.context: framework coefficient context
-            % - Returns A: boundary-conditioned left matrix
-            % - Returns B: boundary-conditioned right matrix
+            % - Returns A: left matrix with the endpoint row applied
+            % - Returns B: right matrix with the endpoint row applied
             arguments
                 self IMSolver
                 A double
                 B double
-                boundaryCondition IMBoundary
+                endpointLaw IMBoundary
                 options.context struct = struct()
             end
 
-            if boundaryCondition.family == "active" || boundaryCondition.family == "partialDepthPE"
-                return;
-            end
-            if boundaryCondition.location == ""
-                error("IMSolver:UnplacedBoundaryCondition", ...
-                    "Boundary condition ""%s"" must be placed before assembly.", boundaryCondition.family);
+            if endpointLaw.location == ""
+                error("IMSolver:UnplacedBoundaryLaw", ...
+                    "Boundary law ""%s"" must be resolved before assembly.", endpointLaw.family);
             end
 
-            index = self.boundaryIndex(boundaryCondition.location);
-            A(index,:) = boundaryCondition.leftOperator.boundaryRow(self, boundaryCondition.location, context=options.context);
-            B(index,:) = boundaryCondition.rightOperator.boundaryRow(self, boundaryCondition.location, context=options.context);
+            index = self.boundaryIndex(endpointLaw.location);
+            A(index,:) = endpointLaw.leftOperator.boundaryRow(self, endpointLaw.location, context=options.context);
+            B(index,:) = endpointLaw.rightOperator.boundaryRow(self, endpointLaw.location, context=options.context);
         end
     end
 

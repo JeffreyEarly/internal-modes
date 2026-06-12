@@ -550,31 +550,8 @@ classdef IMBasisSetConstantStratification < IMBasisSet
         end
 
         function [surfaceBoundary, bottomBoundary] = validateEVP(evp)
-            surfaceFamilies = strings(0,1);
-            bottomFamilies = strings(0,1);
-            for iBoundary = 1:length(evp.boundaryConditions)
-                boundaryCondition = evp.boundaryConditions(iBoundary);
-                if boundaryCondition.family == "active" || boundaryCondition.family == "partialDepthPE"
-                    continue;
-                end
-                if boundaryCondition.variable ~= evp.formulation
-                    continue;
-                end
-                switch boundaryCondition.location
-                    case "surface"
-                        surfaceFamilies(end+1,1) = boundaryCondition.family;
-                    case "bottom"
-                        bottomFamilies(end+1,1) = boundaryCondition.family;
-                end
-            end
-            if length(surfaceFamilies) ~= 1 || length(bottomFamilies) ~= 1
-                error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                    "Constant stratification requires exactly one placed surface and one placed " + ...
-                    "bottom boundary for the EVP formulation.");
-            end
-
-            surfaceBoundary = surfaceFamilies(1);
-            bottomBoundary = bottomFamilies(1);
+            surfaceBoundary = evp.surfaceBoundary.family;
+            bottomBoundary = evp.bottomBoundary.family;
             if evp.formulation == "F"
                 if evp.name ~= "hydrostaticFModes"
                     error("IMBasisSetConstantStratification:UnsupportedEVP", ...

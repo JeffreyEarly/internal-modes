@@ -3,7 +3,7 @@ layout: default
 title: free
 parent: IMBoundary
 grand_parent: Core
-nav_order: 12
+nav_order: 6
 mathjax: true
 ---
 
@@ -19,7 +19,7 @@ Create a location-free free boundary law.
  boundary = IMBoundary.free()
 ```
 ## Returns
-+ `boundary`  initialized free boundary condition
++ `boundary`  initialized free boundary law
 
 ## Discussion
 

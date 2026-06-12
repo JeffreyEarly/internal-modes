@@ -110,7 +110,7 @@ classdef IMEigenvalueProblem
         % signature `w = weight(z,ctx)`. Each handle returns the interior
         % weight in
         % $$\langle X_i,X_j\rangle_w=\int w(z)X_i(z)X_j(z)\,dz.$$
-        % Boundary trace terms belong to the boundary conditions so that each
+        % Endpoint contributions belong to the boundary laws so that each
         % normalization can include the same endpoint convention as the EVP.
         %
         % - Topic: Inspect EVP metadata
@@ -137,16 +137,23 @@ classdef IMEigenvalueProblem
         % - Topic: Inspect EVP metadata
         defaultNormalization = []
 
-        % Placed boundary-condition array.
+        % Surface boundary law.
         %
-        % The array stores location-aware `IMBoundary` values. Standard
-        % factories accept location-free `surfaceBoundary` and `bottomBoundary`
-        % laws and place them on the solved variable. During assembly each
-        % placed boundary replaces the appropriate boundary row in `A` and `B`
-        % and contributes endpoint metadata for indexing and normalization.
+        % This location-free `IMBoundary` is resolved with `formulation` only
+        % when the EVP assembles, indexes modes, or exposes derived surface
+        % weights.
         %
         % - Topic: Assemble EVPs
-        boundaryConditions = IMBoundary.empty(0,1)
+        surfaceBoundary = IMBoundary.rigid()
+
+        % Bottom boundary law.
+        %
+        % This location-free `IMBoundary` is resolved with `formulation` only
+        % when the EVP assembles, indexes modes, or exposes derived bottom
+        % weights.
+        %
+        % - Topic: Assemble EVPs
+        bottomBoundary = IMBoundary.rigid()
 
         % Equivalent-depth conversion function.
         %
@@ -177,7 +184,7 @@ classdef IMEigenvalueProblem
         % Values are `"error"`, `"warning"`, or `"none"`. The mode-index
         % policy uses this value when the observed boundary, barotropic, or
         % interior counts differ from the counts declared by the EVP and its
-        % boundary conditions.
+        % surface and bottom boundary laws.
         %
         % - Topic: Select retained modes
         indexValidationMode = "none"
@@ -189,11 +196,31 @@ classdef IMEigenvalueProblem
         % `parameters` records physical inputs supplied to a standard factory
         % but not otherwise stored as first-class EVP properties, such as
         % `parameters.k` or `parameters.omega`. The EVP identity is `name`,
-        % boundary laws live in `boundaryConditions`, and physical constants
+        % boundary laws live in `surfaceBoundary` and `bottomBoundary`, and physical constants
         % live in `f0` and `g`. Core EVP assembly does not consume this struct.
         %
         % - Topic: Inspect EVP metadata
         parameters = struct()
+    end
+
+    properties (Dependent, SetAccess = private)
+        % Surface endpoint weights implied by the surface boundary law.
+        %
+        % The returned `IMBoundaryWeight` array is derived from
+        % `surfaceBoundary` and `formulation`. Changing the surface law or
+        % formulation changes this read-only view automatically.
+        %
+        % - Topic: Inspect EVP metadata
+        surfaceWeights
+
+        % Bottom endpoint weights implied by the bottom boundary law.
+        %
+        % The returned `IMBoundaryWeight` array is derived from
+        % `bottomBoundary` and `formulation`. Changing the bottom law or
+        % formulation changes this read-only view automatically.
+        %
+        % - Topic: Inspect EVP metadata
+        bottomWeights
     end
 
     methods
@@ -203,7 +230,7 @@ classdef IMEigenvalueProblem
             % The constructor is the low-level entry point for custom EVPs.
             % Provide the solved `formulation`, the operators defining
             % $$Aq=\lambda Bq,$$
-            % the placed boundary conditions for that formulation, the
+            % the surface and bottom boundary laws, the
             % interior inner-product weights, and any normalizations that an
             % `IMBasisSet` should expose. The standard factories are preferred
             % for the built-in wave and hydrostatic problems because they set
@@ -215,7 +242,7 @@ classdef IMEigenvalueProblem
             % right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
             % evp = IMEigenvalueProblem(name="customG", formulation="G", ...
             %     leftOperator=left, rightOperator=right, ...
-            %     boundaryConditions=IMBoundary.conditions(formulation="G"));
+            %     surfaceBoundary=IMBoundary.rigid(), bottomBoundary=IMBoundary.rigid());
             % ```
             %
             % - Topic: Build custom EVPs
@@ -229,7 +256,8 @@ classdef IMEigenvalueProblem
             % - Parameter options.innerWeights: interior inner-product weight handles for `F` and `G`
             % - Parameter options.normalizations: named modal normalization handles
             % - Parameter options.defaultNormalization: natural default normalization for this EVP
-            % - Parameter options.boundaryConditions: placed boundary conditions
+            % - Parameter options.surfaceBoundary: surface boundary law
+            % - Parameter options.bottomBoundary: bottom boundary law
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
             % - Parameter options.hasBarotropicMode: whether the EVP declares the barotropic mode
             % - Parameter options.indexValidationMode: `"error"`, `"warning"`, or `"none"`
@@ -245,7 +273,8 @@ classdef IMEigenvalueProblem
                 options.innerWeights struct = struct()
                 options.normalizations struct = struct()
                 options.defaultNormalization = []
-                options.boundaryConditions = IMBoundary.empty(0,1)
+                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
                 options.hFromEigenvalue = @(lambda) 1 ./ lambda
                 options.hasBarotropicMode (1,1) logical = false
                 options.indexValidationMode {mustBeTextScalar} = "none"
@@ -261,8 +290,9 @@ classdef IMEigenvalueProblem
             self.innerWeights = IMEigenvalueProblem.resolveInnerWeights(options.innerWeights);
             self.normalizations = options.normalizations;
             self.defaultNormalization = options.defaultNormalization;
-            self.boundaryConditions = options.boundaryConditions(:);
-            self.validateBoundaryConditions();
+            self.surfaceBoundary = options.surfaceBoundary;
+            self.bottomBoundary = options.bottomBoundary;
+            self.validateBoundaryLaws();
             self.hFromEigenvalue = options.hFromEigenvalue;
             self.hasBarotropicMode = options.hasBarotropicMode;
             self.indexValidationMode = IMEigenvalueProblem.validateIndexValidationMode(options.indexValidationMode);
@@ -280,8 +310,8 @@ classdef IMEigenvalueProblem
             % merged solver/EVP context and returns the matrices for
             % $$Aq=\lambda Bq.$$
             % Interior rows come from the operator discretization. Boundary
-            % rows are then replaced by the placed boundary conditions through
-            % the solver, so a rigid `G` boundary imposes the trace row for
+            % rows are then replaced by the resolved endpoint laws through
+            % the solver, so a rigid `G` boundary imposes the endpoint-value row for
             % `G=0` while active or free boundaries can also declare endpoint
             % contributions used by normalization and mode indexing.
             %
@@ -293,9 +323,31 @@ classdef IMEigenvalueProblem
             context = self.contextForSolver(solver);
             A = self.leftOperator.matrix(solver, context=context);
             B = self.rightOperator.matrix(solver, context=context);
-            for iBoundary = 1:length(self.boundaryConditions)
-                [A, B] = solver.applyBoundaryCondition(A, B, self.boundaryConditions(iBoundary), context=context);
+            resolvedBoundaries = self.resolvedEndpointLaws();
+            for iBoundary = 1:length(resolvedBoundaries)
+                [A, B] = solver.applyEndpointLaw(A, B, resolvedBoundaries(iBoundary), context=context);
             end
+        end
+
+        function spec = innerProduct(self, variable)
+            % Return the declared inner-product recipe for a variable.
+            %
+            % The returned struct contains the interior weight and the
+            % endpoint weights whose `innerProduct` matches `variable`. The
+            % endpoint factors inside those weights may still evaluate either
+            % `F` or `G`; the selector is the inner product being constructed.
+            %
+            % - Topic: Inspect EVP metadata
+            % - Declaration: spec = innerProduct(evp,variable)
+            % - Parameter variable: `"F"` or `"G"`
+            % - Returns spec: struct with `variable`, `interiorWeight`, `surfaceWeights`, `bottomWeights`, and `hasKnownBoundaryWeights`
+            variable = IMEigenvalueProblem.validateVariable(variable);
+            spec.variable = variable;
+            spec.interiorWeight = self.interiorWeight(variable);
+            spec.surfaceWeights = IMEigenvalueProblem.weightsForInnerProduct(self.surfaceWeights, variable);
+            spec.bottomWeights = IMEigenvalueProblem.weightsForInnerProduct(self.bottomWeights, variable);
+            resolvedBoundaries = self.resolvedEndpointLaws();
+            spec.hasKnownBoundaryWeights = all([resolvedBoundaries.hasKnownBoundaryWeights]);
         end
 
         function context = contextForSolver(self, solver)
@@ -358,24 +410,67 @@ classdef IMEigenvalueProblem
         end
     end
 
-    methods (Access = private)
-        function policy = indexPolicy(self)
-            policy = IMIndexPolicy.fromBoundaryConditions(self.boundaryConditions, ...
-                expectedZeroCount=double(self.hasBarotropicMode), validationMode=self.indexValidationMode);
+    methods
+        function weights = get.surfaceWeights(self)
+            weights = self.resolvedSurfaceBoundary().boundaryWeights;
         end
 
-        function validateBoundaryConditions(self)
-            for iBoundary = 1:length(self.boundaryConditions)
-                boundaryCondition = self.boundaryConditions(iBoundary);
-                if boundaryCondition.family == "active" || boundaryCondition.family == "partialDepthPE"
-                    continue;
-                end
-                if boundaryCondition.location ~= "" && boundaryCondition.variable ~= self.formulation
+        function weights = get.bottomWeights(self)
+            weights = self.resolvedBottomBoundary().boundaryWeights;
+        end
+    end
+
+    methods (Access = private)
+        function policy = indexPolicy(self)
+            [expectedNegativeCount, expectedZeroCount, boundaryModes] = self.endpointIndexMetadata();
+            policy = IMIndexPolicy(expectedNegativeCount=expectedNegativeCount, ...
+                expectedZeroCount=expectedZeroCount + double(self.hasBarotropicMode), ...
+                validationMode=self.indexValidationMode, boundaryModes=boundaryModes);
+        end
+
+        function validateBoundaryLaws(self)
+            resolvedBoundaries = self.resolvedEndpointLaws();
+            for iBoundary = 1:length(resolvedBoundaries)
+                endpointLaw = resolvedBoundaries(iBoundary);
+                if endpointLaw.variable ~= self.formulation
                     error("IMEigenvalueProblem:BoundaryFormulationMismatch", ...
-                        "Boundary condition ""%s"" targets variable ""%s"", but the EVP formulation is ""%s"".", ...
-                        boundaryCondition.family, boundaryCondition.variable, self.formulation);
+                        "Boundary law ""%s"" targets variable ""%s"", but the EVP formulation is ""%s"".", ...
+                        endpointLaw.family, endpointLaw.variable, self.formulation);
                 end
             end
+        end
+
+        function boundary = resolvedSurfaceBoundary(self)
+            boundary = self.surfaceBoundary.at("surface", formulation=self.formulation);
+        end
+
+        function boundary = resolvedBottomBoundary(self)
+            boundary = self.bottomBoundary.at("bottom", formulation=self.formulation);
+        end
+
+        function endpointLaws = resolvedEndpointLaws(self)
+            endpointLaws = [
+                self.resolvedBottomBoundary()
+                self.resolvedSurfaceBoundary()
+            ];
+        end
+
+        function [expectedNegativeCount, expectedZeroCount, boundaryModes] = endpointIndexMetadata(self)
+            resolvedBoundaries = self.resolvedEndpointLaws();
+            expectedNegativeCount = 0;
+            expectedZeroCount = 0;
+            boundaryModes = struct("modeNumber", {}, "indexSign", {});
+            for iBoundary = 1:length(resolvedBoundaries)
+                expectedNegativeCount = expectedNegativeCount + resolvedBoundaries(iBoundary).expectedNegativeCount();
+                expectedZeroCount = expectedZeroCount + resolvedBoundaries(iBoundary).expectedZeroCount();
+                boundaryModes = [boundaryModes; resolvedBoundaries(iBoundary).boundaryModeDescriptors()]; %#ok<AGROW>
+            end
+        end
+
+        function weight = interiorWeight(self, variable)
+            variable = IMEigenvalueProblem.validateVariable(variable);
+            fieldName = char(variable);
+            weight = self.innerWeights.(fieldName);
         end
     end
 
@@ -422,12 +517,12 @@ classdef IMEigenvalueProblem
             g = options.g;
             left = IMOperator().plus(derivativeOrder=2).plus(coefficient=-k*k, derivativeOrder=0);
             right = IMOperator().plus(coefficient=@(z,ctx) (ctx.f0*ctx.f0 - ctx.N2(z))/ctx.g, derivativeOrder=0);
-            boundaryConditions = IMBoundary.conditions(formulation="G", surface=options.surfaceBoundary, bottom=options.bottomBoundary);
             parameters = struct("k", k);
             innerWeights.G = @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g;
             evp = IMEigenvalueProblem(name="waveModesAtWavenumber", formulation="G", ...
                 f0=f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.kConstant, ...
                 hFromEigenvalue=@(lambda) 1 ./ lambda, parameters=parameters);
 
@@ -452,7 +547,7 @@ classdef IMEigenvalueProblem
             % supplied location-free boundary laws on the surface and bottom.
             % Omitted boundaries are rigid `G=0` boundaries. The `kConstant`
             % normalization remains available for fixed-frequency basis sets
-            % and includes boundary trace terms when the boundary laws provide
+            % and includes boundary weights when the boundary laws provide
             % them.
             %
             % ```matlab
@@ -483,18 +578,18 @@ classdef IMEigenvalueProblem
             g = options.g;
             left = IMOperator().plus(derivativeOrder=2);
             right = IMOperator().plus(coefficient=@(z,ctx) (omega*omega - ctx.N2(z))/ctx.g, derivativeOrder=0);
-            boundaryConditions = IMBoundary.conditions(formulation="G", surface=options.surfaceBoundary, bottom=options.bottomBoundary);
             parameters = struct("omega", omega);
             innerWeights.G = @(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g;
             innerWeights.F = @(z,ctx) ones(size(z))/diff(ctx.zDomain);
             evp = IMEigenvalueProblem(name="waveModesAtFrequency", formulation="G", ...
                 f0=f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.omegaConstant, ...
                 hFromEigenvalue=@(lambda) 1 ./ lambda, parameters=parameters);
 
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.weightedNormFactorWithBoundaryTerms("G", iMode, @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g);
+            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.weightedNormFactorWithBoundaryWeights("G", iMode, @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g);
             evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
             evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
             evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
@@ -538,12 +633,12 @@ classdef IMEigenvalueProblem
             g = options.g;
             left = IMOperator().plus(derivativeOrder=2);
             right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
-            boundaryConditions = IMBoundary.conditions(formulation="G", surface=options.surfaceBoundary, bottom=options.bottomBoundary);
             innerWeights.G = @(z,ctx) ctx.N2(z)/ctx.g;
             innerWeights.F = @(z,ctx) ones(size(z));
             evp = IMEigenvalueProblem(name="hydrostaticGModes", formulation="G", ...
                 f0=options.f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.geostrophic, hFromEigenvalue=@(lambda) 1 ./ lambda);
 
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
@@ -589,12 +684,12 @@ classdef IMEigenvalueProblem
             left = IMOperator().plus(derivativeOrder=2) ...
                 .plus(coefficient=@(z,ctx) -ctx.dzLogN2(z), derivativeOrder=1);
             right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
-            boundaryConditions = IMBoundary.conditions(formulation="F", surface=options.surfaceBoundary, bottom=options.bottomBoundary);
             innerWeights.F = @(z,ctx) ones(size(z));
             innerWeights.G = @(z,ctx) ctx.N2(z)/ctx.g;
             evp = IMEigenvalueProblem(name="hydrostaticFModes", formulation="F", ...
                 g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, boundaryConditions=boundaryConditions, ...
+                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.geostrophic, ...
                 hFromEigenvalue=@(lambda) 1 ./ lambda, hasBarotropicMode=true, indexValidationMode="warning");
             evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
@@ -625,8 +720,21 @@ classdef IMEigenvalueProblem
                 options.validationMode {mustBeTextScalar} = "error"
             end
 
-            boundaryConditions = IMBoundary.partialDepthPE(boundarySign=options.boundarySign);
-            policy = IMIndexPolicy.fromBoundaryConditions(boundaryConditions, validationMode=options.validationMode);
+            switch string(options.boundarySign)
+                case "positive"
+                    indexSign = 1;
+                case "negative"
+                    indexSign = -1;
+                otherwise
+                    error("IMEigenvalueProblem:InvalidBoundarySign", ...
+                        "boundarySign must be ""positive"" or ""negative"".");
+            end
+            boundaryModes = [
+                struct("modeNumber", -1, "indexSign", indexSign)
+                struct("modeNumber", -2, "indexSign", indexSign)
+            ];
+            policy = IMIndexPolicy(expectedNegativeCount=2*double(indexSign < 0), ...
+                expectedZeroCount=0, validationMode=options.validationMode, boundaryModes=boundaryModes);
         end
     end
 
@@ -645,6 +753,16 @@ classdef IMEigenvalueProblem
             end
             if ~isfield(innerWeights, "F")
                 innerWeights.F = @(z,ctx) ones(size(z));
+            end
+        end
+
+        function selectedWeights = weightsForInnerProduct(weights, variable)
+            variable = IMEigenvalueProblem.validateVariable(variable);
+            selectedWeights = IMBoundaryWeight.empty(0,1);
+            for iWeight = 1:length(weights)
+                if weights(iWeight).innerProduct == variable
+                    selectedWeights(end+1,1) = weights(iWeight); %#ok<AGROW>
+                end
             end
         end
 

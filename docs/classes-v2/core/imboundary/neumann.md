@@ -3,7 +3,7 @@ layout: default
 title: neumann
 parent: IMBoundary
 grand_parent: Core
-nav_order: 23
+nav_order: 14
 mathjax: true
 ---
 
@@ -19,7 +19,7 @@ Create a location-free homogeneous Neumann boundary law.
  boundary = IMBoundary.neumann()
 ```
 ## Returns
-+ `boundary`  initialized boundary condition
++ `boundary`  initialized boundary law
 
 ## Discussion
 
