@@ -23,6 +23,7 @@ r = @(z,ctx) ones(size(z))/ctx.g;
 
 surfaceBoundary = IMBoundaryCondition(a=-(1/g + 1/g0), b=1);
 bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
+bottomBoundary = IMBoundaryCondition.neumann;
 
 normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
 
