@@ -30,6 +30,7 @@ Create an internal-mode canonical EVP.
 + `options.bottomBoundary`  bottom endpoint condition
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
++ `options.hFromEigenvalue`  equivalent-depth conversion
 + `options.metadata`  additional scalar parameters
 
 ## Returns

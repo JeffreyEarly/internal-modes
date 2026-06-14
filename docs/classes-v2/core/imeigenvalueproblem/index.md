@@ -28,9 +28,9 @@ $$-(p u')' + q u = \lambda r u,$$
 with endpoint conditions
 $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
 The EVP owns the continuous problem: the physical interval, coefficient
-functions, endpoint conditions, equivalent-depth mapping,
-normalization rules, and diagnostic definiteness checks. A solver owns
-only the numerical choices used to discretize this problem.
+functions, endpoint conditions, normalization rules, and diagnostic
+definiteness checks. A solver owns only the numerical choices used to
+discretize this problem.
 
 ```matlab
 evp = IMEigenvalueProblem(zDomain=[-1 0], ...
@@ -57,7 +57,6 @@ basisSet = solver.solveEVP(evp,nModes=4);
   + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
 + Inspect EVP metadata
   + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization.
-  + [`hFromEigenvalue`](/internal-modes/classes-v2/core/imeigenvalueproblem/hfromeigenvalue.html) Equivalent-depth conversion function.
   + [`metadata`](/internal-modes/classes-v2/core/imeigenvalueproblem/metadata.html) Additional EVP metadata.
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
   + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named normalization rules.

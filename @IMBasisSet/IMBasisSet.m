@@ -52,13 +52,11 @@ classdef IMBasisSet
 
         % Retained eigenvalues.
         %
-        % - Topic: Inspect basis sets
-        eigenvalues
-
-        % Equivalent depths.
+        % The retained values are the discrete eigenvalues
+        % $$\lambda_j$$ from the assembled canonical problem.
         %
         % - Topic: Inspect basis sets
-        h
+        eigenvalues
 
         % Physical mode numbers.
         %
@@ -103,7 +101,6 @@ classdef IMBasisSet
             % - Parameter options.evp: canonical EVP descriptor
             % - Parameter options.nativeModes: native mode columns
             % - Parameter options.eigenvalues: retained eigenvalues
-            % - Parameter options.h: equivalent depths
             % - Parameter options.modeNumber: physical mode numbers
             % - Parameter options.index: selection diagnostics
             % - Parameter options.normalization: active normalization
@@ -116,7 +113,6 @@ classdef IMBasisSet
                 options.evp = []
                 options.nativeModes double = zeros(0,0)
                 options.eigenvalues double = zeros(1,0)
-                options.h double = zeros(1,0)
                 options.modeNumber double = []
                 options.index struct = struct()
                 options.normalization = []
@@ -129,8 +125,7 @@ classdef IMBasisSet
             self.evp = options.evp;
             self.nativeModes = options.nativeModes;
             self.eigenvalues = reshape(options.eigenvalues,1,[]);
-            self.h = reshape(options.h,1,[]);
-            nModes = max(size(options.nativeModes,2), length(self.h));
+            nModes = max(size(options.nativeModes,2), length(self.eigenvalues));
             self.modeNumber = IMBasisSet.resolveModeNumber(options.modeNumber, nModes);
             self.index = options.index;
             self.normalization = IMBasisSet.resolveDefaultNormalization(options.normalization, options.evp);
@@ -253,7 +248,7 @@ classdef IMBasisSet
                     "The EVP does not define a ""%s"" normalization.", name);
             end
             normalizeMode = self.evp.normalizations.(name);
-            nModes = max(length(self.h), size(self.nativeModes,2));
+            nModes = max(length(self.eigenvalues), size(self.nativeModes,2));
             factors = zeros(1,nModes);
             for iMode = 1:nModes
                 factors(iMode) = normalizeMode(self, iMode);
@@ -489,7 +484,7 @@ classdef IMBasisSet
             if ~isempty(self.solver)
                 nGrid = max(256, 4*self.solver.nEVP);
             else
-                nGrid = max(256, 4*max(1,length(self.h)));
+                nGrid = max(256, 4*max(1,length(self.eigenvalues)));
             end
             z = linspace(min(zBounds), max(zBounds), nGrid).';
         end

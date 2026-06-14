@@ -103,9 +103,24 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             z = linspace(zDomain(1), zDomain(2), 16).';
 
             testCase.verifyClass(basisSet, "IMInternalModesBasis")
+            testCase.verifyEqual(basisSet.h, evp.hFromEigenvalue(basisSet.eigenvalues), RelTol=1e-12)
             testCase.verifySize(basisSet.G(z), [16 3])
             testCase.verifySize(basisSet.F(z), [16 3])
             testCase.verifyEqual(size(basisSet.gramMatrix("G")), [3 3])
+        end
+
+        function internalModeCustomDepthMappingIsHonored(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            hFromEigenvalue = @(lambda) 7 ./ lambda;
+            evp = IMInternalModes(name="customDepthMap", formulation="G", N2=N2, zDomain=zDomain, ...
+                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), r=@(z,ctx) ctx.N2(z)/ctx.g, ...
+                g=g, hFromEigenvalue=hFromEigenvalue);
+
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            testCase.verifyClass(basisSet, "IMInternalModesBasis")
+            testCase.verifyEqual(basisSet.h, hFromEigenvalue(basisSet.eigenvalues), RelTol=1e-12)
         end
 
         function evpContextOwnsDomainAndInternalModeMedium(testCase)
@@ -156,7 +171,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             basisSet = zSolver.solveEVP(evp, nModes=2);
 
+            testCase.verifyFalse(isprop(evp, "hFromEigenvalue"))
             testCase.verifyClass(basisSet, "IMBasisSet")
+            testCase.verifyFalse(isprop(basisSet, "h"))
+            testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
+            testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
+            testCase.verifyEqual(size(basisSet.gramMatrix("u")), [2 2])
             testCase.verifyError(@() wkbSolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
             testCase.verifyError(@() densitySolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
         end
@@ -169,6 +189,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSet")
+            testCase.verifyFalse(isprop(basisSet, "h"))
             testCase.verifySize(basisSet.u(linspace(-1000,0,8).'), [8 2])
         end
 

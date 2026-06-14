@@ -3,7 +3,7 @@ layout: default
 title: normalizationFactors
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 18
+nav_order: 17
 mathjax: true
 ---
 

@@ -64,7 +64,6 @@ factors = basisSet.normalizationFactors(Normalization.unity);
 + Inspect basis sets
   + [`eigenvalues`](/internal-modes/classes-v2/core/imbasisset/eigenvalues.html) Retained eigenvalues.
   + [`evp`](/internal-modes/classes-v2/core/imbasisset/evp.html) descriptor that was solved.
-  + [`h`](/internal-modes/classes-v2/core/imbasisset/h.html) Equivalent depths.
   + [`index`](/internal-modes/classes-v2/core/imbasisset/index_.html) Diagnostic index information from mode selection.
   + [`metadata`](/internal-modes/classes-v2/core/imbasisset/metadata.html) Additional metadata.
   + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Physical mode numbers.

@@ -53,6 +53,7 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.
   + [`g`](/internal-modes/classes-v2/core/iminternalmodes/g.html) Gravitational acceleration.
+  + [`hFromEigenvalue`](/internal-modes/classes-v2/core/iminternalmodes/hfromeigenvalue.html) Equivalent-depth conversion function.
 
 
 ---

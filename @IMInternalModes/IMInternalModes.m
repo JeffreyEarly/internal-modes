@@ -54,6 +54,16 @@ classdef IMInternalModes < IMEigenvalueProblem
         %
         % - Topic: Inspect internal-mode metadata
         g = 9.81
+
+        % Equivalent-depth conversion function.
+        %
+        % `hFromEigenvalue` maps retained eigenvalues to equivalent depths
+        % for internal-mode basis sets. The handle has signature
+        % `h = hFromEigenvalue(lambda)`, so
+        % $$h_j=\texttt{hFromEigenvalue}(\lambda_j).$$
+        %
+        % - Topic: Inspect internal-mode metadata
+        hFromEigenvalue = @(lambda) 1 ./ lambda
     end
 
     methods
@@ -73,6 +83,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
+            % - Parameter options.hFromEigenvalue: equivalent-depth conversion
             % - Parameter options.metadata: additional scalar parameters
             % - Returns evp: internal-mode EVP descriptor
             arguments
@@ -102,13 +113,13 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             self@IMEigenvalueProblem(name=options.name, p=options.p, q=options.q, r=options.r, ...
                 zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                hFromEigenvalue=options.hFromEigenvalue, hasZeroMode=options.hasZeroMode, ...
-                defaultNormalization=options.defaultNormalization, ...
+                hasZeroMode=options.hasZeroMode, defaultNormalization=options.defaultNormalization, ...
                 normalizations=options.normalizations, metadata=metadata);
             self.formulation = formulation;
             self.N2 = options.N2;
             self.f0 = options.f0;
             self.g = options.g;
+            self.hFromEigenvalue = options.hFromEigenvalue;
         end
 
         function context = contextForSolver(self, solver)
@@ -199,13 +210,14 @@ classdef IMInternalModes < IMEigenvalueProblem
             spec.hasKnownBoundaryWeights = true;
         end
 
-        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, h, modeNumber, index)
+        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)
             % Create an internal-mode basis set.
             %
             % - Topic: Developer topics
-            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,h,modeNumber,index)
+            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
             % - Returns basisSet: internal-mode basis set
             % - Developer: true
+            h = self.hFromEigenvalue(eigenvalues);
             basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 zDomain=self.zDomain, N2Function=self.N2);

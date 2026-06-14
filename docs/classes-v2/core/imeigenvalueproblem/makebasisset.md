@@ -3,7 +3,7 @@ layout: default
 title: makeBasisSet
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 13
+nav_order: 12
 mathjax: true
 ---
 
@@ -18,7 +18,7 @@ Create the solved scalar basis set for this EVP.
 
 ## Declaration
 ```matlab
- basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,h,modeNumber,index)
+ basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
 ```
 ## Returns
 + `basisSet`  solved scalar basis set

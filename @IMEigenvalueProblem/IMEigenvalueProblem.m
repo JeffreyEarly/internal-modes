@@ -7,9 +7,9 @@ classdef IMEigenvalueProblem
     % with endpoint conditions
     % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
     % The EVP owns the continuous problem: the physical interval, coefficient
-    % functions, endpoint conditions, equivalent-depth mapping,
-    % normalization rules, and diagnostic definiteness checks. A solver owns
-    % only the numerical choices used to discretize this problem.
+    % functions, endpoint conditions, normalization rules, and diagnostic
+    % definiteness checks. A solver owns only the numerical choices used to
+    % discretize this problem.
     %
     % ```matlab
     % evp = IMEigenvalueProblem(zDomain=[-1 0], ...
@@ -90,15 +90,6 @@ classdef IMEigenvalueProblem
         % - Topic: Define canonical coefficients
         bottomBoundary = IMBoundaryCondition.dirichlet()
 
-        % Equivalent-depth conversion function.
-        %
-        % `hFromEigenvalue` maps retained eigenvalues to the equivalent
-        % depths stored on the returned basis set. The handle has signature
-        % `h = hFromEigenvalue(lambda)`.
-        %
-        % - Topic: Inspect EVP metadata
-        hFromEigenvalue = @(lambda) 1 ./ lambda
-
         % Whether the scalar problem declares a zero mode.
         %
         % When true, mode selection retains one eigenvalue near zero and
@@ -166,7 +157,6 @@ classdef IMEigenvalueProblem
             % - Parameter options.r: eigenvalue-side metric coefficient
             % - Parameter options.surfaceBoundary: surface endpoint condition
             % - Parameter options.bottomBoundary: bottom endpoint condition
-            % - Parameter options.hFromEigenvalue: equivalent-depth conversion
             % - Parameter options.hasZeroMode: whether one zero mode should be retained
             % - Parameter options.defaultNormalization: natural normalization
             % - Parameter options.normalizations: named normalization handles
@@ -180,7 +170,6 @@ classdef IMEigenvalueProblem
                 options.r = @(z,~) ones(size(z))
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.hFromEigenvalue = @(lambda) 1 ./ lambda
                 options.hasZeroMode (1,1) logical = false
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
@@ -194,7 +183,6 @@ classdef IMEigenvalueProblem
             self.r = options.r;
             self.surfaceBoundary = options.surfaceBoundary;
             self.bottomBoundary = options.bottomBoundary;
-            self.hFromEigenvalue = options.hFromEigenvalue;
             self.hasZeroMode = options.hasZeroMode;
             self.defaultNormalization = options.defaultNormalization;
             self.normalizations = IMEigenvalueProblem.resolveNormalizations(options.normalizations);
@@ -549,16 +537,15 @@ classdef IMEigenvalueProblem
             selection.index = bounds;
         end
 
-        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, h, modeNumber, index)
+        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)
             % Create the solved scalar basis set for this EVP.
             %
             % - Topic: Developer topics
-            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,h,modeNumber,index)
+            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
             % - Returns basisSet: solved scalar basis set
             % - Developer: true
             basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
-                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
-                zDomain=self.zDomain);
+                eigenvalues=eigenvalues, modeNumber=modeNumber, index=index, zDomain=self.zDomain);
         end
     end
 

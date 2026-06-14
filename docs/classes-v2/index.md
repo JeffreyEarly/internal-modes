@@ -30,7 +30,8 @@ The reference pages use the standard vertical-mode variables:
 | --- | --- | --- |
 | $$F_j(z)$$ | horizontal-velocity vertical structure function | `F` |
 | $$G_j(z)$$ | vertical-velocity or density vertical structure function | `G` |
-| $$h_j$$ | equivalent depth or eigendepth | `h` |
+| $$\lambda_j$$ | retained canonical eigenvalue | `eigenvalues` |
+| $$h_j$$ | internal-mode equivalent depth or eigendepth | `h` |
 | $$N^2(z)$$ | buoyancy frequency squared | `N2` |
 | $$f_0$$ | Coriolis parameter | `f0` |
 | $$K$$ | horizontal wavenumber magnitude | `k` |
@@ -40,7 +41,7 @@ The reference pages use the standard vertical-mode variables:
 ## Reading the reference
 
 - [`IMEigenvalueProblem`](./core/imeigenvalueproblem) defines the canonical scalar equation, endpoint conditions, normalization default, and grid-level diagnostics.
-- [`IMInternalModes`](./core/iminternalmodes) translates standard `F` and `G` mode problems into canonical form.
+- [`IMInternalModes`](./core/iminternalmodes) translates standard `F` and `G` mode problems into canonical form and defines how eigenvalues map to equivalent depths.
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) or [`IMInternalModesBasis`](./core/iminternalmodesbasis) objects.
 - [`IMBoundaryCondition`](./core/imboundarycondition) stores scalar endpoint coefficients for the canonical boundary equation.
 - [`IMBasisSetConstantStratification`](./analytical-bases/imbasissetconstantstratification) and [`IMBasisSetExponentialStratification`](./analytical-bases/imbasissetexponentialstratification) provide exact basis sets for common stratification profiles.

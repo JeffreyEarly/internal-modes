@@ -26,7 +26,6 @@ Create a canonical scalar EVP.
 + `options.r`  eigenvalue-side metric coefficient
 + `options.surfaceBoundary`  surface endpoint condition
 + `options.bottomBoundary`  bottom endpoint condition
-+ `options.hFromEigenvalue`  equivalent-depth conversion
 + `options.hasZeroMode`  whether one zero mode should be retained
 + `options.defaultNormalization`  natural normalization
 + `options.normalizations`  named normalization handles

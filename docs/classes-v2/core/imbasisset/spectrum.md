@@ -3,7 +3,7 @@ layout: default
 title: spectrum
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 23
+nav_order: 22
 mathjax: true
 ---
 

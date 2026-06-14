@@ -18,8 +18,22 @@ classdef IMInternalModesBasis < IMBasisSet
     %
     % - Topic: Evaluate internal-mode bases
     % - Topic: Analyze Gram matrices
+    % - Topic: Inspect internal-mode bases
     % - Topic: Developer topics
     % - Declaration: classdef IMInternalModesBasis < IMBasisSet
+
+    properties (SetAccess = protected)
+        % Equivalent depths for the retained internal modes.
+        %
+        % For numerical internal-mode solves, these are computed from the
+        % parent EVP as
+        % $$h_j=\texttt{evp.hFromEigenvalue}(\lambda_j),$$
+        % where $$\lambda_j$$ is `eigenvalues(j)`. Analytical basis classes
+        % may pass exact equivalent depths directly.
+        %
+        % - Topic: Inspect internal-mode bases
+        h
+    end
 
     methods
         function self = IMInternalModesBasis(options)
@@ -55,9 +69,10 @@ classdef IMInternalModesBasis < IMBasisSet
 
             self@IMBasisSet(solver=options.solver, evp=options.evp, ...
                 nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, ...
-                h=options.h, modeNumber=options.modeNumber, index=options.index, ...
-                normalization=options.normalization, metadata=options.metadata, ...
-                zDomain=options.zDomain, N2Function=options.N2Function);
+                modeNumber=options.modeNumber, index=options.index, normalization=options.normalization, ...
+                metadata=options.metadata, zDomain=options.zDomain, N2Function=options.N2Function);
+            self.h = IMInternalModesBasis.resolveEquivalentDepths(options.h, self.eigenvalues, options.evp);
+            self.validateEquivalentDepthCount();
         end
 
         function G = G(self, z, options)
@@ -382,11 +397,32 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Static, Access = private)
+        function h = resolveEquivalentDepths(requestedH, eigenvalues, evp)
+            h = reshape(requestedH,1,[]);
+            if isempty(h) && ~isempty(eigenvalues)
+                h = evp.hFromEigenvalue(reshape(eigenvalues,1,[]));
+                h = reshape(h,1,[]);
+            end
+        end
+
         function variable = validateVariable(variable)
             variable = string(variable);
             if variable ~= "F" && variable ~= "G"
                 error("IMInternalModesBasis:InvalidVariable", ...
                     "variable must be ""F"" or ""G"".");
+            end
+        end
+    end
+
+    methods (Access = private)
+        function validateEquivalentDepthCount(self)
+            if isempty(self.h)
+                return;
+            end
+            nModes = max([size(self.nativeModes,2), length(self.eigenvalues), length(self.modeNumber)]);
+            if length(self.h) ~= nModes
+                error("IMInternalModesBasis:InvalidEquivalentDepthCount", ...
+                    "h must contain one equivalent depth for each retained mode.");
             end
         end
     end
