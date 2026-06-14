@@ -16,4 +16,4 @@ Gravitational acceleration.
 
 ## Discussion
 
-  `g` is copied into `metadata.g` and into coefficient contexts.
+  `g` is copied into `parameters.g` and into coefficient contexts.

@@ -72,7 +72,8 @@ classdef IMBasisSet
         %
         % `metadata` stores creation or diagnostic information associated
         % with this solved basis set. It is not interpreted by `IMBasisSet`;
-        % EVP metadata remains available through `basisSet.evp.metadata`.
+        % EVP coefficient parameters remain available through
+        % `basisSet.evp.parameters`.
         %
         % - Topic: Inspect basis sets
         metadata
@@ -580,10 +581,10 @@ classdef IMBasisSet
                 end
             end
             if ~isempty(self.evp)
-                metadataFields = fieldnames(self.evp.metadata);
-                for iField = 1:numel(metadataFields)
-                    fieldName = metadataFields{iField};
-                    context.(fieldName) = self.evp.metadata.(fieldName);
+                parameterFields = fieldnames(self.evp.parameters);
+                for iField = 1:numel(parameterFields)
+                    fieldName = parameterFields{iField};
+                    context.(fieldName) = self.evp.parameters.(fieldName);
                 end
             end
         end

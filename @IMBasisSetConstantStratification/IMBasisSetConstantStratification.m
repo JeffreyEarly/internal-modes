@@ -361,11 +361,11 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
 
             switch evpName
                 case "waveModesAtWavenumber"
-                    if ~isfield(evp.metadata, "k")
+                    if ~isfield(evp.parameters, "k")
                         error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                            "A fixed-wavenumber EVP must include metadata.k.");
+                            "A fixed-wavenumber EVP must include parameters.k.");
                     end
-                    k = evp.metadata.k;
+                    k = evp.parameters.k;
                     [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtWavenumber( ...
                         k, N0, D, nModes, f0, g, surfaceBoundary);
                     if surfaceBoundary == "free"
@@ -384,11 +384,11 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
                         baroclinicNumbers = 1:nModes;
                     end
                 case "waveModesAtFrequency"
-                    if ~isfield(evp.metadata, "omega")
+                    if ~isfield(evp.parameters, "omega")
                         error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                            "A fixed-frequency EVP must include metadata.omega.");
+                            "A fixed-frequency EVP must include parameters.omega.");
                     end
-                    omega = evp.metadata.omega;
+                    omega = evp.parameters.omega;
                     if surfaceBoundary == "free"
                         [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.surfaceBoundaryAtFrequency(omega, N0, D, g);
                         if omega < N0

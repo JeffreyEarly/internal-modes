@@ -89,9 +89,30 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyClass(evp, "IMInternalModes")
             testCase.verifyEqual(evp.formulation, "G")
-            testCase.verifyEqual(evp.metadata.k, k, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.k, k, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.f0, f0, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.g, g, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.formulation, "G")
             testCase.verifyEqual(A(interiorRows,:), expectedA(interiorRows,:), AbsTol=1e-11)
             testCase.verifyEqual(B(interiorRows,:), expectedB(interiorRows,:), AbsTol=1e-11)
+        end
+
+        function evpParametersEnterCoefficientContext(testCase)
+            [~, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMEigenvalueProblem(name="parameterized", zDomain=zDomain, ...
+                p=@(z,ctx) ctx.alpha*ones(size(z)), q=0, r=1, ...
+                parameters=struct("alpha",2));
+            configuredSolver = solver.configuredForEVP(evp);
+
+            context = evp.contextForSolver(configuredSolver);
+            [A, ~] = evp.assemble(solver);
+            expectedA = -2*configuredSolver.physicalDerivativeMatrix(2);
+            interiorRows = 2:(nEVP-1);
+
+            testCase.verifyEqual(evp.parameters.alpha, 2, AbsTol=0)
+            testCase.verifyEqual(context.alpha, 2, AbsTol=0)
+            testCase.verifyEqual(A(interiorRows,:), expectedA(interiorRows,:), AbsTol=1e-11)
         end
 
         function solverReturnsInternalModesBasisWithFAndG(testCase)
@@ -137,6 +158,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(context.f0, f0, AbsTol=0)
             testCase.verifyEqual(context.g, g, AbsTol=0)
             testCase.verifyEqual(context.formulation, "G")
+            testCase.verifyEqual(evp.parameters.f0, f0, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.g, g, AbsTol=0)
+            testCase.verifyEqual(evp.parameters.formulation, "G")
         end
 
         function basisSetRetainsEVPDomainAndMedium(testCase)
@@ -148,6 +172,8 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyEqual(basisSet.zDomain, zDomain)
             testCase.verifyEqual(basisSet.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
+            testCase.verifyEqual(basisSet.metadata, struct())
+            testCase.verifyTrue(isfield(basisSet.evp.parameters, "formulation"))
         end
 
         function spectralSolverSupportsCoordinateKinds(testCase)

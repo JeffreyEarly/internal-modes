@@ -191,11 +191,11 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
             evpName = string(evp.name);
             switch evpName
                 case "waveModesAtWavenumber"
-                    if ~isfield(evp.metadata, "k")
+                    if ~isfield(evp.parameters, "k")
                         error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                            "A fixed-wavenumber EVP must include metadata.k.");
+                            "A fixed-wavenumber EVP must include parameters.k.");
                     end
-                    k = evp.metadata.k;
+                    k = evp.parameters.k;
                     nInteriorModes = IMBasisSetExponentialStratification.nInteriorModes(nModes, surfaceBoundary);
                     roots = IMBasisSetExponentialStratification.rootsAtWavenumber( ...
                         k, N0, b, zDomain, nInteriorModes, f0, g, surfaceBoundary);
@@ -207,11 +207,11 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
                     end
                     frequencies = sqrt(g*h*k*k + f0*f0);
                 case "waveModesAtFrequency"
-                    if ~isfield(evp.metadata, "omega")
+                    if ~isfield(evp.parameters, "omega")
                         error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                            "A fixed-frequency EVP must include metadata.omega.");
+                            "A fixed-frequency EVP must include parameters.omega.");
                     end
-                    omega = evp.metadata.omega;
+                    omega = evp.parameters.omega;
                     if omega >= N0 && surfaceBoundary == "free"
                         root0 = IMBasisSetExponentialStratification.surfaceRootAtFrequency(omega, N0, b, zDomain, g);
                         roots = root0;

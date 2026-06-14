@@ -55,11 +55,11 @@ basisSet = solver.solveEVP(evp,nModes=4);
   + [`r`](/internal-modes/classes-v2/core/imeigenvalueproblem/r.html) Metric coefficient multiplying the eigenvalue side.
   + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
   + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
-+ Inspect EVP metadata
++ Inspect EVP configuration
   + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization.
-  + [`metadata`](/internal-modes/classes-v2/core/imeigenvalueproblem/metadata.html) Additional EVP metadata.
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
   + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named normalization rules.
+  + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Additional coefficient parameters.
 + Inspect inner products
   + [`endpointWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/endpointweights.html) Return endpoint metric terms implied by active conditions.
   + [`innerProduct`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerproduct.html) Return the scalar inner-product recipe.

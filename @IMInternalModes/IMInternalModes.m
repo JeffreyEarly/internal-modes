@@ -17,7 +17,7 @@ classdef IMInternalModes < IMEigenvalueProblem
     % ```
     %
     % - Topic: Create internal-mode EVPs
-    % - Topic: Inspect internal-mode metadata
+    % - Topic: Inspect internal-mode configuration
     % - Topic: Inspect internal-mode inner products
     % - Topic: Developer topics
     % - Declaration: classdef IMInternalModes < IMEigenvalueProblem
@@ -29,7 +29,7 @@ classdef IMInternalModes < IMEigenvalueProblem
         % native unknown `u`. The complementary variable is evaluated
         % diagnostically by `IMInternalModesBasis`.
         %
-        % - Topic: Inspect internal-mode metadata
+        % - Topic: Inspect internal-mode configuration
         formulation = "G"
 
         % Buoyancy frequency squared function.
@@ -38,21 +38,21 @@ classdef IMInternalModes < IMEigenvalueProblem
         % solvers can prepare `z`, `wkb`, or `density` coordinates from the
         % same continuous stratification.
         %
-        % - Topic: Inspect internal-mode metadata
+        % - Topic: Inspect internal-mode configuration
         N2
 
         % Coriolis parameter.
         %
-        % `f0` is copied into `metadata.f0` and into coefficient contexts.
+        % `f0` is copied into `parameters.f0` and into coefficient contexts.
         %
-        % - Topic: Inspect internal-mode metadata
+        % - Topic: Inspect internal-mode configuration
         f0 = 0
 
         % Gravitational acceleration.
         %
-        % `g` is copied into `metadata.g` and into coefficient contexts.
+        % `g` is copied into `parameters.g` and into coefficient contexts.
         %
-        % - Topic: Inspect internal-mode metadata
+        % - Topic: Inspect internal-mode configuration
         g = 9.81
 
         % Equivalent-depth conversion function.
@@ -62,7 +62,7 @@ classdef IMInternalModes < IMEigenvalueProblem
         % `h = hFromEigenvalue(lambda)`, so
         % $$h_j=\texttt{hFromEigenvalue}(\lambda_j).$$
         %
-        % - Topic: Inspect internal-mode metadata
+        % - Topic: Inspect internal-mode configuration
         hFromEigenvalue = @(lambda) 1 ./ lambda
     end
 
@@ -84,7 +84,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
-            % - Parameter options.metadata: additional scalar parameters
+            % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: internal-mode EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "internalModes"
@@ -102,19 +102,19 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.hasZeroMode (1,1) logical = false
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
-                options.metadata struct = struct()
+                options.parameters struct = struct()
             end
 
             formulation = IMInternalModes.validateFormulation(options.formulation);
-            metadata = options.metadata;
-            metadata.f0 = options.f0;
-            metadata.g = options.g;
-            metadata.formulation = formulation;
+            parameters = options.parameters;
+            parameters.f0 = options.f0;
+            parameters.g = options.g;
+            parameters.formulation = formulation;
 
             self@IMEigenvalueProblem(name=options.name, p=options.p, q=options.q, r=options.r, ...
                 zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 hasZeroMode=options.hasZeroMode, defaultNormalization=options.defaultNormalization, ...
-                normalizations=options.normalizations, metadata=metadata);
+                normalizations=options.normalizations, parameters=parameters);
             self.formulation = formulation;
             self.N2 = options.N2;
             self.f0 = options.f0;
@@ -165,7 +165,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % stratification slope. For more than one point it is computed
             % by finite differences on the supplied coordinate vector.
             %
-            % - Topic: Inspect internal-mode metadata
+            % - Topic: Inspect internal-mode configuration
             % - Declaration: values = dzLogN2(evp,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
@@ -231,7 +231,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''=\lambda N^2G/g.$$
             % The default normalization is `Normalization.geostrophic`, and
-            % metadata includes `formulation`, `f0`, and `g`.
+            % parameters include `formulation`, `f0`, and `g`.
             %
             % ```matlab
             % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
@@ -272,7 +272,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
             % It declares the barotropic zero mode.
-            % Metadata includes `formulation` and `g`.
+            % Parameters include `formulation` and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
@@ -305,7 +305,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
             % The default normalization is `Normalization.kConstant`, and
-            % metadata includes `k`, `formulation`, `f0`, and `g`.
+            % parameters include `k`, `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
@@ -328,7 +328,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             k = options.k;
-            metadata = struct("k", k);
+            parameters = struct("k", k);
             normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
@@ -336,7 +336,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.kConstant, normalizations=normalizations, ...
-                metadata=metadata);
+                parameters=parameters);
         end
 
         function evp = waveModesAtFrequency(options)
@@ -345,7 +345,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''=\lambda(N^2-\omega^2)G/g.$$
             % The default normalization is `Normalization.omegaConstant`,
-            % and metadata includes `omega`, `formulation`, `f0`, and `g`.
+            % and parameters include `omega`, `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)
@@ -368,7 +368,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             omega = options.omega;
-            metadata = struct("omega", omega);
+            parameters = struct("omega", omega);
             normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
@@ -376,7 +376,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 defaultNormalization=Normalization.omegaConstant, normalizations=normalizations, ...
-                metadata=metadata);
+                parameters=parameters);
         end
     end
 

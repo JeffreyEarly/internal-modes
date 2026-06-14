@@ -82,7 +82,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
                 b=b, zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSetExponentialStratification")
-            testCase.verifyEqual(basisSet.evp.metadata.omega, 1e-3, AbsTol=0)
+            testCase.verifyEqual(basisSet.evp.parameters.omega, 1e-3, AbsTol=0)
         end
 
         function providedEVPDomainMustMatchAnalyticalDomain(testCase)

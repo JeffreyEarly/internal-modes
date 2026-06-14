@@ -47,7 +47,7 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`hydrostaticGModes`](/internal-modes/classes-v2/core/iminternalmodes/hydrostaticgmodes.html) Create the hydrostatic `G` internal-mode EVP.
   + [`waveModesAtFrequency`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatfrequency.html) Create the fixed-frequency wave-mode EVP.
   + [`waveModesAtWavenumber`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatwavenumber.html) Create the fixed-wavenumber wave-mode EVP.
-+ Inspect internal-mode metadata
++ Inspect internal-mode configuration
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodes/n2.html) Buoyancy frequency squared function.
   + [`dzLogN2`](/internal-modes/classes-v2/core/iminternalmodes/dzlogn2.html) Evaluate the vertical derivative of `log(N2)`.
   + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.

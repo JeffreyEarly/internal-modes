@@ -23,7 +23,7 @@ classdef IMEigenvalueProblem
     %
     % - Topic: Create EVPs
     % - Topic: Define canonical coefficients
-    % - Topic: Inspect EVP metadata
+    % - Topic: Inspect EVP configuration
     % - Topic: Inspect inner products
     % - Topic: Inspect definiteness diagnostics
     % - Topic: Select modes
@@ -35,7 +35,7 @@ classdef IMEigenvalueProblem
         %
         % `name` appears in solver diagnostics and generated error messages.
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Inspect EVP configuration
         name = "canonical"
 
         % Physical vertical domain.
@@ -105,21 +105,26 @@ classdef IMEigenvalueProblem
         % Evaluated modes are always raw modes divided by a per-mode scale,
         % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j.$$
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Inspect EVP configuration
         defaultNormalization = []
 
-        % Additional EVP metadata.
+        % Additional coefficient parameters.
         %
         % Fields are copied into the coefficient context so custom
-        % coefficient functions can read scalar parameters without new
-        % public properties. Standard internal-mode factories add fields
-        % `f0`, `g`, and `formulation`; wave-mode factories also add `k` or
-        % `omega`. User-supplied metadata fields are preserved on
-        % `evp.metadata` and are visible to coefficient handles through
-        % `ctx.fieldName`.
+        % coefficient functions can read named values without new public
+        % properties. `parameters` is not the whole coefficient context; it
+        % is merged into the context provided by the solver and EVP.
+        % Standard internal-mode factories add fields `f0`, `g`, and
+        % `formulation`; wave-mode factories also add `k` or `omega`.
         %
-        % - Topic: Inspect EVP metadata
-        metadata = struct()
+        % ```matlab
+        % evp = IMEigenvalueProblem( ...
+        %     p=@(z,ctx) ctx.alpha*ones(size(z)), ...
+        %     parameters=struct("alpha",2));
+        % ```
+        %
+        % - Topic: Inspect EVP configuration
+        parameters = struct()
     end
 
     properties
@@ -140,7 +145,7 @@ classdef IMEigenvalueProblem
         %     defaultNormalization=Normalization.unity);
         % ```
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Inspect EVP configuration
         normalizations = struct()
     end
 
@@ -160,7 +165,7 @@ classdef IMEigenvalueProblem
             % - Parameter options.hasZeroMode: whether one zero mode should be retained
             % - Parameter options.defaultNormalization: natural normalization
             % - Parameter options.normalizations: named normalization handles
-            % - Parameter options.metadata: additional scalar parameters
+            % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: canonical EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "canonical"
@@ -173,7 +178,7 @@ classdef IMEigenvalueProblem
                 options.hasZeroMode (1,1) logical = false
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
-                options.metadata struct = struct()
+                options.parameters struct = struct()
             end
 
             self.name = string(options.name);
@@ -186,7 +191,7 @@ classdef IMEigenvalueProblem
             self.hasZeroMode = options.hasZeroMode;
             self.defaultNormalization = options.defaultNormalization;
             self.normalizations = IMEigenvalueProblem.resolveNormalizations(options.normalizations);
-            self.metadata = options.metadata;
+            self.parameters = options.parameters;
         end
 
         function [A, B] = assemble(self, solver)
@@ -225,7 +230,7 @@ classdef IMEigenvalueProblem
             % Return the coefficient context for this EVP and solver.
             %
             % The context begins with `solver.context()`, adds `zDomain`,
-            % then copies each field of `metadata`. Coefficient handles such
+            % then copies each field of `parameters`. Coefficient handles such
             % as `p(z,ctx)`, `q(z,ctx)`, and `r(z,ctx)` receive this struct.
             %
             % - Topic: Developer topics
@@ -235,10 +240,10 @@ classdef IMEigenvalueProblem
             % - Developer: true
             context = solver.context();
             context.zDomain = self.zDomain;
-            metadataFields = fieldnames(self.metadata);
-            for iField = 1:numel(metadataFields)
-                fieldName = metadataFields{iField};
-                context.(fieldName) = self.metadata.(fieldName);
+            parameterFields = fieldnames(self.parameters);
+            for iField = 1:numel(parameterFields)
+                fieldName = parameterFields{iField};
+                context.(fieldName) = self.parameters.(fieldName);
             end
         end
 

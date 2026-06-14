@@ -29,7 +29,7 @@ Create a canonical scalar EVP.
 + `options.hasZeroMode`  whether one zero mode should be retained
 + `options.defaultNormalization`  natural normalization
 + `options.normalizations`  named normalization handles
-+ `options.metadata`  additional scalar parameters
++ `options.parameters`  named coefficient parameters
 
 ## Returns
 + `evp`  canonical EVP descriptor

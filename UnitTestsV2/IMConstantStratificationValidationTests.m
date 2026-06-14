@@ -82,7 +82,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
                 zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSetConstantStratification")
-            testCase.verifyEqual(basisSet.evp.metadata.k, 1e-4, AbsTol=0)
+            testCase.verifyEqual(basisSet.evp.parameters.k, 1e-4, AbsTol=0)
         end
 
         function analyticalFactoryCreatesMatchingDefaultEVP(testCase)
