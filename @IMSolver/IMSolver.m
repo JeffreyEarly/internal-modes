@@ -16,6 +16,9 @@ classdef (Abstract) IMSolver
         function basisSet = solveEVP(self, evp, options)
             % Solve an EVP and return a native-basis solution set.
             %
+            % If the assembled matrices produce no finite real eigenvalues,
+            % `solveEVP` throws an explanatory diagnostic before returning.
+            %
             % - Topic: Solve EVPs
             % - Declaration: basisSet = solveEVP(solver,evp,options)
             % - Parameter evp: physical-coordinate EVP descriptor
@@ -31,6 +34,10 @@ classdef (Abstract) IMSolver
             [V, D] = eig(A, B);
             eigenvalues = diag(D);
             valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
+            if ~any(valid)
+                error("IMSolver:NoValidEigenvalues", "%s", ...
+                    self.noValidEigenvalueMessage(evp, A, B, eigenvalues, valid));
+            end
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
             selection = evp.selectModes(eigenvalues, options.nModes, evp.contextForSolver(self));
@@ -76,6 +83,23 @@ classdef (Abstract) IMSolver
             index = self.boundaryIndex(endpointLaw.location);
             A(index,:) = endpointLaw.leftOperator.boundaryRow(self, endpointLaw.location, context=options.context);
             B(index,:) = endpointLaw.rightOperator.boundaryRow(self, endpointLaw.location, context=options.context);
+        end
+    end
+
+    methods (Access = private)
+        function message = noValidEigenvalueMessage(~, evp, A, B, eigenvalues, valid)
+            normA = norm(A, "fro");
+            normB = norm(B, "fro");
+            rankA = rank(A);
+            rankB = rank(B);
+            finite = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues));
+            threshold = 1e-12*max([normA, normB, 1]);
+            hint = "";
+            if normA <= threshold || normB <= threshold
+                hint = " One assembled matrix is nearly zero; check EVP coefficient parameters and physical constants such as f0.";
+            end
+            message = sprintf('EVP "%s" produced no finite real eigenvalues. total eigenvalues=%d, finite eigenvalues=%d, valid-real eigenvalues=%d, norm(A,"fro")=%.3g, norm(B,"fro")=%.3g, rank(A)=%d, rank(B)=%d.%s', ...
+                evp.name, length(eigenvalues), nnz(finite), nnz(valid), normA, normB, rankA, rankB, hint);
         end
     end
 

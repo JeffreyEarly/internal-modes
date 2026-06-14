@@ -453,6 +453,31 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.normalization, Normalization.wMax)
         end
 
+        function solveEVPExplainsDegenerateAssemblyWithNoValidEigenvalues(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
+            p = @(z,ctx) ctx.f0^2 ./ ctx.N2(z);
+            pz = @(z,ctx) -p(z,ctx).*ctx.dzLogN2(z);
+            left = IMOperator() ...
+                .plus(coefficient=p, derivativeOrder=2) ...
+                .plus(coefficient=pz, derivativeOrder=1);
+            right = IMOperator().plus(coefficient=@(z,ctx) -ctx.f0^2/ctx.g, derivativeOrder=0);
+            evp = IMEigenvalueProblem(name="missingF0Diagnostic", formulation="F", g=g, ...
+                leftOperator=left, rightOperator=right, ...
+                surfaceBoundary=IMBoundary.rigid(), bottomBoundary=IMBoundary.rigid());
+
+            try
+                solver.solveEVP(evp, nModes=3);
+                testCase.verifyFail("Expected IMSolver:NoValidEigenvalues.")
+            catch exception
+                testCase.verifyEqual(exception.identifier, 'IMSolver:NoValidEigenvalues')
+                testCase.verifyTrue(contains(exception.message, "missingF0Diagnostic"))
+                testCase.verifyTrue(contains(exception.message, 'norm(B,"fro")'))
+                testCase.verifyTrue(contains(exception.message, "rank(B)"))
+                testCase.verifyTrue(contains(exception.message, "f0"))
+            end
+        end
+
         function explicitBasisSetNormalizationOverridesEVPDefault(testCase)
             evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4);
             evp.defaultNormalization = Normalization.wMax;

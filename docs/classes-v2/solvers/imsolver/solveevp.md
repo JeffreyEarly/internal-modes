@@ -26,3 +26,6 @@ Solve an EVP and return a native-basis solution set.
 + `basisSet`  solved native basis set
 
 ## Discussion
+
+  If the assembled matrices produce no finite real eigenvalues,
+  `solveEVP` throws an explanatory diagnostic before returning.
