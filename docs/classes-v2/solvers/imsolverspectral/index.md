@@ -28,7 +28,7 @@ not own modal normalization.
 
 ```matlab
 solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-basisSet = solver.solveEVP(IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4));
+basisSet = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(k=1e-4));
 ```
 
 

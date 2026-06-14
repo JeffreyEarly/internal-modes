@@ -1,0 +1,183 @@
+classdef IMBoundaryCondition
+    % Store one scalar canonical endpoint condition.
+    %
+    % `IMBoundaryCondition` represents
+    % $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
+    % The coefficients are endpoint scalars. The EVP supplies the endpoint
+    % location when it assembles matrix rows or computes metric weights.
+    %
+    % - Topic: Create boundary conditions
+    % - Topic: Inspect boundary conditions
+    % - Topic: Developer topics
+    % - Declaration: classdef IMBoundaryCondition
+
+    properties (SetAccess = private)
+        % Coefficient multiplying endpoint value on the left.
+        %
+        % - Topic: Inspect boundary conditions
+        a = 1
+
+        % Coefficient multiplying endpoint flux on the left.
+        %
+        % - Topic: Inspect boundary conditions
+        b = 0
+
+        % Coefficient multiplying endpoint value on the eigenvalue side.
+        %
+        % - Topic: Inspect boundary conditions
+        c = 0
+
+        % Coefficient multiplying endpoint flux on the eigenvalue side.
+        %
+        % - Topic: Inspect boundary conditions
+        d = 0
+    end
+
+    methods
+        function self = IMBoundaryCondition(options)
+            % Create a scalar endpoint condition.
+            %
+            % - Topic: Create boundary conditions
+            % - Declaration: boundary = IMBoundaryCondition(options)
+            % - Parameter options.a: value coefficient on the left
+            % - Parameter options.b: flux coefficient on the left
+            % - Parameter options.c: value coefficient on the eigenvalue side
+            % - Parameter options.d: flux coefficient on the eigenvalue side
+            % - Returns boundary: endpoint condition
+            arguments
+                options.a (1,1) double = 1
+                options.b (1,1) double = 0
+                options.c (1,1) double = 0
+                options.d (1,1) double = 0
+            end
+
+            coefficients = [options.a options.b options.c options.d];
+            if any(~isfinite(coefficients))
+                error("IMBoundaryCondition:InvalidCoefficient", ...
+                    "Boundary coefficients must be finite scalars.");
+            end
+            if all(coefficients == 0)
+                error("IMBoundaryCondition:DegenerateCondition", ...
+                    "At least one boundary coefficient must be nonzero.");
+            end
+
+            self.a = options.a;
+            self.b = options.b;
+            self.c = options.c;
+            self.d = options.d;
+        end
+
+        function tf = isEigenvalueDependent(self, tolerance)
+            % Return true when the eigenvalue side is active.
+            %
+            % - Topic: Inspect boundary conditions
+            % - Declaration: tf = isEigenvalueDependent(boundary,tolerance)
+            % - Parameter tolerance: scalar activity tolerance
+            % - Returns tf: true for active endpoint metric terms
+            arguments
+                self IMBoundaryCondition
+                tolerance (1,1) double {mustBeNonnegative} = 0
+            end
+
+            tf = abs(self.c) > tolerance || abs(self.d) > tolerance;
+        end
+
+        function value = determinant(self, location)
+            % Return the signed endpoint determinant.
+            %
+            % - Topic: Inspect boundary conditions
+            % - Declaration: value = determinant(boundary,location)
+            % - Parameter location: `"surface"` or `"bottom"`
+            % - Returns value: signed determinant
+            value = IMBoundaryCondition.endpointSign(location)*(self.a*self.d - self.b*self.c);
+        end
+
+        function value = metricWeight(self, location)
+            % Return the endpoint metric weight.
+            %
+            % - Topic: Inspect boundary conditions
+            % - Declaration: value = metricWeight(boundary,location)
+            % - Parameter location: `"surface"` or `"bottom"`
+            % - Returns value: coefficient multiplying `(c*u-d*p*u_z)^2`
+            D = self.determinant(location);
+            tolerance = 100*eps(max(1,abs(D)));
+            if abs(D) <= tolerance
+                value = NaN;
+                return;
+            end
+            value = 1/D;
+        end
+
+        function beta = robinEnergyCoefficient(self, location)
+            % Return the ordinary Robin endpoint quadratic coefficient.
+            %
+            % - Topic: Developer topics
+            % - Declaration: beta = robinEnergyCoefficient(boundary,location)
+            % - Developer: true
+            if self.b == 0
+                beta = 0;
+                return;
+            end
+            beta = IMBoundaryCondition.endpointSign(location)*self.a/self.b;
+        end
+
+        function H = endpointNumeratorMatrix(self, location)
+            % Return the active-endpoint numerator matrix.
+            %
+            % The vector is `[u; p*u_z]`.
+            %
+            % - Topic: Developer topics
+            % - Declaration: H = endpointNumeratorMatrix(boundary,location)
+            % - Developer: true
+            D = self.determinant(location);
+            H = -(1/D)*[self.a*self.c self.a*self.d; self.a*self.d self.b*self.d];
+        end
+    end
+
+    methods (Static)
+        function boundary = dirichlet()
+            % Create `u=0`.
+            %
+            % - Topic: Create boundary conditions
+            % - Declaration: boundary = IMBoundaryCondition.dirichlet()
+            boundary = IMBoundaryCondition(a=1, b=0, c=0, d=0);
+        end
+
+        function boundary = neumann()
+            % Create `p*u_z=0`.
+            %
+            % - Topic: Create boundary conditions
+            % - Declaration: boundary = IMBoundaryCondition.neumann()
+            boundary = IMBoundaryCondition(a=0, b=1, c=0, d=0);
+        end
+
+        function boundary = robin(a, b)
+            % Create `a*u-b*p*u_z=0`.
+            %
+            % - Topic: Create boundary conditions
+            % - Declaration: boundary = IMBoundaryCondition.robin(a,b)
+            % - Parameter a: endpoint value coefficient
+            % - Parameter b: endpoint flux coefficient
+            arguments
+                a (1,1) double
+                b (1,1) double
+            end
+
+            boundary = IMBoundaryCondition(a=a, b=b, c=0, d=0);
+        end
+    end
+
+    methods (Static, Access = private)
+        function value = endpointSign(location)
+            switch string(location)
+                case "surface"
+                    value = 1;
+                case "bottom"
+                    value = -1;
+                otherwise
+                    error("IMBoundaryCondition:InvalidLocation", ...
+                        "Boundary location must be ""surface"" or ""bottom"".");
+            end
+        end
+    end
+end

@@ -9,7 +9,7 @@ mathjax: true
 
 #  IMSolver
 
-Define the shared protocol for internal-mode solvers.
+Define the shared protocol for canonical EVP solvers.
 
 
 ---
@@ -20,9 +20,6 @@ Define the shared protocol for internal-mode solvers.
 ```
 ## Discussion
 
-  `IMSolver` owns the solver-independent generalized EVP
-  workflow. Concrete subclasses provide the native grid, physical
-  derivative matrices, boundary rows, and native-mode evaluation.
-  Solvers own the numerical medium and discretization. EVPs own the
-  physical constants and combine them with solver context during
-  assembly.
+  Concrete solvers own the grid, coordinate mapping, derivative
+  matrices, integration rule, and interpolation of native modes. The
+  base class owns the common generalized-eigenvalue workflow.

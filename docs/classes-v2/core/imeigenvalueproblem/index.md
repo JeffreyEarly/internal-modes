@@ -11,7 +11,7 @@ nav_order: 1
 
 #  IMEigenvalueProblem
 
-Describe a vertical-mode generalized eigenvalue problem.
+Describe a canonical scalar eigenvalue problem.
 
 
 ---
@@ -22,78 +22,52 @@ Describe a vertical-mode generalized eigenvalue problem.
 
 ## Overview
 
-`IMEigenvalueProblem` is the solver-independent contract for a
-vertical-mode eigenvalue problem. A solver owns the stratification,
-physical domain, coordinate mapping, and derivative matrices. The EVP
-owns the physical constants, differential operators, boundary laws,
-inner-product weights, normalization rules, equivalent-depth mapping,
-and mode-index policy.
-
-Assembly combines those responsibilities in the solver native basis:
-$$Aq_j=\lambda_jBq_j,\qquad h_j=\mathrm{hFromEigenvalue}(\lambda_j).$$
-The retained columns become an `IMBasisSet`. The basis set evaluates the
-solved variable and its linked diagnostic variable; `F` and `G` are not
-independent mode families. In a `G` formulation,
-$$F_j=h_j\partial_zG_j,$$
-and in an `F` formulation,
-$$G_j=-gN^{-2}\partial_zF_j.$$
-
-Use the static factories for standard wave and hydrostatic mode
-problems. Use the constructor directly when defining a custom operator,
-boundary, inner-product, or normalization contract.
-
-```matlab
-N2 = @(z) 1e-5*ones(size(z));
-solver = IMSolverSpectral(N2=N2, zDomain=[-1000 0], nEVP=64);
-evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=1e-4);
-basisSet = solver.solveEVP(evp, nModes=4);
-z = linspace(-1000, 0, 128).';
-G = basisSet.G(z);
-h = basisSet.h;
-```
+`IMEigenvalueProblem` is the solver-independent description of the
+scalar problem
+$$-(p u')' + q u = \lambda r u,$$
+with endpoint conditions
+$$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
+A solver owns the grid, coordinate mapping, and derivative matrices.
+The EVP owns the coefficient functions, endpoint conditions,
+equivalent-depth mapping, normalization rules, and diagnostic
+definiteness checks.
 
 
 
 
 ## Topics
-+ Create standard EVPs
-  + [`hydrostaticFModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/hydrostaticfmodes.html) Create the geostrophic hydrostatic `F`-mode EVP.
-  + [`hydrostaticGModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/hydrostaticgmodes.html) Create the hydrostatic `G`-mode EVP.
-  + [`waveModesAtFrequency`](/internal-modes/classes-v2/core/imeigenvalueproblem/wavemodesatfrequency.html) Create the wave-mode `G` EVP at fixed frequency.
-  + [`waveModesAtWavenumber`](/internal-modes/classes-v2/core/imeigenvalueproblem/wavemodesatwavenumber.html) Create the wave-mode `G` EVP at fixed horizontal wavenumber.
-+ Build custom EVPs
-  + [`IMEigenvalueProblem`](/internal-modes/classes-v2/core/imeigenvalueproblem/imeigenvalueproblem.html) Create a physical-coordinate EVP descriptor.
++ Create EVPs
+  + [`IMEigenvalueProblem`](/internal-modes/classes-v2/core/imeigenvalueproblem/imeigenvalueproblem.html) Create a canonical scalar EVP.
 + Assemble EVPs
-  + [`assemble`](/internal-modes/classes-v2/core/imeigenvalueproblem/assemble.html) Build generalized-EVP matrices on a solver's native basis.
-  + [`bottomBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomboundary.html) Bottom boundary law.
+  + [`assemble`](/internal-modes/classes-v2/core/imeigenvalueproblem/assemble.html) the canonical matrix pair on a solver grid.
+  + [`bottomBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomboundary.html) Bottom endpoint condition.
   + [`contextForSolver`](/internal-modes/classes-v2/core/imeigenvalueproblem/contextforsolver.html) Return the coefficient context for this EVP and solver.
-  + [`leftOperator`](/internal-modes/classes-v2/core/imeigenvalueproblem/leftoperator.html) Left differential operator.
-  + [`rightOperator`](/internal-modes/classes-v2/core/imeigenvalueproblem/rightoperator.html) Right differential operator.
-  + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface boundary law.
-+ Inspect EVP metadata
-  + [`bottomWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomweights.html) Bottom endpoint weights implied by the bottom boundary law.
-  + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization for this EVP.
-  + [`f0`](/internal-modes/classes-v2/core/imeigenvalueproblem/f0.html) Coriolis parameter.
-  + [`formulation`](/internal-modes/classes-v2/core/imeigenvalueproblem/formulation.html) Solved vertical-structure formulation.
-  + [`g`](/internal-modes/classes-v2/core/imeigenvalueproblem/g.html) Gravitational acceleration.
+  + [`p`](/internal-modes/classes-v2/core/imeigenvalueproblem/p.html) Coefficient multiplying the derivative flux.
+  + [`q`](/internal-modes/classes-v2/core/imeigenvalueproblem/q.html) Coefficient multiplying the solved variable on the left side.
+  + [`r`](/internal-modes/classes-v2/core/imeigenvalueproblem/r.html) Metric coefficient multiplying the eigenvalue side.
+  + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
++ Inspect diagnostics
+  + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization.
+  + [`definitenessInfo`](/internal-modes/classes-v2/core/imeigenvalueproblem/definitenessinfo.html) Check grid-level signs for the canonical coefficients.
+  + [`endpointWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/endpointweights.html) Return endpoint metric terms implied by active conditions.
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/imeigenvalueproblem/hfromeigenvalue.html) Equivalent-depth conversion function.
-  + [`innerProduct`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerproduct.html) Return the declared inner-product recipe for a variable.
-  + [`innerWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerweights.html) Inner-product weights for `F` and `G`.
+  + [`innerProduct`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerproduct.html) Return the scalar inner-product recipe.
+  + [`metadata`](/internal-modes/classes-v2/core/imeigenvalueproblem/metadata.html) Additional EVP metadata.
+  + [`metricIndex`](/internal-modes/classes-v2/core/imeigenvalueproblem/metricindex.html) Count negative endpoint directions in the metric.
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
-  + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named modal normalization rules.
-  + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Stored factory-specific physical inputs.
-  + [`surfaceWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceweights.html) Surface endpoint weights implied by the surface boundary law.
-+ Select retained modes
-  + [`hasBarotropicMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/hasbarotropicmode.html) Whether the EVP declares the barotropic mode.
-  + [`indexValidationMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/indexvalidationmode.html) Index validation behavior.
-  + [`partialDepthPEIndexPolicy`](/internal-modes/classes-v2/core/imeigenvalueproblem/partialdepthpeindexpolicy.html) Return the partial-depth potential-energy index policy.
+  + [`negativeEigenvalueBounds`](/internal-modes/classes-v2/core/imeigenvalueproblem/negativeeigenvaluebounds.html) Bound negative eigenvalues using grid-level certification.
+  + [`normalizations`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizations.html) Named normalization rules.
++ Select modes
+  + [`hasZeroMode`](/internal-modes/classes-v2/core/imeigenvalueproblem/haszeromode.html) Whether the scalar problem declares a zero mode.
 
 
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
-+ Select retained modes
-  + [`classifyEigenvalues`](/internal-modes/classes-v2/core/imeigenvalueproblem/classifyeigenvalues.html) Classify eigenvalues using this EVP's index metadata.
-  + [`selectModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/selectmodes.html) Select and label retained eigenmodes.
++ Select modes
+  + [`selectModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/selectmodes.html) Select and label retained finite-real eigenmodes.
++ Developer topics
+  + [`evaluateCoefficient`](/internal-modes/classes-v2/core/imeigenvalueproblem/evaluatecoefficient.html) Evaluate a scalar, vector, or coefficient function.
+  + [`makeBasisSet`](/internal-modes/classes-v2/core/imeigenvalueproblem/makebasisset.html) Create the solved scalar basis set for this EVP.
 
 
 ---

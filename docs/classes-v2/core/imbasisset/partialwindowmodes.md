@@ -3,13 +3,13 @@ layout: default
 title: partialWindowModes
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 26
+nav_order: 21
 mathjax: true
 ---
 
 #  partialWindowModes
 
-Diagonalize partial-depth energy in existing coefficient coordinates.
+Diagonalize a partial scalar Gram matrix.
 
 
 ---
@@ -19,11 +19,11 @@ Diagonalize partial-depth energy in existing coefficient coordinates.
  windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
 ```
 ## Parameters
-+ `variable`  variable name
++ `variable`  scalar variable name
 + `zMin`  lower physical bound
 + `zMax`  upper physical bound
 
 ## Returns
-+ `windowModes`  window-mode decomposition structure
++ `windowModes`  window-mode decomposition
 
 ## Discussion

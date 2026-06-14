@@ -1,778 +1,567 @@
 classdef IMEigenvalueProblem
-    % Describe a vertical-mode generalized eigenvalue problem.
+    % Describe a canonical scalar eigenvalue problem.
     %
-    % `IMEigenvalueProblem` is the solver-independent contract for a
-    % vertical-mode eigenvalue problem. A solver owns the stratification,
-    % physical domain, coordinate mapping, and derivative matrices. The EVP
-    % owns the physical constants, differential operators, boundary laws,
-    % inner-product weights, normalization rules, equivalent-depth mapping,
-    % and mode-index policy.
+    % `IMEigenvalueProblem` is the solver-independent description of the
+    % scalar problem
+    % $$-(p u')' + q u = \lambda r u,$$
+    % with endpoint conditions
+    % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
+    % A solver owns the grid, coordinate mapping, and derivative matrices.
+    % The EVP owns the coefficient functions, endpoint conditions,
+    % equivalent-depth mapping, normalization rules, and diagnostic
+    % definiteness checks.
     %
-    % Assembly combines those responsibilities in the solver native basis:
-    % $$Aq_j=\lambda_jBq_j,\qquad h_j=\mathrm{hFromEigenvalue}(\lambda_j).$$
-    % The retained columns become an `IMBasisSet`. The basis set evaluates the
-    % solved variable and its linked diagnostic variable; `F` and `G` are not
-    % independent mode families. In a `G` formulation,
-    % $$F_j=h_j\partial_zG_j,$$
-    % and in an `F` formulation,
-    % $$G_j=-gN^{-2}\partial_zF_j.$$
-    %
-    % Use the static factories for standard wave and hydrostatic mode
-    % problems. Use the constructor directly when defining a custom operator,
-    % boundary, inner-product, or normalization contract.
-    %
-    % ```matlab
-    % N2 = @(z) 1e-5*ones(size(z));
-    % solver = IMSolverSpectral(N2=N2, zDomain=[-1000 0], nEVP=64);
-    % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=1e-4);
-    % basisSet = solver.solveEVP(evp, nModes=4);
-    % z = linspace(-1000, 0, 128).';
-    % G = basisSet.G(z);
-    % h = basisSet.h;
-    % ```
-    %
-    % - Topic: Create standard EVPs
-    % - Topic: Build custom EVPs
+    % - Topic: Create EVPs
     % - Topic: Assemble EVPs
-    % - Topic: Inspect EVP metadata
-    % - Topic: Select retained modes
+    % - Topic: Inspect diagnostics
+    % - Topic: Select modes
     % - Topic: Developer topics
     % - Declaration: classdef IMEigenvalueProblem
 
     properties (SetAccess = private)
         % Short EVP name.
         %
-        % This is the canonical identity for factory-created EVPs, such as
-        % `"waveModesAtWavenumber"` or `"hydrostaticGModes"`.
-        %
-        % - Topic: Inspect EVP metadata
-        name = "unknown"
-    end
+        % - Topic: Inspect diagnostics
+        name = "canonical"
 
-    properties
-        % Solved vertical-structure formulation.
+        % Coefficient multiplying the derivative flux.
         %
-        % The formulation is either `"G"` or `"F"`. The basis set solves
-        % this variable directly and obtains the other variable
-        % diagnostically through
-        % $$F_j=h_j\partial_zG_j$$ for `G` formulations or
-        % $$G_j=-gN^{-2}\partial_zF_j$$ for `F` formulations.
-        %
-        % - Topic: Inspect EVP metadata
-        formulation = "G"
-    end
-
-    properties (SetAccess = private)
-        % Coriolis parameter.
-        %
-        % `f0` has units of radians per second. Solvers provide `N2` and the
-        % vertical domain; the EVP provides the physical constants used by the
-        % operators, boundaries, and normalization rules.
-        %
-        % - Topic: Inspect EVP metadata
-        f0 = 0
-
-        % Gravitational acceleration.
-        %
-        % `g` has units of meters per second squared. Operator coefficient and
-        % diagnostic-variable functions read this value through the assembly
-        % context as `ctx.g`.
-        %
-        % - Topic: Inspect EVP metadata
-        g = 9.81
-    end
-
-    properties
-        % Left differential operator.
-        %
-        % `leftOperator` contributes the matrix `A` in
-        % $$Aq=\lambda Bq.$$
-        % Coefficients are evaluated with the context returned by
-        % `contextForSolver`, so coefficient functions may use solver-owned
-        % fields such as `ctx.N2` and EVP-owned fields such as `ctx.g`.
+        % `p` is a scalar, vector, or function handle with signature
+        % `values = p(z,ctx)`.
         %
         % - Topic: Assemble EVPs
-        leftOperator = IMOperator()
+        p = @(z,~) ones(size(z))
 
-        % Right differential operator.
+        % Coefficient multiplying the solved variable on the left side.
         %
-        % `rightOperator` contributes the matrix `B` in the generalized EVP.
-        % Standard factories use it for the weighted side of the strong form,
-        % for example `@(z,ctx) (ctx.f0*ctx.f0 - ctx.N2(z))/ctx.g` in the
-        % fixed-wavenumber wave problem.
+        % `q` is a scalar, vector, or function handle with signature
+        % `values = q(z,ctx)`.
         %
         % - Topic: Assemble EVPs
-        rightOperator = IMOperator()
+        q = @(z,~) zeros(size(z))
 
-        % Inner-product weights for `F` and `G`.
+        % Metric coefficient multiplying the eigenvalue side.
         %
-        % `innerWeights.F` and `innerWeights.G` are function handles with
-        % signature `w = weight(z,ctx)`. Each handle returns the interior
-        % weight in
-        % $$\langle X_i,X_j\rangle_w=\int w(z)X_i(z)X_j(z)\,dz.$$
-        % Endpoint contributions belong to the boundary laws so that each
-        % normalization can include the same endpoint convention as the EVP.
-        %
-        % - Topic: Inspect EVP metadata
-        innerWeights = struct()
-
-        % Named modal normalization rules.
-        %
-        % Each field stores a function handle with signature
-        % `scale = rule(basisSet,iMode)`. The returned scale divides one raw
-        % mode column after the solver has assembled, selected, and linked the
-        % retained modes. Factory-created EVPs populate names such as
-        % `unity`, `kConstant`, `omegaConstant`, `geostrophic`, `wMax`,
-        % `uMax`, and `surfacePressure` when those rules are meaningful.
-        %
-        % - Topic: Inspect EVP metadata
-        normalizations = struct()
-
-        % Natural default normalization for this EVP.
-        %
-        % This is a `Normalization` value or `[]`. Empty means the EVP does
-        % not declare a problem-specific default and the basis-set layer may
-        % use its package fallback.
-        %
-        % - Topic: Inspect EVP metadata
-        defaultNormalization = []
-
-        % Surface boundary law.
-        %
-        % This location-free `IMBoundary` is resolved with `formulation` only
-        % when the EVP assembles, indexes modes, or exposes derived surface
-        % weights.
+        % `r` is a scalar, vector, or function handle with signature
+        % `values = r(z,ctx)`.
         %
         % - Topic: Assemble EVPs
-        surfaceBoundary = IMBoundary.rigid()
+        r = @(z,~) ones(size(z))
 
-        % Bottom boundary law.
-        %
-        % This location-free `IMBoundary` is resolved with `formulation` only
-        % when the EVP assembles, indexes modes, or exposes derived bottom
-        % weights.
+        % Surface endpoint condition.
         %
         % - Topic: Assemble EVPs
-        bottomBoundary = IMBoundary.rigid()
+        surfaceBoundary = IMBoundaryCondition.dirichlet()
+
+        % Bottom endpoint condition.
+        %
+        % - Topic: Assemble EVPs
+        bottomBoundary = IMBoundaryCondition.dirichlet()
 
         % Equivalent-depth conversion function.
         %
-        % `hFromEigenvalue` is a function handle with signature
-        % `h = hFromEigenvalue(lambda)`. Standard EVPs use
-        % $$h_j=1/\lambda_j,$$
-        % so `lambda` has inverse-depth units in those problems.
+        % `hFromEigenvalue` has signature `h = hFromEigenvalue(lambda)`.
         %
-        % - Topic: Inspect EVP metadata
+        % - Topic: Inspect diagnostics
         hFromEigenvalue = @(lambda) 1 ./ lambda
-    end
 
-    properties (SetAccess = private)
-        % Whether the EVP declares the barotropic mode.
+        % Whether the scalar problem declares a zero mode.
         %
-        % When `true`, the mode-index policy expects the depth-uniform
-        % zero-eigenvalue barotropic mode
-        % $$F_0(z)=1,\qquad G_0(z)=0.$$
-        % The barotropic mode is selected after boundary-index modes and
-        % before positive baroclinic modes. Hydrostatic `F` modes declare this
-        % mode; wave-mode and hydrostatic `G` EVPs do not.
+        % When true, mode selection retains one eigenvalue near zero and
+        % labels it with mode number `0`.
         %
-        % - Topic: Select retained modes
-        hasBarotropicMode = false
+        % - Topic: Select modes
+        hasZeroMode = false
 
-        % Index validation behavior.
+        % Natural default normalization.
         %
-        % Values are `"error"`, `"warning"`, or `"none"`. The mode-index
-        % policy uses this value when the observed boundary, barotropic, or
-        % interior counts differ from the counts declared by the EVP and its
-        % surface and bottom boundary laws.
+        % - Topic: Inspect diagnostics
+        defaultNormalization = []
+
+        % Additional EVP metadata.
         %
-        % - Topic: Select retained modes
-        indexValidationMode = "none"
+        % Fields are copied into the coefficient context so custom
+        % coefficient functions can read scalar parameters without new
+        % public properties.
+        %
+        % - Topic: Inspect diagnostics
+        metadata = struct()
     end
 
     properties
-        % Stored factory-specific physical inputs.
+        % Named normalization rules.
         %
-        % `parameters` records physical inputs supplied to a standard factory
-        % but not otherwise stored as first-class EVP properties, such as
-        % `parameters.k` or `parameters.omega`. The EVP identity is `name`,
-        % boundary laws live in `surfaceBoundary` and `bottomBoundary`, and physical constants
-        % live in `f0` and `g`. Core EVP assembly does not consume this struct.
+        % Each field stores a function handle with signature
+        % `scale = rule(basisSet,iMode)`.
         %
-        % - Topic: Inspect EVP metadata
-        parameters = struct()
-    end
-
-    properties (Dependent, SetAccess = private)
-        % Surface endpoint weights implied by the surface boundary law.
-        %
-        % The returned `IMBoundaryWeight` array is derived from
-        % `surfaceBoundary` and `formulation`. Changing the surface law or
-        % formulation changes this read-only view automatically.
-        %
-        % - Topic: Inspect EVP metadata
-        surfaceWeights
-
-        % Bottom endpoint weights implied by the bottom boundary law.
-        %
-        % The returned `IMBoundaryWeight` array is derived from
-        % `bottomBoundary` and `formulation`. Changing the bottom law or
-        % formulation changes this read-only view automatically.
-        %
-        % - Topic: Inspect EVP metadata
-        bottomWeights
+        % - Topic: Inspect diagnostics
+        normalizations = struct()
     end
 
     methods
         function self = IMEigenvalueProblem(options)
-            % Create a physical-coordinate EVP descriptor.
+            % Create a canonical scalar EVP.
             %
-            % The constructor is the low-level entry point for custom EVPs.
-            % Provide the solved `formulation`, the operators defining
-            % $$Aq=\lambda Bq,$$
-            % the surface and bottom boundary laws, the
-            % interior inner-product weights, and any normalizations that an
-            % `IMBasisSet` should expose. The standard factories are preferred
-            % for the built-in wave and hydrostatic problems because they set
-            % the operator, boundary, normalization, and mode-index metadata as
-            % one coherent contract.
-            %
-            % ```matlab
-            % left = IMOperator().plus(derivativeOrder=2);
-            % right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
-            % evp = IMEigenvalueProblem(name="customG", formulation="G", ...
-            %     leftOperator=left, rightOperator=right, ...
-            %     surfaceBoundary=IMBoundary.rigid(), bottomBoundary=IMBoundary.rigid());
-            % ```
-            %
-            % - Topic: Build custom EVPs
+            % - Topic: Create EVPs
             % - Declaration: evp = IMEigenvalueProblem(options)
             % - Parameter options.name: short EVP name
-            % - Parameter options.formulation: solved variable, `"F"` or `"G"`
-            % - Parameter options.f0: Coriolis parameter in radians per second
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.leftOperator: operator that builds the generalized-EVP matrix `A`
-            % - Parameter options.rightOperator: operator that builds the generalized-EVP matrix `B`
-            % - Parameter options.innerWeights: interior inner-product weight handles for `F` and `G`
-            % - Parameter options.normalizations: named modal normalization handles
-            % - Parameter options.defaultNormalization: natural default normalization for this EVP
-            % - Parameter options.surfaceBoundary: surface boundary law
-            % - Parameter options.bottomBoundary: bottom boundary law
+            % - Parameter options.p: derivative-flux coefficient
+            % - Parameter options.q: left-side value coefficient
+            % - Parameter options.r: eigenvalue-side metric coefficient
+            % - Parameter options.surfaceBoundary: surface endpoint condition
+            % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
-            % - Parameter options.hasBarotropicMode: whether the EVP declares the barotropic mode
-            % - Parameter options.indexValidationMode: `"error"`, `"warning"`, or `"none"`
-            % - Parameter options.parameters: stored factory-specific physical inputs
-            % - Returns evp: initialized EVP descriptor
+            % - Parameter options.hasZeroMode: whether one zero mode should be retained
+            % - Parameter options.defaultNormalization: natural normalization
+            % - Parameter options.normalizations: named normalization handles
+            % - Parameter options.metadata: additional scalar parameters
+            % - Returns evp: canonical EVP descriptor
             arguments
-                options.name {mustBeTextScalar} = "unknown"
-                options.formulation {mustBeTextScalar} = "G"
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.leftOperator IMOperator = IMOperator()
-                options.rightOperator IMOperator = IMOperator()
-                options.innerWeights struct = struct()
-                options.normalizations struct = struct()
-                options.defaultNormalization = []
-                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
-                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
+                options.name {mustBeTextScalar} = "canonical"
+                options.p = @(z,~) ones(size(z))
+                options.q = @(z,~) zeros(size(z))
+                options.r = @(z,~) ones(size(z))
+                options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
+                options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.hFromEigenvalue = @(lambda) 1 ./ lambda
-                options.hasBarotropicMode (1,1) logical = false
-                options.indexValidationMode {mustBeTextScalar} = "none"
-                options.parameters struct = struct()
+                options.hasZeroMode (1,1) logical = false
+                options.defaultNormalization = []
+                options.normalizations struct = struct()
+                options.metadata struct = struct()
             end
 
             self.name = string(options.name);
-            self.formulation = IMEigenvalueProblem.validateVariable(options.formulation);
-            self.f0 = options.f0;
-            self.g = options.g;
-            self.leftOperator = options.leftOperator;
-            self.rightOperator = options.rightOperator;
-            self.innerWeights = IMEigenvalueProblem.resolveInnerWeights(options.innerWeights);
-            self.normalizations = options.normalizations;
-            self.defaultNormalization = options.defaultNormalization;
+            self.p = options.p;
+            self.q = options.q;
+            self.r = options.r;
             self.surfaceBoundary = options.surfaceBoundary;
             self.bottomBoundary = options.bottomBoundary;
-            self.validateBoundaryLaws();
             self.hFromEigenvalue = options.hFromEigenvalue;
-            self.hasBarotropicMode = options.hasBarotropicMode;
-            self.indexValidationMode = IMEigenvalueProblem.validateIndexValidationMode(options.indexValidationMode);
-            self.parameters = options.parameters;
-            metadataFieldsToRemove = intersect(fieldnames(self.parameters), {'f0'; 'g'});
-            if ~isempty(metadataFieldsToRemove)
-                self.parameters = rmfield(self.parameters, metadataFieldsToRemove);
-            end
+            self.hasZeroMode = options.hasZeroMode;
+            self.defaultNormalization = options.defaultNormalization;
+            self.normalizations = IMEigenvalueProblem.resolveNormalizations(options.normalizations);
+            self.metadata = options.metadata;
         end
 
         function [A, B] = assemble(self, solver)
-            % Build generalized-EVP matrices on a solver's native basis.
+            % Assemble the canonical matrix pair on a solver grid.
             %
-            % `assemble` evaluates `leftOperator` and `rightOperator` with the
-            % merged solver/EVP context and returns the matrices for
-            % $$Aq=\lambda Bq.$$
-            % Interior rows come from the operator discretization. Boundary
-            % rows are then replaced by the resolved endpoint laws through
-            % the solver, so a rigid `G` boundary imposes the endpoint-value row for
-            % `G=0` while active or free boundaries can also declare endpoint
-            % contributions used by normalization and mode indexing.
+            % Interior rows discretize
+            % $$-(p u')' + q u = \lambda r u.$$
+            % The surface and bottom rows are replaced by the endpoint
+            % conditions using endpoint values of `p`.
             %
             % - Topic: Assemble EVPs
             % - Declaration: [A,B] = assemble(evp,solver)
-            % - Parameter solver: coordinate-aware internal-mode solver
-            % - Returns A: left generalized-EVP matrix
-            % - Returns B: right generalized-EVP matrix
+            % - Parameter solver: canonical EVP solver
+            % - Returns A: left matrix
+            % - Returns B: right matrix
             context = self.contextForSolver(solver);
-            A = self.leftOperator.matrix(solver, context=context);
-            B = self.rightOperator.matrix(solver, context=context);
-            resolvedBoundaries = self.resolvedEndpointLaws();
-            for iBoundary = 1:length(resolvedBoundaries)
-                [A, B] = solver.applyEndpointLaw(A, B, resolvedBoundaries(iBoundary), context=context);
-            end
-        end
+            z = solver.zNative(:);
+            [pValues, qValues, rValues] = self.coefficientValues(z, context);
+            pzValues = solver.differentiateGridValues(pValues, 1);
+            D0 = solver.physicalDerivativeMatrix(0);
+            D1 = solver.physicalDerivativeMatrix(1);
+            D2 = solver.physicalDerivativeMatrix(2);
 
-        function spec = innerProduct(self, variable)
-            % Return the declared inner-product recipe for a variable.
-            %
-            % The returned struct contains the interior weight and the
-            % endpoint weights whose `innerProduct` matches `variable`. The
-            % endpoint factors inside those weights may still evaluate either
-            % `F` or `G`; the selector is the inner product being constructed.
-            %
-            % - Topic: Inspect EVP metadata
-            % - Declaration: spec = innerProduct(evp,variable)
-            % - Parameter variable: `"F"` or `"G"`
-            % - Returns spec: struct with `variable`, `interiorWeight`, `surfaceWeights`, `bottomWeights`, and `hasKnownBoundaryWeights`
-            variable = IMEigenvalueProblem.validateVariable(variable);
-            spec.variable = variable;
-            spec.interiorWeight = self.interiorWeight(variable);
-            spec.surfaceWeights = IMEigenvalueProblem.weightsForInnerProduct(self.surfaceWeights, variable);
-            spec.bottomWeights = IMEigenvalueProblem.weightsForInnerProduct(self.bottomWeights, variable);
-            resolvedBoundaries = self.resolvedEndpointLaws();
-            spec.hasKnownBoundaryWeights = all([resolvedBoundaries.hasKnownBoundaryWeights]);
+            A = -diag(pValues)*D2 - diag(pzValues)*D1 + diag(qValues)*D0;
+            B = diag(rValues)*D0;
+            [A, B] = self.applyBoundaryRow(A, B, solver, "surface", self.surfaceBoundary, pValues);
+            [A, B] = self.applyBoundaryRow(A, B, solver, "bottom", self.bottomBoundary, pValues);
         end
 
         function context = contextForSolver(self, solver)
             % Return the coefficient context for this EVP and solver.
             %
-            % The returned struct starts with the solver context, including
-            % fields such as `N2`, `dzLogN2`, `zDomain`, and `coordinateKind`.
-            % The EVP then adds physical constants as `f0` and `g`. Operator
-            % coefficients, boundary rows, inner-product weights, and
-            % normalization rules read this context but do not own the solver
-            % discretization.
-            %
             % - Topic: Assemble EVPs
             % - Declaration: context = contextForSolver(evp,solver)
-            % - Parameter solver: coordinate-aware internal-mode solver
-            % - Returns context: framework coefficient context
+            % - Parameter solver: canonical solver
+            % - Returns context: coefficient context
             context = solver.context();
-            context.f0 = self.f0;
-            context.g = self.g;
+            metadataFields = fieldnames(self.metadata);
+            for iField = 1:numel(metadataFields)
+                fieldName = metadataFields{iField};
+                context.(fieldName) = self.metadata.(fieldName);
+            end
         end
 
-        function selection = selectModes(self, eigenvalues, nModes, context)
-            % Select and label retained eigenmodes.
+        function spec = innerProduct(self, variable)
+            % Return the scalar inner-product recipe.
             %
-            % The index policy first classifies candidate eigenvalues using
-            % boundary metadata, the optional barotropic mode, and positive
-            % interior modes. Retained modes are ordered as boundary-index
-            % modes, the barotropic mode when declared, then positive
-            % baroclinic modes. Their labels define the `modeNumber` metadata
-            % carried by the resulting `IMBasisSet`.
+            % The canonical basis set uses `r` in the interior and the
+            % endpoint metric terms implied by active endpoint conditions.
             %
-            % - Topic: Select retained modes
-            % - Topic: Developer topics
-            % - Declaration: selection = selectModes(evp,eigenvalues,nModes,context)
-            % - Parameter eigenvalues: candidate generalized-EVP eigenvalues
-            % - Parameter nModes: number of modes to retain
-            % - Parameter context: solver or analytical context
-            % - Returns selection: selected-mode metadata
-            % - Developer: true
-            selection = self.indexPolicy().selectModes(eigenvalues, nModes, context);
+            % - Topic: Inspect diagnostics
+            % - Declaration: spec = innerProduct(evp,variable)
+            % - Parameter variable: scalar variable name; only `"u"` is accepted
+            % - Returns spec: struct with interior and endpoint metric terms
+            arguments
+                self IMEigenvalueProblem
+                variable {mustBeTextScalar} = "u"
+            end
+
+            variable = string(variable);
+            if variable ~= "u"
+                error("IMEigenvalueProblem:InvalidVariable", ...
+                    "Canonical scalar inner products use variable ""u"".");
+            end
+            spec.variable = "u";
+            spec.interiorWeight = self.r;
+            spec.surfaceWeights = self.endpointWeights("surface");
+            spec.bottomWeights = self.endpointWeights("bottom");
+            spec.hasKnownBoundaryWeights = true;
         end
 
-        function index = classifyEigenvalues(self, eigenvalues, context)
-            % Classify eigenvalues using this EVP's index metadata.
+        function weights = endpointWeights(self, location)
+            % Return endpoint metric terms implied by active conditions.
             %
-            % Classification reports the detected boundary-index directions,
-            % the optional barotropic direction, positive interior modes, and
-            % any validation mismatch. Negative boundary directions can be
-            % expected by the declared boundary policy; they are not
-            % automatically treated as numerical failures.
+            % Each returned struct has fields `location`, `coefficient`,
+            % `c`, and `d`, representing
+            % `coefficient*(c*u-d*p*u_z)^2`.
             %
-            % - Topic: Select retained modes
+            % - Topic: Inspect diagnostics
+            % - Declaration: weights = endpointWeights(evp,location)
+            % - Parameter location: `"surface"`, `"bottom"`, or omitted for both endpoints
+            % - Returns weights: endpoint metric terms
+            arguments
+                self IMEigenvalueProblem
+                location {mustBeTextScalar} = "all"
+            end
+
+            switch string(location)
+                case "surface"
+                    weights = self.weightForBoundary("surface", self.surfaceBoundary);
+                case "bottom"
+                    weights = self.weightForBoundary("bottom", self.bottomBoundary);
+                case "all"
+                    weights = [self.weightForBoundary("surface", self.surfaceBoundary); ...
+                        self.weightForBoundary("bottom", self.bottomBoundary)];
+                otherwise
+                    error("IMEigenvalueProblem:InvalidBoundaryLocation", ...
+                        "Boundary location must be ""surface"", ""bottom"", or ""all"".");
+            end
+        end
+
+        function value = metricIndex(self, options)
+            % Count negative endpoint directions in the metric.
+            %
+            % - Topic: Inspect diagnostics
+            % - Declaration: value = metricIndex(evp,options)
+            % - Parameter options.tolerance: scalar sign tolerance
+            % - Returns value: number of active endpoint terms with negative metric weight
+            arguments
+                self IMEigenvalueProblem
+                options.tolerance (1,1) double {mustBeNonnegative} = 0
+            end
+
+            weights = self.endpointWeights();
+            value = 0;
+            for iWeight = 1:numel(weights)
+                if weights(iWeight).coefficient < -options.tolerance
+                    value = value + 1;
+                end
+            end
+        end
+
+        function info = definitenessInfo(self, solver)
+            % Check grid-level signs for the canonical coefficients.
+            %
+            % This diagnostic certifies the assembled finite-dimensional
+            % problem on the solver grid. It does not claim continuum signs
+            % between grid points.
+            %
+            % - Topic: Inspect diagnostics
+            % - Declaration: info = definitenessInfo(evp,solver)
+            % - Parameter solver: canonical EVP solver
+            % - Returns info: struct with sign, metric, and endpoint checks
+            context = self.contextForSolver(solver);
+            z = solver.zNative(:);
+            [pValues, qValues, rValues] = self.coefficientValues(z, context);
+            tolerance = 100*eps;
+            pTol = IMEigenvalueProblem.signTolerance(pValues, tolerance);
+            qTol = IMEigenvalueProblem.signTolerance(qValues, tolerance);
+            rTol = IMEigenvalueProblem.signTolerance(rValues, tolerance);
+
+            info.pMin = min(pValues);
+            info.qMin = min(qValues);
+            info.rMin = min(rValues);
+            info.pPositive = all(isfinite(pValues)) && info.pMin > pTol;
+            info.qNonnegative = all(isfinite(qValues)) && info.qMin >= -qTol;
+            info.rPositive = all(isfinite(rValues)) && info.rMin > rTol;
+            info.endpointWeights = self.endpointWeights();
+            info.metricIndex = self.metricIndex(tolerance=0);
+            info.metricPositive = info.rPositive && info.metricIndex == 0;
+            info.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
+            info.endpointNumeratorNonnegative = info.endpointNumeratorNegativeDirections == 0;
+            info.interiorNonnegative = info.pPositive && info.qNonnegative;
+            info.qNonnegativeCertified = info.interiorNonnegative && info.endpointNumeratorNonnegative;
+            info.certificationLevel = "grid";
+            info.reason = "Grid signs and scalar endpoint conditions were checked.";
+            if ~(info.pPositive && info.rPositive && all(isfinite(qValues)))
+                info.certificationLevel = "unknown";
+                info.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
+            end
+        end
+
+        function bounds = negativeEigenvalueBounds(self, solver, A)
+            % Bound negative eigenvalues using grid-level certification.
+            %
+            % - Topic: Inspect diagnostics
+            % - Declaration: bounds = negativeEigenvalueBounds(evp,solver,A)
+            % - Parameter solver: canonical EVP solver
+            % - Parameter A: assembled left matrix, used for the zero-eigenvalue check
+            % - Returns bounds: struct with min/max counts and a reason
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+                A double = []
+            end
+
+            info = self.definitenessInfo(solver);
+            bounds.certificationLevel = info.certificationLevel;
+            bounds.metricIndex = info.metricIndex;
+            bounds.zeroEigenvalueStatus = "unchecked";
+            bounds.minNegativeEigenvalueCount = 0;
+            bounds.maxNegativeEigenvalueCount = "unknown";
+            bounds.reason = info.reason;
+
+            if info.certificationLevel == "unknown"
+                return;
+            end
+
+            if info.metricPositive && info.qNonnegativeCertified
+                bounds.maxNegativeEigenvalueCount = 0;
+                bounds.reason = "The grid metric is positive and the quadratic form is nonnegative.";
+                return;
+            end
+
+            if info.qNonnegativeCertified && info.metricIndex > 0
+                bounds.zeroEigenvalueStatus = self.zeroEigenvalueStatus(A);
+                if bounds.zeroEigenvalueStatus == "absent"
+                    bounds.minNegativeEigenvalueCount = info.metricIndex;
+                    bounds.maxNegativeEigenvalueCount = info.metricIndex;
+                    bounds.reason = "The left-definite endpoint metric has a certified finite index and zero is absent.";
+                else
+                    bounds.maxNegativeEigenvalueCount = info.metricIndex;
+                    bounds.reason = "The metric index is certified, but the zero-eigenvalue check is not conclusive.";
+                end
+                return;
+            end
+
+            if info.metricPositive && info.interiorNonnegative
+                bounds.maxNegativeEigenvalueCount = info.endpointNumeratorNegativeDirections;
+                bounds.reason = "The metric is positive and only endpoint numerator directions can make the form negative.";
+                return;
+            end
+        end
+
+        function selection = selectModes(self, eigenvalues, nModes, solver, A)
+            % Select and label retained finite-real eigenmodes.
+            %
+            % Certified negative-count bounds decide when raw negative
+            % discrete eigenvalues should be retained. With a positive metric
+            % and nonnegative quadratic form, negative discrete eigenvalues
+            % are ignored during mode selection.
+            %
+            % - Topic: Select modes
             % - Topic: Developer topics
-            % - Declaration: index = classifyEigenvalues(evp,eigenvalues,context)
-            % - Parameter eigenvalues: generalized-EVP eigenvalues
-            % - Parameter context: solver or analytical context
-            % - Returns index: index summary structure
+            % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A)
+            % - Parameter eigenvalues: finite real candidate eigenvalues
+            % - Parameter nModes: number of retained modes
+            % - Parameter solver: canonical solver
+            % - Parameter A: assembled left matrix
+            % - Returns selection: selected indices and mode numbers
             % - Developer: true
-            index = self.indexPolicy().classify(eigenvalues, context);
+            arguments
+                self IMEigenvalueProblem
+                eigenvalues (:,1) double
+                nModes (1,1) double {mustBeInteger, mustBePositive}
+                solver IMSolver
+                A double
+            end
+
+            tolerance = self.eigenvalueTolerance(eigenvalues);
+            bounds = self.negativeEigenvalueBounds(solver, A);
+            negativeCount = nnz(eigenvalues < -tolerance);
+            if isnumeric(bounds.maxNegativeEigenvalueCount)
+                negativeCount = min(negativeCount, bounds.maxNegativeEigenvalueCount);
+            end
+
+            negativeCandidates = find(eigenvalues < -tolerance);
+            [~, negativeSort] = sort(eigenvalues(negativeCandidates), "ascend");
+            negativeIndex = negativeCandidates(negativeSort(1:min(negativeCount,numel(negativeSort))));
+
+            zeroIndex = zeros(0,1);
+            if self.hasZeroMode
+                zeroCandidates = find(abs(eigenvalues) <= tolerance);
+                if isempty(zeroCandidates)
+                    [~, zeroCandidate] = min(abs(eigenvalues));
+                    zeroCandidates = zeroCandidate;
+                end
+                [~, zeroSort] = sort(abs(eigenvalues(zeroCandidates)), "ascend");
+                zeroIndex = zeroCandidates(zeroSort(1));
+            end
+
+            positiveCandidates = find(eigenvalues > tolerance);
+            [~, positiveSort] = sort(eigenvalues(positiveCandidates), "ascend");
+            positiveIndex = positiveCandidates(positiveSort);
+
+            sortIndex = [negativeIndex(:); zeroIndex(:); positiveIndex(:)];
+            sortIndex = sortIndex(1:min(nModes,numel(sortIndex)));
+            modeNumber = zeros(1,numel(sortIndex));
+            nNegative = nnz(ismember(sortIndex, negativeIndex));
+            modeNumber(1:nNegative) = -1:-1:-nNegative;
+            nextIndex = nNegative + 1;
+            if ~isempty(zeroIndex) && nextIndex <= numel(modeNumber) && sortIndex(nextIndex) == zeroIndex
+                modeNumber(nextIndex) = 0;
+                nextIndex = nextIndex + 1;
+            end
+            modeNumber(nextIndex:end) = 1:(numel(modeNumber) - nextIndex + 1);
+
+            selection.sortIndex = sortIndex;
+            selection.modeNumber = modeNumber;
+            selection.index = bounds;
+        end
+
+        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, h, modeNumber, index)
+            % Create the solved scalar basis set for this EVP.
+            %
+            % - Topic: Developer topics
+            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,h,modeNumber,index)
+            % - Returns basisSet: solved scalar basis set
+            % - Developer: true
+            basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
+                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
+                zDomain=solver.zDomain, N2Function=@(z) solver.N2(z));
         end
     end
 
-    methods
-        function weights = get.surfaceWeights(self)
-            weights = self.resolvedSurfaceBoundary().boundaryWeights;
-        end
-
-        function weights = get.bottomWeights(self)
-            weights = self.resolvedBottomBoundary().boundaryWeights;
+    methods (Access = protected)
+        function [pValues, qValues, rValues] = coefficientValues(self, z, context)
+            pValues = IMEigenvalueProblem.evaluateCoefficient(self.p, z, context);
+            qValues = IMEigenvalueProblem.evaluateCoefficient(self.q, z, context);
+            rValues = IMEigenvalueProblem.evaluateCoefficient(self.r, z, context);
+            pValues = IMEigenvalueProblem.expandCoefficient(pValues, z, "p");
+            qValues = IMEigenvalueProblem.expandCoefficient(qValues, z, "q");
+            rValues = IMEigenvalueProblem.expandCoefficient(rValues, z, "r");
         end
     end
 
     methods (Access = private)
-        function policy = indexPolicy(self)
-            [expectedNegativeCount, expectedZeroCount, boundaryModes] = self.endpointIndexMetadata();
-            policy = IMIndexPolicy(expectedNegativeCount=expectedNegativeCount, ...
-                expectedZeroCount=expectedZeroCount + double(self.hasBarotropicMode), ...
-                validationMode=self.indexValidationMode, boundaryModes=boundaryModes);
+        function [A, B] = applyBoundaryRow(~, A, B, solver, location, boundary, pValues)
+            index = solver.boundaryIndex(location);
+            D0 = solver.physicalDerivativeMatrix(0);
+            D1 = solver.physicalDerivativeMatrix(1);
+            pEndpoint = pValues(index);
+            A(index,:) = -boundary.a*D0(index,:) + boundary.b*pEndpoint*D1(index,:);
+            B(index,:) = boundary.c*D0(index,:) - boundary.d*pEndpoint*D1(index,:);
         end
 
-        function validateBoundaryLaws(self)
-            resolvedBoundaries = self.resolvedEndpointLaws();
-            for iBoundary = 1:length(resolvedBoundaries)
-                endpointLaw = resolvedBoundaries(iBoundary);
-                if endpointLaw.variable ~= self.formulation
-                    error("IMEigenvalueProblem:BoundaryFormulationMismatch", ...
-                        "Boundary law ""%s"" targets variable ""%s"", but the EVP formulation is ""%s"".", ...
-                        endpointLaw.family, endpointLaw.variable, self.formulation);
+        function weight = weightForBoundary(~, location, boundary)
+            weight = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
+            if ~boundary.isEigenvalueDependent()
+                return;
+            end
+            coefficient = boundary.metricWeight(location);
+            if ~isfinite(coefficient)
+                return;
+            end
+            weight(1,1).location = string(location);
+            weight(1,1).coefficient = coefficient;
+            weight(1,1).c = boundary.c;
+            weight(1,1).d = boundary.d;
+        end
+
+        function count = endpointNegativeDirections(self)
+            endpoints = [
+                struct("location", "surface", "boundary", self.surfaceBoundary)
+                struct("location", "bottom", "boundary", self.bottomBoundary)
+            ];
+            count = 0;
+            for iEndpoint = 1:numel(endpoints)
+                boundary = endpoints(iEndpoint).boundary;
+                location = endpoints(iEndpoint).location;
+                if boundary.isEigenvalueDependent()
+                    H = boundary.endpointNumeratorMatrix(location);
+                    count = count + nnz(eig(0.5*(H + H.')) < -sqrt(eps)*max(1,norm(H,"fro")));
+                elseif boundary.b ~= 0
+                    beta = boundary.robinEnergyCoefficient(location);
+                    count = count + double(beta < -sqrt(eps)*max(1,abs(beta)));
                 end
             end
         end
 
-        function boundary = resolvedSurfaceBoundary(self)
-            boundary = self.surfaceBoundary.at("surface", formulation=self.formulation);
-        end
-
-        function boundary = resolvedBottomBoundary(self)
-            boundary = self.bottomBoundary.at("bottom", formulation=self.formulation);
-        end
-
-        function endpointLaws = resolvedEndpointLaws(self)
-            endpointLaws = [
-                self.resolvedBottomBoundary()
-                self.resolvedSurfaceBoundary()
-            ];
-        end
-
-        function [expectedNegativeCount, expectedZeroCount, boundaryModes] = endpointIndexMetadata(self)
-            resolvedBoundaries = self.resolvedEndpointLaws();
-            expectedNegativeCount = 0;
-            expectedZeroCount = 0;
-            boundaryModes = struct("modeNumber", {}, "indexSign", {});
-            for iBoundary = 1:length(resolvedBoundaries)
-                expectedNegativeCount = expectedNegativeCount + resolvedBoundaries(iBoundary).expectedNegativeCount();
-                expectedZeroCount = expectedZeroCount + resolvedBoundaries(iBoundary).expectedZeroCount();
-                boundaryModes = [boundaryModes; resolvedBoundaries(iBoundary).boundaryModeDescriptors()]; %#ok<AGROW>
+        function status = zeroEigenvalueStatus(~, A)
+            if isempty(A)
+                status = "unchecked";
+                return;
+            end
+            singularValues = svd(A);
+            scale = max(1,norm(A,"fro"));
+            if min(singularValues) > 1e-10*scale
+                status = "absent";
+            else
+                status = "possible";
             end
         end
 
-        function weight = interiorWeight(self, variable)
-            variable = IMEigenvalueProblem.validateVariable(variable);
-            fieldName = char(variable);
-            weight = self.innerWeights.(fieldName);
+        function tolerance = eigenvalueTolerance(~, eigenvalues)
+            finiteScale = abs(eigenvalues(isfinite(eigenvalues)));
+            if isempty(finiteScale)
+                scale = 1;
+            else
+                scale = max(1,min(finiteScale(finiteScale > 0), [], "omitnan"));
+                if isempty(scale) || ~isfinite(scale)
+                    scale = max(1,max(finiteScale));
+                end
+            end
+            tolerance = 1e-8*scale;
         end
     end
 
     methods (Static)
-        function evp = waveModesAtWavenumber(options)
-            % Create the wave-mode `G` EVP at fixed horizontal wavenumber.
+        function values = evaluateCoefficient(coefficient, z, context)
+            % Evaluate a scalar, vector, or coefficient function.
             %
-            % This factory fixes the horizontal wavenumber `K=options.k` and
-            % solves the physical-coordinate strong form
-            % $$G_{zz}-K^2G=\lambda(f_0^2-N^2)G/g,\qquad h=1/\lambda.$$
-            % The solved variable is `G`; the linked diagnostic variable is
-            % $$F=hG_z.$$
-            % The factory stores `parameters.k`, uses the default
-            % `Normalization.kConstant` normalization, and places the supplied
-            % location-free boundary laws on the surface and bottom. Omitted
-            % boundaries are rigid `G=0` boundaries.
-            %
-            % ```matlab
-            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-500 0], nEVP=48);
-            % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4, f0=1e-4);
-            % basisSet = solver.solveEVP(evp, nModes=6);
-            % h = basisSet.h;
-            % modeNumber = basisSet.modeNumber;
-            % ```
-            %
-            % - Topic: Create standard EVPs
-            % - Declaration: evp = IMEigenvalueProblem.waveModesAtWavenumber(options)
-            % - Parameter options.k: horizontal wavenumber in radians per meter
-            % - Parameter options.f0: Coriolis parameter in radians per second
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.surfaceBoundary: location-free surface boundary law
-            % - Parameter options.bottomBoundary: location-free bottom boundary law
-            % - Returns evp: fixed-wavenumber wave-mode `G` EVP
-            arguments
-                options.k (1,1) double {mustBeNonnegative}
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
-                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
+            % - Topic: Developer topics
+            % - Declaration: values = IMEigenvalueProblem.evaluateCoefficient(coefficient,z,context)
+            % - Developer: true
+            if isa(coefficient, "function_handle")
+                try
+                    values = coefficient(z, context);
+                catch
+                    try
+                        values = coefficient(z);
+                    catch
+                        values = coefficient(context);
+                    end
+                end
+            else
+                values = coefficient;
             end
-
-            k = options.k;
-            f0 = options.f0;
-            g = options.g;
-            left = IMOperator().plus(derivativeOrder=2).plus(coefficient=-k*k, derivativeOrder=0);
-            right = IMOperator().plus(coefficient=@(z,ctx) (ctx.f0*ctx.f0 - ctx.N2(z))/ctx.g, derivativeOrder=0);
-            parameters = struct("k", k);
-            innerWeights.G = @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g;
-            evp = IMEigenvalueProblem(name="waveModesAtWavenumber", formulation="G", ...
-                f0=f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.kConstant, ...
-                hFromEigenvalue=@(lambda) 1 ./ lambda, parameters=parameters);
-
-            evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
-            evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
-            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
-        end
-
-        function evp = waveModesAtFrequency(options)
-            % Create the wave-mode `G` EVP at fixed frequency.
-            %
-            % This factory fixes the frequency `omega=options.omega` and
-            % solves the physical-coordinate strong form
-            % $$G_{zz}=\lambda(\omega^2-N^2)G/g,\qquad h=1/\lambda.$$
-            % The solved variable is `G`; the linked diagnostic variable is
-            % $$F=hG_z.$$
-            % The factory stores `parameters.omega`, uses the default
-            % `Normalization.omegaConstant` normalization, and places the
-            % supplied location-free boundary laws on the surface and bottom.
-            % Omitted boundaries are rigid `G=0` boundaries. The `kConstant`
-            % normalization remains available for fixed-frequency basis sets
-            % and includes boundary weights when the boundary laws provide
-            % them.
-            %
-            % ```matlab
-            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-500 0], nEVP=48);
-            % evp = IMEigenvalueProblem.waveModesAtFrequency(omega=1.2e-3, f0=1e-4);
-            % basisSet = solver.solveEVP(evp, nModes=6);
-            % F = basisSet.F(linspace(-500, 0, 100).');
-            % ```
-            %
-            % - Topic: Create standard EVPs
-            % - Declaration: evp = IMEigenvalueProblem.waveModesAtFrequency(options)
-            % - Parameter options.omega: fixed frequency in radians per second
-            % - Parameter options.f0: Coriolis parameter in radians per second
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.surfaceBoundary: location-free surface boundary law
-            % - Parameter options.bottomBoundary: location-free bottom boundary law
-            % - Returns evp: fixed-frequency wave-mode `G` EVP
-            arguments
-                options.omega (1,1) double {mustBeNonnegative}
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
-                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
-            end
-
-            omega = options.omega;
-            f0 = options.f0;
-            g = options.g;
-            left = IMOperator().plus(derivativeOrder=2);
-            right = IMOperator().plus(coefficient=@(z,ctx) (omega*omega - ctx.N2(z))/ctx.g, derivativeOrder=0);
-            parameters = struct("omega", omega);
-            innerWeights.G = @(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g;
-            innerWeights.F = @(z,ctx) ones(size(z))/diff(ctx.zDomain);
-            evp = IMEigenvalueProblem(name="waveModesAtFrequency", formulation="G", ...
-                f0=f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.omegaConstant, ...
-                hFromEigenvalue=@(lambda) 1 ./ lambda, parameters=parameters);
-
-            evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.kConstant = @(basisSet,iMode) basisSet.weightedNormFactorWithBoundaryWeights("G", iMode, @(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g);
-            evp.normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
-            evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
-            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
-        end
-
-        function evp = hydrostaticGModes(options)
-            % Create the hydrostatic `G`-mode EVP.
-            %
-            % Hydrostatic `G` modes are the zero-frequency wave-mode problem
-            % written directly as
-            % $$G_{zz}=-\lambda N^2G/g,\qquad h=1/\lambda.$$
-            % The solved variable is `G`; the linked diagnostic variable is
-            % $$F=hG_z.$$
-            % There is no nontrivial null `G` mode, so retained modes are the
-            % boundary-index modes declared by the boundary laws followed by
-            % positive interior baroclinic modes. The default normalization is
-            % `Normalization.geostrophic`.
-            %
-            % ```matlab
-            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-            % evp = IMEigenvalueProblem.hydrostaticGModes();
-            % basisSet = solver.solveEVP(evp, nModes=4);
-            % G = basisSet.G(linspace(-1000, 0, 128).');
-            % ```
-            %
-            % - Topic: Create standard EVPs
-            % - Declaration: evp = IMEigenvalueProblem.hydrostaticGModes(options)
-            % - Parameter options.f0: Coriolis parameter in radians per second
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.surfaceBoundary: location-free surface boundary law
-            % - Parameter options.bottomBoundary: location-free bottom boundary law
-            % - Returns evp: zero-frequency hydrostatic `G` EVP
-            arguments
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
-                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
-            end
-
-            g = options.g;
-            left = IMOperator().plus(derivativeOrder=2);
-            right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
-            innerWeights.G = @(z,ctx) ctx.N2(z)/ctx.g;
-            innerWeights.F = @(z,ctx) ones(size(z));
-            evp = IMEigenvalueProblem(name="hydrostaticGModes", formulation="G", ...
-                f0=options.f0, g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.geostrophic, hFromEigenvalue=@(lambda) 1 ./ lambda);
-
-            evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
-            evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
-            evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
-            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
-        end
-
-        function evp = hydrostaticFModes(options)
-            % Create the geostrophic hydrostatic `F`-mode EVP.
-            %
-            % The physical-coordinate strong form is
-            % $$F_{zz}-(\partial_z\log N^2)F_z=-\lambda N^2F/g,\qquad h=1/\lambda.$$
-            % The solved variable is `F`; the linked diagnostic variable is
-            % $$G=-gN^{-2}F_z.$$
-            % This EVP declares the barotropic mode,
-            % $$F_0(z)=1,\qquad G_0(z)=0,$$
-            % so the barotropic mode is retained before the positive
-            % baroclinic modes. The default normalization is
-            % `Normalization.geostrophic`.
-            %
-            % ```matlab
-            % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-            % evp = IMEigenvalueProblem.hydrostaticFModes();
-            % basisSet = solver.solveEVP(evp, nModes=4);
-            % F = basisSet.F(linspace(-1000, 0, 128).');
-            % ```
-            %
-            % - Topic: Create standard EVPs
-            % - Declaration: evp = IMEigenvalueProblem.hydrostaticFModes(options)
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.surfaceBoundary: location-free surface boundary law
-            % - Parameter options.bottomBoundary: location-free bottom boundary law
-            % - Returns evp: hydrostatic `F` EVP
-            arguments
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundary = IMBoundary.rigid()
-                options.bottomBoundary (1,1) IMBoundary = IMBoundary.rigid()
-            end
-
-            g = options.g;
-            left = IMOperator().plus(derivativeOrder=2) ...
-                .plus(coefficient=@(z,ctx) -ctx.dzLogN2(z), derivativeOrder=1);
-            right = IMOperator().plus(coefficient=@(z,ctx) -ctx.N2(z)/ctx.g, derivativeOrder=0);
-            innerWeights.F = @(z,ctx) ones(size(z));
-            innerWeights.G = @(z,ctx) ctx.N2(z)/ctx.g;
-            evp = IMEigenvalueProblem(name="hydrostaticFModes", formulation="F", ...
-                g=g, ...
-                leftOperator=left, rightOperator=right, innerWeights=innerWeights, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.geostrophic, ...
-                hFromEigenvalue=@(lambda) 1 ./ lambda, hasBarotropicMode=true, indexValidationMode="warning");
-            evp.normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            evp.normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
-            evp.normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
-            evp.normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
-            evp.normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
-        end
-
-        function policy = partialDepthPEIndexPolicy(options)
-            % Return the partial-depth potential-energy index policy.
-            %
-            % Partial-depth potential-energy forms can declare endpoint
-            % directions through active boundary metadata. With
-            % `boundarySign="positive"`, endpoint contributions use the
-            % positive boundary convention. With `boundarySign="negative"`,
-            % endpoint contributions use the negative boundary convention and
-            % the resulting negative index directions are expected by the
-            % policy rather than treated as numerical failures.
-            %
-            % - Topic: Select retained modes
-            % - Declaration: policy = IMEigenvalueProblem.partialDepthPEIndexPolicy(options)
-            % - Parameter options.boundarySign: `"positive"` or `"negative"`
-            % - Parameter options.validationMode: `"error"`, `"warning"`, or `"none"`
-            % - Returns policy: corresponding index policy
-            arguments
-                options.boundarySign {mustBeTextScalar} = "positive"
-                options.validationMode {mustBeTextScalar} = "error"
-            end
-
-            switch string(options.boundarySign)
-                case "positive"
-                    indexSign = 1;
-                case "negative"
-                    indexSign = -1;
-                otherwise
-                    error("IMEigenvalueProblem:InvalidBoundarySign", ...
-                        "boundarySign must be ""positive"" or ""negative"".");
-            end
-            boundaryModes = [
-                struct("modeNumber", -1, "indexSign", indexSign)
-                struct("modeNumber", -2, "indexSign", indexSign)
-            ];
-            policy = IMIndexPolicy(expectedNegativeCount=2*double(indexSign < 0), ...
-                expectedZeroCount=0, validationMode=options.validationMode, boundaryModes=boundaryModes);
         end
     end
 
     methods (Static, Access = private)
-        function variable = validateVariable(variable)
-            variable = string(variable);
-            if variable ~= "F" && variable ~= "G"
-                error("IMEigenvalueProblem:InvalidVariable", ...
-                    "formulation must be ""F"" or ""G"".");
+        function values = expandCoefficient(values, z, name)
+            if isscalar(values)
+                values = values*ones(size(z));
+            end
+            values = values(:);
+            if length(values) ~= length(z)
+                error("IMEigenvalueProblem:InvalidCoefficientSize", ...
+                    "Coefficient %s must evaluate to a scalar or one value per grid point.", name);
             end
         end
 
-        function innerWeights = resolveInnerWeights(innerWeights)
-            if ~isfield(innerWeights, "G")
-                innerWeights.G = @(z,ctx) ctx.N2(z)/ctx.g;
-            end
-            if ~isfield(innerWeights, "F")
-                innerWeights.F = @(z,ctx) ones(size(z));
-            end
+        function tolerance = signTolerance(values, tau)
+            tolerance = tau*max(1,max(abs(values(:))));
         end
 
-        function selectedWeights = weightsForInnerProduct(weights, variable)
-            variable = IMEigenvalueProblem.validateVariable(variable);
-            selectedWeights = IMBoundaryWeight.empty(0,1);
-            for iWeight = 1:length(weights)
-                if weights(iWeight).innerProduct == variable
-                    selectedWeights(end+1,1) = weights(iWeight); %#ok<AGROW>
-                end
-            end
-        end
-
-        function validationMode = validateIndexValidationMode(validationMode)
-            validationMode = string(validationMode);
-            if ~ismember(validationMode, ["error", "warning", "none"])
-                error("IMEigenvalueProblem:InvalidIndexValidationMode", ...
-                    "indexValidationMode must be ""error"", ""warning"", or ""none"".");
+        function normalizations = resolveNormalizations(normalizations)
+            if ~isfield(normalizations, "unity")
+                normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode);
             end
         end
     end
-
 end

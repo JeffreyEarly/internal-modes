@@ -3,13 +3,13 @@ layout: default
 title: innerProduct
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 16
+nav_order: 11
 mathjax: true
 ---
 
 #  innerProduct
 
-Return the declared inner-product recipe for a variable.
+Return the scalar inner-product recipe.
 
 
 ---
@@ -19,14 +19,12 @@ Return the declared inner-product recipe for a variable.
  spec = innerProduct(evp,variable)
 ```
 ## Parameters
-+ `variable`  `"F"` or `"G"`
++ `variable`  scalar variable name; only `"u"` is accepted
 
 ## Returns
-+ `spec`  struct with `variable`, `interiorWeight`, `surfaceWeights`, `bottomWeights`, and `hasKnownBoundaryWeights`
++ `spec`  struct with interior and endpoint metric terms
 
 ## Discussion
 
-  The returned struct contains the interior weight and the
-  endpoint weights whose `innerProduct` matches `variable`. The
-  endpoint factors inside those weights may still evaluate either
-  `F` or `G`; the selector is the inner product being constructed.
+  The canonical basis set uses `r` in the interior and the
+  endpoint metric terms implied by active endpoint conditions.

@@ -3,13 +3,13 @@ layout: default
 title: IMBasisSet
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 3
+nav_order: 1
 mathjax: true
 ---
 
 #  IMBasisSet
 
-Create a solved basis set.
+Create a solved scalar basis set.
 
 
 ---
@@ -20,18 +20,18 @@ Create a solved basis set.
 ```
 ## Parameters
 + `options.solver`  solver reference
-+ `options.evp`  EVP descriptor
++ `options.evp`  canonical EVP descriptor
 + `options.nativeModes`  native mode columns
 + `options.eigenvalues`  retained eigenvalues
 + `options.h`  equivalent depths
 + `options.modeNumber`  physical mode numbers
-+ `options.index`  index summary
-+ `options.normalization`  active normalization; omitted uses the EVP default
++ `options.index`  selection diagnostics
++ `options.normalization`  active normalization
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
 + `options.N2Function`  buoyancy frequency squared function
 
 ## Returns
-+ `basisSet`  initialized basis set
++ `basisSet`  solved scalar basis set
 
 ## Discussion

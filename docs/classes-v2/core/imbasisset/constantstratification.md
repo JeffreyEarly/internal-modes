@@ -3,7 +3,7 @@ layout: default
 title: constantStratification
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 5
+nav_order: 3
 mathjax: true
 ---
 
@@ -19,17 +19,14 @@ Create an analytical constant-stratification basis set.
  basisSet = IMBasisSet.constantStratification(options)
 ```
 ## Parameters
-+ `options.evp`  supported wave-mode or hydrostatic eigenvalue-problem descriptor
++ `options.evp`  internal-mode EVP descriptor
 + `options.N0`  constant buoyancy frequency
 + `options.zDomain`  physical vertical domain
 + `options.nModes`  number of modes
-+ `options.normalization`  active normalization; omitted uses the EVP default
++ `options.normalization`  active normalization
 + `options.metadata`  additional metadata
 
 ## Returns
 + `basisSet`  analytical constant-stratification basis set
 
 ## Discussion
-
-  The returned basis set evaluates exact constant-stratification
-  `F` and `G` modes without solving a numerical EVP.

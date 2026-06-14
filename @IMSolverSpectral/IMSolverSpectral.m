@@ -7,7 +7,7 @@ classdef IMSolverSpectral < IMSolver
     %
     % ```matlab
     % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-    % basisSet = solver.solveEVP(IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4));
+    % basisSet = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(k=1e-4));
     % ```
     %
     % - Topic: Create solvers
@@ -147,6 +147,27 @@ classdef IMSolverSpectral < IMSolver
             % - Parameter z: physical coordinate
             % - Returns values: buoyancy frequency squared
             values = self.N2Function(z);
+        end
+
+        function values = differentiateGridValues(self, values, derivativeOrder)
+            % Differentiate values sampled on the native grid.
+            %
+            % - Topic: Assemble EVPs
+            % - Developer: true
+            % - Declaration: values = differentiateGridValues(solver,values,derivativeOrder)
+            % - Parameter values: one value per native grid point
+            % - Parameter derivativeOrder: physical derivative order
+            % - Returns values: differentiated grid values
+            values = values(:,:);
+            if size(values,1) ~= self.nEVP
+                error("IMSolverSpectral:InvalidGridValues", ...
+                    "Grid values must have one row per native grid point.");
+            end
+            if derivativeOrder == 0
+                return;
+            end
+            coefficients = self.T \ values;
+            values = self.physicalDerivativeMatrix(derivativeOrder)*coefficients;
         end
 
         function values = dzLogN2(self, z)

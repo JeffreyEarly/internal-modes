@@ -3,13 +3,13 @@ layout: default
 title: partialGramMatrix
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 25
+nav_order: 20
 mathjax: true
 ---
 
 #  partialGramMatrix
 
-Return a partial-depth Gram matrix.
+Return a partial-domain scalar Gram matrix.
 
 
 ---
@@ -19,11 +19,11 @@ Return a partial-depth Gram matrix.
  gram = partialGramMatrix(basisSet,variable,zMin,zMax)
 ```
 ## Parameters
-+ `variable`  variable name
++ `variable`  scalar variable name, `"u"`
 + `zMin`  lower physical bound
 + `zMax`  upper physical bound
 
 ## Returns
-+ `gram`  partial-depth Gram matrix
++ `gram`  scalar Gram matrix
 
 ## Discussion

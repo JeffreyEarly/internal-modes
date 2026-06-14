@@ -3,7 +3,7 @@ layout: default
 title: hFromEigenvalue
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 11
+nav_order: 9
 mathjax: true
 ---
 
@@ -16,7 +16,4 @@ Equivalent-depth conversion function.
 
 ## Discussion
 
-  `hFromEigenvalue` is a function handle with signature
-  `h = hFromEigenvalue(lambda)`. Standard EVPs use
-  $$h_j=1/\lambda_j,$$
-  so `lambda` has inverse-depth units in those problems.
+  `hFromEigenvalue` has signature `h = hFromEigenvalue(lambda)`.

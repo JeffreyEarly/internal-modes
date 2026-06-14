@@ -3,13 +3,13 @@ layout: default
 title: spectrum
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 29
+nav_order: 23
 mathjax: true
 ---
 
 #  spectrum
 
-Compute a modal spectrum from coefficients.
+Compute a scalar modal spectrum.
 
 
 ---
@@ -20,7 +20,7 @@ Compute a modal spectrum from coefficients.
 ```
 ## Parameters
 + `coefficients`  modal coefficients
-+ `options.variable`  variable name
++ `options.variable`  scalar variable name
 
 ## Returns
 + `spectrum`  modal spectrum

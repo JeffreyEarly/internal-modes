@@ -3,13 +3,13 @@ layout: default
 title: crossSpectrum
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 6
+nav_order: 4
 mathjax: true
 ---
 
 #  crossSpectrum
 
-Compute a modal cross-spectrum from coefficients.
+Compute a scalar modal cross-spectrum.
 
 
 ---
@@ -21,7 +21,7 @@ Compute a modal cross-spectrum from coefficients.
 ## Parameters
 + `coefficientsA`  first modal coefficients
 + `coefficientsB`  second modal coefficients
-+ `options.variable`  variable name
++ `options.variable`  scalar variable name
 
 ## Returns
 + `spectrum`  modal cross-spectrum

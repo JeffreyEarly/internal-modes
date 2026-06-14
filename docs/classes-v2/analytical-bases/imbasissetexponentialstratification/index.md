@@ -18,7 +18,7 @@ Evaluate exact basis sets for exponential stratification.
 
 ## Declaration
 
-<div class="language-matlab highlighter-rouge"><div class="highlight"><pre class="highlight"><code>classdef IMBasisSetExponentialStratification < IMBasisSet</code></pre></div></div>
+<div class="language-matlab highlighter-rouge"><div class="highlight"><pre class="highlight"><code>classdef IMBasisSetExponentialStratification < IMInternalModesBasis</code></pre></div></div>
 
 ## Overview
 
@@ -29,7 +29,7 @@ roots are found with a local scanner and `fzero`, without requiring
 an external spectral-function root finder at runtime.
 
 ```matlab
-evp = IMEigenvalueProblem.hydrostaticGModes();
+evp = IMInternalModes.hydrostaticGModes();
 basisSet = IMBasisSetExponentialStratification(evp=evp, N0=5.2e-3, b=1300, zDomain=[-5000 0]);
 G = basisSet.G(linspace(-5000,0,128).');
 ```

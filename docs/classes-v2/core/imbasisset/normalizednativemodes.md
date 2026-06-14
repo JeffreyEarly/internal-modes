@@ -3,13 +3,13 @@ layout: default
 title: normalizedNativeModes
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 23
+nav_order: 19
 mathjax: true
 ---
 
 #  normalizedNativeModes
 
-Return native modes scaled by a normalization convention.
+Return native modes scaled by a normalization.
 
 
 ---
@@ -22,6 +22,6 @@ Return native modes scaled by a normalization convention.
 + `normalization`  normalization convention
 
 ## Returns
-+ `modes`  scaled native modes
++ `modes`  scaled native mode columns
 
 ## Discussion

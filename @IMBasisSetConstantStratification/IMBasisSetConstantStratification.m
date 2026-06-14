@@ -1,4 +1,4 @@
-classdef IMBasisSetConstantStratification < IMBasisSet
+classdef IMBasisSetConstantStratification < IMInternalModesBasis
     % Evaluate exact basis sets for constant stratification.
     %
     % `IMBasisSetConstantStratification` stores exact
@@ -7,7 +7,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
     % basis sets, without storing a solver reference.
     %
     % ```matlab
-    % evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4);
+    % evp = IMInternalModes.waveModesAtWavenumber(k=1e-4);
     % basisSet = IMBasisSetConstantStratification(evp=evp, N0=5.2e-3, zDomain=[-5000 0]);
     % G = basisSet.G(linspace(-5000,0,128).');
     % ```
@@ -16,7 +16,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
     % - Topic: Evaluate basis sets
     % - Topic: Inspect basis sets
     % - Topic: Developer topics
-    % - Declaration: classdef IMBasisSetConstantStratification < IMBasisSet
+    % - Declaration: classdef IMBasisSetConstantStratification < IMInternalModesBasis
 
     properties (SetAccess = private)
         % Constant buoyancy frequency $$N_0$$ in radians per second.
@@ -62,7 +62,7 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact constant-stratification basis set
             arguments
-                options.evp IMEigenvalueProblem
+                options.evp IMInternalModes
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double = [-1 0]
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
@@ -75,17 +75,11 @@ classdef IMBasisSetConstantStratification < IMBasisSet
             [h, verticalWavenumbers, solutionTypes, isBoundaryMode, baroclinicNumbers, modeNumber] = ...
                 IMBasisSetConstantStratification.solveSpectrum(options.evp, options.N0, zDomain, options.nModes, f0, g);
             eigenvalues = 1 ./ h;
-            context.N2 = @(z) options.N0*options.N0*ones(size(z));
-            context.dzLogN2 = @(z) zeros(size(z));
-            context.f0 = f0;
-            context.g = g;
-            context.zDomain = zDomain;
-            context.coordinateKind = "constantStratification";
-            index = options.evp.classifyEigenvalues(eigenvalues(:), context);
+            index = struct();
             metadata = options.metadata;
             metadata.analyticalBasis = "constantStratification";
 
-            self@IMBasisSet(evp=options.evp, nativeModes=zeros(0,length(h)), ...
+            self@IMInternalModesBasis(evp=options.evp, nativeModes=zeros(0,length(h)), ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
                 N2Function=@(z) options.N0*options.N0*ones(size(z)));
@@ -113,41 +107,6 @@ classdef IMBasisSetConstantStratification < IMBasisSet
     end
 
     methods (Hidden)
-        function factor = weightedNormFactor(self, variable, iMode, innerWeight, surfaceWeight, bottomWeight)
-            % Return an exact constant-stratification norm factor.
-            %
-            % - Topic: Developer topics
-            % - Developer: true
-            % - Declaration: factor = weightedNormFactor(basisSet,variable,iMode,innerWeight,surfaceWeight,bottomWeight)
-            % - Parameter variable: variable name
-            % - Parameter iMode: mode index
-            % - Parameter innerWeight: interior weight coefficient
-            % - Parameter surfaceWeight: surface endpoint weight
-            % - Parameter bottomWeight: bottom endpoint weight
-            % - Returns factor: divisor from the requested quadratic form
-            variable = string(variable);
-            if variable ~= "G" && variable ~= "F"
-                factor = weightedNormFactor@IMBasisSet(self, variable, iMode, innerWeight, surfaceWeight, bottomWeight);
-                return;
-            end
-
-            context = self.context();
-            sampleZ = linspace(self.zDomain(1), self.zDomain(2), 3).';
-            weightSamples = IMOperator.evaluateCoefficient(innerWeight, sampleZ, context);
-            weightTolerance = 100*eps(max(1,max(abs(weightSamples))));
-            if any(~isfinite(weightSamples)) || max(abs(weightSamples - weightSamples(1))) > weightTolerance
-                factor = weightedNormFactor@IMBasisSet(self, variable, iMode, innerWeight, surfaceWeight, bottomWeight);
-                return;
-            end
-            weight = weightSamples(1);
-
-            [interiorIntegral, surfaceValue, bottomValue] = self.variableQuadraticPieces(variable, iMode);
-            normValue = weight*interiorIntegral ...
-                + surfaceWeight*surfaceValue*surfaceValue ...
-                + bottomWeight*bottomValue*bottomValue;
-            factor = sqrt(abs(normValue));
-        end
-
         function factor = maxAbsFactor(self, variable, iMode)
             % Return an exact constant-stratification maximum-amplitude factor.
             %
@@ -378,11 +337,11 @@ classdef IMBasisSetConstantStratification < IMBasisSet
 
             switch evpName
                 case "waveModesAtWavenumber"
-                    if ~isfield(evp.parameters, "k")
+                    if ~isfield(evp.metadata, "k")
                         error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                            "A fixed-wavenumber EVP must include parameters.k.");
+                            "A fixed-wavenumber EVP must include metadata.k.");
                     end
-                    k = evp.parameters.k;
+                    k = evp.metadata.k;
                     [hBaroclinic, k_zBaroclinic] = IMBasisSetConstantStratification.baroclinicAtWavenumber( ...
                         k, N0, D, nModes, f0, g, surfaceBoundary);
                     if surfaceBoundary == "free"
@@ -401,11 +360,11 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                         baroclinicNumbers = 1:nModes;
                     end
                 case "waveModesAtFrequency"
-                    if ~isfield(evp.parameters, "omega")
+                    if ~isfield(evp.metadata, "omega")
                         error("IMBasisSetConstantStratification:UnsupportedEVP", ...
-                            "A fixed-frequency EVP must include parameters.omega.");
+                            "A fixed-frequency EVP must include metadata.omega.");
                     end
-                    omega = evp.parameters.omega;
+                    omega = evp.metadata.omega;
                     if surfaceBoundary == "free"
                         [h0, k_z0, solutionType0] = IMBasisSetConstantStratification.surfaceBoundaryAtFrequency(omega, N0, D, g);
                         if omega < N0
@@ -550,8 +509,8 @@ classdef IMBasisSetConstantStratification < IMBasisSet
         end
 
         function [surfaceBoundary, bottomBoundary] = validateEVP(evp)
-            surfaceBoundary = evp.surfaceBoundary.family;
-            bottomBoundary = evp.bottomBoundary.family;
+            surfaceBoundary = IMBasisSetConstantStratification.boundaryKind(evp.surfaceBoundary, evp.formulation);
+            bottomBoundary = IMBasisSetConstantStratification.boundaryKind(evp.bottomBoundary, evp.formulation);
             if evp.formulation == "F"
                 if evp.name ~= "hydrostaticFModes"
                     error("IMBasisSetConstantStratification:UnsupportedEVP", ...
@@ -576,6 +535,35 @@ classdef IMBasisSetConstantStratification < IMBasisSet
                 error("IMBasisSetConstantStratification:UnsupportedBoundary", ...
                     "Unsupported constant-stratification surface boundary ""%s"".", surfaceBoundary);
             end
+        end
+
+        function kind = boundaryKind(boundary, formulation)
+            formulation = string(formulation);
+            if formulation == "G"
+                if IMBasisSetConstantStratification.isCondition(boundary, [1 0 0 0])
+                    kind = "rigid";
+                elseif IMBasisSetConstantStratification.isCondition(boundary, [0 1 1 0])
+                    kind = "free";
+                elseif IMBasisSetConstantStratification.isCondition(boundary, [0 1 0 0])
+                    kind = "noSlip";
+                else
+                    kind = "custom";
+                end
+            else
+                if IMBasisSetConstantStratification.isCondition(boundary, [0 1 0 0])
+                    kind = "rigid";
+                elseif IMBasisSetConstantStratification.isCondition(boundary, [1 0 0 0])
+                    kind = "noSlip";
+                else
+                    kind = "custom";
+                end
+            end
+        end
+
+        function tf = isCondition(boundary, coefficients)
+            actual = [boundary.a boundary.b boundary.c boundary.d];
+            tolerance = 100*eps(max(1,max(abs([actual coefficients]))));
+            tf = max(abs(actual - coefficients)) <= tolerance;
         end
     end
 end

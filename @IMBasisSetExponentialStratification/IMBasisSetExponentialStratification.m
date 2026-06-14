@@ -1,4 +1,4 @@
-classdef IMBasisSetExponentialStratification < IMBasisSet
+classdef IMBasisSetExponentialStratification < IMInternalModesBasis
     % Evaluate exact basis sets for exponential stratification.
     %
     % `IMBasisSetExponentialStratification` stores exact rigid-bottom
@@ -8,7 +8,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
     % an external spectral-function root finder at runtime.
     %
     % ```matlab
-    % evp = IMEigenvalueProblem.hydrostaticGModes();
+    % evp = IMInternalModes.hydrostaticGModes();
     % basisSet = IMBasisSetExponentialStratification(evp=evp, N0=5.2e-3, b=1300, zDomain=[-5000 0]);
     % G = basisSet.G(linspace(-5000,0,128).');
     % ```
@@ -17,7 +17,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
     % - Topic: Evaluate basis sets
     % - Topic: Inspect basis sets
     % - Topic: Developer topics
-    % - Declaration: classdef IMBasisSetExponentialStratification < IMBasisSet
+    % - Declaration: classdef IMBasisSetExponentialStratification < IMInternalModesBasis
 
     properties (SetAccess = private)
         % Surface buoyancy frequency $$N_0$$ in radians per second.
@@ -74,7 +74,7 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact exponential-stratification basis set
             arguments
-                options.evp IMEigenvalueProblem
+                options.evp IMInternalModes
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.b (1,1) double {mustBePositive} = 1300
                 options.zDomain (1,2) double = [-1 0]
@@ -93,17 +93,11 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                 options.N0, options.b, zDomain, frequencies, phaseSpeeds, g, modeKinds);
             eigenvalues = 1 ./ h;
 
-            context.N2 = @(z) options.N0*options.N0*exp(2*z/options.b);
-            context.dzLogN2 = @(z) (2/options.b)*ones(size(z));
-            context.f0 = f0;
-            context.g = g;
-            context.zDomain = zDomain;
-            context.coordinateKind = "exponentialStratification";
-            index = options.evp.classifyEigenvalues(eigenvalues(:), context);
+            index = struct();
             metadata = options.metadata;
             metadata.analyticalBasis = "exponentialStratification";
 
-            self@IMBasisSet(evp=options.evp, nativeModes=zeros(0,length(h)), ...
+            self@IMInternalModesBasis(evp=options.evp, nativeModes=zeros(0,length(h)), ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
                 N2Function=@(z) options.N0*options.N0*exp(2*z/options.b));
@@ -173,11 +167,11 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
             evpName = string(evp.name);
             switch evpName
                 case "waveModesAtWavenumber"
-                    if ~isfield(evp.parameters, "k")
+                    if ~isfield(evp.metadata, "k")
                         error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                            "A fixed-wavenumber EVP must include parameters.k.");
+                            "A fixed-wavenumber EVP must include metadata.k.");
                     end
-                    k = evp.parameters.k;
+                    k = evp.metadata.k;
                     nInteriorModes = IMBasisSetExponentialStratification.nInteriorModes(nModes, surfaceBoundary);
                     roots = IMBasisSetExponentialStratification.rootsAtWavenumber( ...
                         k, N0, b, zDomain, nInteriorModes, f0, g, surfaceBoundary);
@@ -189,11 +183,11 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                     end
                     frequencies = sqrt(g*h*k*k + f0*f0);
                 case "waveModesAtFrequency"
-                    if ~isfield(evp.parameters, "omega")
+                    if ~isfield(evp.metadata, "omega")
                         error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
-                            "A fixed-frequency EVP must include parameters.omega.");
+                            "A fixed-frequency EVP must include metadata.omega.");
                     end
-                    omega = evp.parameters.omega;
+                    omega = evp.metadata.omega;
                     if omega >= N0 && surfaceBoundary == "free"
                         root0 = IMBasisSetExponentialStratification.surfaceRootAtFrequency(omega, N0, b, zDomain, g);
                         roots = root0;
@@ -250,8 +244,8 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
         end
 
         function surfaceBoundary = validateEVP(evp)
-            surfaceBoundary = evp.surfaceBoundary.family;
-            bottomBoundary = evp.bottomBoundary.family;
+            surfaceBoundary = IMBasisSetExponentialStratification.boundaryKind(evp.surfaceBoundary, evp.formulation);
+            bottomBoundary = IMBasisSetExponentialStratification.boundaryKind(evp.bottomBoundary, evp.formulation);
             if evp.formulation == "F"
                 if evp.name ~= "hydrostaticFModes"
                     error("IMBasisSetExponentialStratification:UnsupportedEVP", ...
@@ -275,6 +269,35 @@ classdef IMBasisSetExponentialStratification < IMBasisSet
                 error("IMBasisSetExponentialStratification:UnsupportedBoundary", ...
                     "Exponential stratification currently supports rigid or free surface boundaries.");
             end
+        end
+
+        function kind = boundaryKind(boundary, formulation)
+            formulation = string(formulation);
+            if formulation == "G"
+                if IMBasisSetExponentialStratification.isCondition(boundary, [1 0 0 0])
+                    kind = "rigid";
+                elseif IMBasisSetExponentialStratification.isCondition(boundary, [0 1 1 0])
+                    kind = "free";
+                elseif IMBasisSetExponentialStratification.isCondition(boundary, [0 1 0 0])
+                    kind = "noSlip";
+                else
+                    kind = "custom";
+                end
+            else
+                if IMBasisSetExponentialStratification.isCondition(boundary, [0 1 0 0])
+                    kind = "rigid";
+                elseif IMBasisSetExponentialStratification.isCondition(boundary, [1 0 0 0])
+                    kind = "noSlip";
+                else
+                    kind = "custom";
+                end
+            end
+        end
+
+        function tf = isCondition(boundary, coefficients)
+            actual = [boundary.a boundary.b boundary.c boundary.d];
+            tolerance = 100*eps(max(1,max(abs([actual coefficients]))));
+            tf = max(abs(actual - coefficients)) <= tolerance;
         end
 
         function roots = rootsAtWavenumber(k, N0, b, zDomain, nModes, f0, g, surfaceBoundary)

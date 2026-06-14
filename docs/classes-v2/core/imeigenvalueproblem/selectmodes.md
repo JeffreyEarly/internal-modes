@@ -3,13 +3,13 @@ layout: default
 title: selectModes
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 24
+nav_order: 21
 mathjax: true
 ---
 
 #  selectModes
 
-Select and label retained eigenmodes.
+Select and label retained finite-real eigenmodes.
 
 > Developer documentation: this item describes internal implementation details.
 
@@ -18,21 +18,20 @@ Select and label retained eigenmodes.
 
 ## Declaration
 ```matlab
- selection = selectModes(evp,eigenvalues,nModes,context)
+ selection = selectModes(evp,eigenvalues,nModes,solver,A)
 ```
 ## Parameters
-+ `eigenvalues`  candidate generalized-EVP eigenvalues
-+ `nModes`  number of modes to retain
-+ `context`  solver or analytical context
++ `eigenvalues`  finite real candidate eigenvalues
++ `nModes`  number of retained modes
++ `solver`  canonical solver
++ `A`  assembled left matrix
 
 ## Returns
-+ `selection`  selected-mode metadata
++ `selection`  selected indices and mode numbers
 
 ## Discussion
 
-  The index policy first classifies candidate eigenvalues using
-  boundary metadata, the optional barotropic mode, and positive
-  interior modes. Retained modes are ordered as boundary-index
-  modes, the barotropic mode when declared, then positive
-  baroclinic modes. Their labels define the `modeNumber` metadata
-  carried by the resulting `IMBasisSet`.
+  Certified negative-count bounds decide when raw negative
+  discrete eigenvalues should be retained. With a positive metric
+  and nonnegative quadratic form, negative discrete eigenvalues
+  are ignored during mode selection.

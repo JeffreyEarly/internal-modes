@@ -3,13 +3,13 @@ layout: default
 title: gramMatrix
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 14
+nav_order: 11
 mathjax: true
 ---
 
 #  gramMatrix
 
-Return the full-depth Gram matrix for a variable.
+Return the full-domain scalar Gram matrix.
 
 
 ---
@@ -19,9 +19,9 @@ Return the full-depth Gram matrix for a variable.
  gram = gramMatrix(basisSet,variable)
 ```
 ## Parameters
-+ `variable`  variable name
++ `variable`  optional scalar variable name, `"u"`
 
 ## Returns
-+ `gram`  full-depth Gram matrix
++ `gram`  scalar Gram matrix
 
 ## Discussion

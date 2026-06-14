@@ -9,7 +9,7 @@ mathjax: true
 
 #  solveEVP
 
-Solve an EVP and return a native-basis solution set.
+Solve an EVP and return a basis set.
 
 
 ---
@@ -19,13 +19,13 @@ Solve an EVP and return a native-basis solution set.
  basisSet = solveEVP(solver,evp,options)
 ```
 ## Parameters
-+ `evp`  physical-coordinate EVP descriptor
++ `evp`  canonical EVP descriptor
 + `options.nModes`  number of modes to retain
 
 ## Returns
-+ `basisSet`  solved native basis set
++ `basisSet`  solved basis set
 
 ## Discussion
 
   If the assembled matrices produce no finite real eigenvalues,
-  `solveEVP` throws an explanatory diagnostic before returning.
+  `solveEVP` throws a matrix-level diagnostic before returning.

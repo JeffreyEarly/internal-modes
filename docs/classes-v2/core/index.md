@@ -8,4 +8,4 @@ permalink: /classes-v2/core
 mathjax: true
 ---
 
-Reference pages for the eigenvalue-problem descriptors, basis-set containers, boundary laws, endpoint weights, operator assembly, and mode-index policies.
+Reference pages for canonical eigenvalue problems, scalar endpoint conditions, solved scalar basis sets, and internal-mode interpretations.

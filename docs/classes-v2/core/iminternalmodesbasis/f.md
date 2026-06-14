@@ -1,0 +1,28 @@
+---
+layout: default
+title: F
+parent: IMInternalModesBasis
+grand_parent: Core
+nav_order: 1
+mathjax: true
+---
+
+#  F
+
+Evaluate `F` modes.
+
+
+---
+
+## Declaration
+```matlab
+ F = F(basisSet,z,options)
+```
+## Parameters
++ `z`  physical coordinate
++ `options.normalization`  normalization to apply
+
+## Returns
++ `F`  evaluated `F` modes
+
+## Discussion

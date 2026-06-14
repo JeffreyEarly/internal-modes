@@ -3,7 +3,7 @@ layout: default
 title: solver
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 28
+nav_order: 22
 mathjax: true
 ---
 

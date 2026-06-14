@@ -18,7 +18,7 @@ Evaluate exact basis sets for constant stratification.
 
 ## Declaration
 
-<div class="language-matlab highlighter-rouge"><div class="highlight"><pre class="highlight"><code>classdef IMBasisSetConstantStratification < IMBasisSet</code></pre></div></div>
+<div class="language-matlab highlighter-rouge"><div class="highlight"><pre class="highlight"><code>classdef IMBasisSetConstantStratification < IMInternalModesBasis</code></pre></div></div>
 
 ## Overview
 
@@ -28,7 +28,7 @@ implements the same `F`, `G`, and normalization contract as numerical
 basis sets, without storing a solver reference.
 
 ```matlab
-evp = IMEigenvalueProblem.waveModesAtWavenumber(k=1e-4);
+evp = IMInternalModes.waveModesAtWavenumber(k=1e-4);
 basisSet = IMBasisSetConstantStratification(evp=evp, N0=5.2e-3, zDomain=[-5000 0]);
 G = basisSet.G(linspace(-5000,0,128).');
 ```

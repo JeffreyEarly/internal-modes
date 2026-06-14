@@ -3,7 +3,7 @@ layout: default
 title: name
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 19
+nav_order: 15
 mathjax: true
 ---
 
@@ -15,6 +15,3 @@ Short EVP name.
 ---
 
 ## Discussion
-
-  This is the canonical identity for factory-created EVPs, such as
-  `"waveModesAtWavenumber"` or `"hydrostaticGModes"`.

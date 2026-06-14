@@ -115,6 +115,23 @@ classdef IMSolverFiniteDifference < IMSolver
             values = self.N2Function(z);
         end
 
+        function values = differentiateGridValues(self, values, derivativeOrder)
+            % Differentiate values sampled on the native grid.
+            %
+            % - Topic: Assemble EVPs
+            % - Developer: true
+            % - Declaration: values = differentiateGridValues(solver,values,derivativeOrder)
+            % - Parameter values: one value per native grid point
+            % - Parameter derivativeOrder: physical derivative order
+            % - Returns values: differentiated grid values
+            values = values(:,:);
+            if size(values,1) ~= self.nEVP
+                error("IMSolverFiniteDifference:InvalidGridValues", ...
+                    "Grid values must have one row per native grid point.");
+            end
+            values = self.physicalDerivativeMatrix(derivativeOrder)*values;
+        end
+
         function values = dzLogN2(self, z)
             % Evaluate $$\partial_z\log N^2$$ numerically.
             %

@@ -3,13 +3,13 @@ layout: default
 title: dzLogN2
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 7
+nav_order: 5
 mathjax: true
 ---
 
 #  dzLogN2
 
-Evaluate $$\partial_z\log N^2$$ for this basis set.
+Evaluate the vertical derivative of `log(N2)`.
 
 
 ---
@@ -22,6 +22,6 @@ Evaluate $$\partial_z\log N^2$$ for this basis set.
 + `z`  physical coordinate
 
 ## Returns
-+ `values`  vertical derivative of `log(N2)`
++ `values`  derivative values
 
 ## Discussion

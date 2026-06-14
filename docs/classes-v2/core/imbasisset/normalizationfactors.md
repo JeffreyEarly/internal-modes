@@ -3,13 +3,13 @@ layout: default
 title: normalizationFactors
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 22
+nav_order: 18
 mathjax: true
 ---
 
 #  normalizationFactors
 
-Return factors for the requested normalization.
+Return factors for a normalization convention.
 
 
 ---
@@ -22,6 +22,6 @@ Return factors for the requested normalization.
 + `normalization`  normalization convention
 
 ## Returns
-+ `factors`  row vector of normalization factors
++ `factors`  row vector of positive scale factors
 
 ## Discussion

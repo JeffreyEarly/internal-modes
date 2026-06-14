@@ -3,13 +3,13 @@ layout: default
 title: index
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 16
+nav_order: 13
 mathjax: true
 ---
 
 #  index
 
-Observed and expected eigenvalue index counts.
+Diagnostic index information from mode selection.
 
 
 ---

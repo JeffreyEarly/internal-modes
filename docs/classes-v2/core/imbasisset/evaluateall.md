@@ -3,13 +3,13 @@ layout: default
 title: evaluateAll
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 11
+nav_order: 8
 mathjax: true
 ---
 
 #  evaluateAll
 
-Evaluate `G` and `F` on a physical grid.
+Evaluate all scalar fields.
 
 
 ---
@@ -19,9 +19,9 @@ Evaluate `G` and `F` on a physical grid.
  values = evaluateAll(basisSet,z)
 ```
 ## Parameters
-+ `z`  physical evaluation points
++ `z`  physical coordinate
 
 ## Returns
-+ `values`  structure with fields `G` and `F`
++ `values`  struct containing `u` and `uz`
 
 ## Discussion

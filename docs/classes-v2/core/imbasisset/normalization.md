@@ -3,7 +3,7 @@ layout: default
 title: normalization
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 21
+nav_order: 17
 mathjax: true
 ---
 
@@ -15,7 +15,3 @@ Active modal normalization.
 ---
 
 ## Discussion
-
-  Changing this property rescales evaluated modes without solving a
-  new EVP. When omitted at construction, this is initialized from
-  the EVP's declared default normalization.
