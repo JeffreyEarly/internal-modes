@@ -16,5 +16,7 @@ Metric coefficient multiplying the eigenvalue side.
 
 ## Discussion
 
-  `r` is a scalar, vector, or function handle with signature
+  `r` defines the interior metric in $$\lambda r u$$ and in the
+  default scalar inner product. It may be a scalar, a vector on the
+  solver grid, or a function handle with signature
   `values = r(z,ctx)`.

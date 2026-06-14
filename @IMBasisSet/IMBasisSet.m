@@ -4,7 +4,17 @@ classdef IMBasisSet
     % `IMBasisSet` stores native coefficient columns returned by a solver
     % and evaluates the solved scalar variable `u` and its derivative. Modal
     % normalization is applied lazily when values or Gram matrices are
-    % requested.
+    % requested. For each mode,
+    % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+    % where the scale factor $$s_j$$ is supplied by the active
+    % normalization rule.
+    %
+    % ```matlab
+    % basisSet = solver.solveEVP(evp,nModes=4);
+    % basisSet.normalization = Normalization.unity;
+    % u = basisSet.u(z);
+    % factors = basisSet.normalizationFactors(Normalization.unity);
+    % ```
     %
     % - Topic: Create basis sets
     % - Topic: Evaluate basis sets
@@ -15,6 +25,10 @@ classdef IMBasisSet
 
     properties
         % Active modal normalization.
+        %
+        % This value selects the normalization rule used by `u`, `uz`,
+        % `evaluate`, and Gram-matrix methods. Passing `normalization=...`
+        % to an evaluation method overrides this property for that call.
         %
         % - Topic: Evaluate basis sets
         normalization = Normalization.unity
@@ -57,6 +71,10 @@ classdef IMBasisSet
         index
 
         % Additional metadata.
+        %
+        % `metadata` stores creation or diagnostic information associated
+        % with this solved basis set. It is not interpreted by `IMBasisSet`;
+        % EVP metadata remains available through `basisSet.evp.metadata`.
         %
         % - Topic: Inspect basis sets
         metadata
@@ -135,6 +153,10 @@ classdef IMBasisSet
         function values = u(self, z, options)
             % Evaluate solved scalar modes.
             %
+            % Returned columns are normalized as
+            % $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+            % where $$s_j$$ comes from `normalizationFactors`.
+            %
             % - Topic: Evaluate basis sets
             % - Declaration: values = u(basisSet,z,options)
             % - Parameter z: physical coordinate
@@ -152,6 +174,9 @@ classdef IMBasisSet
         function values = uz(self, z, options)
             % Evaluate solved scalar vertical derivatives.
             %
+            % Derivatives are scaled by the same modal factors used for
+            % `u`, so $$u'_j(z)=u_j^{\mathrm{raw}\prime}(z)/s_j$$.
+            %
             % - Topic: Evaluate basis sets
             % - Declaration: values = uz(basisSet,z,options)
             % - Parameter z: physical coordinate
@@ -168,6 +193,9 @@ classdef IMBasisSet
 
         function values = evaluate(self, variable, z, options)
             % Evaluate the scalar variable.
+            %
+            % `evaluate("u",z)` is equivalent to `u(z)` and accepts the
+            % same `normalization` override.
             %
             % - Topic: Evaluate basis sets
             % - Declaration: values = evaluate(basisSet,variable,z,options)
@@ -203,6 +231,18 @@ classdef IMBasisSet
         function factors = normalizationFactors(self, normalization)
             % Return factors for a normalization convention.
             %
+            % For a requested convention this returns the row vector
+            % $$s_j$$ used by evaluation methods:
+            % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
+            % The default scalar `unity` convention uses
+            % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
+            % product.
+            %
+            % ```matlab
+            % factors = basisSet.normalizationFactors(Normalization.unity);
+            % uUnity = basisSet.u(z,normalization=Normalization.unity);
+            % ```
+            %
             % - Topic: Evaluate basis sets
             % - Declaration: factors = normalizationFactors(basisSet,normalization)
             % - Parameter normalization: normalization convention
@@ -225,6 +265,9 @@ classdef IMBasisSet
         function modes = normalizedNativeModes(self, normalization)
             % Return native modes scaled by a normalization.
             %
+            % The native coefficient columns are divided by the same factors
+            % returned by `normalizationFactors`.
+            %
             % - Topic: Evaluate basis sets
             % - Declaration: modes = normalizedNativeModes(basisSet,normalization)
             % - Parameter normalization: normalization convention
@@ -235,6 +278,10 @@ classdef IMBasisSet
 
         function gram = gramMatrix(self, variable)
             % Return the full-domain scalar Gram matrix.
+            %
+            % For normalized scalar modes, entries are
+            % $$M_{ij}=\int r u_i u_j\,dz+
+            % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,variable)
@@ -250,6 +297,10 @@ classdef IMBasisSet
 
         function gram = partialGramMatrix(self, variable, zMin, zMax)
             % Return a partial-domain scalar Gram matrix.
+            %
+            % Interior integrals are restricted to `[zMin,zMax]`. Endpoint
+            % metric terms are included only when the requested interval
+            % contains the corresponding physical endpoint.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
@@ -381,6 +432,10 @@ classdef IMBasisSet
         function factor = innerProductNormFactor(self, varargin)
             % Return the scalar inner-product norm factor.
             %
+            % This is the raw factor
+            % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ computed before any
+            % modal normalization has been applied.
+            %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
             % - Developer: true
@@ -398,6 +453,9 @@ classdef IMBasisSet
 
         function factor = maxAbsFactor(self, varargin)
             % Return the maximum scalar amplitude.
+            %
+            % This is $$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$ on the
+            % basis-set integration grid.
             %
             % - Topic: Developer topics
             % - Declaration: factor = maxAbsFactor(basisSet,iMode)

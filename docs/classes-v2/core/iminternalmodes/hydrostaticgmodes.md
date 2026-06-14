@@ -33,3 +33,12 @@ Create the hydrostatic `G` internal-mode EVP.
 
   The canonical scalar form is
   $$-G''=\lambda N^2G/g.$$
+  The default normalization is `Normalization.geostrophic`, and
+  metadata includes `formulation`, `f0`, and `g`.
+
+  ```matlab
+  evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+  solver = IMSolverSpectral(nEVP=128);
+  basisSet = solver.solveEVP(evp,nModes=4);
+  G = basisSet.G(z);
+  ```

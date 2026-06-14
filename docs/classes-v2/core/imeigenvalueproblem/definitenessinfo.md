@@ -28,4 +28,12 @@ Check grid-level signs for the canonical coefficients.
 
   This diagnostic certifies the assembled finite-dimensional
   problem on the solver grid. It does not claim continuum signs
-  between grid points.
+  between grid points. The returned struct includes sampled
+  minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
+  `qNonnegative`, and `rPositive`; metric fields
+  `endpointWeights`, `metricIndex`, `metricPositive`, and
+  `hasDegenerateEndpointMetric`; numerator fields
+  `endpointNumeratorNegativeDirections`,
+  `endpointNumeratorNonnegative`, `interiorNonnegative`, and
+  `qNonnegativeCertified`; and status fields
+  `certificationLevel` and `reason`.

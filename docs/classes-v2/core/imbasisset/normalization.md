@@ -15,3 +15,7 @@ Active modal normalization.
 ---
 
 ## Discussion
+
+  This value selects the normalization rule used by `u`, `uz`,
+  `evaluate`, and Gram-matrix methods. Passing `normalization=...`
+  to an evaluation method overrides this property for that call.

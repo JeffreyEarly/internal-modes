@@ -26,3 +26,6 @@ Evaluate solved scalar vertical derivatives.
 + `values`  derivative mode values
 
 ## Discussion
+
+  Derivatives are scaled by the same modal factors used for
+  `u`, so $$u'_j(z)=u_j^{\mathrm{raw}\prime}(z)/s_j$$.

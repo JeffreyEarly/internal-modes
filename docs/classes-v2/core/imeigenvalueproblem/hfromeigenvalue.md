@@ -16,4 +16,6 @@ Equivalent-depth conversion function.
 
 ## Discussion
 
-  `hFromEigenvalue` has signature `h = hFromEigenvalue(lambda)`.
+  `hFromEigenvalue` maps retained eigenvalues to the equivalent
+  depths stored on the returned basis set. The handle has signature
+  `h = hFromEigenvalue(lambda)`.

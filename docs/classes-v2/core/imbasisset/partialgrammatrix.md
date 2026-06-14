@@ -27,3 +27,7 @@ Return a partial-domain scalar Gram matrix.
 + `gram`  scalar Gram matrix
 
 ## Discussion
+
+  Interior integrals are restricted to `[zMin,zMax]`. Endpoint
+  metric terms are included only when the requested interval
+  contains the corresponding physical endpoint.

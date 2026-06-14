@@ -27,3 +27,6 @@ the scalar variable.
 + `values`  scalar mode values
 
 ## Discussion
+
+  `evaluate("u",z)` is equivalent to `u(z)` and accepts the
+  same `normalization` override.

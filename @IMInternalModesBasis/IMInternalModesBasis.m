@@ -5,6 +5,16 @@ classdef IMInternalModesBasis < IMBasisSet
     % from the solved canonical scalar mode. If the EVP solves `G`, then
     % $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
     % $$G_j=-gN^{-2}F'_j.$$
+    % Normalization is shared across both variables: if a rule gives scale
+    % $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
+    % that same factor.
+    %
+    % ```matlab
+    % basisSet = solver.solveEVP(evp,nModes=4);
+    % basisSet.normalization = Normalization.geostrophic;
+    % F = basisSet.F(z);
+    % G = basisSet.G(z);
+    % ```
     %
     % - Topic: Evaluate internal-mode bases
     % - Topic: Analyze Gram matrices
@@ -53,6 +63,10 @@ classdef IMInternalModesBasis < IMBasisSet
         function G = G(self, z, options)
             % Evaluate `G` modes.
             %
+            % If the EVP formulation is `G`, this evaluates the solved
+            % canonical variable. If the formulation is `F`, `G` is recovered
+            % from $$G=-gN^{-2}F_z$$.
+            %
             % - Topic: Evaluate internal-mode bases
             % - Declaration: G = G(basisSet,z,options)
             % - Parameter z: physical coordinate
@@ -70,6 +84,10 @@ classdef IMInternalModesBasis < IMBasisSet
         function F = F(self, z, options)
             % Evaluate `F` modes.
             %
+            % If the EVP formulation is `F`, this evaluates the solved
+            % canonical variable. If the formulation is `G`, `F` is recovered
+            % from $$F=hG_z$$.
+            %
             % - Topic: Evaluate internal-mode bases
             % - Declaration: F = F(basisSet,z,options)
             % - Parameter z: physical coordinate
@@ -86,6 +104,8 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function values = evaluate(self, variable, z, options)
             % Evaluate `F` or `G`.
+            %
+            % This is the variable-dispatch form of `F(z)` and `G(z)`.
             %
             % - Topic: Evaluate internal-mode bases
             % - Declaration: values = evaluate(basisSet,variable,z,options)
@@ -122,6 +142,12 @@ classdef IMInternalModesBasis < IMBasisSet
         function gram = gramMatrix(self, variable)
             % Return the full-depth Gram matrix for `F` or `G`.
             %
+            % The matrix uses `evp.innerProduct(variable)`. For `G`, the
+            % interior weight is $$N^2/g$$; for `F`, it is one. Endpoint
+            % terms are included when the requested variable is the solved
+            % canonical formulation and the endpoint condition supplies
+            % metric weights.
+            %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,variable)
             % - Parameter variable: `"F"` or `"G"`
@@ -136,6 +162,10 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function gram = partialGramMatrix(self, variable, zMin, zMax)
             % Return a partial-depth Gram matrix for `F` or `G`.
+            %
+            % Interior integrals are restricted to `[zMin,zMax]`; endpoint
+            % metric terms are included only when the interval contains the
+            % corresponding endpoint.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
@@ -180,6 +210,10 @@ classdef IMInternalModesBasis < IMBasisSet
         function factor = innerProductNormFactor(self, variable, iMode)
             % Return the `F` or `G` inner-product norm factor.
             %
+            % This is the raw factor
+            % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
+            % to `F` or `G`.
+            %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,variable,iMode)
             % - Developer: true
@@ -190,6 +224,10 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function factor = geostrophicNormFactor(self, iMode)
             % Return the hydrostatic geostrophic normalization factor.
+            %
+            % Baroclinic modes use the `G` inner-product norm. A barotropic
+            % zero mode uses the `F` norm divided by
+            % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$.
             %
             % - Topic: Developer topics
             % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
@@ -205,6 +243,9 @@ classdef IMInternalModesBasis < IMBasisSet
         function factor = maxAbsFactor(self, variable, iMode)
             % Return the maximum amplitude of `F` or `G`.
             %
+            % This is $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$ for the
+            % requested variable on the basis-set integration grid.
+            %
             % - Topic: Developer topics
             % - Declaration: factor = maxAbsFactor(basisSet,variable,iMode)
             % - Developer: true
@@ -216,6 +257,9 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function factor = surfacePressureNormFactor(self, iMode)
             % Return the raw surface `F` value.
+            %
+            % This scale gives unit surface `F` value when the raw surface
+            % value is finite and nonzero.
             %
             % - Topic: Developer topics
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)

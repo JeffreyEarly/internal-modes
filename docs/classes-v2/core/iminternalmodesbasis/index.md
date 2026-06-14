@@ -26,6 +26,16 @@ Store solved internal-mode basis functions.
 from the solved canonical scalar mode. If the EVP solves `G`, then
 $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
 $$G_j=-gN^{-2}F'_j.$$
+Normalization is shared across both variables: if a rule gives scale
+$$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
+that same factor.
+
+```matlab
+basisSet = solver.solveEVP(evp,nModes=4);
+basisSet.normalization = Normalization.geostrophic;
+F = basisSet.F(z);
+G = basisSet.G(z);
+```
 
 
 

@@ -25,3 +25,7 @@ Return the full-domain scalar Gram matrix.
 + `gram`  scalar Gram matrix
 
 ## Discussion
+
+  For normalized scalar modes, entries are
+  $$M_{ij}=\int r u_i u_j\,dz+
+  \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$

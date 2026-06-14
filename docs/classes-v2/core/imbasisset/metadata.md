@@ -15,3 +15,7 @@ Additional metadata.
 ---
 
 ## Discussion
+
+  `metadata` stores creation or diagnostic information associated
+  with this solved basis set. It is not interpreted by `IMBasisSet`;
+  EVP metadata remains available through `basisSet.evp.metadata`.

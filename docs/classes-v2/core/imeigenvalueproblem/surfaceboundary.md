@@ -15,3 +15,6 @@ Surface endpoint condition.
 ---
 
 ## Discussion
+
+  `surfaceBoundary` stores the scalar endpoint condition at
+  `zDomain(2)` in canonical `IMBoundaryCondition` form.

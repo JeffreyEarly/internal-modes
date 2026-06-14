@@ -26,3 +26,7 @@ Evaluate `G` modes.
 + `G`  evaluated `G` modes
 
 ## Discussion
+
+  If the EVP formulation is `G`, this evaluates the solved
+  canonical variable. If the formulation is `F`, `G` is recovered
+  from $$G=-gN^{-2}F_z$$.

@@ -16,5 +16,6 @@ Coefficient multiplying the solved variable on the left side.
 
 ## Discussion
 
-  `q` is a scalar, vector, or function handle with signature
-  `values = q(z,ctx)`.
+  `q` defines the multiplication term in $$q u$$. It may be a
+  scalar, a vector on the solver grid, or a function handle with
+  signature `values = q(z,ctx)`.

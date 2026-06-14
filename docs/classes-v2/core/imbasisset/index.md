@@ -25,7 +25,17 @@ Store solved scalar canonical EVP modes.
 `IMBasisSet` stores native coefficient columns returned by a solver
 and evaluates the solved scalar variable `u` and its derivative. Modal
 normalization is applied lazily when values or Gram matrices are
-requested.
+requested. For each mode,
+$$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+where the scale factor $$s_j$$ is supplied by the active
+normalization rule.
+
+```matlab
+basisSet = solver.solveEVP(evp,nModes=4);
+basisSet.normalization = Normalization.unity;
+u = basisSet.u(z);
+factors = basisSet.normalizationFactors(Normalization.unity);
+```
 
 
 

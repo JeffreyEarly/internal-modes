@@ -11,6 +11,8 @@ mathjax: true
 
 Return the coefficient context for this EVP and solver.
 
+> Developer documentation: this item describes internal implementation details.
+
 
 ---
 
@@ -25,3 +27,7 @@ Return the coefficient context for this EVP and solver.
 + `context`  coefficient context
 
 ## Discussion
+
+  The context begins with `solver.context()`, adds `zDomain`,
+  then copies each field of `metadata`. Coefficient handles such
+  as `p(z,ctx)`, `q(z,ctx)`, and `r(z,ctx)` receive this struct.

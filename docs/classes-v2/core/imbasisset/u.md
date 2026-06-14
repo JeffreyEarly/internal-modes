@@ -26,3 +26,7 @@ Evaluate solved scalar modes.
 + `values`  scalar mode values
 
 ## Discussion
+
+  Returned columns are normalized as
+  $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+  where $$s_j$$ comes from `normalizationFactors`.

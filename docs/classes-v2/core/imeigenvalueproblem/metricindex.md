@@ -25,3 +25,8 @@ Count negative endpoint directions in the metric.
 + `value`  number of active endpoint terms with negative metric weight
 
 ## Discussion
+
+  `metricIndex` is the number of active endpoint metric weights
+  with negative coefficient, after the supplied sign tolerance.
+  It is the finite endpoint part of the indefinite metric index
+  used by `negativeEigenvalueBounds`.

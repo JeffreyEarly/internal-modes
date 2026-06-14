@@ -9,7 +9,9 @@ mathjax: true
 
 #  assemble
 
-the canonical matrix pair on a solver grid.
+Build the canonical matrix pair on a solver grid.
+
+> Developer documentation: this item describes internal implementation details.
 
 
 ---
@@ -30,4 +32,7 @@ the canonical matrix pair on a solver grid.
   Interior rows discretize
   $$-(p u')' + q u = \lambda r u.$$
   The surface and bottom rows are replaced by the endpoint
-  conditions using endpoint values of `p`.
+  conditions using endpoint values of `p`, producing the matrix
+  pencil $$A q = \lambda B q$$. This method is mainly for solver
+  implementations, diagnostics, and external eigensolver
+  experiments; ordinary workflows call `solver.solveEVP`.

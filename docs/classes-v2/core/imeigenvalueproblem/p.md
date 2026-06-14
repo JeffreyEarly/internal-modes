@@ -16,5 +16,6 @@ Coefficient multiplying the derivative flux.
 
 ## Discussion
 
-  `p` is a scalar, vector, or function handle with signature
+  `p` defines the flux term in $$-(p u')'$$. It may be a scalar,
+  a vector on the solver grid, or a function handle with signature
   `values = p(z,ctx)`.

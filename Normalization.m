@@ -1,32 +1,31 @@
 classdef Normalization
     % Enumerate the supported modal normalization conventions.
     %
-    % `Normalization` collects the normalization choices used throughout
-    % the `internal-modes` hierarchy. Following Section 2.4 of Early,
-    % Lelong, and Smith (2020), the main wave-mode norms are the
-    % `unity` norm based on the active EVP inner product, the `kConstant`
-    % norm based on the fixed-$$K$$ orthogonality relation, and the
-    % `omegaConstant` norm based on the fixed-$$\omega$$ relation.
+    % `Normalization` names the scaling conventions used by basis sets.
+    % Each convention selects a rule in `evp.normalizations` that returns a
+    % per-mode factor $$s_j$$. Evaluated modes divide every variable in mode
+    % $$j$$ by that factor:
+    % $$V_j^{\mathrm{out}}(z)=V_j^{\mathrm{raw}}(z)/s_j.$$
     %
     % The valid values are:
     %
-    % - `Normalization.unity` for unit norm under the active EVP inner product
-    % - `Normalization.kConstant` for the manuscript's $$K$$-constant norm
-    % - `Normalization.omegaConstant` for the manuscript's
-    %   $$\omega$$-constant norm
-    % - `Normalization.uMax` to scale each mode so $$\max F_j = 1$$
-    % - `Normalization.wMax` to scale each mode so $$\max G_j = 1$$
-    % - `Normalization.surfacePressure` to scale by the raw surface value
-    %   of $$F$$ so $$F_j^\mathrm{surfacePressure}(z_\mathrm{surface})=1$$
-    % - `Normalization.geostrophic` for the near-geostrophic interior mode
-    %   normalization used by some helper workflows
+    % - `Normalization.unity`: unit norm under the active EVP inner product
+    % - `Normalization.kConstant`: unit `G` inner-product norm for fixed-$$K$$ wave modes
+    % - `Normalization.omegaConstant`: unit `F` inner-product norm for fixed-$$\omega$$ wave modes
+    % - `Normalization.uMax`: scale by $$\max_z |F_j(z)|$$
+    % - `Normalization.wMax`: scale by $$\max_z |G_j(z)|$$
+    % - `Normalization.surfacePressure`: scale by the raw surface value of $$F$$
+    % - `Normalization.geostrophic`: hydrostatic geostrophic normalization
     %
     % ```matlab
-    % im = InternalModes(rho, zIn, zOut, latitude);
-    % im.normalization = Normalization.kConstant;
+    % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+    % solver = IMSolverSpectral(nEVP=128);
+    % basisSet = solver.solveEVP(evp,nModes=4);
+    % basisSet.normalization = Normalization.geostrophic;
+    % G = basisSet.G(z);
     % ```
     %
-    % - Topic: Configure normalization and boundaries
+    % - Topic: Configure normalization
     % - Declaration: classdef Normalization
     enumeration
         unity, kConstant, omegaConstant, uMax, wMax, surfacePressure, geostrophic

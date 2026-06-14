@@ -25,3 +25,6 @@ Return native modes scaled by a normalization.
 + `modes`  scaled native mode columns
 
 ## Discussion
+
+  The native coefficient columns are divided by the same factors
+  returned by `normalizationFactors`.

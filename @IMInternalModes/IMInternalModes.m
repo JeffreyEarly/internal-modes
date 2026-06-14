@@ -8,31 +8,51 @@ classdef IMInternalModes < IMEigenvalueProblem
     % Internal-mode EVPs own the stratification profile `N2` and physical
     % vertical domain used by solvers and basis sets.
     %
+    % ```matlab
+    % N2 = @(z) (5.2e-3)^2*exp(2*z/1300);
+    % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+    % solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
+    % basisSet = solver.solveEVP(evp,nModes=4);
+    % G = basisSet.G(linspace(-4000,0,200).');
+    % ```
+    %
     % - Topic: Create internal-mode EVPs
-    % - Topic: Inspect internal-mode EVPs
+    % - Topic: Inspect internal-mode metadata
+    % - Topic: Inspect internal-mode inner products
+    % - Topic: Developer topics
     % - Declaration: classdef IMInternalModes < IMEigenvalueProblem
 
     properties (SetAccess = private)
         % Solved physical variable, `"F"` or `"G"`.
         %
-        % - Topic: Inspect internal-mode EVPs
+        % `formulation` tells the canonical solver which variable is the
+        % native unknown `u`. The complementary variable is evaluated
+        % diagnostically by `IMInternalModesBasis`.
+        %
+        % - Topic: Inspect internal-mode metadata
         formulation = "G"
 
         % Buoyancy frequency squared function.
         %
-        % `N2` has signature `values = N2(z)`.
+        % `N2` has signature `values = N2(z)` and is owned by the EVP so
+        % solvers can prepare `z`, `wkb`, or `density` coordinates from the
+        % same continuous stratification.
         %
-        % - Topic: Inspect internal-mode EVPs
+        % - Topic: Inspect internal-mode metadata
         N2
 
         % Coriolis parameter.
         %
-        % - Topic: Inspect internal-mode EVPs
+        % `f0` is copied into `metadata.f0` and into coefficient contexts.
+        %
+        % - Topic: Inspect internal-mode metadata
         f0 = 0
 
         % Gravitational acceleration.
         %
-        % - Topic: Inspect internal-mode EVPs
+        % `g` is copied into `metadata.g` and into coefficient contexts.
+        %
+        % - Topic: Inspect internal-mode metadata
         g = 9.81
     end
 
@@ -94,10 +114,14 @@ classdef IMInternalModes < IMEigenvalueProblem
         function context = contextForSolver(self, solver)
             % Return the internal-mode coefficient context.
             %
-            % - Topic: Create internal-mode EVPs
+            % The returned context extends the canonical context with `N2`,
+            % `dzLogN2`, `f0`, `g`, and `formulation`.
+            %
+            % - Topic: Developer topics
             % - Declaration: context = contextForSolver(evp,solver)
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
+            % - Developer: true
             context = contextForSolver@IMEigenvalueProblem(self, solver);
             context.N2 = @(z) self.N2(z);
             context.dzLogN2 = @(z) self.dzLogN2(z);
@@ -109,7 +133,6 @@ classdef IMInternalModes < IMEigenvalueProblem
         function profile = coordinateProfile(self, coordinateKind)
             % Return internal-mode resources needed by a solver coordinate map.
             %
-            % - Topic: Inspect internal-mode EVPs
             % - Topic: Developer topics
             % - Declaration: profile = coordinateProfile(evp,coordinateKind)
             % - Parameter coordinateKind: `"z"`, `"wkb"`, or `"density"`
@@ -127,7 +150,11 @@ classdef IMInternalModes < IMEigenvalueProblem
         function values = dzLogN2(self, z)
             % Evaluate the vertical derivative of `log(N2)`.
             %
-            % - Topic: Inspect internal-mode EVPs
+            % This derivative is used by coordinate mappings that need the
+            % stratification slope. For more than one point it is computed
+            % by finite differences on the supplied coordinate vector.
+            %
+            % - Topic: Inspect internal-mode metadata
             % - Declaration: values = dzLogN2(evp,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
@@ -144,7 +171,14 @@ classdef IMInternalModes < IMEigenvalueProblem
         function spec = innerProduct(self, variable)
             % Return the `F` or `G` inner-product recipe.
             %
-            % - Topic: Inspect internal-mode EVPs
+            % For `G`, the interior weight is $$N^2/g$$. For `F`, the
+            % interior weight is one. Endpoint metric terms are attached to
+            % the solved formulation, because only that variable appears in
+            % the canonical endpoint condition. The returned struct has
+            % fields `variable`, `interiorWeight`, `surfaceWeights`,
+            % `bottomWeights`, and `hasKnownBoundaryWeights`.
+            %
+            % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = innerProduct(evp,variable)
             % - Parameter variable: `"F"` or `"G"`
             % - Returns spec: struct with interior and endpoint metric terms
@@ -184,6 +218,15 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-G''=\lambda N^2G/g.$$
+            % The default normalization is `Normalization.geostrophic`, and
+            % metadata includes `formulation`, `f0`, and `g`.
+            %
+            % ```matlab
+            % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+            % solver = IMSolverSpectral(nEVP=128);
+            % basisSet = solver.solveEVP(evp,nModes=4);
+            % G = basisSet.G(z);
+            % ```
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticGModes(options)
@@ -217,6 +260,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
             % It declares the barotropic zero mode.
+            % Metadata includes `formulation` and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
@@ -248,6 +292,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
+            % The default normalization is `Normalization.kConstant`, and
+            % metadata includes `k`, `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
@@ -286,6 +332,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-G''=\lambda(N^2-\omega^2)G/g.$$
+            % The default normalization is `Normalization.omegaConstant`,
+            % and metadata includes `omega`, `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)

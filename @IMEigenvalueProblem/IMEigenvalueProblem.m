@@ -6,15 +6,26 @@ classdef IMEigenvalueProblem
     % $$-(p u')' + q u = \lambda r u,$$
     % with endpoint conditions
     % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-    % The EVP owns the physical interval, coefficient functions, endpoint
-    % conditions, equivalent-depth mapping, normalization rules, and diagnostic
-    % definiteness checks.
-    % A solver owns the numerical grid, coordinate mapping, and derivative
-    % matrices used to discretize this continuous problem.
+    % The EVP owns the continuous problem: the physical interval, coefficient
+    % functions, endpoint conditions, equivalent-depth mapping,
+    % normalization rules, and diagnostic definiteness checks. A solver owns
+    % only the numerical choices used to discretize this problem.
+    %
+    % ```matlab
+    % evp = IMEigenvalueProblem(zDomain=[-1 0], ...
+    %     p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
+    %     r=@(z,~) ones(size(z)), ...
+    %     surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
+    %     bottomBoundary=IMBoundaryCondition.dirichlet());
+    % solver = IMSolverSpectral(nEVP=64);
+    % basisSet = solver.solveEVP(evp,nModes=4);
+    % ```
     %
     % - Topic: Create EVPs
-    % - Topic: Assemble EVPs
-    % - Topic: Inspect diagnostics
+    % - Topic: Define canonical coefficients
+    % - Topic: Inspect EVP metadata
+    % - Topic: Inspect inner products
+    % - Topic: Inspect definiteness diagnostics
     % - Topic: Select modes
     % - Topic: Developer topics
     % - Declaration: classdef IMEigenvalueProblem
@@ -22,7 +33,9 @@ classdef IMEigenvalueProblem
     properties (SetAccess = private)
         % Short EVP name.
         %
-        % - Topic: Inspect diagnostics
+        % `name` appears in solver diagnostics and generated error messages.
+        %
+        % - Topic: Inspect EVP metadata
         name = "canonical"
 
         % Physical vertical domain.
@@ -30,48 +43,60 @@ classdef IMEigenvalueProblem
         % `zDomain` is sorted as `[bottom surface]` and defines the
         % interval on which the canonical EVP is posed.
         %
-        % - Topic: Assemble EVPs
+        % - Topic: Define canonical coefficients
         zDomain = [-1 0]
 
         % Coefficient multiplying the derivative flux.
         %
-        % `p` is a scalar, vector, or function handle with signature
+        % `p` defines the flux term in $$-(p u')'$$. It may be a scalar,
+        % a vector on the solver grid, or a function handle with signature
         % `values = p(z,ctx)`.
         %
-        % - Topic: Assemble EVPs
+        % - Topic: Define canonical coefficients
         p = @(z,~) ones(size(z))
 
         % Coefficient multiplying the solved variable on the left side.
         %
-        % `q` is a scalar, vector, or function handle with signature
-        % `values = q(z,ctx)`.
+        % `q` defines the multiplication term in $$q u$$. It may be a
+        % scalar, a vector on the solver grid, or a function handle with
+        % signature `values = q(z,ctx)`.
         %
-        % - Topic: Assemble EVPs
+        % - Topic: Define canonical coefficients
         q = @(z,~) zeros(size(z))
 
         % Metric coefficient multiplying the eigenvalue side.
         %
-        % `r` is a scalar, vector, or function handle with signature
+        % `r` defines the interior metric in $$\lambda r u$$ and in the
+        % default scalar inner product. It may be a scalar, a vector on the
+        % solver grid, or a function handle with signature
         % `values = r(z,ctx)`.
         %
-        % - Topic: Assemble EVPs
+        % - Topic: Define canonical coefficients
         r = @(z,~) ones(size(z))
 
         % Surface endpoint condition.
         %
-        % - Topic: Assemble EVPs
+        % `surfaceBoundary` stores the scalar endpoint condition at
+        % `zDomain(2)` in canonical `IMBoundaryCondition` form.
+        %
+        % - Topic: Define canonical coefficients
         surfaceBoundary = IMBoundaryCondition.dirichlet()
 
         % Bottom endpoint condition.
         %
-        % - Topic: Assemble EVPs
+        % `bottomBoundary` stores the scalar endpoint condition at
+        % `zDomain(1)` in canonical `IMBoundaryCondition` form.
+        %
+        % - Topic: Define canonical coefficients
         bottomBoundary = IMBoundaryCondition.dirichlet()
 
         % Equivalent-depth conversion function.
         %
-        % `hFromEigenvalue` has signature `h = hFromEigenvalue(lambda)`.
+        % `hFromEigenvalue` maps retained eigenvalues to the equivalent
+        % depths stored on the returned basis set. The handle has signature
+        % `h = hFromEigenvalue(lambda)`.
         %
-        % - Topic: Inspect diagnostics
+        % - Topic: Inspect EVP metadata
         hFromEigenvalue = @(lambda) 1 ./ lambda
 
         % Whether the scalar problem declares a zero mode.
@@ -84,16 +109,25 @@ classdef IMEigenvalueProblem
 
         % Natural default normalization.
         %
-        % - Topic: Inspect diagnostics
+        % If a basis set is created without an explicit normalization,
+        % `defaultNormalization` becomes the active `basisSet.normalization`.
+        % Evaluated modes are always raw modes divided by a per-mode scale,
+        % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j.$$
+        %
+        % - Topic: Inspect EVP metadata
         defaultNormalization = []
 
         % Additional EVP metadata.
         %
         % Fields are copied into the coefficient context so custom
         % coefficient functions can read scalar parameters without new
-        % public properties.
+        % public properties. Standard internal-mode factories add fields
+        % `f0`, `g`, and `formulation`; wave-mode factories also add `k` or
+        % `omega`. User-supplied metadata fields are preserved on
+        % `evp.metadata` and are visible to coefficient handles through
+        % `ctx.fieldName`.
         %
-        % - Topic: Inspect diagnostics
+        % - Topic: Inspect EVP metadata
         metadata = struct()
     end
 
@@ -101,9 +135,21 @@ classdef IMEigenvalueProblem
         % Named normalization rules.
         %
         % Each field stores a function handle with signature
-        % `scale = rule(basisSet,iMode)`.
+        % `scale = rule(basisSet,iMode)`. The returned value is the raw
+        % scale $$s_j$$ for one mode, and basis-set evaluation divides all
+        % variables for that mode by $$s_j$$. The `unity` rule is supplied
+        % automatically when omitted. Internal-mode factories add rules for
+        % `geostrophic`, `kConstant`, `omegaConstant`, `wMax`, `uMax`, and
+        % `surfacePressure`.
         %
-        % - Topic: Inspect diagnostics
+        % ```matlab
+        % normalizations.unity = @(basisSet,iMode) ...
+        %     basisSet.innerProductNormFactor(iMode);
+        % evp = IMEigenvalueProblem(normalizations=normalizations, ...
+        %     defaultNormalization=Normalization.unity);
+        % ```
+        %
+        % - Topic: Inspect EVP metadata
         normalizations = struct()
     end
 
@@ -156,18 +202,22 @@ classdef IMEigenvalueProblem
         end
 
         function [A, B] = assemble(self, solver)
-            % Assemble the canonical matrix pair on a solver grid.
+            % Build the canonical matrix pair on a solver grid.
             %
             % Interior rows discretize
             % $$-(p u')' + q u = \lambda r u.$$
             % The surface and bottom rows are replaced by the endpoint
-            % conditions using endpoint values of `p`.
+            % conditions using endpoint values of `p`, producing the matrix
+            % pencil $$A q = \lambda B q$$. This method is mainly for solver
+            % implementations, diagnostics, and external eigensolver
+            % experiments; ordinary workflows call `solver.solveEVP`.
             %
-            % - Topic: Assemble EVPs
+            % - Topic: Developer topics
             % - Declaration: [A,B] = assemble(evp,solver)
             % - Parameter solver: canonical EVP solver
             % - Returns A: left matrix
             % - Returns B: right matrix
+            % - Developer: true
             solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
@@ -186,10 +236,15 @@ classdef IMEigenvalueProblem
         function context = contextForSolver(self, solver)
             % Return the coefficient context for this EVP and solver.
             %
-            % - Topic: Assemble EVPs
+            % The context begins with `solver.context()`, adds `zDomain`,
+            % then copies each field of `metadata`. Coefficient handles such
+            % as `p(z,ctx)`, `q(z,ctx)`, and `r(z,ctx)` receive this struct.
+            %
+            % - Topic: Developer topics
             % - Declaration: context = contextForSolver(evp,solver)
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
+            % - Developer: true
             context = solver.context();
             context.zDomain = self.zDomain;
             metadataFields = fieldnames(self.metadata);
@@ -205,7 +260,6 @@ classdef IMEigenvalueProblem
             % Generic canonical EVPs are independent of stratification and
             % only support the physical `z` coordinate.
             %
-            % - Topic: Assemble EVPs
             % - Topic: Developer topics
             % - Declaration: profile = coordinateProfile(evp,coordinateKind)
             % - Parameter coordinateKind: solver coordinate kind
@@ -224,9 +278,14 @@ classdef IMEigenvalueProblem
             % Return the scalar inner-product recipe.
             %
             % The canonical basis set uses `r` in the interior and the
-            % endpoint metric terms implied by active endpoint conditions.
+            % endpoint metric terms implied by active endpoint conditions:
+            % $$M_{ij}=\int r u_i u_j\,dz+
+            % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
+            % The returned struct has fields `variable`, `interiorWeight`,
+            % `surfaceWeights`, `bottomWeights`, and
+            % `hasKnownBoundaryWeights`.
             %
-            % - Topic: Inspect diagnostics
+            % - Topic: Inspect inner products
             % - Declaration: spec = innerProduct(evp,variable)
             % - Parameter variable: scalar variable name; only `"u"` is accepted
             % - Returns spec: struct with interior and endpoint metric terms
@@ -250,11 +309,16 @@ classdef IMEigenvalueProblem
         function weights = endpointWeights(self, location)
             % Return endpoint metric terms implied by active conditions.
             %
+            % For an active endpoint condition
+            % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
+            % Yassin's indexing uses `z_1` for the bottom and `z_2` for the
+            % surface, so
+            % $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i).$$
             % Each returned struct has fields `location`, `coefficient`,
-            % `c`, and `d`, representing
-            % `coefficient*(c*u-d*p*u_z)^2`.
+            % `c`, and `d`, representing the endpoint metric contribution
+            % $$D_i^{-1}(c_i u-d_i p u_z)^2.$$
             %
-            % - Topic: Inspect diagnostics
+            % - Topic: Inspect inner products
             % - Declaration: weights = endpointWeights(evp,location)
             % - Parameter location: `"surface"`, `"bottom"`, or omitted for both endpoints
             % - Returns weights: endpoint metric terms
@@ -280,7 +344,12 @@ classdef IMEigenvalueProblem
         function value = metricIndex(self, options)
             % Count negative endpoint directions in the metric.
             %
-            % - Topic: Inspect diagnostics
+            % `metricIndex` is the number of active endpoint metric weights
+            % with negative coefficient, after the supplied sign tolerance.
+            % It is the finite endpoint part of the indefinite metric index
+            % used by `negativeEigenvalueBounds`.
+            %
+            % - Topic: Inspect inner products
             % - Declaration: value = metricIndex(evp,options)
             % - Parameter options.tolerance: scalar sign tolerance
             % - Returns value: number of active endpoint terms with negative metric weight
@@ -303,9 +372,17 @@ classdef IMEigenvalueProblem
             %
             % This diagnostic certifies the assembled finite-dimensional
             % problem on the solver grid. It does not claim continuum signs
-            % between grid points.
+            % between grid points. The returned struct includes sampled
+            % minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
+            % `qNonnegative`, and `rPositive`; metric fields
+            % `endpointWeights`, `metricIndex`, `metricPositive`, and
+            % `hasDegenerateEndpointMetric`; numerator fields
+            % `endpointNumeratorNegativeDirections`,
+            % `endpointNumeratorNonnegative`, `interiorNonnegative`, and
+            % `qNonnegativeCertified`; and status fields
+            % `certificationLevel` and `reason`.
             %
-            % - Topic: Inspect diagnostics
+            % - Topic: Inspect definiteness diagnostics
             % - Declaration: info = definitenessInfo(evp,solver)
             % - Parameter solver: canonical EVP solver
             % - Returns info: struct with sign, metric, and endpoint checks
@@ -346,7 +423,17 @@ classdef IMEigenvalueProblem
         function bounds = negativeEigenvalueBounds(self, solver, A)
             % Bound negative eigenvalues using grid-level certification.
             %
-            % - Topic: Inspect diagnostics
+            % The returned counts describe how many negative eigenvalues are
+            % certified by the discretized canonical problem, rather than by
+            % raw negative finite-real eigenvalues alone. The returned struct
+            % includes `certificationLevel`, `metricIndex`,
+            % `zeroEigenvalueStatus`, `minNegativeEigenvalueCount`,
+            % `maxNegativeEigenvalueCount`, and `reason`.
+            % `maxNegativeEigenvalueCount` may be the string `"unknown"`
+            % when coefficient signs or endpoint determinants cannot be
+            % certified on the grid.
+            %
+            % - Topic: Inspect definiteness diagnostics
             % - Declaration: bounds = negativeEigenvalueBounds(evp,solver,A)
             % - Parameter solver: canonical EVP solver
             % - Parameter A: assembled left matrix, used for the zero-eigenvalue check
@@ -403,7 +490,6 @@ classdef IMEigenvalueProblem
             % and nonnegative quadratic form, negative discrete eigenvalues
             % are ignored during mode selection.
             %
-            % - Topic: Select modes
             % - Topic: Developer topics
             % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A)
             % - Parameter eigenvalues: finite real candidate eigenvalues
