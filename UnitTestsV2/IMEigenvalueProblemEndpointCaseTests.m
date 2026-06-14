@@ -178,8 +178,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
     methods (Static, Access = private)
         function solver = canonicalSolver()
-            N2 = @(z) ones(size(z));
-            solver = IMSolverSpectral(N2=N2, zDomain=[-1 0], nEVP=24);
+            solver = IMSolverSpectral(nEVP=24);
         end
 
         function [solver, evp] = geostrophicWKBProblem()
@@ -199,11 +198,11 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
             normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
 
-            evp = IMInternalModes(name="unforced-APV-modes", formulation="F", ...
+            evp = IMInternalModes(name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
                 p=p, q=q, r=r, g=g, normalizations=normalizations, ...
                 defaultNormalization=Normalization.unity, surfaceBoundary=surfaceBoundary, ...
                 bottomBoundary=bottomBoundary);
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=128, coordinateKind="wkb");
+            solver = IMSolverSpectral(nEVP=128, coordinateKind="wkb");
         end
     end
 end

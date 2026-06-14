@@ -6,10 +6,11 @@ classdef IMEigenvalueProblem
     % $$-(p u')' + q u = \lambda r u,$$
     % with endpoint conditions
     % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-    % A solver owns the grid, coordinate mapping, and derivative matrices.
-    % The EVP owns the coefficient functions, endpoint conditions,
-    % equivalent-depth mapping, normalization rules, and diagnostic
+    % The EVP owns the physical interval, coefficient functions, endpoint
+    % conditions, equivalent-depth mapping, normalization rules, and diagnostic
     % definiteness checks.
+    % A solver owns the numerical grid, coordinate mapping, and derivative
+    % matrices used to discretize this continuous problem.
     %
     % - Topic: Create EVPs
     % - Topic: Assemble EVPs
@@ -23,6 +24,14 @@ classdef IMEigenvalueProblem
         %
         % - Topic: Inspect diagnostics
         name = "canonical"
+
+        % Physical vertical domain.
+        %
+        % `zDomain` is sorted as `[bottom surface]` and defines the
+        % interval on which the canonical EVP is posed.
+        %
+        % - Topic: Assemble EVPs
+        zDomain = [-1 0]
 
         % Coefficient multiplying the derivative flux.
         %
@@ -105,6 +114,7 @@ classdef IMEigenvalueProblem
             % - Topic: Create EVPs
             % - Declaration: evp = IMEigenvalueProblem(options)
             % - Parameter options.name: short EVP name
+            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.p: derivative-flux coefficient
             % - Parameter options.q: left-side value coefficient
             % - Parameter options.r: eigenvalue-side metric coefficient
@@ -118,6 +128,7 @@ classdef IMEigenvalueProblem
             % - Returns evp: canonical EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "canonical"
+                options.zDomain (1,2) double = [-1 0]
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
@@ -131,6 +142,7 @@ classdef IMEigenvalueProblem
             end
 
             self.name = string(options.name);
+            self.zDomain = sort(options.zDomain);
             self.p = options.p;
             self.q = options.q;
             self.r = options.r;
@@ -156,6 +168,7 @@ classdef IMEigenvalueProblem
             % - Parameter solver: canonical EVP solver
             % - Returns A: left matrix
             % - Returns B: right matrix
+            solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
             [pValues, qValues, rValues] = self.coefficientValues(z, context);
@@ -178,11 +191,33 @@ classdef IMEigenvalueProblem
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
             context = solver.context();
+            context.zDomain = self.zDomain;
             metadataFields = fieldnames(self.metadata);
             for iField = 1:numel(metadataFields)
                 fieldName = metadataFields{iField};
                 context.(fieldName) = self.metadata.(fieldName);
             end
+        end
+
+        function profile = coordinateProfile(~, coordinateKind)
+            % Return fields needed by a solver coordinate map.
+            %
+            % Generic canonical EVPs are independent of stratification and
+            % only support the physical `z` coordinate.
+            %
+            % - Topic: Assemble EVPs
+            % - Topic: Developer topics
+            % - Declaration: profile = coordinateProfile(evp,coordinateKind)
+            % - Parameter coordinateKind: solver coordinate kind
+            % - Returns profile: struct with coordinate resources
+            % - Developer: true
+            coordinateKind = string(coordinateKind);
+            if coordinateKind ~= "z"
+                error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
+                    "Generic canonical EVPs support coordinateKind=""z"" only.");
+            end
+            profile.N2 = [];
+            profile.dzLogN2 = [];
         end
 
         function spec = innerProduct(self, variable)
@@ -274,6 +309,7 @@ classdef IMEigenvalueProblem
             % - Declaration: info = definitenessInfo(evp,solver)
             % - Parameter solver: canonical EVP solver
             % - Returns info: struct with sign, metric, and endpoint checks
+            solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
             [pValues, qValues, rValues] = self.coefficientValues(z, context);
@@ -436,7 +472,7 @@ classdef IMEigenvalueProblem
             % - Developer: true
             basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
-                zDomain=solver.zDomain, N2Function=@(z) solver.N2(z));
+                zDomain=self.zDomain);
         end
     end
 

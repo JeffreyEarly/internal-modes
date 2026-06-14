@@ -24,7 +24,8 @@ Solve physical-coordinate EVPs on a supplied finite-difference grid.
 
 `IMSolverFiniteDifference` uses the user's physical `z`
 grid as its native basis. It shares the `solveEVP` interface with
-the spectral solvers but evaluates modes by interpolation.
+the spectral solver but validates the supplied grid against the EVP
+domain before solving.
 
 ```matlab
 solver = IMSolverFiniteDifference(z=linspace(-1000,0,65).');

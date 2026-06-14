@@ -21,34 +21,36 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
     methods (Test)
         function canonicalAssemblyMatchesStrongFormForConstantCoefficients(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-            evp = IMEigenvalueProblem(name="constant", p=2, q=3, r=4);
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMEigenvalueProblem(name="constant", zDomain=zDomain, p=2, q=3, r=4);
+            configuredSolver = solver.configuredForEVP(evp);
 
             [A, B] = evp.assemble(solver);
-            expectedA = -2*solver.physicalDerivativeMatrix(2) + 3*solver.physicalDerivativeMatrix(0);
-            expectedB = 4*solver.physicalDerivativeMatrix(0);
+            expectedA = -2*configuredSolver.physicalDerivativeMatrix(2) + 3*configuredSolver.physicalDerivativeMatrix(0);
+            expectedB = 4*configuredSolver.physicalDerivativeMatrix(0);
             interiorRows = 2:(nEVP-1);
 
             testCase.verifyEqual(A(interiorRows,:), expectedA(interiorRows,:), AbsTol=1e-11)
             testCase.verifyEqual(B(interiorRows,:), expectedB(interiorRows,:), AbsTol=1e-11)
-            testCase.verifyEqual(A(1,:), -solver.T(1,:), AbsTol=1e-11)
+            testCase.verifyEqual(A(1,:), -configuredSolver.T(1,:), AbsTol=1e-11)
             testCase.verifyEqual(B(1,:), zeros(1,nEVP), AbsTol=1e-11)
-            testCase.verifyEqual(A(end,:), -solver.T(end,:), AbsTol=1e-11)
+            testCase.verifyEqual(A(end,:), -configuredSolver.T(end,:), AbsTol=1e-11)
             testCase.verifyEqual(B(end,:), zeros(1,nEVP), AbsTol=1e-11)
         end
 
         function canonicalAssemblyIncludesGridDerivativeOfVariableP(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
+            solver = IMSolverSpectral(nEVP=nEVP);
             p = @(z,~) 1 + (z/1000).^2;
-            evp = IMEigenvalueProblem(name="variableP", p=p, q=0, r=1);
+            evp = IMEigenvalueProblem(name="variableP", zDomain=zDomain, p=p, q=0, r=1);
+            configuredSolver = solver.configuredForEVP(evp);
 
             [A, B] = evp.assemble(solver);
-            pValues = p(solver.zNative, struct());
-            pzValues = solver.differentiateGridValues(pValues, 1);
-            expectedA = -diag(pValues)*solver.physicalDerivativeMatrix(2) ...
-                - diag(pzValues)*solver.physicalDerivativeMatrix(1);
-            expectedB = solver.physicalDerivativeMatrix(0);
+            pValues = p(configuredSolver.zNative, struct());
+            pzValues = configuredSolver.differentiateGridValues(pValues, 1);
+            expectedA = -diag(pValues)*configuredSolver.physicalDerivativeMatrix(2) ...
+                - diag(pzValues)*configuredSolver.physicalDerivativeMatrix(1);
+            expectedB = configuredSolver.physicalDerivativeMatrix(0);
             interiorRows = 2:(nEVP-1);
 
             testCase.verifyEqual(A(interiorRows,:), expectedA(interiorRows,:), AbsTol=1e-9)
@@ -57,14 +59,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
         function endpointRowsUseCanonicalBoundaryCoefficients(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
+            solver = IMSolverSpectral(nEVP=nEVP);
             surface = IMBoundaryCondition(a=2, b=3);
             bottom = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-            evp = IMEigenvalueProblem(p=5, surfaceBoundary=surface, bottomBoundary=bottom);
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=5, surfaceBoundary=surface, bottomBoundary=bottom);
+            configuredSolver = solver.configuredForEVP(evp);
 
             [A, B] = evp.assemble(solver);
-            D0 = solver.physicalDerivativeMatrix(0);
-            D1 = solver.physicalDerivativeMatrix(1);
+            D0 = configuredSolver.physicalDerivativeMatrix(0);
+            D1 = configuredSolver.physicalDerivativeMatrix(1);
 
             testCase.verifyEqual(A(1,:), -2*D0(1,:) + 15*D1(1,:), AbsTol=1e-11)
             testCase.verifyEqual(B(1,:), zeros(1,nEVP), AbsTol=1e-11)
@@ -75,12 +78,13 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function internalModeFactoriesAssembleCanonicalForms(testCase)
             [N2, zDomain, nEVP, f0, g] = testCase.profile();
             k = 1e-4;
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-            evp = IMInternalModes.waveModesAtWavenumber(k=k, f0=f0, g=g);
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, f0=f0, g=g);
+            configuredSolver = solver.configuredForEVP(evp);
 
             [A, B] = evp.assemble(solver);
-            expectedA = -solver.physicalDerivativeMatrix(2) + k*k*solver.physicalDerivativeMatrix(0);
-            expectedB = diag((N2(solver.zNative) - f0*f0)/g)*solver.physicalDerivativeMatrix(0);
+            expectedA = -configuredSolver.physicalDerivativeMatrix(2) + k*k*configuredSolver.physicalDerivativeMatrix(0);
+            expectedB = diag((N2(configuredSolver.zNative) - f0*f0)/g)*configuredSolver.physicalDerivativeMatrix(0);
             interiorRows = 2:(nEVP-1);
 
             testCase.verifyClass(evp, "IMInternalModes")
@@ -92,8 +96,8 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
         function solverReturnsInternalModesBasisWithFAndG(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
 
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 16).';
@@ -104,20 +108,63 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(size(basisSet.gramMatrix("G")), [3 3])
         end
 
+        function evpContextOwnsDomainAndInternalModeMedium(testCase)
+            [N2, zDomain, nEVP, f0, g] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, f0=f0, g=g);
+            configuredSolver = solver.configuredForEVP(evp);
+
+            context = evp.contextForSolver(configuredSolver);
+
+            testCase.verifyEqual(context.zDomain, zDomain)
+            testCase.verifyEqual(context.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
+            testCase.verifyTrue(isfield(context, "dzLogN2"))
+            testCase.verifyEqual(context.f0, f0, AbsTol=0)
+            testCase.verifyEqual(context.g, g, AbsTol=0)
+            testCase.verifyEqual(context.formulation, "G")
+        end
+
+        function basisSetRetainsEVPDomainAndMedium(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            testCase.verifyEqual(basisSet.zDomain, zDomain)
+            testCase.verifyEqual(basisSet.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
+        end
+
         function spectralSolverSupportsCoordinateKinds(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
             coordinateKinds = ["z", "wkb", "density"];
             for coordinateKind = coordinateKinds
-                solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, coordinateKind=coordinateKind);
+                solver = IMSolverSpectral(nEVP=nEVP, coordinateKind=coordinateKind);
+                configuredSolver = solver.configuredForEVP(evp);
                 testCase.verifyEqual(solver.coordinateKind, coordinateKind)
-                testCase.verifySize(solver.physicalDerivativeMatrix(1), [nEVP nEVP])
+                testCase.verifySize(configuredSolver.physicalDerivativeMatrix(1), [nEVP nEVP])
             end
+        end
+
+        function genericEVPRejectsStratificationCoordinates(testCase)
+            [~, zDomain, nEVP] = testCase.profile();
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
+            zSolver = IMSolverSpectral(nEVP=nEVP, coordinateKind="z");
+            wkbSolver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");
+            densitySolver = IMSolverSpectral(nEVP=nEVP, coordinateKind="density");
+
+            basisSet = zSolver.solveEVP(evp, nModes=2);
+
+            testCase.verifyClass(basisSet, "IMBasisSet")
+            testCase.verifyError(@() wkbSolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
+            testCase.verifyError(@() densitySolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
         end
 
         function finiteDifferenceSolverSolvesCanonicalProblem(testCase)
             z = linspace(-1000, 0, 32).';
-            solver = IMSolverFiniteDifference(z=z, N2=@(z) 1e-5*ones(size(z)));
-            evp = IMEigenvalueProblem(p=1, q=0, r=1);
+            solver = IMSolverFiniteDifference(z=z);
+            evp = IMEigenvalueProblem(zDomain=[-1000 0], p=1, q=0, r=1);
 
             basisSet = solver.solveEVP(evp, nModes=2);
 
@@ -125,10 +172,18 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifySize(basisSet.u(linspace(-1000,0,8).'), [8 2])
         end
 
+        function finiteDifferenceSolverRejectsDomainMismatch(testCase)
+            solver = IMSolverFiniteDifference(z=linspace(-1000,0,32).');
+            evp = IMEigenvalueProblem(zDomain=[-900 0], p=1, q=0, r=1);
+
+            testCase.verifyError(@() solver.solveEVP(evp, nModes=2), ...
+                "IMSolverFiniteDifference:DomainMismatch")
+        end
+
         function noValidEigenvalueDiagnosticStillReportsMatrixStats(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-            evp = IMEigenvalueProblem(name="degenerate", p=0, q=0, r=0);
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMEigenvalueProblem(name="degenerate", zDomain=zDomain, p=0, q=0, r=0);
 
             testCase.verifyError(@() solver.solveEVP(evp, nModes=2), "IMSolver:NoValidEigenvalues")
         end

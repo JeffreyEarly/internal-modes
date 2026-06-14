@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtFrequency
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 7
+nav_order: 9
 mathjax: true
 ---
 
@@ -19,6 +19,8 @@ Create the fixed-frequency wave-mode EVP.
  evp = IMInternalModes.waveModesAtFrequency(options)
 ```
 ## Parameters
++ `options.N2`  buoyancy frequency squared function
++ `options.zDomain`  physical vertical domain
 + `options.omega`  wave frequency
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration

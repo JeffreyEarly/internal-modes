@@ -20,6 +20,7 @@ Create a canonical scalar EVP.
 ```
 ## Parameters
 + `options.name`  short EVP name
++ `options.zDomain`  physical vertical domain
 + `options.p`  derivative-flux coefficient
 + `options.q`  left-side value coefficient
 + `options.r`  eigenvalue-side metric coefficient

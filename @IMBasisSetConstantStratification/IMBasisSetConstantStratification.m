@@ -7,7 +7,9 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
     % basis sets, without storing a solver reference.
     %
     % ```matlab
-    % evp = IMInternalModes.waveModesAtWavenumber(k=1e-4);
+    % zDomain = [-5000 0];
+    % N2 = @(z) (5.2e-3)^2*ones(size(z));
+    % evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
     % basisSet = IMBasisSetConstantStratification(evp=evp, N0=5.2e-3, zDomain=[-5000 0]);
     % G = basisSet.G(linspace(-5000,0,128).');
     % ```
@@ -62,7 +64,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact constant-stratification basis set
             arguments
-                options.evp IMInternalModes
+                options.evp = []
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double = [-1 0]
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
@@ -71,18 +73,20 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             end
 
             zDomain = sort(options.zDomain);
-            [f0, g] = IMBasisSetConstantStratification.physicalConstants(options.evp);
+            N2Function = @(z) options.N0*options.N0*ones(size(z));
+            evp = IMBasisSetConstantStratification.resolveEVP(options.evp, N2Function, zDomain);
+            [f0, g] = IMBasisSetConstantStratification.physicalConstants(evp);
             [h, verticalWavenumbers, solutionTypes, isBoundaryMode, baroclinicNumbers, modeNumber] = ...
-                IMBasisSetConstantStratification.solveSpectrum(options.evp, options.N0, zDomain, options.nModes, f0, g);
+                IMBasisSetConstantStratification.solveSpectrum(evp, options.N0, zDomain, options.nModes, f0, g);
             eigenvalues = 1 ./ h;
             index = struct();
             metadata = options.metadata;
             metadata.analyticalBasis = "constantStratification";
 
-            self@IMInternalModesBasis(evp=options.evp, nativeModes=zeros(0,length(h)), ...
+            self@IMInternalModesBasis(evp=evp, nativeModes=zeros(0,length(h)), ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
-                N2Function=@(z) options.N0*options.N0*ones(size(z)));
+                N2Function=N2Function);
             self.N0 = options.N0;
             self.verticalWavenumbers = verticalWavenumbers;
             self.solutionTypes = solutionTypes;
@@ -316,6 +320,26 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
     end
 
     methods (Static, Access = private)
+        function evp = resolveEVP(evp, N2Function, zDomain)
+            if isempty(evp)
+                evp = IMInternalModes.hydrostaticGModes(N2=N2Function, zDomain=zDomain);
+                return;
+            end
+            if ~isa(evp, "IMInternalModes")
+                error("IMBasisSetConstantStratification:InvalidEVP", ...
+                    "The EVP must be an IMInternalModes instance.");
+            end
+            IMBasisSetConstantStratification.validateEVPDomain(evp, zDomain);
+        end
+
+        function validateEVPDomain(evp, zDomain)
+            tolerance = 100*eps(max([1 abs(evp.zDomain) abs(zDomain)]));
+            if max(abs(evp.zDomain - zDomain)) > tolerance
+                error("IMBasisSetConstantStratification:DomainMismatch", ...
+                    "The analytical basis zDomain must match evp.zDomain.");
+            end
+        end
+
         function [f0, g] = physicalConstants(evp)
             f0 = evp.f0;
             g = evp.g;

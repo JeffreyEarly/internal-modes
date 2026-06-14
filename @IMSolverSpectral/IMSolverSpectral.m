@@ -1,13 +1,14 @@
 classdef IMSolverSpectral < IMSolver
     % Solve physical-coordinate EVPs with a Chebyshev spectral discretization.
     %
-    % `IMSolverSpectral` owns the numerical coordinate, the
-    % Chebyshev grid, and the physical-coordinate pullback rules. It does
-    % not own modal normalization.
+    % `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
+    % resolution, derivative matrices, and physical-coordinate pullback
+    % rules. It is configured against an EVP before solving.
     %
     % ```matlab
-    % solver = IMSolverSpectral(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], nEVP=64);
-    % basisSet = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(k=1e-4));
+    % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
+    % solver = IMSolverSpectral(nEVP=64);
+    % basisSet = solver.solveEVP(evp);
     % ```
     %
     % - Topic: Create solvers
@@ -27,7 +28,7 @@ classdef IMSolverSpectral < IMSolver
         % Physical vertical domain.
         %
         % - Topic: Inspect solvers
-        zDomain
+        zDomain = [NaN NaN]
 
         % Native coordinate kind.
         %
@@ -90,11 +91,11 @@ classdef IMSolverSpectral < IMSolver
     end
 
     properties (Access = protected)
-        % Buoyancy frequency squared function.
+        % EVP-provided buoyancy frequency squared function.
         %
         % - Topic: Developer topics
         % - Developer: true
-        N2Function
+        N2Function = []
     end
 
     methods
@@ -103,39 +104,50 @@ classdef IMSolverSpectral < IMSolver
             %
             % - Topic: Create solvers
             % - Declaration: solver = IMSolverSpectral(options)
-            % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nEVP: number of EVP coefficients
             % - Parameter options.coordinateKind: native coordinate kind
             % - Returns solver: initialized spectral solver
             arguments
-                options.N2 function_handle = @(z) 1e-5*ones(size(z))
-                options.zDomain (1,2) double = [-1 0]
                 options.nEVP (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.nEVP, 4)} = 64
                 options.coordinateKind {mustBeTextScalar} = "z"
             end
 
-            self.N2Function = options.N2;
-            self.zDomain = sort(options.zDomain);
             self.nEVP = options.nEVP;
             self.coordinateKind = string(options.coordinateKind);
-            self = self.setupCoordinate();
-            self = self.setupNativeGrid();
+        end
+
+        function solver = configuredForEVP(self, evp)
+            % Return a spectral solver configured for an EVP.
+            %
+            % - Topic: Assemble EVPs
+            % - Topic: Developer topics
+            % - Declaration: solver = configuredForEVP(solver,evp)
+            % - Parameter evp: canonical EVP descriptor
+            % - Returns solver: solver with grid and coordinate matrices initialized
+            % - Developer: true
+            arguments
+                self IMSolverSpectral
+                evp IMEigenvalueProblem
+            end
+
+            solver = self;
+            profile = evp.coordinateProfile(self.coordinateKind);
+            solver.zDomain = evp.zDomain;
+            solver.N2Function = profile.N2;
+            solver = solver.setupCoordinate();
+            solver = solver.setupNativeGrid();
         end
 
         function context = context(self)
             % Return the framework coefficient context.
             %
-            % Solvers provide medium and discretization fields. EVPs add
-            % physical constants such as `ctx.g` and `ctx.f0`.
+            % Solvers provide discretization fields. EVPs add the physical
+            % domain, medium, and constants.
             %
             % - Topic: Assemble EVPs
             % - Developer: true
             % - Declaration: context = context(solver)
             % - Returns context: framework coefficient context
-            context.N2 = @(z) self.N2(z);
-            context.dzLogN2 = @(z) self.dzLogN2(z);
-            context.zDomain = self.zDomain;
             context.coordinateKind = self.coordinateKind;
         end
 
@@ -146,6 +158,10 @@ classdef IMSolverSpectral < IMSolver
             % - Declaration: values = N2(solver,z)
             % - Parameter z: physical coordinate
             % - Returns values: buoyancy frequency squared
+            if isempty(self.N2Function)
+                error("IMSolverSpectral:UnsupportedOperation", ...
+                    "This spectral solver is not configured with an N2 function.");
+            end
             values = self.N2Function(z);
         end
 
@@ -177,6 +193,10 @@ classdef IMSolverSpectral < IMSolver
             % - Declaration: values = dzLogN2(solver,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
+            if isempty(self.N2Function)
+                error("IMSolverSpectral:UnsupportedOperation", ...
+                    "This spectral solver is not configured with an N2 function.");
+            end
             N2Reference = self.N2(self.zReference);
             dzLogN2Reference = gradient(log(N2Reference), self.zReference);
             values = interp1(self.zReference, dzLogN2Reference, z, "pchip");

@@ -24,7 +24,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             g = 9.81;
             zDomain = [-5000 0];
             nModes = 4;
-            evp = IMInternalModes.hydrostaticGModes(g=g);
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
 
             basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
                 zDomain=zDomain, nModes=nModes);
@@ -40,8 +41,9 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
         function freeSurfaceHydrostaticGModesIncludeBoundaryMode(testCase)
             N0 = 5.2e-3;
             zDomain = [-5000 0];
+            N2 = @(z) N0*N0*ones(size(z));
             freeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-            evp = IMInternalModes.hydrostaticGModes(surfaceBoundary=freeSurface);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
 
             basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
                 zDomain=zDomain, nModes=3);
@@ -54,7 +56,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
         function hydrostaticFModesIncludeZeroMode(testCase)
             N0 = 5.2e-3;
             zDomain = [-4000 0];
-            evp = IMInternalModes.hydrostaticFModes();
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
 
             basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
                 zDomain=zDomain, nModes=4);
@@ -70,13 +73,27 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
         end
 
         function analyticalFactoryCreatesConstantBasis(testCase)
-            evp = IMInternalModes.waveModesAtWavenumber(k=1e-4);
+            zDomain = [-3000 0];
+            N0 = 5.2e-3;
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
 
-            basisSet = IMBasisSet.constantStratification(evp=evp, N0=5.2e-3, ...
-                zDomain=[-3000 0], nModes=2);
+            basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+                zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSetConstantStratification")
             testCase.verifyEqual(basisSet.evp.metadata.k, 1e-4, AbsTol=0)
+        end
+
+        function analyticalFactoryCreatesMatchingDefaultEVP(testCase)
+            N0 = 5.2e-3;
+            zDomain = [-3000 0];
+
+            basisSet = IMBasisSet.constantStratification(N0=N0, zDomain=zDomain, nModes=2);
+
+            testCase.verifyClass(basisSet.evp, "IMInternalModes")
+            testCase.verifyEqual(basisSet.evp.zDomain, zDomain)
+            testCase.verifyEqual(basisSet.evp.N2(zDomain(:)), N0*N0*ones(2,1), RelTol=1e-12)
         end
 
         function coordinateKindSolversAgreeWithRigidAnalyticalDepths(testCase)
@@ -86,13 +103,13 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             nModes = 2;
             nEVP = 48;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(g=g);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
             analytical = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
                 zDomain=zDomain, nModes=nModes);
 
             coordinateKinds = ["z", "wkb", "density"];
             for coordinateKind = coordinateKinds
-                solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, coordinateKind=coordinateKind);
+                solver = IMSolverSpectral(nEVP=nEVP, coordinateKind=coordinateKind);
                 numerical = solver.solveEVP(evp, nModes=nModes);
                 testCase.verifyEqual(numerical.h, analytical.h, RelTol=1e-4)
             end

@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticGModes
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 6
+nav_order: 8
 mathjax: true
 ---
 
@@ -19,6 +19,8 @@ Create the hydrostatic `G` internal-mode EVP.
  evp = IMInternalModes.hydrostaticGModes(options)
 ```
 ## Parameters
++ `options.N2`  buoyancy frequency squared function
++ `options.zDomain`  physical vertical domain
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface endpoint condition

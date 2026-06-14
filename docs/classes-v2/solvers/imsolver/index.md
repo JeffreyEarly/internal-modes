@@ -36,6 +36,7 @@ base class owns the common generalized-eigenvalue workflow.
 + Other
   + [`N2`](/internal-modes/classes-v2/solvers/imsolver/n2.html)
   + [`boundaryIndex`](/internal-modes/classes-v2/solvers/imsolver/boundaryindex.html)
+  + [`configuredForEVP`](/internal-modes/classes-v2/solvers/imsolver/configuredforevp.html)
   + [`context`](/internal-modes/classes-v2/solvers/imsolver/context.html)
   + [`differentiateGridValues`](/internal-modes/classes-v2/solvers/imsolver/differentiategridvalues.html)
   + [`dzLogN2`](/internal-modes/classes-v2/solvers/imsolver/dzlogn2.html)

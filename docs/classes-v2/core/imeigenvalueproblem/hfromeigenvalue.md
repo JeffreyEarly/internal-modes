@@ -3,7 +3,7 @@ layout: default
 title: hFromEigenvalue
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 9
+nav_order: 10
 mathjax: true
 ---
 

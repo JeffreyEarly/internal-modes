@@ -28,7 +28,9 @@ implements the same `F`, `G`, and normalization contract as numerical
 basis sets, without storing a solver reference.
 
 ```matlab
-evp = IMInternalModes.waveModesAtWavenumber(k=1e-4);
+zDomain = [-5000 0];
+N2 = @(z) (5.2e-3)^2*ones(size(z));
+evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
 basisSet = IMBasisSetConstantStratification(evp=evp, N0=5.2e-3, zDomain=[-5000 0]);
 G = basisSet.G(linspace(-5000,0,128).');
 ```

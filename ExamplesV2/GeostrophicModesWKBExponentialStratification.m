@@ -27,12 +27,12 @@ bottomBoundary = IMBoundaryCondition.neumann;
 
 normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
 
-evp = IMInternalModes(name="unforced-APV-modes", formulation="F", ...
+evp = IMInternalModes(name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
     p=p, q=q, r=r, g=g, normalizations=normalizations, ...
     defaultNormalization=Normalization.unity, ...
     surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
 
-solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP, coordinateKind="wkb");
+solver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");
 basisSet = solver.solveEVP(evp, nModes=nModes);
 
 F = basisSet.F(z);

@@ -27,10 +27,11 @@ scalar problem
 $$-(p u')' + q u = \lambda r u,$$
 with endpoint conditions
 $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-A solver owns the grid, coordinate mapping, and derivative matrices.
-The EVP owns the coefficient functions, endpoint conditions,
-equivalent-depth mapping, normalization rules, and diagnostic
+The EVP owns the physical interval, coefficient functions, endpoint
+conditions, equivalent-depth mapping, normalization rules, and diagnostic
 definiteness checks.
+A solver owns the numerical grid, coordinate mapping, and derivative
+matrices used to discretize this continuous problem.
 
 
 
@@ -46,6 +47,7 @@ definiteness checks.
   + [`q`](/internal-modes/classes-v2/core/imeigenvalueproblem/q.html) Coefficient multiplying the solved variable on the left side.
   + [`r`](/internal-modes/classes-v2/core/imeigenvalueproblem/r.html) Metric coefficient multiplying the eigenvalue side.
   + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
+  + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
 + Inspect diagnostics
   + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Natural default normalization.
   + [`definitenessInfo`](/internal-modes/classes-v2/core/imeigenvalueproblem/definitenessinfo.html) Check grid-level signs for the canonical coefficients.
@@ -63,6 +65,8 @@ definiteness checks.
 
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
++ Assemble EVPs
+  + [`coordinateProfile`](/internal-modes/classes-v2/core/imeigenvalueproblem/coordinateprofile.html) Return fields needed by a solver coordinate map.
 + Select modes
   + [`selectModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/selectmodes.html) Select and label retained finite-real eigenmodes.
 + Developer topics

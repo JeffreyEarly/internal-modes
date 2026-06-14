@@ -3,7 +3,8 @@ classdef IMSolverFiniteDifference < IMSolver
     %
     % `IMSolverFiniteDifference` uses the user's physical `z`
     % grid as its native basis. It shares the `solveEVP` interface with
-    % the spectral solvers but evaluates modes by interpolation.
+    % the spectral solver but validates the supplied grid against the EVP
+    % domain before solving.
     %
     % ```matlab
     % solver = IMSolverFiniteDifference(z=linspace(-1000,0,65).');
@@ -57,14 +58,6 @@ classdef IMSolverFiniteDifference < IMSolver
         Txx
     end
 
-    properties (Access = private)
-        % Buoyancy frequency squared function.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
-        N2Function
-    end
-
     methods
         function self = IMSolverFiniteDifference(options)
             % Create a finite-difference solver from a physical grid.
@@ -72,36 +65,53 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Topic: Create solvers
             % - Declaration: solver = IMSolverFiniteDifference(options)
             % - Parameter options.z: finite-difference grid
-            % - Parameter options.N2: buoyancy frequency squared function
             % - Returns solver: initialized finite-difference solver
             arguments
                 options.z (:,1) double
-                options.N2 function_handle = @(z) 1e-5*ones(size(z))
             end
 
             self.zNative = sort(options.z(:), "descend");
             self.xNative = self.zNative;
             self.zDomain = [min(self.zNative) max(self.zNative)];
             self.nEVP = length(self.zNative);
-            self.N2Function = options.N2;
             self.T = eye(self.nEVP);
             self.Tx = self.finiteDifferenceMatrix(1);
             self.Txx = self.finiteDifferenceMatrix(2);
         end
 
+        function solver = configuredForEVP(self, evp)
+            % Return a finite-difference solver configured for an EVP.
+            %
+            % - Topic: Solve EVPs
+            % - Topic: Developer topics
+            % - Declaration: solver = configuredForEVP(solver,evp)
+            % - Parameter evp: canonical EVP descriptor
+            % - Returns solver: validated solver
+            % - Developer: true
+            arguments
+                self IMSolverFiniteDifference
+                evp IMEigenvalueProblem
+            end
+
+            solver = self;
+            expectedDomain = sort(evp.zDomain);
+            tolerance = 100*eps(max([1 abs(expectedDomain) abs(self.zDomain)]));
+            if max(abs(self.zDomain - expectedDomain)) > tolerance
+                error("IMSolverFiniteDifference:DomainMismatch", ...
+                    "The finite-difference grid domain must match evp.zDomain.");
+            end
+        end
+
         function context = context(self)
             % Return the framework coefficient context.
             %
-            % Solvers provide medium and discretization fields. EVPs add
-            % physical constants such as `ctx.g` and `ctx.f0`.
+            % Solvers provide discretization fields. EVPs add the physical
+            % domain, medium, and constants.
             %
             % - Topic: Solve EVPs
             % - Developer: true
             % - Declaration: context = context(solver)
             % - Returns context: framework coefficient context
-            context.N2 = @(z) self.N2(z);
-            context.dzLogN2 = @(z) self.dzLogN2(z);
-            context.zDomain = self.zDomain;
             context.coordinateKind = "finiteDifference";
         end
 
@@ -112,7 +122,8 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Declaration: values = N2(solver,z)
             % - Parameter z: physical coordinate
             % - Returns values: buoyancy frequency squared
-            values = self.N2Function(z);
+            error("IMSolverFiniteDifference:UnsupportedOperation", ...
+                "Finite-difference solvers do not own N2; use the EVP or basis set instead.");
         end
 
         function values = differentiateGridValues(self, values, derivativeOrder)
@@ -139,9 +150,8 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Declaration: values = dzLogN2(solver,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
-            zAscending = sort(self.zNative);
-            valuesAscending = gradient(log(self.N2(zAscending)), zAscending);
-            values = interp1(zAscending, valuesAscending, z, "pchip");
+            error("IMSolverFiniteDifference:UnsupportedOperation", ...
+                "Finite-difference solvers do not own N2; use the EVP or basis set instead.");
         end
 
         function D = physicalDerivativeMatrix(self, derivativeOrder)

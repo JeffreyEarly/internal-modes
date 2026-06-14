@@ -120,13 +120,15 @@ classdef IMBasisSet
             self.zDomain = options.zDomain;
             self.N2Function = options.N2Function;
 
-            if ~isempty(self.solver)
+            if any(isnan(self.zDomain)) && ~isempty(self.evp)
+                self.zDomain = self.evp.zDomain;
+            elseif ~isempty(self.solver)
                 if any(isnan(self.zDomain))
                     self.zDomain = self.solver.zDomain;
                 end
-                if isempty(self.N2Function)
-                    self.N2Function = @(z) self.solver.N2(z);
-                end
+            end
+            if isempty(self.N2Function) && isa(self.evp, "IMInternalModes")
+                self.N2Function = self.evp.N2;
             end
         end
 
@@ -338,10 +340,6 @@ classdef IMBasisSet
             % - Declaration: values = dzLogN2(basisSet,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
-            if ~isempty(self.solver)
-                values = self.solver.dzLogN2(z);
-                return;
-            end
             if isempty(self.N2Function)
                 error("IMBasisSet:UnsupportedOperation", ...
                     "The basis set does not have an N2 function.");
@@ -573,7 +571,7 @@ classdef IMBasisSet
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: analytical constant-stratification basis set
             arguments
-                options.evp IMInternalModes = IMInternalModes.hydrostaticGModes()
+                options.evp = []
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double = [-1 0]
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
@@ -600,7 +598,7 @@ classdef IMBasisSet
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: analytical exponential-stratification basis set
             arguments
-                options.evp IMInternalModes = IMInternalModes.hydrostaticGModes()
+                options.evp = []
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.b (1,1) double {mustBePositive} = 1300
                 options.zDomain (1,2) double = [-1 0]

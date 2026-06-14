@@ -5,6 +5,8 @@ classdef IMInternalModes < IMEigenvalueProblem
     % problems into the canonical scalar EVP. The solved scalar `u` is
     % either `F` or `G`; the other variable is recovered diagnostically by
     % the resulting `IMInternalModesBasis`.
+    % Internal-mode EVPs own the stratification profile `N2` and physical
+    % vertical domain used by solvers and basis sets.
     %
     % - Topic: Create internal-mode EVPs
     % - Topic: Inspect internal-mode EVPs
@@ -15,6 +17,13 @@ classdef IMInternalModes < IMEigenvalueProblem
         %
         % - Topic: Inspect internal-mode EVPs
         formulation = "G"
+
+        % Buoyancy frequency squared function.
+        %
+        % `N2` has signature `values = N2(z)`.
+        %
+        % - Topic: Inspect internal-mode EVPs
+        N2
 
         % Coriolis parameter.
         %
@@ -34,6 +43,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes(options)
             % - Parameter options.name: short EVP name
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.formulation: solved variable, `"F"` or `"G"`
             % - Parameter options.p: canonical derivative-flux coefficient
             % - Parameter options.q: canonical left-side value coefficient
@@ -46,6 +57,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: internal-mode EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "internalModes"
+                options.zDomain (1,2) double
+                options.N2 function_handle
                 options.formulation {mustBeTextScalar} = "G"
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
@@ -68,11 +81,12 @@ classdef IMInternalModes < IMEigenvalueProblem
             metadata.formulation = formulation;
 
             self@IMEigenvalueProblem(name=options.name, p=options.p, q=options.q, r=options.r, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
+                zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 hFromEigenvalue=options.hFromEigenvalue, hasZeroMode=options.hasZeroMode, ...
                 defaultNormalization=options.defaultNormalization, ...
                 normalizations=options.normalizations, metadata=metadata);
             self.formulation = formulation;
+            self.N2 = options.N2;
             self.f0 = options.f0;
             self.g = options.g;
         end
@@ -85,9 +99,46 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
             context = contextForSolver@IMEigenvalueProblem(self, solver);
+            context.N2 = @(z) self.N2(z);
+            context.dzLogN2 = @(z) self.dzLogN2(z);
             context.f0 = self.f0;
             context.g = self.g;
             context.formulation = self.formulation;
+        end
+
+        function profile = coordinateProfile(self, coordinateKind)
+            % Return internal-mode resources needed by a solver coordinate map.
+            %
+            % - Topic: Inspect internal-mode EVPs
+            % - Topic: Developer topics
+            % - Declaration: profile = coordinateProfile(evp,coordinateKind)
+            % - Parameter coordinateKind: `"z"`, `"wkb"`, or `"density"`
+            % - Returns profile: struct with coordinate resources
+            % - Developer: true
+            coordinateKind = string(coordinateKind);
+            if coordinateKind ~= "z" && coordinateKind ~= "wkb" && coordinateKind ~= "density"
+                error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
+                    "Internal-mode EVPs support coordinateKind=""z"", ""wkb"", or ""density"".");
+            end
+            profile.N2 = @(z) self.N2(z);
+            profile.dzLogN2 = @(z) self.dzLogN2(z);
+        end
+
+        function values = dzLogN2(self, z)
+            % Evaluate the vertical derivative of `log(N2)`.
+            %
+            % - Topic: Inspect internal-mode EVPs
+            % - Declaration: values = dzLogN2(evp,z)
+            % - Parameter z: physical coordinate
+            % - Returns values: derivative values
+            z = z(:);
+            if length(z) == 1
+                scale = max(1,abs(z));
+                dz = sqrt(eps)*scale;
+                values = (log(self.N2(z + dz)) - log(self.N2(z - dz)))/(2*dz);
+            else
+                values = gradient(log(self.N2(z)), z);
+            end
         end
 
         function spec = innerProduct(self, variable)
@@ -123,7 +174,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Developer: true
             basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
-                zDomain=solver.zDomain, N2Function=@(z) solver.N2(z));
+                zDomain=self.zDomain, N2Function=self.N2);
         end
     end
 
@@ -136,12 +187,16 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticGModes(options)
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface endpoint condition
             % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Returns evp: hydrostatic `G` EVP
             arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
@@ -149,7 +204,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             normalizations = IMInternalModes.standardNormalizations();
-            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", ...
+            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ctx.N2(z)/ctx.g, f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
@@ -165,18 +220,22 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface endpoint condition
             % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Returns evp: hydrostatic `F` EVP
             arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double
                 options.g (1,1) double {mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
             end
 
             normalizations = IMInternalModes.standardNormalizations();
-            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", ...
+            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
@@ -192,6 +251,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.k: horizontal wavenumber
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
@@ -199,6 +260,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Returns evp: fixed-wavenumber `G` EVP
             arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double
                 options.k (1,1) double {mustBeNonnegative}
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
@@ -209,7 +272,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             k = options.k;
             metadata = struct("k", k);
             normalizations = IMInternalModes.standardNormalizations();
-            evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", ...
+            evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
                 f0=options.f0, g=options.g, ...
@@ -226,6 +289,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.omega: wave frequency
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
@@ -233,6 +298,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.bottomBoundary: bottom endpoint condition
             % - Returns evp: fixed-frequency `G` EVP
             arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double
                 options.omega (1,1) double {mustBeNonnegative}
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
@@ -243,7 +310,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             omega = options.omega;
             metadata = struct("omega", omega);
             normalizations = IMInternalModes.standardNormalizations();
-            evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", ...
+            evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g, ...
                 f0=options.f0, g=options.g, ...

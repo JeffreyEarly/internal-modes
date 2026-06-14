@@ -20,7 +20,6 @@ Create a finite-difference solver from a physical grid.
 ```
 ## Parameters
 + `options.z`  finite-difference grid
-+ `options.N2`  buoyancy frequency squared function
 
 ## Returns
 + `solver`  initialized finite-difference solver

@@ -8,7 +8,9 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
     % an external spectral-function root finder at runtime.
     %
     % ```matlab
-    % evp = IMInternalModes.hydrostaticGModes();
+    % zDomain = [-5000 0];
+    % N2 = @(z) (5.2e-3)^2*exp(2*z/1300);
+    % evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
     % basisSet = IMBasisSetExponentialStratification(evp=evp, N0=5.2e-3, b=1300, zDomain=[-5000 0]);
     % G = basisSet.G(linspace(-5000,0,128).');
     % ```
@@ -74,7 +76,7 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact exponential-stratification basis set
             arguments
-                options.evp IMInternalModes
+                options.evp = []
                 options.N0 (1,1) double {mustBePositive} = 5.2e-3
                 options.b (1,1) double {mustBePositive} = 1300
                 options.zDomain (1,2) double = [-1 0]
@@ -85,9 +87,11 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
 
             zDomain = sort(options.zDomain);
             IMBasisSetExponentialStratification.validateDomain(zDomain);
-            [f0, g] = IMBasisSetExponentialStratification.physicalConstants(options.evp);
+            N2Function = @(z) options.N0*options.N0*exp(2*z/options.b);
+            evp = IMBasisSetExponentialStratification.resolveEVP(options.evp, N2Function, zDomain);
+            [f0, g] = IMBasisSetExponentialStratification.physicalConstants(evp);
             [h, roots, frequencies, modeNumber, modeKinds] = IMBasisSetExponentialStratification.solveSpectrum( ...
-                options.evp, options.N0, options.b, zDomain, options.nModes, f0, g);
+                evp, options.N0, options.b, zDomain, options.nModes, f0, g);
             phaseSpeeds = sqrt(g*h);
             signFactors = IMBasisSetExponentialStratification.surfaceSignFactors( ...
                 options.N0, options.b, zDomain, frequencies, phaseSpeeds, g, modeKinds);
@@ -97,10 +101,10 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
             metadata = options.metadata;
             metadata.analyticalBasis = "exponentialStratification";
 
-            self@IMInternalModesBasis(evp=options.evp, nativeModes=zeros(0,length(h)), ...
+            self@IMInternalModesBasis(evp=evp, nativeModes=zeros(0,length(h)), ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
-                N2Function=@(z) options.N0*options.N0*exp(2*z/options.b));
+                N2Function=N2Function);
             self.N0 = options.N0;
             self.b = options.b;
             self.roots = roots;
@@ -141,6 +145,26 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
     end
 
     methods (Static, Access = private)
+        function evp = resolveEVP(evp, N2Function, zDomain)
+            if isempty(evp)
+                evp = IMInternalModes.hydrostaticGModes(N2=N2Function, zDomain=zDomain);
+                return;
+            end
+            if ~isa(evp, "IMInternalModes")
+                error("IMBasisSetExponentialStratification:InvalidEVP", ...
+                    "The EVP must be an IMInternalModes instance.");
+            end
+            IMBasisSetExponentialStratification.validateEVPDomain(evp, zDomain);
+        end
+
+        function validateEVPDomain(evp, zDomain)
+            tolerance = 100*eps(max([1 abs(evp.zDomain) abs(zDomain)]));
+            if max(abs(evp.zDomain - zDomain)) > tolerance
+                error("IMBasisSetExponentialStratification:DomainMismatch", ...
+                    "The analytical basis zDomain must match evp.zDomain.");
+            end
+        end
+
         function validateDomain(zDomain)
             tolerance = 100*eps(max(1,max(abs(zDomain))));
             if abs(zDomain(2)) > tolerance

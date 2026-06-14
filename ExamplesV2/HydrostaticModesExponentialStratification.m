@@ -12,9 +12,9 @@ nModes = 4;
 nEVP = 96;
 z = linspace(zDomain(1), zDomain(2), 256).';
 
-solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-evp = IMInternalModes.hydrostaticGModes(surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
+evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
     bottomBoundary=IMBoundaryCondition.dirichlet());
+solver = IMSolverSpectral(nEVP=nEVP);
 basisSet = solver.solveEVP(evp, nModes=nModes);
 
 G = basisSet.G(z);

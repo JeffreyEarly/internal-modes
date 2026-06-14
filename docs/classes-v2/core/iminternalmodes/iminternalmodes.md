@@ -20,6 +20,8 @@ Create an internal-mode canonical EVP.
 ```
 ## Parameters
 + `options.name`  short EVP name
++ `options.zDomain`  physical vertical domain
++ `options.N2`  buoyancy frequency squared function
 + `options.formulation`  solved variable, `"F"` or `"G"`
 + `options.p`  canonical derivative-flux coefficient
 + `options.q`  canonical left-side value coefficient

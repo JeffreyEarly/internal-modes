@@ -26,6 +26,8 @@ Describe canonical EVPs with internal-mode interpretation.
 problems into the canonical scalar EVP. The solved scalar `u` is
 either `F` or `G`; the other variable is recovered diagnostically by
 the resulting `IMInternalModesBasis`.
+Internal-mode EVPs own the stratification profile `N2` and physical
+vertical domain used by solvers and basis sets.
 
 
 
@@ -38,6 +40,8 @@ the resulting `IMInternalModesBasis`.
   + [`waveModesAtFrequency`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatfrequency.html) Create the fixed-frequency wave-mode EVP.
   + [`waveModesAtWavenumber`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatwavenumber.html) Create the fixed-wavenumber wave-mode EVP.
 + Inspect internal-mode EVPs
+  + [`N2`](/internal-modes/classes-v2/core/iminternalmodes/n2.html) Buoyancy frequency squared function.
+  + [`dzLogN2`](/internal-modes/classes-v2/core/iminternalmodes/dzlogn2.html) Evaluate the vertical derivative of `log(N2)`.
   + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.
   + [`g`](/internal-modes/classes-v2/core/iminternalmodes/g.html) Gravitational acceleration.

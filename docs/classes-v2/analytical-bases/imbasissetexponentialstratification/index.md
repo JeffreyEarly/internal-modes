@@ -29,7 +29,9 @@ roots are found with a local scanner and `fzero`, without requiring
 an external spectral-function root finder at runtime.
 
 ```matlab
-evp = IMInternalModes.hydrostaticGModes();
+zDomain = [-5000 0];
+N2 = @(z) (5.2e-3)^2*exp(2*z/1300);
+evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
 basisSet = IMBasisSetExponentialStratification(evp=evp, N0=5.2e-3, b=1300, zDomain=[-5000 0]);
 G = basisSet.G(linspace(-5000,0,128).');
 ```

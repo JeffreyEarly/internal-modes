@@ -19,8 +19,6 @@ Create a coordinate-aware spectral solver.
  solver = IMSolverSpectral(options)
 ```
 ## Parameters
-+ `options.N2`  buoyancy frequency squared function
-+ `options.zDomain`  physical vertical domain
 + `options.nEVP`  number of EVP coefficients
 + `options.coordinateKind`  native coordinate kind
 

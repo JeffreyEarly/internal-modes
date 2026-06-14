@@ -27,7 +27,8 @@ classdef (Abstract) IMSolver
                 options.nModes (1,1) double {mustBeInteger, mustBePositive} = 100
             end
 
-            [A, B] = evp.assemble(self);
+            solver = self.configuredForEVP(evp);
+            [A, B] = evp.assemble(solver);
             [V, D] = eig(A, B);
             eigenvalues = diag(D);
             valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) ...
@@ -39,11 +40,11 @@ classdef (Abstract) IMSolver
 
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
-            selection = evp.selectModes(eigenvalues(:), options.nModes, self, A);
+            selection = evp.selectModes(eigenvalues(:), options.nModes, solver, A);
             eigenvalues = eigenvalues(selection.sortIndex);
             V = V(:,selection.sortIndex);
             h = evp.hFromEigenvalue(eigenvalues(:).');
-            basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', h, ...
+            basisSet = evp.makeBasisSet(solver, V, eigenvalues(:).', h, ...
                 selection.modeNumber, selection.index);
             basisSet = basisSet.orientModeSigns();
         end
@@ -67,6 +68,7 @@ classdef (Abstract) IMSolver
     end
 
     methods (Abstract)
+        solver = configuredForEVP(self, evp)
         context = context(self)
         values = N2(self, z)
         values = dzLogN2(self, z)
