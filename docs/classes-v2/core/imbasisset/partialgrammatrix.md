@@ -16,10 +16,9 @@ Return a partial-domain scalar Gram matrix.
 
 ## Declaration
 ```matlab
- gram = partialGramMatrix(basisSet,variable,zMin,zMax)
+ gram = partialGramMatrix(basisSet,zMin,zMax)
 ```
 ## Parameters
-+ `variable`  scalar variable name, `"u"`
 + `zMin`  lower physical bound
 + `zMax`  upper physical bound
 

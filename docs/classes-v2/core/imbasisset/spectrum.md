@@ -16,11 +16,10 @@ Compute a scalar modal spectrum.
 
 ## Declaration
 ```matlab
- spectrum = spectrum(basisSet,coefficients,options)
+ spectrum = spectrum(basisSet,coefficients)
 ```
 ## Parameters
 + `coefficients`  modal coefficients
-+ `options.variable`  scalar variable name
 
 ## Returns
 + `spectrum`  modal spectrum

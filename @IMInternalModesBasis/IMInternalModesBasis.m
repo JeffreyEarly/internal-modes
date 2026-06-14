@@ -175,21 +175,86 @@ classdef IMInternalModesBasis < IMBasisSet
             gram = self.partialGramMatrix(variable, self.zDomain(1), self.zDomain(2));
         end
 
-        function gram = partialGramMatrix(self, variable, zMin, zMax)
+        function gram = partialGramMatrix(self, varargin)
             % Return a partial-depth Gram matrix for `F` or `G`.
             %
             % Interior integrals are restricted to `[zMin,zMax]`; endpoint
             % metric terms are included only when the interval contains the
-            % corresponding endpoint.
+            % corresponding endpoint. If `variable` is omitted, the solved
+            % formulation is used.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
-            % - Parameter variable: `"F"` or `"G"`
+            % - Parameter variable: optional variable name, `"F"` or `"G"`
             % - Parameter zMin: lower physical bound
             % - Parameter zMax: upper physical bound
             % - Returns gram: Gram matrix
-            variable = IMInternalModesBasis.validateVariable(variable);
+            [variable, zMin, zMax] = self.parseVariableBounds(varargin{:});
             gram = self.variableGramMatrix(variable, [zMin zMax], true);
+        end
+
+        function windowModes = partialWindowModes(self, varargin)
+            % Diagonalize a partial-depth Gram matrix for `F` or `G`.
+            %
+            % If `variable` is omitted, the solved formulation is used.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
+            % - Parameter variable: optional variable name, `"F"` or `"G"`
+            % - Parameter zMin: lower physical bound
+            % - Parameter zMax: upper physical bound
+            % - Returns windowModes: window-mode decomposition
+            [variable, zMin, zMax] = self.parseVariableBounds(varargin{:});
+            gram = self.variableGramMatrix(variable, [zMin zMax], true);
+            gram = 0.5*(gram + gram.');
+            [R, D] = eig(gram);
+            [eigenvalues, sortIndex] = sort(diag(D), "descend");
+            windowModes.rotation = R(:,sortIndex);
+            windowModes.eigenvalues = eigenvalues(:).';
+            windowModes.gramMatrix = gram;
+        end
+
+        function spectrum = spectrum(self, coefficients, options)
+            % Compute an internal-mode modal spectrum.
+            %
+            % If `options.variable` is omitted, the solved formulation is
+            % used.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
+            % - Parameter coefficients: modal coefficients
+            % - Parameter options.variable: optional variable name, `"F"` or `"G"`
+            % - Returns spectrum: modal spectrum
+            arguments
+                self IMInternalModesBasis
+                coefficients (:,1) double
+                options.variable {mustBeTextScalar} = self.evp.formulation
+            end
+
+            spectrum = self.crossSpectrum(coefficients, coefficients, variable=options.variable);
+        end
+
+        function spectrum = crossSpectrum(self, coefficientsA, coefficientsB, options)
+            % Compute an internal-mode modal cross-spectrum.
+            %
+            % If `options.variable` is omitted, the solved formulation is
+            % used.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
+            % - Parameter coefficientsA: first modal coefficients
+            % - Parameter coefficientsB: second modal coefficients
+            % - Parameter options.variable: optional variable name, `"F"` or `"G"`
+            % - Returns spectrum: modal cross-spectrum
+            arguments
+                self IMInternalModesBasis
+                coefficientsA (:,1) double
+                coefficientsB (:,1) double
+                options.variable {mustBeTextScalar} = self.evp.formulation
+            end
+
+            gram = self.gramMatrix(options.variable);
+            spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
     end
 
@@ -367,6 +432,29 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Access = private)
+        function [variable, zMin, zMax] = parseVariableBounds(self, varargin)
+            switch numel(varargin)
+                case 2
+                    variable = self.evp.formulation;
+                    zMin = varargin{1};
+                    zMax = varargin{2};
+                case 3
+                    variable = varargin{1};
+                    zMin = varargin{2};
+                    zMax = varargin{3};
+                otherwise
+                    error("IMInternalModesBasis:InvalidInput", ...
+                        "Use partial Gram-matrix methods as method(zMin,zMax) or method(variable,zMin,zMax).");
+            end
+            variable = IMInternalModesBasis.validateVariable(variable);
+            if ~isnumeric(zMin) || ~isscalar(zMin) || ~isfinite(zMin) || ~isnumeric(zMax) || ~isscalar(zMax) || ~isfinite(zMax)
+                error("IMInternalModesBasis:InvalidBounds", ...
+                    "zMin and zMax must be finite numeric scalars.");
+            end
+            zMin = double(zMin);
+            zMax = double(zMax);
+        end
+
         function values = rawVariableForSign(self, variable, z)
             values = [];
             try

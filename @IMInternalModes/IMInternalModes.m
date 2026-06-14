@@ -186,13 +186,18 @@ classdef IMInternalModes < IMEigenvalueProblem
             % interior weight is one. Endpoint metric terms are attached to
             % the solved formulation, because only that variable appears in
             % the canonical endpoint condition. The returned struct has
-            % fields `variable`, `interiorWeight`, `surfaceWeights`,
-            % `bottomWeights`, and `hasKnownBoundaryWeights`.
+            % fields `variable`, `interiorWeight`, `surfaceWeights`, and
+            % `bottomWeights`.
             %
             % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = innerProduct(evp,variable)
-            % - Parameter variable: `"F"` or `"G"`
+            % - Parameter variable: optional variable name, `"F"` or `"G"`
             % - Returns spec: struct with interior and endpoint metric terms
+            arguments
+                self IMInternalModes
+                variable {mustBeTextScalar} = self.formulation
+            end
+
             variable = IMInternalModes.validateFormulation(variable);
             spec.variable = variable;
             if variable == "G"
@@ -207,7 +212,6 @@ classdef IMInternalModes < IMEigenvalueProblem
                 spec.surfaceWeights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
                 spec.bottomWeights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
             end
-            spec.hasKnownBoundaryWeights = true;
         end
 
         function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)

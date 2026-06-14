@@ -16,11 +16,8 @@ Return the full-domain scalar Gram matrix.
 
 ## Declaration
 ```matlab
- gram = gramMatrix(basisSet,variable)
+ gram = gramMatrix(basisSet)
 ```
-## Parameters
-+ `variable`  optional scalar variable name, `"u"`
-
 ## Returns
 + `gram`  scalar Gram matrix
 

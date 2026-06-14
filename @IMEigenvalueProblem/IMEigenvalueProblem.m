@@ -267,7 +267,7 @@ classdef IMEigenvalueProblem
             profile.dzLogN2 = [];
         end
 
-        function spec = innerProduct(self, variable)
+        function spec = innerProduct(self)
             % Return the scalar inner-product recipe.
             %
             % The canonical basis set uses `r` in the interior and the
@@ -275,28 +275,15 @@ classdef IMEigenvalueProblem
             % $$M_{ij}=\int r u_i u_j\,dz+
             % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
             % The returned struct has fields `variable`, `interiorWeight`,
-            % `surfaceWeights`, `bottomWeights`, and
-            % `hasKnownBoundaryWeights`.
+            % `surfaceWeights`, and `bottomWeights`.
             %
             % - Topic: Inspect inner products
-            % - Declaration: spec = innerProduct(evp,variable)
-            % - Parameter variable: scalar variable name; only `"u"` is accepted
+            % - Declaration: spec = innerProduct(evp)
             % - Returns spec: struct with interior and endpoint metric terms
-            arguments
-                self IMEigenvalueProblem
-                variable {mustBeTextScalar} = "u"
-            end
-
-            variable = string(variable);
-            if variable ~= "u"
-                error("IMEigenvalueProblem:InvalidVariable", ...
-                    "Canonical scalar inner products use variable ""u"".");
-            end
             spec.variable = "u";
             spec.interiorWeight = self.r;
             spec.surfaceWeights = self.endpointWeights("surface");
             spec.bottomWeights = self.endpointWeights("bottom");
-            spec.hasKnownBoundaryWeights = true;
         end
 
         function weights = endpointWeights(self, location)

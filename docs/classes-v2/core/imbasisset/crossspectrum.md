@@ -16,12 +16,11 @@ Compute a scalar modal cross-spectrum.
 
 ## Declaration
 ```matlab
- spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
+ spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB)
 ```
 ## Parameters
 + `coefficientsA`  first modal coefficients
 + `coefficientsB`  second modal coefficients
-+ `options.variable`  scalar variable name
 
 ## Returns
 + `spectrum`  modal cross-spectrum

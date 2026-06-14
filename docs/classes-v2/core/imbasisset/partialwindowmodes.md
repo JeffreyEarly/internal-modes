@@ -16,10 +16,9 @@ Diagonalize a partial scalar Gram matrix.
 
 ## Declaration
 ```matlab
- windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
+ windowModes = partialWindowModes(basisSet,zMin,zMax)
 ```
 ## Parameters
-+ `variable`  scalar variable name
 + `zMin`  lower physical bound
 + `zMax`  upper physical bound
 

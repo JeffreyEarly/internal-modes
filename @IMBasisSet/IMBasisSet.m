@@ -272,7 +272,7 @@ classdef IMBasisSet
             modes = self.nativeModes ./ factors;
         end
 
-        function gram = gramMatrix(self, variable)
+        function gram = gramMatrix(self)
             % Return the full-domain scalar Gram matrix.
             %
             % For normalized scalar modes, entries are
@@ -280,18 +280,12 @@ classdef IMBasisSet
             % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: gram = gramMatrix(basisSet,variable)
-            % - Parameter variable: optional scalar variable name, `"u"`
+            % - Declaration: gram = gramMatrix(basisSet)
             % - Returns gram: scalar Gram matrix
-            arguments
-                self IMBasisSet
-                variable {mustBeTextScalar} = "u"
-            end
-
-            gram = self.partialGramMatrix(variable, self.zDomain(1), self.zDomain(2));
+            gram = self.partialGramMatrix(self.zDomain(1), self.zDomain(2));
         end
 
-        function gram = partialGramMatrix(self, variable, zMin, zMax)
+        function gram = partialGramMatrix(self, zMin, zMax)
             % Return a partial-domain scalar Gram matrix.
             %
             % Interior integrals are restricted to `[zMin,zMax]`. Endpoint
@@ -299,28 +293,34 @@ classdef IMBasisSet
             % contains the corresponding physical endpoint.
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
-            % - Parameter variable: scalar variable name, `"u"`
+            % - Declaration: gram = partialGramMatrix(basisSet,zMin,zMax)
             % - Parameter zMin: lower physical bound
             % - Parameter zMax: upper physical bound
             % - Returns gram: scalar Gram matrix
-            if string(variable) ~= "u"
-                error("IMBasisSet:InvalidVariable", ...
-                    "Canonical scalar basis sets use variable ""u"".");
+            arguments
+                self IMBasisSet
+                zMin (1,1) double
+                zMax (1,1) double
             end
+
             gram = self.scalarGramMatrix([zMin zMax], true);
         end
 
-        function windowModes = partialWindowModes(self, variable, zMin, zMax)
+        function windowModes = partialWindowModes(self, zMin, zMax)
             % Diagonalize a partial scalar Gram matrix.
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
-            % - Parameter variable: scalar variable name
+            % - Declaration: windowModes = partialWindowModes(basisSet,zMin,zMax)
             % - Parameter zMin: lower physical bound
             % - Parameter zMax: upper physical bound
             % - Returns windowModes: window-mode decomposition
-            gram = self.partialGramMatrix(variable, zMin, zMax);
+            arguments
+                self IMBasisSet
+                zMin (1,1) double
+                zMax (1,1) double
+            end
+
+            gram = self.partialGramMatrix(zMin, zMax);
             gram = 0.5*(gram + gram.');
             [R, D] = eig(gram);
             [eigenvalues, sortIndex] = sort(diag(D), "descend");
@@ -329,40 +329,36 @@ classdef IMBasisSet
             windowModes.gramMatrix = gram;
         end
 
-        function spectrum = spectrum(self, coefficients, options)
+        function spectrum = spectrum(self, coefficients)
             % Compute a scalar modal spectrum.
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
+            % - Declaration: spectrum = spectrum(basisSet,coefficients)
             % - Parameter coefficients: modal coefficients
-            % - Parameter options.variable: scalar variable name
             % - Returns spectrum: modal spectrum
             arguments
                 self IMBasisSet
                 coefficients (:,1) double
-                options.variable {mustBeTextScalar} = "u"
             end
 
-            spectrum = self.crossSpectrum(coefficients, coefficients, variable=options.variable);
+            spectrum = self.crossSpectrum(coefficients, coefficients);
         end
 
-        function spectrum = crossSpectrum(self, coefficientsA, coefficientsB, options)
+        function spectrum = crossSpectrum(self, coefficientsA, coefficientsB)
             % Compute a scalar modal cross-spectrum.
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
+            % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB)
             % - Parameter coefficientsA: first modal coefficients
             % - Parameter coefficientsB: second modal coefficients
-            % - Parameter options.variable: scalar variable name
             % - Returns spectrum: modal cross-spectrum
             arguments
                 self IMBasisSet
                 coefficientsA (:,1) double
                 coefficientsB (:,1) double
-                options.variable {mustBeTextScalar} = "u"
             end
 
-            gram = self.gramMatrix(options.variable);
+            gram = self.gramMatrix();
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
 
@@ -425,7 +421,7 @@ classdef IMBasisSet
             self.nativeModes = self.nativeModes .* signs;
         end
 
-        function factor = innerProductNormFactor(self, varargin)
+        function factor = innerProductNormFactor(self, iMode)
             % Return the scalar inner-product norm factor.
             %
             % This is the raw factor
@@ -435,19 +431,16 @@ classdef IMBasisSet
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
             % - Developer: true
-            if nargin == 2
-                iMode = varargin{1};
-            elseif nargin == 3 && string(varargin{1}) == "u"
-                iMode = varargin{2};
-            else
-                error("IMBasisSet:InvalidVariable", ...
-                    "Canonical scalar norm factors use variable ""u"".");
+            arguments
+                self IMBasisSet
+                iMode (1,1) double {mustBeInteger, mustBePositive}
             end
+
             gram = self.scalarGramMatrix(self.zDomain, false);
             factor = sqrt(abs(gram(iMode,iMode)));
         end
 
-        function factor = maxAbsFactor(self, varargin)
+        function factor = maxAbsFactor(self, iMode)
             % Return the maximum scalar amplitude.
             %
             % This is $$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$ on the
@@ -456,14 +449,11 @@ classdef IMBasisSet
             % - Topic: Developer topics
             % - Declaration: factor = maxAbsFactor(basisSet,iMode)
             % - Developer: true
-            if nargin == 2
-                iMode = varargin{1};
-            elseif nargin == 3 && string(varargin{1}) == "u"
-                iMode = varargin{2};
-            else
-                error("IMBasisSet:InvalidVariable", ...
-                    "Canonical scalar maximum factors use variable ""u"".");
+            arguments
+                self IMBasisSet
+                iMode (1,1) double {mustBeInteger, mustBePositive}
             end
+
             z = self.integrationGrid(self.zDomain);
             values = self.rawU(z);
             factor = max(abs(values(:,iMode)));
@@ -513,7 +503,7 @@ classdef IMBasisSet
             else
                 values = self.rawU(z);
             end
-            spec = self.evp.innerProduct("u");
+            spec = self.evp.innerProduct();
             weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, self.context());
             if isscalar(weight)
                 weight = weight*ones(size(z));

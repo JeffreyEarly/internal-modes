@@ -115,6 +115,28 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(A(interiorRows,:), expectedA(interiorRows,:), AbsTol=1e-11)
         end
 
+        function innerProductSpecsUseCanonicalAndPhysicalVariables(testCase)
+            [N2, zDomain, ~, ~, g] = testCase.profile();
+            canonicalEVP = IMEigenvalueProblem(zDomain=zDomain, p=2, q=0, r=3);
+            canonicalSpec = canonicalEVP.innerProduct();
+            internalEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
+            defaultSpec = internalEVP.innerProduct();
+            gSpec = internalEVP.innerProduct("G");
+            fSpec = internalEVP.innerProduct("F");
+            z = linspace(zDomain(1), zDomain(2), 5).';
+            context.N2 = N2;
+            context.g = g;
+            removedBoundaryFlag = "has" + "KnownBoundaryWeights";
+
+            testCase.verifyEqual(canonicalSpec.variable, "u")
+            testCase.verifyEqual(canonicalSpec.interiorWeight, canonicalEVP.r)
+            testCase.verifyFalse(isfield(canonicalSpec, removedBoundaryFlag))
+            testCase.verifyEqual(defaultSpec.variable, internalEVP.formulation)
+            testCase.verifyFalse(isfield(defaultSpec, removedBoundaryFlag))
+            testCase.verifyEqual(gSpec.interiorWeight(z, context), N2(z)/g, RelTol=1e-12)
+            testCase.verifyEqual(fSpec.interiorWeight(z, context), ones(size(z)), AbsTol=0)
+        end
+
         function solverReturnsInternalModesBasisWithFAndG(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
@@ -122,12 +144,21 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 16).';
+            coefficients = ones(3,1);
 
             testCase.verifyClass(basisSet, "IMInternalModesBasis")
             testCase.verifyEqual(basisSet.h, evp.hFromEigenvalue(basisSet.eigenvalues), RelTol=1e-12)
             testCase.verifySize(basisSet.G(z), [16 3])
             testCase.verifySize(basisSet.F(z), [16 3])
+            testCase.verifyEqual(basisSet.gramMatrix(), basisSet.gramMatrix("G"), RelTol=1e-12)
             testCase.verifyEqual(size(basisSet.gramMatrix("G")), [3 3])
+            testCase.verifyEqual(size(basisSet.gramMatrix("F")), [3 3])
+            testCase.verifyEqual(basisSet.partialGramMatrix(zDomain(1), zDomain(2)), ...
+                basisSet.partialGramMatrix("G", zDomain(1), zDomain(2)), RelTol=1e-12)
+            testCase.verifyEqual(size(basisSet.partialWindowModes("F", zDomain(1), zDomain(2)).gramMatrix), [3 3])
+            testCase.verifySize(basisSet.spectrum(coefficients), [3 1])
+            testCase.verifySize(basisSet.spectrum(coefficients, variable="F"), [3 1])
+            testCase.verifySize(basisSet.crossSpectrum(coefficients, coefficients, variable="G"), [3 1])
         end
 
         function internalModeCustomDepthMappingIsHonored(testCase)
@@ -202,7 +233,11 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(basisSet, "h"))
             testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
-            testCase.verifyEqual(size(basisSet.gramMatrix("u")), [2 2])
+            testCase.verifyEqual(size(basisSet.gramMatrix()), [2 2])
+            testCase.verifyEqual(size(basisSet.partialGramMatrix(zDomain(1), zDomain(2))), [2 2])
+            testCase.verifyEqual(size(basisSet.partialWindowModes(zDomain(1), zDomain(2)).gramMatrix), [2 2])
+            testCase.verifySize(basisSet.spectrum(ones(2,1)), [2 1])
+            testCase.verifySize(basisSet.crossSpectrum(ones(2,1), ones(2,1)), [2 1])
             testCase.verifyError(@() wkbSolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
             testCase.verifyError(@() densitySolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
         end

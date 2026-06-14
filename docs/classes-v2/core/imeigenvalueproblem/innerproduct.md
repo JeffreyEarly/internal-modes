@@ -16,11 +16,8 @@ Return the scalar inner-product recipe.
 
 ## Declaration
 ```matlab
- spec = innerProduct(evp,variable)
+ spec = innerProduct(evp)
 ```
-## Parameters
-+ `variable`  scalar variable name; only `"u"` is accepted
-
 ## Returns
 + `spec`  struct with interior and endpoint metric terms
 
@@ -31,5 +28,4 @@ Return the scalar inner-product recipe.
   $$M_{ij}=\int r u_i u_j\,dz+
   \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
   The returned struct has fields `variable`, `interiorWeight`,
-  `surfaceWeights`, `bottomWeights`, and
-  `hasKnownBoundaryWeights`.
+  `surfaceWeights`, and `bottomWeights`.
