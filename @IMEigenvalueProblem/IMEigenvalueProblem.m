@@ -291,13 +291,17 @@ classdef IMEigenvalueProblem
             info.endpointWeights = self.endpointWeights();
             info.metricIndex = self.metricIndex(tolerance=0);
             info.metricPositive = info.rPositive && info.metricIndex == 0;
+            info.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
             info.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
             info.endpointNumeratorNonnegative = info.endpointNumeratorNegativeDirections == 0;
             info.interiorNonnegative = info.pPositive && info.qNonnegative;
             info.qNonnegativeCertified = info.interiorNonnegative && info.endpointNumeratorNonnegative;
             info.certificationLevel = "grid";
             info.reason = "Grid signs and scalar endpoint conditions were checked.";
-            if ~(info.pPositive && info.rPositive && all(isfinite(qValues)))
+            if info.hasDegenerateEndpointMetric
+                info.certificationLevel = "unknown";
+                info.reason = "An active endpoint determinant is numerically degenerate.";
+            elseif ~(info.pPositive && info.rPositive && all(isfinite(qValues)))
                 info.certificationLevel = "unknown";
                 info.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
             end
@@ -482,6 +486,9 @@ classdef IMEigenvalueProblem
                 boundary = endpoints(iEndpoint).boundary;
                 location = endpoints(iEndpoint).location;
                 if boundary.isEigenvalueDependent()
+                    if self.isDegenerateEndpointMetric(location, boundary)
+                        continue;
+                    end
                     H = boundary.endpointNumeratorMatrix(location);
                     count = count + nnz(eig(0.5*(H + H.')) < -sqrt(eps)*max(1,norm(H,"fro")));
                 elseif boundary.b ~= 0
@@ -489,6 +496,15 @@ classdef IMEigenvalueProblem
                     count = count + double(beta < -sqrt(eps)*max(1,abs(beta)));
                 end
             end
+        end
+
+        function tf = hasDegenerateEndpointMetric(self)
+            tf = self.isDegenerateEndpointMetric("surface", self.surfaceBoundary) ...
+                || self.isDegenerateEndpointMetric("bottom", self.bottomBoundary);
+        end
+
+        function tf = isDegenerateEndpointMetric(~, location, boundary)
+            tf = boundary.isEigenvalueDependent() && ~isfinite(boundary.metricWeight(location));
         end
 
         function status = zeroEigenvalueStatus(~, A)

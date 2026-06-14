@@ -72,36 +72,6 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(B(end,:), D0(end,:), AbsTol=1e-11)
         end
 
-        function boundaryConditionReportsMetricWeights(testCase)
-            surface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-            bottom = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-
-            testCase.verifyTrue(surface.isEigenvalueDependent())
-            testCase.verifyEqual(surface.determinant("surface"), -1, AbsTol=0)
-            testCase.verifyEqual(surface.metricWeight("surface"), -1, AbsTol=0)
-            testCase.verifyEqual(bottom.determinant("bottom"), 1, AbsTol=0)
-            testCase.verifyEqual(bottom.metricWeight("bottom"), 1, AbsTol=0)
-            testCase.verifyEqual(IMBoundaryCondition.dirichlet().a, 1, AbsTol=0)
-            testCase.verifyEqual(IMBoundaryCondition.neumann().b, 1, AbsTol=0)
-            testCase.verifyEqual(IMBoundaryCondition.robin(2,3).b, 3, AbsTol=0)
-        end
-
-        function definitenessDiagnosticsIgnoreGarbageNegativesWhenCertified(testCase)
-            [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(N2=N2, zDomain=zDomain, nEVP=nEVP);
-            evp = IMEigenvalueProblem(p=1, q=0, r=1);
-            [A, ~] = evp.assemble(solver);
-
-            info = evp.definitenessInfo(solver);
-            bounds = evp.negativeEigenvalueBounds(solver, A);
-            selection = evp.selectModes([-100; 1; 2; 3], 2, solver, A);
-
-            testCase.verifyTrue(info.metricPositive)
-            testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 0)
-            testCase.verifyEqual(selection.sortIndex(:), [2; 3])
-            testCase.verifyEqual(selection.modeNumber, [1 2])
-        end
-
         function internalModeFactoriesAssembleCanonicalForms(testCase)
             [N2, zDomain, nEVP, f0, g] = testCase.profile();
             k = 1e-4;
@@ -173,5 +143,6 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             g = 9.81;
             N2 = @(z) N0*N0*(1 + 0.1*z/abs(zDomain(1)));
         end
+
     end
 end

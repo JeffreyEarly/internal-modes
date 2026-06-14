@@ -76,7 +76,7 @@ classdef IMBoundaryCondition
             % - Returns tf: true for active endpoint metric terms
             arguments
                 self IMBoundaryCondition
-                tolerance (1,1) double {mustBeNonnegative} = 0
+                tolerance (1,1) double {mustBeNonnegative} = self.activityTolerance()
             end
 
             tf = abs(self.c) > tolerance || abs(self.d) > tolerance;
@@ -84,6 +84,11 @@ classdef IMBoundaryCondition
 
         function value = determinant(self, location)
             % Return the signed endpoint determinant.
+            %
+            % Yassin's endpoint indexing uses `z_1` for the bottom endpoint
+            % and `z_2` for the surface endpoint, so the sign
+            % `(-1)^(i+1)` is positive at the bottom and negative at the
+            % surface.
             %
             % - Topic: Inspect boundary conditions
             % - Declaration: value = determinant(boundary,location)
@@ -100,7 +105,7 @@ classdef IMBoundaryCondition
             % - Parameter location: `"surface"` or `"bottom"`
             % - Returns value: coefficient multiplying `(c*u-d*p*u_z)^2`
             D = self.determinant(location);
-            tolerance = 100*eps(max(1,abs(D)));
+            tolerance = 100*eps*max(1,abs(D));
             if abs(D) <= tolerance
                 value = NaN;
                 return;
@@ -110,6 +115,10 @@ classdef IMBoundaryCondition
 
         function beta = robinEnergyCoefficient(self, location)
             % Return the ordinary Robin endpoint quadratic coefficient.
+            %
+            % For inactive endpoint conditions, this is
+            % `(-1)^(i+1)*a/b` with Yassin's `z_1` bottom and `z_2`
+            % surface indexing.
             %
             % - Topic: Developer topics
             % - Declaration: beta = robinEnergyCoefficient(boundary,location)
@@ -131,6 +140,12 @@ classdef IMBoundaryCondition
             % - Developer: true
             D = self.determinant(location);
             H = -(1/D)*[self.a*self.c self.a*self.d; self.a*self.d self.b*self.d];
+        end
+    end
+
+    methods (Access = private)
+        function tolerance = activityTolerance(self)
+            tolerance = 100*eps*max([1 abs(self.a) abs(self.b) abs(self.c) abs(self.d)]);
         end
     end
 
@@ -171,9 +186,9 @@ classdef IMBoundaryCondition
         function value = endpointSign(location)
             switch string(location)
                 case "surface"
-                    value = 1;
-                case "bottom"
                     value = -1;
+                case "bottom"
+                    value = 1;
                 otherwise
                     error("IMBoundaryCondition:InvalidLocation", ...
                         "Boundary location must be ""surface"" or ""bottom"".");
