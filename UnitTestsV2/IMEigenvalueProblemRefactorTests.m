@@ -132,9 +132,50 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(canonicalSpec.interiorWeight, canonicalEVP.r)
             testCase.verifyFalse(isfield(canonicalSpec, removedBoundaryFlag))
             testCase.verifyEqual(defaultSpec.variable, internalEVP.formulation)
+            testCase.verifyEqual(defaultSpec.status, "interiorOnly")
+            testCase.verifyTrue(isfield(defaultSpec, "reason"))
             testCase.verifyFalse(isfield(defaultSpec, removedBoundaryFlag))
+            testCase.verifyEqual(gSpec.status, "interiorOnly")
+            testCase.verifyEqual(fSpec.status, "interiorOnly")
+            testCase.verifyTrue(isfield(fSpec, "reason"))
             testCase.verifyEqual(gSpec.interiorWeight(z, context), N2(z)/g, RelTol=1e-12)
             testCase.verifyEqual(fSpec.interiorWeight(z, context), ones(size(z)), AbsTol=0)
+        end
+
+        function unavailableDiagnosticInnerProductsThrow(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition.neumann());
+            spec = evp.innerProduct("F");
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            testCase.verifyEqual(spec.status, "unknown")
+            testCase.verifyTrue(contains(spec.reason, "catalog"))
+            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.partialGramMatrix("F", zDomain(1), zDomain(2)), ...
+                "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.partialWindowModes("F", zDomain(1), zDomain(2)), ...
+                "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.spectrum(ones(2,1), variable="F"), ...
+                "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.crossSpectrum(ones(2,1), ones(2,1), variable="F"), ...
+                "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.innerProductNormFactor(1, variable="F"), ...
+                "IMInternalModesBasis:UnavailableInnerProduct")
+        end
+
+        function fixedFrequencyDiagnosticFInnerProductIsUnavailable(testCase)
+            [N2, zDomain, nEVP, f0] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0);
+            spec = evp.innerProduct("F");
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            testCase.verifyEqual(spec.status, "unknown")
+            testCase.verifyEqual(basisSet.normalization, "unity")
+            testCase.verifyFalse(ismember("omegaConstant", basisSet.normalizationNames()))
+            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
         function internalModeValidationUsesBuiltInArgumentValidation(testCase)
@@ -240,7 +281,58 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(contains(output, "g: 9.81 m s^-2"))
             testCase.verifyTrue(contains(output, "equivalent depth: h = hFromEigenvalue(lambda)"))
             testCase.verifyTrue(contains(output, "factory parameters: k"))
+            testCase.verifyTrue(contains(output, "Internal-mode variables"))
+            testCase.verifyTrue(contains(output, "solved formulation: G"))
+            testCase.verifyTrue(contains(output, "diagnostic variable: F"))
+            testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
+            testCase.verifyTrue(contains(output, "Internal-mode inner products"))
+            testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
             testCase.verifyFalse(contains(output, "function_handle"))
+        end
+
+        function summarizeHydrostaticGReportsDiagnosticFInnerProduct(testCase)
+            [N2, zDomain] = testCase.profile();
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+
+            output = string(evalc('evp.summarize();'));
+
+            testCase.verifyTrue(contains(output, "diagnostic variable: F"))
+            testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
+            testCase.verifyTrue(contains(output, "interior weight: 1"))
+            testCase.verifyTrue(contains(output, "availability: interiorOnly"))
+            testCase.verifyTrue(contains(output, "diagnostic F inner product is the interior F integral"))
+            testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
+        end
+
+        function summarizeHydrostaticFReportsDiagnosticGInnerProduct(testCase)
+            [N2, zDomain] = testCase.profile();
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+
+            output = string(evalc('evp.summarize();'));
+
+            testCase.verifyTrue(contains(output, "solved formulation: F"))
+            testCase.verifyTrue(contains(output, "diagnostic variable: G"))
+            testCase.verifyTrue(contains(output, "diagnostic relation: G_j(z) = -g/N^2(z) dF_j/dz(z)"))
+            testCase.verifyTrue(contains(output, "availability: interiorOnly"))
+            testCase.verifyTrue(contains(output, "diagnostic G inner product is the interior N^2 G/g integral"))
+        end
+
+        function summarizeReportsUnknownDiagnosticCatalogEntries(testCase)
+            [N2, zDomain, ~, f0] = testCase.profile();
+            boundaryEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition.neumann());
+            waveEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0);
+
+            boundaryOutput = string(evalc('boundaryEVP.summarize();'));
+            waveOutput = string(evalc('waveEVP.summarize();'));
+
+            testCase.verifyTrue(contains(boundaryOutput, "diagnostic variable: F"))
+            testCase.verifyTrue(contains(boundaryOutput, "availability: unknown"))
+            testCase.verifyTrue(contains(boundaryOutput, "No fixed diagnostic inner-product catalog entry"))
+            testCase.verifyTrue(contains(waveOutput, "factory parameters: omega"))
+            testCase.verifyTrue(contains(waveOutput, "diagnostic variable: F"))
+            testCase.verifyTrue(contains(waveOutput, "availability: unknown"))
+            testCase.verifyTrue(contains(waveOutput, "No fixed diagnostic inner-product catalog entry"))
         end
 
         function solverReturnsInternalModesBasisWithFAndG(testCase)
@@ -502,11 +594,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(wavenumberBasis.normalization, "kConstant")
             testCase.verifyTrue(ismember("kConstant", wavenumberBasis.normalizationNames()))
             testCase.verifyFalse(ismember("geostrophic", wavenumberBasis.normalizationNames()))
-            testCase.verifyEqual(frequencyBasis.normalization, "omegaConstant")
-            testCase.verifyTrue(ismember("omegaConstant", frequencyBasis.normalizationNames()))
+            testCase.verifyEqual(frequencyBasis.normalization, "unity")
+            testCase.verifyFalse(ismember("omegaConstant", frequencyBasis.normalizationNames()))
             testCase.verifyFalse(ismember("geostrophic", frequencyBasis.normalizationNames()))
             testCase.verifyError(@() wavenumberBasis.normalizationFactors(Normalization.geostrophic), ...
                 "IMBasisSet:UnsupportedNormalization")
+            testCase.verifyTrue(testCase.normalizationEnumMemberThrows("omegaConstant"))
         end
 
         function basisSetValidationRejectsBadScalarAnalysisInputs(testCase)
@@ -581,6 +674,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             f0 = 1e-4;
             g = 9.81;
             N2 = @(z) N0*N0*(1 + 0.1*z/abs(zDomain(1)));
+        end
+
+        function tf = normalizationEnumMemberThrows(name)
+            tf = false;
+            try
+                eval("Normalization." + string(name));
+            catch
+                tf = true;
+            end
         end
 
     end

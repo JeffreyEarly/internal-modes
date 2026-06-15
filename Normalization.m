@@ -15,7 +15,6 @@ classdef Normalization
     %
     % - `Normalization.unity`: unit norm under the active internal-mode inner product
     % - `Normalization.kConstant`: unit `G` inner-product norm for fixed-$$K$$ wave modes
-    % - `Normalization.omegaConstant`: unit `F` inner-product norm for fixed-$$\omega$$ wave modes
     % - `Normalization.uMax`: scale by $$\max_z |F_j(z)|$$
     % - `Normalization.wMax`: scale by $$\max_z |G_j(z)|$$
     % - `Normalization.surfacePressure`: scale by the raw surface value of $$F$$
@@ -32,6 +31,6 @@ classdef Normalization
     % - Topic: Configure normalization
     % - Declaration: classdef Normalization
     enumeration
-        unity, kConstant, omegaConstant, uMax, wMax, surfacePressure, geostrophic
+        unity, kConstant, uMax, wMax, surfacePressure, geostrophic
     end
 end

@@ -35,7 +35,9 @@ Create the fixed-frequency wave-mode EVP.
   The canonical scalar form is
   $$-\frac{\partial^2 G}{\partial z^2}(z)
   =\lambda\frac{N^2(z)-\omega^2}{g}G(z).$$
-  Solved fixed-frequency basis sets install the `omegaConstant`
-  normalization rule and use it by default. This factory adds
-  `parameters.omega` and sets `parameters.formulation`,
+  Solved fixed-frequency basis sets use the generic `unity`
+  normalization by default. A fixed-frequency diagnostic `F`
+  inner-product normalization is deferred until the wave
+  diagnostic inner-product catalog is derived. This factory
+  adds `parameters.omega` and sets `parameters.formulation`,
   `parameters.f0`, and `parameters.g`.

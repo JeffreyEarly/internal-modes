@@ -145,10 +145,11 @@ classdef IMInternalModesBasis < IMBasisSet
             % Return the full-depth Gram matrix for `F` or `G`.
             %
             % The matrix uses `evp.innerProduct(variable)`. For `G`, the
-            % interior weight is $$N^2/g$$; for `F`, it is one. Endpoint
-            % terms are included when the requested variable is the solved
-            % canonical formulation and the endpoint condition supplies
-            % metric weights.
+            % interior weight is $$N^2/g$$; for `F`, it is one. The
+            % requested inner product must have status `"fixed"` or
+            % `"interiorOnly"`. Diagnostic variables whose inner products
+            % are unknown, mixed, or eigenvalue-dependent throw an error
+            % rather than returning an incomplete Gram matrix.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,variable)
@@ -168,7 +169,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Interior integrals are restricted to `[zMin,zMax]`; endpoint
             % metric terms are included only when the interval contains the
             % corresponding endpoint. If `variable` is omitted, the solved
-            % formulation is used.
+            % formulation is used. The requested inner product must be an
+            % available standalone inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
@@ -183,7 +185,8 @@ classdef IMInternalModesBasis < IMBasisSet
         function windowModes = partialWindowModes(self, varargin)
             % Diagonalize a partial-depth Gram matrix for `F` or `G`.
             %
-            % If `variable` is omitted, the solved formulation is used.
+            % If `variable` is omitted, the solved formulation is used. The
+            % requested inner product must be fixed or interior-only.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
@@ -205,7 +208,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used.
+            % used. The requested inner product must be fixed or
+            % interior-only.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
@@ -225,7 +229,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal cross-spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used.
+            % used. The requested inner product must be fixed or
+            % interior-only.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
@@ -280,7 +285,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % This is the raw factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
             % to `F` or `G`. If `variable` is omitted, the solved
-            % formulation is used. Custom normalization rules registered
+            % formulation is used. The requested inner product must be
+            % fixed or interior-only. Custom normalization rules registered
             % with `addNormalization` call this method.
             %
             % - Topic: Developer topics
@@ -476,12 +482,13 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
             z = self.innerProductGrid(zBounds);
+            spec = self.evp.innerProduct(variable);
+            IMInternalModesBasis.assertInnerProductAvailable(spec);
             if useNormalized
                 values = self.rawVariable(variable, z) ./ self.normalizationFactors(self.normalization);
             else
                 values = self.rawVariable(variable, z);
             end
-            spec = self.evp.innerProduct(variable);
             weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, self.context());
             if isscalar(weight)
                 weight = weight*ones(size(z));
@@ -513,8 +520,6 @@ classdef IMInternalModesBasis < IMBasisSet
                     self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
                 case "waveModesAtWavenumber"
                     self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
-                case "waveModesAtFrequency"
-                    self = self.addNormalization("omegaConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="F"));
             end
         end
 
@@ -598,11 +603,19 @@ classdef IMInternalModesBasis < IMBasisSet
                     normalization = "geostrophic";
                 case "waveModesAtWavenumber"
                     normalization = "kConstant";
-                case "waveModesAtFrequency"
-                    normalization = "omegaConstant";
                 otherwise
                     normalization = "unity";
             end
+        end
+
+        function assertInnerProductAvailable(spec)
+            status = string(spec.status);
+            if status == "fixed" || status == "interiorOnly"
+                return;
+            end
+            error("IMInternalModesBasis:UnavailableInnerProduct", ...
+                "The %s inner product is %s for this EVP and cannot be used as a standalone Gram matrix. %s", ...
+                string(spec.variable), status, string(spec.reason));
         end
 
         function variable = validateVariable(variable)

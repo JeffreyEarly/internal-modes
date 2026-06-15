@@ -185,11 +185,14 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Return the `F` or `G` inner-product recipe.
             %
             % For `G`, the interior weight is $$N^2/g$$. For `F`, the
-            % interior weight is one. Endpoint metric terms are attached to
-            % the solved formulation, because only that variable appears in
-            % the canonical endpoint condition. The returned struct has
-            % fields `variable`, `interiorWeight`, `surfaceWeights`, and
-            % `bottomWeights`.
+            % interior weight is one. The returned struct has fields
+            % `variable`, `interiorWeight`, `surfaceWeights`,
+            % `bottomWeights`, `status`, and `reason`. `status` is
+            % `"fixed"` or `"interiorOnly"` when a standalone Gram matrix is
+            % available. It is `"unknown"`, `"mixed"`, or
+            % `"eigenvalueDependent"` when the requested diagnostic
+            % variable does not yet have an installed fixed inner-product
+            % rule.
             %
             % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = innerProduct(evp,variable)
@@ -210,9 +213,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             if variable == self.formulation
                 spec.surfaceWeights = self.endpointWeights("surface");
                 spec.bottomWeights = self.endpointWeights("bottom");
+                [spec.status, spec.reason] = self.solvedInnerProductStatus(spec.surfaceWeights, spec.bottomWeights);
             else
-                spec.surfaceWeights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
-                spec.bottomWeights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
+                spec.surfaceWeights = IMInternalModes.emptyEndpointWeights();
+                spec.bottomWeights = IMInternalModes.emptyEndpointWeights();
+                [spec.status, spec.reason] = self.diagnosticInnerProductStatus(variable);
             end
         end
 
@@ -364,9 +369,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-\frac{\partial^2 G}{\partial z^2}(z)
             % =\lambda\frac{N^2(z)-\omega^2}{g}G(z).$$
-            % Solved fixed-frequency basis sets install the `omegaConstant`
-            % normalization rule and use it by default. This factory adds
-            % `parameters.omega` and sets `parameters.formulation`,
+            % Solved fixed-frequency basis sets use the generic `unity`
+            % normalization by default. A fixed-frequency diagnostic `F`
+            % inner-product normalization is deferred until the wave
+            % diagnostic inner-product catalog is derived. This factory
+            % adds `parameters.omega` and sets `parameters.formulation`,
             % `parameters.f0`, and `parameters.g`.
             %
             % - Topic: Create internal-mode EVPs
@@ -398,6 +405,64 @@ classdef IMInternalModes < IMEigenvalueProblem
                 f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 GfromFz=GfromFz, parameters=parameters);
+        end
+    end
+
+    methods (Access = private)
+        function [status, reason] = solvedInnerProductStatus(self, surfaceWeights, bottomWeights)
+            surfaceActive = self.surfaceBoundary.isEigenvalueDependent();
+            bottomActive = self.bottomBoundary.isEigenvalueDependent();
+            if (surfaceActive && isempty(surfaceWeights)) || (bottomActive && isempty(bottomWeights))
+                status = "unknown";
+                reason = "At least one active endpoint condition has a degenerate or unavailable endpoint metric weight.";
+            elseif isempty(surfaceWeights) && isempty(bottomWeights)
+                status = "interiorOnly";
+                reason = "The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.";
+            else
+                status = "fixed";
+                reason = "The solved formulation inner product follows the canonical scalar EVP endpoint weights.";
+            end
+        end
+
+        function [status, reason] = diagnosticInnerProductStatus(self, variable)
+            if string(self.name) == "hydrostaticGModes" && self.formulation == "G" && variable == "F" && self.hasDirichletEndpoints()
+                status = "interiorOnly";
+                reason = "For hydrostatic G modes with G=0 at both endpoints, the diagnostic F inner product is the interior F integral.";
+            elseif string(self.name) == "hydrostaticFModes" && self.formulation == "F" && variable == "G" && self.hasNeumannEndpoints()
+                status = "interiorOnly";
+                reason = "For hydrostatic F modes with N^{-2} dF/dz=0 at both endpoints, the diagnostic G inner product is the interior N^2 G/g integral.";
+            else
+                status = "unknown";
+                reason = "No fixed diagnostic inner-product catalog entry is installed for this EVP and boundary combination.";
+            end
+        end
+
+        function tf = hasDirichletEndpoints(self)
+            tf = IMInternalModes.isDirichletBoundary(self.surfaceBoundary) && IMInternalModes.isDirichletBoundary(self.bottomBoundary);
+        end
+
+        function tf = hasNeumannEndpoints(self)
+            tf = IMInternalModes.isNeumannBoundary(self.surfaceBoundary) && IMInternalModes.isNeumannBoundary(self.bottomBoundary);
+        end
+    end
+
+    methods (Static, Access = private)
+        function weights = emptyEndpointWeights()
+            weights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
+        end
+
+        function tf = isDirichletBoundary(boundary)
+            tolerance = IMInternalModes.coefficientTolerance(boundary);
+            tf = ~boundary.isEigenvalueDependent(tolerance) && abs(boundary.b) <= tolerance && abs(boundary.a) > tolerance;
+        end
+
+        function tf = isNeumannBoundary(boundary)
+            tolerance = IMInternalModes.coefficientTolerance(boundary);
+            tf = ~boundary.isEigenvalueDependent(tolerance) && abs(boundary.a) <= tolerance && abs(boundary.b) > tolerance;
+        end
+
+        function tolerance = coefficientTolerance(boundary)
+            tolerance = 100*eps*max([1 abs(boundary.a) abs(boundary.b) abs(boundary.c) abs(boundary.d)]);
         end
     end
 end
