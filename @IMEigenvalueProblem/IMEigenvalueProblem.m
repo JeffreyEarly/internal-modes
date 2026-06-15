@@ -160,7 +160,7 @@ classdef IMEigenvalueProblem
             % - Returns evp: canonical EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "canonical"
-                options.zDomain (1,2) double = [-1 0]
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite} = [-1 0]
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
@@ -200,6 +200,11 @@ classdef IMEigenvalueProblem
             % - Returns A: left matrix
             % - Returns B: right matrix
             % - Developer: true
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+            end
+
             solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
@@ -227,6 +232,11 @@ classdef IMEigenvalueProblem
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
             % - Developer: true
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+            end
+
             context = solver.context();
             context.zDomain = self.zDomain;
             parameterFields = fieldnames(self.parameters);
@@ -252,6 +262,10 @@ classdef IMEigenvalueProblem
             % - Topic: Inspect inner products
             % - Declaration: spec = innerProduct(evp)
             % - Returns spec: struct with interior and endpoint metric terms
+            arguments
+                self IMEigenvalueProblem
+            end
+
             spec.variable = "u";
             spec.interiorWeight = self.r;
             spec.surfaceWeights = self.endpointWeights("surface");
@@ -281,7 +295,7 @@ classdef IMEigenvalueProblem
             % - Returns weights: endpoint metric terms
             arguments
                 self IMEigenvalueProblem
-                location {mustBeTextScalar} = "all"
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom", "all"])} = "all"
             end
 
             switch string(location)
@@ -292,9 +306,6 @@ classdef IMEigenvalueProblem
                 case "all"
                     weights = [self.weightForBoundary("surface", self.surfaceBoundary); ...
                         self.weightForBoundary("bottom", self.bottomBoundary)];
-                otherwise
-                    error("IMEigenvalueProblem:InvalidBoundaryLocation", ...
-                        "Boundary location must be ""surface"", ""bottom"", or ""all"".");
             end
         end
 
@@ -313,7 +324,7 @@ classdef IMEigenvalueProblem
             % - Returns value: number of active endpoint terms with negative metric weight
             arguments
                 self IMEigenvalueProblem
-                options.tolerance (1,1) double {mustBeNonnegative} = 0
+                options.tolerance (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 0
             end
 
             weights = self.endpointWeights();
@@ -351,6 +362,11 @@ classdef IMEigenvalueProblem
             % - Declaration: diagnostics = definitenessDiagnostics(evp,solver)
             % - Parameter solver: canonical EVP solver
             % - Returns diagnostics: struct with norm and energy checks
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+            end
+
             solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
@@ -407,7 +423,7 @@ classdef IMEigenvalueProblem
             arguments
                 self IMEigenvalueProblem
                 solver IMSolver
-                A double = []
+                A (:,:) double = []
             end
 
             definiteness = self.definitenessDiagnostics(solver);
@@ -473,7 +489,7 @@ classdef IMEigenvalueProblem
             arguments
                 self IMEigenvalueProblem
                 solver IMSolver
-                A double = []
+                A (:,:) double = []
             end
 
             bounds = self.negativeEigenvalueBounds(solver, A);
@@ -508,10 +524,10 @@ classdef IMEigenvalueProblem
             % - Developer: true
             arguments
                 self IMEigenvalueProblem
-                eigenvalues (:,1) double
+                eigenvalues (:,1) double {mustBeReal, mustBeFinite}
                 nModes (1,1) double {mustBeInteger, mustBePositive}
                 solver IMSolver
-                A double
+                A (:,:) double
             end
 
             tolerance = self.eigenvalueTolerance(eigenvalues);
@@ -564,6 +580,15 @@ classdef IMEigenvalueProblem
             % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
             % - Returns basisSet: solved scalar basis set
             % - Developer: true
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+                nativeModes (:,:) double
+                eigenvalues (1,:) double {mustBeReal, mustBeFinite}
+                modeNumber (1,:) double {mustBeInteger}
+                index struct
+            end
+
             basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, modeNumber=modeNumber, index=index, zDomain=self.zDomain);
         end
@@ -571,6 +596,12 @@ classdef IMEigenvalueProblem
 
     methods (Access = protected)
         function [pValues, qValues, rValues] = coefficientValues(self, z, context)
+            arguments
+                self IMEigenvalueProblem
+                z (:,1) double {mustBeReal}
+                context struct
+            end
+
             pValues = IMEigenvalueProblem.evaluateCoefficient(self.p, z, context);
             qValues = IMEigenvalueProblem.evaluateCoefficient(self.q, z, context);
             rValues = IMEigenvalueProblem.evaluateCoefficient(self.r, z, context);
@@ -581,7 +612,17 @@ classdef IMEigenvalueProblem
     end
 
     methods (Access = private)
-        function [A, B] = applyBoundaryRow(~, A, B, solver, location, boundary, pValues)
+        function [A, B] = applyBoundaryRow(self, A, B, solver, location, boundary, pValues)
+            arguments
+                self IMEigenvalueProblem
+                A (:,:) double
+                B (:,:) double
+                solver IMSolver
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+                boundary (1,1) IMBoundaryCondition
+                pValues (:,1) double
+            end
+
             index = solver.boundaryIndex(location);
             D0 = solver.physicalDerivativeMatrix(0);
             D1 = solver.physicalDerivativeMatrix(1);
@@ -590,7 +631,13 @@ classdef IMEigenvalueProblem
             B(index,:) = boundary.c*D0(index,:) - boundary.d*pEndpoint*D1(index,:);
         end
 
-        function weight = weightForBoundary(~, location, boundary)
+        function weight = weightForBoundary(self, location, boundary)
+            arguments
+                self IMEigenvalueProblem
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+                boundary (1,1) IMBoundaryCondition
+            end
+
             weight = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
             if ~boundary.isEigenvalueDependent()
                 return;
@@ -606,6 +653,10 @@ classdef IMEigenvalueProblem
         end
 
         function count = endpointNegativeDirections(self)
+            arguments
+                self IMEigenvalueProblem
+            end
+
             endpoints = [
                 struct("location", "surface", "boundary", self.surfaceBoundary)
                 struct("location", "bottom", "boundary", self.bottomBoundary)
@@ -628,15 +679,30 @@ classdef IMEigenvalueProblem
         end
 
         function tf = hasDegenerateEndpointMetric(self)
+            arguments
+                self IMEigenvalueProblem
+            end
+
             tf = self.isDegenerateEndpointMetric("surface", self.surfaceBoundary) ...
                 || self.isDegenerateEndpointMetric("bottom", self.bottomBoundary);
         end
 
-        function tf = isDegenerateEndpointMetric(~, location, boundary)
+        function tf = isDegenerateEndpointMetric(self, location, boundary)
+            arguments
+                self IMEigenvalueProblem
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+                boundary (1,1) IMBoundaryCondition
+            end
+
             tf = boundary.isEigenvalueDependent() && ~isfinite(boundary.metricWeight(location));
         end
 
-        function zeroMode = zeroModeAssessment(~, A)
+        function zeroMode = zeroModeAssessment(self, A)
+            arguments
+                self IMEigenvalueProblem
+                A (:,:) double = []
+            end
+
             zeroMode.zeroModeStatus = "unchecked";
             zeroMode.zeroModeCount = 0;
             zeroMode.zeroModeSingularValue = NaN;
@@ -655,7 +721,12 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function tolerance = eigenvalueTolerance(~, eigenvalues)
+        function tolerance = eigenvalueTolerance(self, eigenvalues)
+            arguments
+                self IMEigenvalueProblem
+                eigenvalues (:,1) double {mustBeReal, mustBeFinite}
+            end
+
             finiteScale = abs(eigenvalues(isfinite(eigenvalues)));
             if isempty(finiteScale)
                 scale = 1;
@@ -676,6 +747,12 @@ classdef IMEigenvalueProblem
             % - Topic: Developer topics
             % - Declaration: values = IMEigenvalueProblem.evaluateCoefficient(coefficient,z,context)
             % - Developer: true
+            arguments
+                coefficient
+                z double
+                context struct
+            end
+
             if isa(coefficient, "function_handle")
                 try
                     values = coefficient(z, context);
@@ -694,6 +771,12 @@ classdef IMEigenvalueProblem
 
     methods (Static, Access = private)
         function values = expandCoefficient(values, z, name)
+            arguments
+                values {mustBeNumeric}
+                z (:,1) double
+                name {mustBeTextScalar}
+            end
+
             if isscalar(values)
                 values = values*ones(size(z));
             end
@@ -705,10 +788,19 @@ classdef IMEigenvalueProblem
         end
 
         function tolerance = signTolerance(values, tau)
+            arguments
+                values {mustBeNumeric}
+                tau (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+            end
+
             tolerance = tau*max(1,max(abs(values(:))));
         end
 
         function normalizations = resolveNormalizations(normalizations)
+            arguments
+                normalizations struct
+            end
+
             if ~isfield(normalizations, "unity")
                 normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode);
             end
