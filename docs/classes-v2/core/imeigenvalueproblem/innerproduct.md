@@ -29,3 +29,6 @@ Return the scalar inner-product recipe.
   \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
   The returned struct has fields `variable`, `interiorWeight`,
   `surfaceWeights`, and `bottomWeights`.
+  The endpoint arrays are the same endpoint metric terms
+  returned by `endpointWeights("surface")` and
+  `endpointWeights("bottom")`.

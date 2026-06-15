@@ -276,6 +276,9 @@ classdef IMEigenvalueProblem
             % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
             % The returned struct has fields `variable`, `interiorWeight`,
             % `surfaceWeights`, and `bottomWeights`.
+            % The endpoint arrays are the same endpoint metric terms
+            % returned by `endpointWeights("surface")` and
+            % `endpointWeights("bottom")`.
             %
             % - Topic: Inspect inner products
             % - Declaration: spec = innerProduct(evp)
@@ -297,6 +300,11 @@ classdef IMEigenvalueProblem
             % Each returned struct has fields `location`, `coefficient`,
             % `c`, and `d`, representing the endpoint metric contribution
             % $$D_i^{-1}(c_i u-d_i p u_z)^2.$$
+            % These are the endpoint-only terms used by the full
+            % `innerProduct()` recipe: `endpointWeights("surface")` appears
+            % as `innerProduct().surfaceWeights`, and
+            % `endpointWeights("bottom")` appears as
+            % `innerProduct().bottomWeights`.
             %
             % - Topic: Inspect inner products
             % - Declaration: weights = endpointWeights(evp,location)
