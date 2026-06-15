@@ -30,6 +30,56 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(bottom.endpointWeightCoefficient("bottom"), -1, AbsTol=0)
         end
 
+        function boundaryConditionValidationUsesBuiltInArgumentValidation(testCase)
+            boundary = IMBoundaryCondition(a=1, b=1, c=1, d=0);
+            badCoefficientThrows = false;
+            badDeterminantLocationThrows = false;
+            badWeightLocationThrows = false;
+            badRobinLocationThrows = false;
+            badToleranceThrows = false;
+            badRobinCoefficientThrows = false;
+
+            try
+                IMBoundaryCondition(a=Inf);
+            catch
+                badCoefficientThrows = true;
+            end
+            try
+                boundary.determinant("middle");
+            catch
+                badDeterminantLocationThrows = true;
+            end
+            try
+                boundary.endpointWeightCoefficient("middle");
+            catch
+                badWeightLocationThrows = true;
+            end
+            try
+                boundary.robinEnergyCoefficient("middle");
+            catch
+                badRobinLocationThrows = true;
+            end
+            try
+                boundary.isEigenvalueDependent(Inf);
+            catch
+                badToleranceThrows = true;
+            end
+            try
+                IMBoundaryCondition.robin(1, Inf);
+            catch
+                badRobinCoefficientThrows = true;
+            end
+
+            testCase.verifyTrue(badCoefficientThrows)
+            testCase.verifyTrue(badDeterminantLocationThrows)
+            testCase.verifyTrue(badWeightLocationThrows)
+            testCase.verifyTrue(badRobinLocationThrows)
+            testCase.verifyTrue(badToleranceThrows)
+            testCase.verifyTrue(badRobinCoefficientThrows)
+            testCase.verifyError(@() IMBoundaryCondition(a=0, b=0, c=0, d=0), ...
+                "IMBoundaryCondition:DegenerateCondition")
+        end
+
         function endpointDiagnosticsUseBuiltInArgumentValidation(testCase)
             evp = IMEigenvalueProblem();
             badLocationThrows = false;

@@ -50,17 +50,13 @@ classdef IMBoundaryCondition
             % - Parameter options.d: flux coefficient on the eigenvalue side
             % - Returns boundary: endpoint condition
             arguments
-                options.a (1,1) double = 1
-                options.b (1,1) double = 0
-                options.c (1,1) double = 0
-                options.d (1,1) double = 0
+                options.a (1,1) double {mustBeReal, mustBeFinite} = 1
+                options.b (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.c (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.d (1,1) double {mustBeReal, mustBeFinite} = 0
             end
 
             coefficients = [options.a options.b options.c options.d];
-            if any(~isfinite(coefficients))
-                error("IMBoundaryCondition:InvalidCoefficient", ...
-                    "Boundary coefficients must be finite scalars.");
-            end
             if all(coefficients == 0)
                 error("IMBoundaryCondition:DegenerateCondition", ...
                     "At least one boundary coefficient must be nonzero.");
@@ -81,7 +77,7 @@ classdef IMBoundaryCondition
             % - Returns tf: true for active endpoint metric terms
             arguments
                 self IMBoundaryCondition
-                tolerance (1,1) double {mustBeNonnegative} = self.activityTolerance()
+                tolerance (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = self.activityTolerance()
             end
 
             tf = abs(self.c) > tolerance || abs(self.d) > tolerance;
@@ -99,6 +95,11 @@ classdef IMBoundaryCondition
             % - Declaration: value = determinant(boundary,location)
             % - Parameter location: `"surface"` or `"bottom"`
             % - Returns value: signed determinant
+            arguments
+                self IMBoundaryCondition
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+            end
+
             value = IMBoundaryCondition.endpointSign(location)*(self.a*self.d - self.b*self.c);
         end
 
@@ -121,6 +122,11 @@ classdef IMBoundaryCondition
             % - Declaration: value = endpointWeightCoefficient(boundary,location)
             % - Parameter location: `"surface"` or `"bottom"`
             % - Returns value: coefficient multiplying `(c*u-d*p*u_z)^2`
+            arguments
+                self IMBoundaryCondition
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+            end
+
             D = self.determinant(location);
             tolerance = 100*eps*max(1,abs(D));
             if abs(D) <= tolerance
@@ -140,6 +146,11 @@ classdef IMBoundaryCondition
             % - Topic: Developer topics
             % - Declaration: beta = robinEnergyCoefficient(boundary,location)
             % - Developer: true
+            arguments
+                self IMBoundaryCondition
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+            end
+
             if self.b == 0
                 beta = 0;
                 return;
@@ -155,6 +166,11 @@ classdef IMBoundaryCondition
             % - Topic: Developer topics
             % - Declaration: H = endpointNumeratorMatrix(boundary,location)
             % - Developer: true
+            arguments
+                self IMBoundaryCondition
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+            end
+
             D = self.determinant(location);
             H = -(1/D)*[self.a*self.c self.a*self.d; self.a*self.d self.b*self.d];
         end
@@ -191,8 +207,8 @@ classdef IMBoundaryCondition
             % - Parameter a: endpoint value coefficient
             % - Parameter b: endpoint flux coefficient
             arguments
-                a (1,1) double
-                b (1,1) double
+                a (1,1) double {mustBeReal, mustBeFinite}
+                b (1,1) double {mustBeReal, mustBeFinite}
             end
 
             boundary = IMBoundaryCondition(a=a, b=b, c=0, d=0);
@@ -201,14 +217,15 @@ classdef IMBoundaryCondition
 
     methods (Static, Access = private)
         function value = endpointSign(location)
+            arguments
+                location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom"])}
+            end
+
             switch string(location)
                 case "surface"
                     value = -1;
                 case "bottom"
                     value = 1;
-                otherwise
-                    error("IMBoundaryCondition:InvalidLocation", ...
-                        "Boundary location must be ""surface"" or ""bottom"".");
             end
         end
     end
