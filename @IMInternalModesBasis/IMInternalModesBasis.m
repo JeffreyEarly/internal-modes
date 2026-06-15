@@ -2,9 +2,12 @@ classdef IMInternalModesBasis < IMBasisSet
     % Store solved internal-mode basis functions.
     %
     % `IMInternalModesBasis` evaluates the physical variables with explicit
-    % `F(z)` and `G(z)` methods. If the EVP solves `G`, then
-    % $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
-    % $$G_j=-gN^{-2}F'_j.$$
+    % `F(z)` and `G(z)` methods. If the EVP solves `G`, then `F(z)` is
+    % recovered by `evp.FfromGz`, whose default relation is
+    % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+    % If the EVP solves `F`, then `G(z)` is recovered by `evp.GfromFz`.
+    % The default inverse is hydrostatic, but wave factories install
+    % wave-specific inverse relations.
     % Normalization is shared across both variables: if a rule gives scale
     % $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
     % that same factor. Standard rules are installed on the basis set, and
@@ -96,7 +99,11 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % If the EVP formulation is `G`, this evaluates the solved
             % canonical variable. If the formulation is `F`, `G` is recovered
-            % from $$G=-gN^{-2}F_z$$.
+            % by `evp.GfromFz`. The default relation is
+            % $$G_j(z)=-\frac{g}{N^2(z)}
+            % \frac{\partial F_j}{\partial z}(z),$$
+            % but individual EVPs may supply a different diagnostic
+            % relation.
             %
             % - Topic: Evaluate internal-mode bases
             % - Declaration: G = G(basisSet,z,options)
@@ -117,7 +124,8 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % If the EVP formulation is `F`, this evaluates the solved
             % canonical variable. If the formulation is `G`, `F` is recovered
-            % from $$F=hG_z$$.
+            % by `evp.FfromGz`; the default relation is
+            % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
             %
             % - Topic: Evaluate internal-mode bases
             % - Declaration: F = F(basisSet,z,options)
@@ -453,13 +461,14 @@ classdef IMInternalModesBasis < IMBasisSet
                     if variable ~= "F"
                         self.unsupported("evaluate " + variable);
                     end
-                    values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1) .* self.h;
+                    dGdz = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
+                    values = self.evp.FfromGz(z(:), dGdz, self.h, self.context());
                 case "F"
                     if variable ~= "G"
                         self.unsupported("evaluate " + variable);
                     end
                     dFdz = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
-                    values = -(self.evp.g./self.N2(z(:))).*dFdz;
+                    values = self.evp.GfromFz(z(:), dFdz, self.h, self.context());
                 otherwise
                     self.unsupported("evaluate " + variable);
             end

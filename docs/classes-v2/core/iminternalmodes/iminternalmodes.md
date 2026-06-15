@@ -3,7 +3,7 @@ layout: default
 title: IMInternalModes
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 1
+nav_order: 3
 mathjax: true
 ---
 
@@ -31,6 +31,8 @@ Create an internal-mode canonical EVP.
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
 + `options.hFromEigenvalue`  equivalent-depth conversion
++ `options.FfromGz`  diagnostic relation from `G` derivative to `F`
++ `options.GfromFz`  diagnostic relation from `F` derivative to `G`
 + `options.parameters`  named coefficient parameters
 
 ## Returns

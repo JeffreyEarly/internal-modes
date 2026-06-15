@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticGModes
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 9
+nav_order: 11
 mathjax: true
 ---
 
@@ -32,7 +32,8 @@ Create the hydrostatic `G` internal-mode EVP.
 ## Discussion
 
   The canonical scalar form is
-  $$-G''=\lambda N^2G/g.$$
+  $$-\frac{\partial^2 G}{\partial z^2}(z)
+  =\lambda\frac{N^2(z)}{g}G(z).$$
   Solved hydrostatic basis sets install the `geostrophic`
   normalization rule and use it by default. This factory sets
   `parameters.formulation`, `parameters.f0`, and `parameters.g`.

@@ -284,6 +284,68 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.h, hFromEigenvalue(basisSet.eigenvalues), RelTol=1e-12)
         end
 
+        function defaultRelationFromGSolveUsesEquivalentDepth(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
+            basisSet = solver.solveEVP(evp, nModes=2);
+            z = linspace(zDomain(1), zDomain(2), 8).';
+
+            dGdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
+            expectedF = dGdz .* basisSet.h ./ basisSet.normalizationFactors("unity");
+
+            testCase.verifyEqual(basisSet.F(z, normalization="unity"), expectedF, RelTol=1e-12, AbsTol=1e-12)
+        end
+
+        function defaultRelationFromFSolveUsesHydrostaticInverse(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g);
+            basisSet = solver.solveEVP(evp, nModes=3);
+            z = linspace(zDomain(1), zDomain(2), 8).';
+
+            dFdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
+            expectedG = -(g./N2(z)).*dFdz ./ basisSet.normalizationFactors("unity");
+
+            testCase.verifyEqual(basisSet.G(z, normalization="unity"), expectedG, RelTol=1e-12, AbsTol=1e-12)
+        end
+
+        function customGfromFzRelationIsUsedByBasisSet(testCase)
+            [N2, zDomain, nEVP, ~, g] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            customGfromFz = @(z,dFdz,h,ctx) 3*dFdz + 2;
+            evp = IMInternalModes(name="customRelation", formulation="F", N2=N2, zDomain=zDomain, ...
+                p=@(z,~) ones(size(z)), q=@(z,~) ones(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, ...
+                g=g, GfromFz=customGfromFz);
+            basisSet = solver.solveEVP(evp, nModes=2);
+            z = linspace(zDomain(1), zDomain(2), 8).';
+
+            dFdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
+            context = evp.contextForSolver(basisSet.solver);
+            expectedG = customGfromFz(z, dFdz, basisSet.h, context) ./ basisSet.normalizationFactors("unity");
+
+            testCase.verifyEqual(basisSet.G(z, normalization="unity"), expectedG, RelTol=1e-12, AbsTol=1e-12)
+        end
+
+        function waveFactoryInverseRelationsUseWaveDenominators(testCase)
+            [N2, zDomain, ~, f0, g] = testCase.profile();
+            z = linspace(zDomain(1), zDomain(2), 3).';
+            dFdz = [1 2; 3 4; 5 6];
+            h = [7 8];
+            k = 1e-4;
+            omega = 1e-3;
+            kEVP = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, f0=f0, g=g);
+            omegaEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=omega, f0=f0, g=g);
+            kContext = kEVP.contextForSolver(IMSolverSpectral(nEVP=16).configuredForEVP(kEVP));
+            omegaContext = omegaEVP.contextForSolver(IMSolverSpectral(nEVP=16).configuredForEVP(omegaEVP));
+
+            expectedK = -(g./(N2(z) - f0*f0 - g*reshape(h,1,[])*k*k)).*dFdz;
+            expectedOmega = -(g./(N2(z) - omega*omega)).*dFdz;
+
+            testCase.verifyEqual(kEVP.GfromFz(z, dFdz, h, kContext), expectedK, RelTol=1e-12)
+            testCase.verifyEqual(omegaEVP.GfromFz(z, dFdz, h, omegaContext), expectedOmega, RelTol=1e-12)
+        end
+
         function evpContextOwnsDomainAndInternalModeMedium(testCase)
             [N2, zDomain, nEVP, f0, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);

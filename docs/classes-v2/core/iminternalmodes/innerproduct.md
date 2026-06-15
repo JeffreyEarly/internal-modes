@@ -3,7 +3,7 @@ layout: default
 title: innerProduct
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 10
+nav_order: 12
 mathjax: true
 ---
 

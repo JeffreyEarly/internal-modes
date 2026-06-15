@@ -25,7 +25,8 @@ Describe canonical EVPs with internal-mode interpretation.
 `IMInternalModes` translates standard `F` and `G` internal-mode
 problems into the canonical scalar EVP. The solved scalar `u` is
 either `F` or `G`; the other variable is recovered diagnostically by
-the resulting `IMInternalModesBasis`.
+the relation handles `FfromGz` and `GfromFz` on the resulting
+`IMInternalModesBasis`.
 Internal-mode EVPs own the stratification profile `N2` and physical
 vertical domain used by solvers and basis sets.
 
@@ -51,6 +52,8 @@ G = basisSet.G(linspace(-4000,0,200).');
 + Summarize internal-mode EVPs
   + [`summarize`](/internal-modes/classes-v2/core/iminternalmodes/summarize.html) Print a readable internal-mode EVP summary.
 + Inspect internal-mode configuration
+  + [`FfromGz`](/internal-modes/classes-v2/core/iminternalmodes/ffromgz.html) Diagnostic relation from `G` derivative to `F`.
+  + [`GfromFz`](/internal-modes/classes-v2/core/iminternalmodes/gfromfz.html) Diagnostic relation from `F` derivative to `G`.
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodes/n2.html) Buoyancy frequency squared function.
   + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.

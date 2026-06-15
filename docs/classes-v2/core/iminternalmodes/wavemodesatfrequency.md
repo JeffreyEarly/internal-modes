@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtFrequency
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 13
+nav_order: 15
 mathjax: true
 ---
 
@@ -33,7 +33,8 @@ Create the fixed-frequency wave-mode EVP.
 ## Discussion
 
   The canonical scalar form is
-  $$-G''=\lambda(N^2-\omega^2)G/g.$$
+  $$-\frac{\partial^2 G}{\partial z^2}(z)
+  =\lambda\frac{N^2(z)-\omega^2}{g}G(z).$$
   Solved fixed-frequency basis sets install the `omegaConstant`
   normalization rule and use it by default. This factory adds
   `parameters.omega` and sets `parameters.formulation`,

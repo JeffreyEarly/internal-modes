@@ -29,4 +29,5 @@ Evaluate `F` modes.
 
   If the EVP formulation is `F`, this evaluates the solved
   canonical variable. If the formulation is `G`, `F` is recovered
-  from $$F=hG_z$$.
+  by `evp.FfromGz`; the default relation is
+  $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$

@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticFModes
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 8
+nav_order: 10
 mathjax: true
 ---
 
@@ -31,7 +31,9 @@ Create the hydrostatic `F` internal-mode EVP.
 ## Discussion
 
   The canonical scalar form is
-  $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
+  $$-\frac{\partial}{\partial z}\left(N^{-2}(z)
+  \frac{\partial F}{\partial z}(z)\right)
+  =\lambda\frac{F(z)}{g}.$$
   The barotropic zero mode is inferred from the canonical left
   problem during mode selection.
   This factory sets `parameters.formulation` and `parameters.g`;

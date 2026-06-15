@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtWavenumber
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 14
+nav_order: 16
 mathjax: true
 ---
 
@@ -33,7 +33,8 @@ Create the fixed-wavenumber wave-mode EVP.
 ## Discussion
 
   The canonical scalar form is
-  $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
+  $$-\frac{\partial^2 G}{\partial z^2}(z)+K^2G(z)
+  =\lambda\frac{N^2(z)-f_0^2}{g}G(z).$$
   Solved fixed-wavenumber basis sets install the `kConstant`
   normalization rule and use it by default.
   This factory adds `parameters.k` and sets

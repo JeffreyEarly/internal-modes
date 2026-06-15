@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 12
+nav_order: 14
 mathjax: true
 ---
 

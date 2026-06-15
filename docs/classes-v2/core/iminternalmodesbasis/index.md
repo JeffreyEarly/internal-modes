@@ -23,9 +23,12 @@ Store solved internal-mode basis functions.
 ## Overview
 
 `IMInternalModesBasis` evaluates the physical variables with explicit
-`F(z)` and `G(z)` methods. If the EVP solves `G`, then
-$$F_j=h_j G'_j.$$ If the EVP solves `F`, then
-$$G_j=-gN^{-2}F'_j.$$
+`F(z)` and `G(z)` methods. If the EVP solves `G`, then `F(z)` is
+recovered by `evp.FfromGz`, whose default relation is
+$$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+If the EVP solves `F`, then `G(z)` is recovered by `evp.GfromFz`.
+The default inverse is hydrostatic, but wave factories install
+wave-specific inverse relations.
 Normalization is shared across both variables: if a rule gives scale
 $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
 that same factor. Standard rules are installed on the basis set, and

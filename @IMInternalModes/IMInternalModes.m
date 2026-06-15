@@ -4,7 +4,8 @@ classdef IMInternalModes < IMEigenvalueProblem
     % `IMInternalModes` translates standard `F` and `G` internal-mode
     % problems into the canonical scalar EVP. The solved scalar `u` is
     % either `F` or `G`; the other variable is recovered diagnostically by
-    % the resulting `IMInternalModesBasis`.
+    % the relation handles `FfromGz` and `GfromFz` on the resulting
+    % `IMInternalModesBasis`.
     % Internal-mode EVPs own the stratification profile `N2` and physical
     % vertical domain used by solvers and basis sets.
     %
@@ -69,6 +70,27 @@ classdef IMInternalModes < IMEigenvalueProblem
         %
         % - Topic: Inspect internal-mode configuration
         hFromEigenvalue = @(lambda) 1 ./ lambda
+
+        % Diagnostic relation from `G` derivative to `F`.
+        %
+        % `FfromGz` has signature `F = FfromGz(z,dGdz,h,ctx)`. The default
+        % relation is
+        % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+        %
+        % - Topic: Inspect internal-mode configuration
+        FfromGz = @(z,dGdz,h,ctx) dGdz .* reshape(h, 1, [])
+
+        % Diagnostic relation from `F` derivative to `G`.
+        %
+        % `GfromFz` has signature `G = GfromFz(z,dFdz,h,ctx)`. The default
+        % relation is the hydrostatic inverse
+        % $$G_j(z)=-\frac{g}{N^2(z)}
+        % \frac{\partial F_j}{\partial z}(z).$$
+        % Wave-mode factories install relation handles with the
+        % appropriate wave correction factors.
+        %
+        % - Topic: Inspect internal-mode configuration
+        GfromFz = @(z,dFdz,h,ctx) -(ctx.g./ctx.N2(z(:))).*dFdz
     end
 
     methods
@@ -94,6 +116,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
+            % - Parameter options.FfromGz: diagnostic relation from `G` derivative to `F`
+            % - Parameter options.GfromFz: diagnostic relation from `F` derivative to `G`
             % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: internal-mode EVP descriptor
             arguments
@@ -109,6 +133,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.hFromEigenvalue function_handle = @(lambda) 1 ./ lambda
+                options.FfromGz function_handle = @(z,dGdz,h,ctx) dGdz .* reshape(h, 1, [])
+                options.GfromFz function_handle = @(z,dFdz,h,ctx) -(ctx.g./ctx.N2(z(:))).*dFdz
                 options.parameters struct = struct()
             end
 
@@ -126,6 +152,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             self.f0 = options.f0;
             self.g = options.g;
             self.hFromEigenvalue = options.hFromEigenvalue;
+            self.FfromGz = options.FfromGz;
+            self.GfromFz = options.GfromFz;
         end
 
         summarize(self, solver)
@@ -216,7 +244,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the hydrostatic `G` internal-mode EVP.
             %
             % The canonical scalar form is
-            % $$-G''=\lambda N^2G/g.$$
+            % $$-\frac{\partial^2 G}{\partial z^2}(z)
+            % =\lambda\frac{N^2(z)}{g}G(z).$$
             % Solved hydrostatic basis sets install the `geostrophic`
             % normalization rule and use it by default. This factory sets
             % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
@@ -256,7 +285,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the hydrostatic `F` internal-mode EVP.
             %
             % The canonical scalar form is
-            % $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
+            % $$-\frac{\partial}{\partial z}\left(N^{-2}(z)
+            % \frac{\partial F}{\partial z}(z)\right)
+            % =\lambda\frac{F(z)}{g}.$$
             % The barotropic zero mode is inferred from the canonical left
             % problem during mode selection.
             % This factory sets `parameters.formulation` and `parameters.g`;
@@ -289,7 +320,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the fixed-wavenumber wave-mode EVP.
             %
             % The canonical scalar form is
-            % $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
+            % $$-\frac{\partial^2 G}{\partial z^2}(z)+K^2G(z)
+            % =\lambda\frac{N^2(z)-f_0^2}{g}G(z).$$
             % Solved fixed-wavenumber basis sets install the `kConstant`
             % normalization rule and use it by default.
             % This factory adds `parameters.k` and sets
@@ -317,18 +349,21 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             k = options.k;
             parameters = struct("k", k);
+            GfromFz = @(z,dFdz,h,ctx) -(ctx.g./(ctx.N2(z(:)) - ctx.f0*ctx.f0 - ctx.g*reshape(h,1,[])*k*k)).*dFdz;
             evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
                 f0=options.f0, g=options.g, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, parameters=parameters);
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
+                GfromFz=GfromFz, parameters=parameters);
         end
 
         function evp = waveModesAtFrequency(options)
             % Create the fixed-frequency wave-mode EVP.
             %
             % The canonical scalar form is
-            % $$-G''=\lambda(N^2-\omega^2)G/g.$$
+            % $$-\frac{\partial^2 G}{\partial z^2}(z)
+            % =\lambda\frac{N^2(z)-\omega^2}{g}G(z).$$
             % Solved fixed-frequency basis sets install the `omegaConstant`
             % normalization rule and use it by default. This factory adds
             % `parameters.omega` and sets `parameters.formulation`,
@@ -356,11 +391,13 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             omega = options.omega;
             parameters = struct("omega", omega);
+            GfromFz = @(z,dFdz,h,ctx) -(ctx.g./(ctx.N2(z(:)) - omega*omega)).*dFdz;
             evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g, ...
                 f0=options.f0, g=options.g, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, parameters=parameters);
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
+                GfromFz=GfromFz, parameters=parameters);
         end
     end
 end
