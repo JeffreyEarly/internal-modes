@@ -23,7 +23,7 @@ Create a solved scalar basis set.
 + `options.evp`  canonical EVP descriptor
 + `options.nativeModes`  native mode columns
 + `options.eigenvalues`  retained eigenvalues
-+ `options.modeNumber`  physical mode numbers
++ `options.modeNumber`  retained-mode labels
 + `options.modeSelectionDiagnostics`  mode-selection diagnostics
 + `options.normalization`  active normalization rule name
 + `options.metadata`  additional metadata

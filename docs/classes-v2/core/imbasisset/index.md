@@ -58,7 +58,7 @@ factors = basisSet.normalizationFactors("unity");
   + [`eigenvalues`](/internal-modes/classes-v2/core/imbasisset/eigenvalues.html) Retained eigenvalues.
   + [`evp`](/internal-modes/classes-v2/core/imbasisset/evp.html) descriptor that was solved.
   + [`metadata`](/internal-modes/classes-v2/core/imbasisset/metadata.html) Additional metadata.
-  + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Physical mode numbers.
+  + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Retained-mode labels.
   + [`modeSelectionDiagnostics`](/internal-modes/classes-v2/core/imbasisset/modeselectiondiagnostics.html) Mode-selection diagnostics.
   + [`zDomain`](/internal-modes/classes-v2/core/imbasisset/zdomain.html) Physical vertical domain.
 
