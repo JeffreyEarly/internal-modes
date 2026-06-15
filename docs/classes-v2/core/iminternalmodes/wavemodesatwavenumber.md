@@ -36,4 +36,5 @@ Create the fixed-wavenumber wave-mode EVP.
   $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
   Solved fixed-wavenumber basis sets install the `kConstant`
   normalization rule and use it by default.
-  Parameters include `k`, `formulation`, `f0`, and `g`.
+  This factory adds `parameters.k` and sets
+  `parameters.formulation`, `parameters.f0`, and `parameters.g`.

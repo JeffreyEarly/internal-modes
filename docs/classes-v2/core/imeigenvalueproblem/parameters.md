@@ -19,9 +19,10 @@ Additional coefficient parameters.
   Fields are copied into the coefficient context so custom
   coefficient functions can read named values without new public
   properties. `parameters` is not the whole coefficient context; it
-  is merged into the context provided by the solver and EVP.
-  Standard internal-mode factories add fields `f0`, `g`, and
-  `formulation`; wave-mode factories also add `k` or `omega`.
+  is merged into the context provided by the solver and EVP, such
+  as `zDomain`. Subclasses and factories may add or reserve
+  additional fields; check their documentation before reusing field
+  names.
 
   ```matlab
   evp = IMEigenvalueProblem( ...

@@ -16,4 +16,5 @@ Gravitational acceleration.
 
 ## Discussion
 
-  `g` is copied into `parameters.g` and into coefficient contexts.
+  `g` is stored in `parameters.g` and is available to coefficient
+  handles as `ctx.g`.

@@ -34,4 +34,6 @@ Create the hydrostatic `F` internal-mode EVP.
   $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
   The barotropic zero mode is inferred from the canonical left
   problem during mode selection.
-  Parameters include `formulation` and `g`.
+  This factory sets `parameters.formulation` and `parameters.g`;
+  `parameters.f0` is supplied by the internal-mode constructor
+  default.

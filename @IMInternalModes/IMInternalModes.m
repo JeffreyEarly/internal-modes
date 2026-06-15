@@ -28,7 +28,8 @@ classdef IMInternalModes < IMEigenvalueProblem
         %
         % `formulation` tells the canonical solver which variable is the
         % native unknown `u`. The complementary variable is evaluated
-        % diagnostically by `IMInternalModesBasis`.
+        % diagnostically by `IMInternalModesBasis`. Coefficient handles can
+        % read this value as `ctx.formulation`.
         %
         % - Topic: Inspect internal-mode configuration
         formulation = "G"
@@ -44,14 +45,16 @@ classdef IMInternalModes < IMEigenvalueProblem
 
         % Coriolis parameter.
         %
-        % `f0` is copied into `parameters.f0` and into coefficient contexts.
+        % `f0` is stored in `parameters.f0` and is available to coefficient
+        % handles as `ctx.f0`.
         %
         % - Topic: Inspect internal-mode configuration
         f0 = 0
 
         % Gravitational acceleration.
         %
-        % `g` is copied into `parameters.g` and into coefficient contexts.
+        % `g` is stored in `parameters.g` and is available to coefficient
+        % handles as `ctx.g`.
         %
         % - Topic: Inspect internal-mode configuration
         g = 9.81
@@ -70,6 +73,11 @@ classdef IMInternalModes < IMEigenvalueProblem
     methods
         function self = IMInternalModes(options)
             % Create an internal-mode canonical EVP.
+            %
+            % The constructor copies `options.parameters`, then writes the
+            % internal-mode fields `f0`, `g`, and `formulation` into the
+            % parameter struct. These constructor-owned fields override
+            % same-named entries in `options.parameters`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes(options)
@@ -207,8 +215,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''=\lambda N^2G/g.$$
             % Solved hydrostatic basis sets install the `geostrophic`
-            % normalization rule and use it by default. Parameters include
-            % `formulation`, `f0`, and `g`.
+            % normalization rule and use it by default. This factory sets
+            % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
             %
             % ```matlab
             % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
@@ -248,7 +256,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
             % The barotropic zero mode is inferred from the canonical left
             % problem during mode selection.
-            % Parameters include `formulation` and `g`.
+            % This factory sets `parameters.formulation` and `parameters.g`;
+            % `parameters.f0` is supplied by the internal-mode constructor
+            % default.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
@@ -279,7 +289,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
             % Solved fixed-wavenumber basis sets install the `kConstant`
             % normalization rule and use it by default.
-            % Parameters include `k`, `formulation`, `f0`, and `g`.
+            % This factory adds `parameters.k` and sets
+            % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
@@ -316,8 +327,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''=\lambda(N^2-\omega^2)G/g.$$
             % Solved fixed-frequency basis sets install the `omegaConstant`
-            % normalization rule and use it by default. Parameters include
-            % `omega`, `formulation`, `f0`, and `g`.
+            % normalization rule and use it by default. This factory adds
+            % `parameters.omega` and sets `parameters.formulation`,
+            % `parameters.f0`, and `parameters.g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)
