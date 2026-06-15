@@ -27,8 +27,8 @@ scalar problem
 $$-(p u')' + q u = \lambda r u,$$
 with endpoint conditions
 $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-The EVP owns the continuous problem: the physical interval, coefficient
-functions, endpoint conditions, normalization rules, and diagnostic
+The EVP owns the continuous problem: the physical interval,
+coefficient functions, endpoint conditions, and diagnostic
 definiteness checks. A solver owns only the numerical choices used to
 discretize this problem.
 
@@ -56,9 +56,7 @@ basisSet = solver.solveEVP(evp,nModes=4);
   + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
   + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
 + Inspect EVP configuration
-  + [`defaultNormalization`](/internal-modes/classes-v2/core/imeigenvalueproblem/defaultnormalization.html) Default normalization rule name.
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
-  + [`normalizationRules`](/internal-modes/classes-v2/core/imeigenvalueproblem/normalizationrules.html) Named normalization rule table.
   + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Additional coefficient parameters.
 + Inspect inner products
   + [`endpointWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/endpointweights.html) Return endpoint metric terms implied by active conditions.

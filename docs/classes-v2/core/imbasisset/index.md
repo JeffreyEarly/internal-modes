@@ -27,11 +27,14 @@ evaluates the solved variable `u` and derivative `uz`. Modal
 normalization is applied lazily when values, Gram matrices, or spectra
 are requested. For each retained mode,
 $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
-where the scale factor $$s_j$$ is supplied by the active
-normalization rule.
+where the scale factor $$s_j$$ is supplied by a basis-set
+normalization rule. Custom rules are added after solving with
+`addNormalization`.
 
 ```matlab
 basisSet = solver.solveEVP(evp,nModes=4);
+basisSet = basisSet.addNormalization("constantScaled", ...
+    @(basisSet,j) C*basisSet.innerProductNormFactor(j));
 basisSet.normalization = "unity";
 u = basisSet.u(z);
 factors = basisSet.normalizationFactors("unity");
@@ -44,6 +47,7 @@ factors = basisSet.normalizationFactors("unity");
 + Create basis sets
   + [`IMBasisSet`](/internal-modes/classes-v2/core/imbasisset/imbasisset.html) Create a solved scalar basis set.
 + Evaluate basis sets
+  + [`addNormalization`](/internal-modes/classes-v2/core/imbasisset/addnormalization.html) Add a named normalization rule.
   + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active normalization rule name.
   + [`normalizationFactors`](/internal-modes/classes-v2/core/imbasisset/normalizationfactors.html) Return scale factors for a normalization rule.
   + [`u`](/internal-modes/classes-v2/core/imbasisset/u.html) Evaluate solved scalar modes.
@@ -60,6 +64,7 @@ factors = basisSet.normalizationFactors("unity");
   + [`metadata`](/internal-modes/classes-v2/core/imbasisset/metadata.html) Additional metadata.
   + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Retained-mode labels.
   + [`modeSelectionDiagnostics`](/internal-modes/classes-v2/core/imbasisset/modeselectiondiagnostics.html) Mode-selection diagnostics.
+  + [`normalizationNames`](/internal-modes/classes-v2/core/imbasisset/normalizationnames.html) Return installed normalization rule names.
   + [`zDomain`](/internal-modes/classes-v2/core/imbasisset/zdomain.html) Physical vertical domain.
 
 

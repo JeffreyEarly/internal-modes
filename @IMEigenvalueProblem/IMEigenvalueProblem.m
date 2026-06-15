@@ -6,8 +6,8 @@ classdef IMEigenvalueProblem
     % $$-(p u')' + q u = \lambda r u,$$
     % with endpoint conditions
     % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-    % The EVP owns the continuous problem: the physical interval, coefficient
-    % functions, endpoint conditions, normalization rules, and diagnostic
+    % The EVP owns the continuous problem: the physical interval,
+    % coefficient functions, endpoint conditions, and diagnostic
     % definiteness checks. A solver owns only the numerical choices used to
     % discretize this problem.
     %
@@ -90,17 +90,6 @@ classdef IMEigenvalueProblem
         % - Topic: Define canonical coefficients
         bottomBoundary = IMBoundaryCondition.dirichlet()
 
-        % Default normalization rule name.
-        %
-        % If a basis set is created without an explicit normalization,
-        % `defaultNormalization` becomes the active `basisSet.normalization`.
-        % The value is a string naming a field in `normalizationRules`.
-        % Evaluated modes are always raw modes divided by a per-mode scale,
-        % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j.$$
-        %
-        % - Topic: Inspect EVP configuration
-        defaultNormalization = "unity"
-
         % Additional coefficient parameters.
         %
         % Fields are copied into the coefficient context so custom
@@ -120,51 +109,6 @@ classdef IMEigenvalueProblem
         parameters = struct()
     end
 
-    properties
-        % Named normalization rule table.
-        %
-        % `normalizationRules` is where custom canonical normalization
-        % rules are created. Each field stores a function handle with
-        % signature
-        % `scale = rule(basisSet,iMode)`. The returned value is the raw
-        % scale $$s_j$$ for one mode, and basis-set evaluation divides all
-        % variables for that mode by $$s_j$$. `basisSet.normalization`
-        % selects a field from this table, and
-        % `basisSet.normalizationFactors(...)` evaluates that rule for all
-        % retained modes. The canonical `unity` rule is supplied
-        % automatically when omitted:
-        % $$s_j=\|u_j\|_\mu.$$
-        %
-        % A rule can depend on constants captured by the function handle,
-        % on the basis set, or on mode-specific quantities such as
-        % `basisSet.eigenvalues(iMode)`. For example, a constant-scaled
-        % norm can use
-        % $$s_j=C\|u_j\|_\mu,$$
-        % while an eigenvalue-scaled norm can use
-        % $$s_j=\sqrt{|\lambda_j|}\|u_j\|_\mu.$$
-        %
-        % ```matlab
-        % C = 2;
-        % rules.constantScaled = @(basisSet,iMode) ...
-        %     C*basisSet.innerProductNormFactor(iMode);
-        % rules.eigenvalueScaled = @(basisSet,iMode) ...
-        %     sqrt(abs(basisSet.eigenvalues(iMode))) * ...
-        %     basisSet.innerProductNormFactor(iMode);
-        % evp = IMEigenvalueProblem(normalizationRules=rules, ...
-        %     defaultNormalization="constantScaled");
-        % basisSet = solver.solveEVP(evp,nModes=4);
-        % basisSet.normalization = "eigenvalueScaled";
-        % factors = basisSet.normalizationFactors();
-        % ```
-        %
-        % The internal-mode `Normalization` enum is a convenience for
-        % `IMInternalModes` conventions. Generic canonical EVPs use string
-        % rule names.
-        %
-        % - Topic: Inspect EVP configuration
-        normalizationRules = struct()
-    end
-
     methods
         function self = IMEigenvalueProblem(options)
             % Create a canonical scalar EVP.
@@ -178,8 +122,6 @@ classdef IMEigenvalueProblem
             % - Parameter options.r: eigenvalue-side metric coefficient
             % - Parameter options.surfaceBoundary: surface endpoint condition
             % - Parameter options.bottomBoundary: bottom endpoint condition
-            % - Parameter options.defaultNormalization: default normalization rule name
-            % - Parameter options.normalizationRules: named normalization rule handles
             % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: canonical EVP descriptor
             arguments
@@ -190,8 +132,6 @@ classdef IMEigenvalueProblem
                 options.r = @(z,~) ones(size(z))
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.defaultNormalization {mustBeTextScalar} = "unity"
-                options.normalizationRules struct = struct()
                 options.parameters struct = struct()
             end
 
@@ -202,8 +142,6 @@ classdef IMEigenvalueProblem
             self.r = options.r;
             self.surfaceBoundary = options.surfaceBoundary;
             self.bottomBoundary = options.bottomBoundary;
-            self.defaultNormalization = string(options.defaultNormalization);
-            self.normalizationRules = IMEigenvalueProblem.resolveNormalizationRules(options.normalizationRules);
             self.parameters = options.parameters;
         end
 
@@ -824,14 +762,5 @@ classdef IMEigenvalueProblem
             tolerance = tau*max(1,max(abs(values(:))));
         end
 
-        function normalizationRules = resolveNormalizationRules(normalizationRules)
-            arguments
-                normalizationRules struct
-            end
-
-            if ~isfield(normalizationRules, "unity")
-                normalizationRules.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode);
-            end
-        end
     end
 end

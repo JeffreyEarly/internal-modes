@@ -300,45 +300,75 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [~, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             constantScale = 3;
-            rules.constantScaled = @(basisSet,iMode) constantScale*basisSet.innerProductNormFactor(iMode);
-            rules.eigenvalueScaled = @(basisSet,iMode) sqrt(abs(basisSet.eigenvalues(iMode))) ...
-                * basisSet.innerProductNormFactor(iMode);
-            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1, ...
-                normalizationRules=rules, defaultNormalization="constantScaled");
-
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
             basisSet = solver.solveEVP(evp, nModes=2);
+            basisSet = basisSet.addNormalization("constantScaled", ...
+                @(basisSet,iMode) constantScale*basisSet.innerProductNormFactor(iMode));
+            basisSet = basisSet.addNormalization("eigenvalueScaled", ...
+                @(basisSet,iMode) sqrt(abs(basisSet.eigenvalues(iMode))) * basisSet.innerProductNormFactor(iMode));
+            basisSet.normalization = "constantScaled";
+
             z = linspace(zDomain(1), zDomain(2), 8).';
             unityFactors = basisSet.normalizationFactors("unity");
             constantFactors = basisSet.normalizationFactors("constantScaled");
             eigenvalueFactors = basisSet.normalizationFactors("eigenvalueScaled");
+            names = basisSet.normalizationNames();
 
             testCase.verifyFalse(isprop(evp, "normalizations"))
-            testCase.verifyTrue(isprop(evp, "normalizationRules"))
-            testCase.verifyEqual(evp.defaultNormalization, "constantScaled")
+            testCase.verifyFalse(isprop(evp, "normalization" + "Rules"))
+            testCase.verifyFalse(isprop(evp, "default" + "Normalization"))
+            testCase.verifyTrue(ismember("constantScaled", names))
+            testCase.verifyTrue(ismember("eigenvalueScaled", names))
             testCase.verifyEqual(basisSet.normalization, "constantScaled")
             testCase.verifyEqual(constantFactors, constantScale*unityFactors, RelTol=1e-12)
             testCase.verifyEqual(eigenvalueFactors, sqrt(abs(basisSet.eigenvalues)).*unityFactors, RelTol=1e-12)
             testCase.verifyEqual(basisSet.u(z), basisSet.u(z, normalization="unity")/constantScale, RelTol=1e-12)
+
+            overwriteScale = 4;
+            basisSet = basisSet.addNormalization("constantScaled", ...
+                @(basisSet,iMode) overwriteScale*basisSet.innerProductNormFactor(iMode));
+            testCase.verifyEqual(basisSet.normalizationFactors("constantScaled"), ...
+                overwriteScale*unityFactors, RelTol=1e-12)
         end
 
-        function internalModeNormalizationRulesAcceptEnumsAndMergeCustomRules(testCase)
+        function internalModeBasisAcceptsEnumsAndAddNormalization(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            rules.customG = @(basisSet,iMode) 2*basisSet.innerProductNormFactor(iMode, variable="G");
             evp = IMInternalModes(name="customInternalNormalization", formulation="G", N2=N2, zDomain=zDomain, ...
-                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), r=@(z,ctx) ctx.N2(z)/ctx.g, ...
-                normalizationRules=rules, defaultNormalization=Normalization.unity);
-
+                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), r=@(z,ctx) ctx.N2(z)/ctx.g);
             basisSet = solver.solveEVP(evp, nModes=2);
+            basisSet = basisSet.addNormalization("customG", ...
+                @(basisSet,iMode) 2*basisSet.innerProductNormFactor(iMode, variable="G"));
+            names = basisSet.normalizationNames();
 
-            testCase.verifyEqual(evp.defaultNormalization, "unity")
-            testCase.verifyTrue(isfield(evp.normalizationRules, "customG"))
-            testCase.verifyTrue(isfield(evp.normalizationRules, "geostrophic"))
+            testCase.verifyEqual(basisSet.normalization, "unity")
+            testCase.verifyTrue(ismember("customG", names))
+            testCase.verifyFalse(ismember("geostrophic", names))
             testCase.verifyEqual(basisSet.normalizationFactors("customG"), ...
                 2*basisSet.normalizationFactors(Normalization.unity), RelTol=1e-12)
-            basisSet.normalization = Normalization.geostrophic;
+            basisSet.normalization = Normalization.unity;
             testCase.verifyEqual(basisSet.normalizationFactors(), ...
-                basisSet.normalizationFactors("geostrophic"), RelTol=1e-12)
+                basisSet.normalizationFactors("unity"), RelTol=1e-12)
+        end
+
+        function standardInternalModeFactoryDefaultsAreInstalledOnBasisSets(testCase)
+            [N2, zDomain, nEVP, f0] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+
+            hydrostaticBasis = solver.solveEVP(IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain), nModes=2);
+            wavenumberBasis = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, f0=f0), nModes=2);
+            frequencyBasis = solver.solveEVP(IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0), nModes=2);
+
+            testCase.verifyEqual(hydrostaticBasis.normalization, "geostrophic")
+            testCase.verifyTrue(ismember("geostrophic", hydrostaticBasis.normalizationNames()))
+            testCase.verifyEqual(wavenumberBasis.normalization, "kConstant")
+            testCase.verifyTrue(ismember("kConstant", wavenumberBasis.normalizationNames()))
+            testCase.verifyFalse(ismember("geostrophic", wavenumberBasis.normalizationNames()))
+            testCase.verifyEqual(frequencyBasis.normalization, "omegaConstant")
+            testCase.verifyTrue(ismember("omegaConstant", frequencyBasis.normalizationNames()))
+            testCase.verifyFalse(ismember("geostrophic", frequencyBasis.normalizationNames()))
+            testCase.verifyError(@() wavenumberBasis.normalizationFactors(Normalization.geostrophic), ...
+                "IMBasisSet:UnsupportedNormalization")
         end
 
         function basisSetValidationRejectsBadScalarAnalysisInputs(testCase)

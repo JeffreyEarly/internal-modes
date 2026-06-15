@@ -7,9 +7,8 @@ classdef IMInternalModesBasis < IMBasisSet
     % $$G_j=-gN^{-2}F'_j.$$
     % Normalization is shared across both variables: if a rule gives scale
     % $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
-    % that same factor. Standard rules are installed on
-    % `basisSet.evp.normalizationRules`, and custom rules should be added
-    % when the `IMInternalModes` EVP is created.
+    % that same factor. Standard rules are installed on the basis set, and
+    % custom rules are added after solving with `addNormalization`.
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
@@ -86,6 +85,10 @@ classdef IMInternalModesBasis < IMBasisSet
             self.N2 = IMInternalModesBasis.resolveN2(options.N2, options.evp);
             self.h = IMInternalModesBasis.resolveEquivalentDepths(options.h, self.eigenvalues, options.evp);
             self.validateEquivalentDepthCount();
+            self = self.installInternalModeNormalizationRules();
+            if isempty(options.normalization)
+                self.normalization = IMInternalModesBasis.initialNormalizationForEVP(self.evp);
+            end
         end
 
         function G = G(self, z, options)
@@ -269,8 +272,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % This is the raw factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
             % to `F` or `G`. If `variable` is omitted, the solved
-            % formulation is used. Custom normalization rules call this
-            % method from `evp.normalizationRules`.
+            % formulation is used. Custom normalization rules registered
+            % with `addNormalization` call this method.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
@@ -491,6 +494,21 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Access = private)
+        function self = installInternalModeNormalizationRules(self)
+            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="F"));
+            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="G"));
+            self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
+
+            switch string(self.evp.name)
+                case {"hydrostaticGModes", "hydrostaticFModes"}
+                    self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
+                case "waveModesAtWavenumber"
+                    self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
+                case "waveModesAtFrequency"
+                    self = self.addNormalization("omegaConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="F"));
+            end
+        end
+
         function [variable, zMin, zMax] = parseVariableBounds(self, varargin)
             switch numel(varargin)
                 case 2
@@ -562,6 +580,19 @@ classdef IMInternalModesBasis < IMBasisSet
             if isempty(h) && ~isempty(eigenvalues)
                 h = evp.hFromEigenvalue(reshape(eigenvalues,1,[]));
                 h = reshape(h,1,[]);
+            end
+        end
+
+        function normalization = initialNormalizationForEVP(evp)
+            switch string(evp.name)
+                case {"hydrostaticGModes", "hydrostaticFModes"}
+                    normalization = "geostrophic";
+                case "waveModesAtWavenumber"
+                    normalization = "kConstant";
+                case "waveModesAtFrequency"
+                    normalization = "omegaConstant";
+                otherwise
+                    normalization = "unity";
             end
         end
 

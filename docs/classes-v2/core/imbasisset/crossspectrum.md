@@ -3,7 +3,7 @@ layout: default
 title: crossSpectrum
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 2
+nav_order: 3
 mathjax: true
 ---
 

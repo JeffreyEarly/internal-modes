@@ -3,7 +3,7 @@ layout: default
 title: surfaceBoundary
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 21
+nav_order: 19
 mathjax: true
 ---
 

@@ -3,7 +3,7 @@ layout: default
 title: selectModes
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 20
+nav_order: 18
 mathjax: true
 ---
 

@@ -72,7 +72,7 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
             % - Parameter options.b: exponential e-folding depth
             % - Parameter options.zDomain: physical vertical domain with surface at zero
             % - Parameter options.nModes: number of retained modes
-            % - Parameter options.normalization: active normalization rule; omitted uses the EVP default
+            % - Parameter options.normalization: active normalization rule; omitted uses the basis-set default
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact exponential-stratification basis set
             arguments

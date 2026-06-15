@@ -3,7 +3,7 @@ layout: default
 title: makeBasisSet
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 10
+nav_order: 9
 mathjax: true
 ---
 

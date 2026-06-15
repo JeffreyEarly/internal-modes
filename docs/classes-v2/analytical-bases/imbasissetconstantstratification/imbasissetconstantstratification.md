@@ -23,7 +23,7 @@ Create an exact constant-stratification basis set.
 + `options.N0`  constant buoyancy frequency
 + `options.zDomain`  physical vertical domain
 + `options.nModes`  number of retained modes
-+ `options.normalization`  active normalization rule; omitted uses the EVP default
++ `options.normalization`  active normalization rule; omitted uses the basis-set default
 + `options.metadata`  additional metadata
 
 ## Returns

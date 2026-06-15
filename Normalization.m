@@ -1,15 +1,15 @@
 classdef Normalization
     % Enumerate internal-mode normalization conventions.
     %
-    % `Normalization` names the standard scaling conventions installed by
-    % `IMInternalModes`. Each enum value maps to a field in
-    % `evp.normalizationRules`; `IMInternalModesBasis.normalizationFactors`
+    % `Normalization` names standard scaling conventions installed by
+    % internal-mode basis sets. Each enum value resolves to a basis-set
+    % normalization rule; `IMInternalModesBasis.normalizationFactors`
     % evaluates the selected rule and returns a per-mode factor $$s_j$$.
     % Evaluated internal-mode variables divide both $$F_j$$ and $$G_j$$ by
     % that same factor:
     % $$V_j^{\mathrm{out}}(z)=V_j^{\mathrm{raw}}(z)/s_j.$$
-    % Generic canonical EVPs use string rule names directly, while
-    % internal-mode users may use either strings or these enum values.
+    % Generic canonical basis sets use string rule names directly, while
+    % internal-mode basis sets may use either strings or these enum values.
     %
     % The internal-mode values are:
     %

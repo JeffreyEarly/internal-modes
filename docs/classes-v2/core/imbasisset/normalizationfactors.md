@@ -3,7 +3,7 @@ layout: default
 title: normalizationFactors
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 11
+nav_order: 12
 mathjax: true
 ---
 
@@ -29,12 +29,12 @@ Return scale factors for a normalization rule.
   For a requested rule name this returns the row vector
   $$s_j$$ used by evaluation methods:
   $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-  The default scalar `"unity"` rule uses
+  The default scalar `"unity"` rule is installed on every
+  scalar basis set and uses
   $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-  product. Custom rules are created on
-  `basisSet.evp.normalizationRules`, the default rule is named
-  by `basisSet.evp.defaultNormalization`, and the active rule
-  is selected by `basisSet.normalization`.
+  product. Custom rules are added to the basis set with
+  `addNormalization`, and the active rule is selected by
+  `basisSet.normalization`.
 
   ```matlab
   factors = basisSet.normalizationFactors("unity");

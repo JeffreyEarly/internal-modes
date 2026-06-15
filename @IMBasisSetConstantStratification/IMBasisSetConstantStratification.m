@@ -60,7 +60,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             % - Parameter options.N0: constant buoyancy frequency
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nModes: number of retained modes
-            % - Parameter options.normalization: active normalization rule; omitted uses the EVP default
+            % - Parameter options.normalization: active normalization rule; omitted uses the basis-set default
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact constant-stratification basis set
             arguments
@@ -95,7 +95,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
         end
 
         function factors = normalizationFactors(self, normalization)
-            % Return EVP-defined normalization factors.
+            % Return basis-set normalization factors.
             %
             % - Topic: Evaluate basis sets
             % - Declaration: factors = normalizationFactors(basisSet,normalization)

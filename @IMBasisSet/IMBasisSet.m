@@ -6,11 +6,14 @@ classdef IMBasisSet
     % normalization is applied lazily when values, Gram matrices, or spectra
     % are requested. For each retained mode,
     % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
-    % where the scale factor $$s_j$$ is supplied by the active
-    % normalization rule.
+    % where the scale factor $$s_j$$ is supplied by a basis-set
+    % normalization rule. Custom rules are added after solving with
+    % `addNormalization`.
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
+    % basisSet = basisSet.addNormalization("constantScaled", ...
+    %     @(basisSet,j) C*basisSet.innerProductNormFactor(j));
     % basisSet.normalization = "unity";
     % u = basisSet.u(z);
     % factors = basisSet.normalizationFactors("unity");
@@ -26,8 +29,8 @@ classdef IMBasisSet
     properties
         % Active normalization rule name.
         %
-        % This string selects a field in `basisSet.evp.normalizationRules`;
-        % create custom rules on the EVP, not on the basis set.
+        % This string selects a rule in the basis-set normalization
+        % registry. Create custom rules with `addNormalization`.
         % The selected rule returns the scale factor $$s_j$$ used by `u`,
         % `uz`, and Gram-matrix methods. Passing `normalization=...` to an
         % evaluation method overrides this property for that call.
@@ -125,6 +128,11 @@ classdef IMBasisSet
         zDomain
     end
 
+    properties (Access = private)
+        % Map from normalization names to rule handles.
+        normalizationNameMap
+    end
+
     methods
         function self = IMBasisSet(options)
             % Create a solved scalar basis set.
@@ -160,9 +168,11 @@ classdef IMBasisSet
             nModes = max(size(options.nativeModes,2), length(self.eigenvalues));
             self.modeNumber = IMBasisSet.resolveModeNumber(options.modeNumber, nModes);
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
-            self.normalization = IMBasisSet.resolveDefaultNormalization(options.normalization, options.evp);
+            self.normalization = IMBasisSet.initialNormalization(options.normalization);
             self.metadata = options.metadata;
             self.zDomain = options.zDomain;
+            self.normalizationNameMap = configureDictionary("string","cell");
+            self = self.addNormalization("unity", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode));
 
             if any(isnan(self.zDomain)) && ~isempty(self.evp)
                 self.zDomain = self.evp.zDomain;
@@ -171,6 +181,70 @@ classdef IMBasisSet
                     self.zDomain = self.solver.zDomain;
                 end
             end
+        end
+
+        function self = addNormalization(self, name, rule)
+            % Add a named normalization rule.
+            %
+            % `addNormalization` registers or replaces one rule on this
+            % basis set. The rule has signature
+            % `scale = rule(basisSet,iMode)` and returns the raw scale
+            % factor $$s_j$$ for retained mode `iMode`. Evaluated modes use
+            % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
+            %
+            % For a constant-scaled norm,
+            % $$s_j=C\|u_j\|_\mu,$$
+            % use:
+            %
+            % ```matlab
+            % C = 2;
+            % basisSet = basisSet.addNormalization("constantScaled", ...
+            %     @(basisSet,j) C*basisSet.innerProductNormFactor(j));
+            % basisSet.normalization = "constantScaled";
+            % ```
+            %
+            % For an eigenvalue-scaled norm,
+            % $$s_j=\sqrt{|\lambda_j|}\|u_j\|_\mu,$$
+            % use:
+            %
+            % ```matlab
+            % basisSet = basisSet.addNormalization("eigenvalueScaled", ...
+            %     @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j))) * ...
+            %     basisSet.innerProductNormFactor(j));
+            % ```
+            %
+            % If `name` already exists, the rule is overwritten.
+            %
+            % - Topic: Evaluate basis sets
+            % - Declaration: basisSet = addNormalization(basisSet,name,rule)
+            % - Parameter name: normalization rule name
+            % - Parameter rule: function handle with signature `scale = rule(basisSet,iMode)`
+            % - Returns basisSet: basis set with the rule installed
+            arguments
+                self IMBasisSet
+                name {mustBeTextScalar}
+                rule (1,1) function_handle
+            end
+
+            name = self.normalizationName(name);
+            self.normalizationNameMap{name} = rule;
+        end
+
+        function names = normalizationNames(self)
+            % Return installed normalization rule names.
+            %
+            % `normalizationNames` reports the rules available to
+            % `normalizationFactors` and selectable by
+            % `basisSet.normalization`.
+            %
+            % - Topic: Inspect basis sets
+            % - Declaration: names = normalizationNames(basisSet)
+            % - Returns names: string array of installed normalization names
+            arguments
+                self IMBasisSet
+            end
+
+            names = sort(string(keys(self.normalizationNameMap)));
         end
 
         function values = u(self, z, options)
@@ -220,12 +294,12 @@ classdef IMBasisSet
             % For a requested rule name this returns the row vector
             % $$s_j$$ used by evaluation methods:
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-            % The default scalar `"unity"` rule uses
+            % The default scalar `"unity"` rule is installed on every
+            % scalar basis set and uses
             % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-            % product. Custom rules are created on
-            % `basisSet.evp.normalizationRules`, the default rule is named
-            % by `basisSet.evp.defaultNormalization`, and the active rule
-            % is selected by `basisSet.normalization`.
+            % product. Custom rules are added to the basis set with
+            % `addNormalization`, and the active rule is selected by
+            % `basisSet.normalization`.
             %
             % ```matlab
             % factors = basisSet.normalizationFactors("unity");
@@ -241,12 +315,12 @@ classdef IMBasisSet
                 normalization = self.normalization
             end
 
-            name = char(self.normalizationName(normalization));
-            if isempty(self.evp) || ~isfield(self.evp.normalizationRules, name)
+            name = self.normalizationName(normalization);
+            if ~isKey(self.normalizationNameMap, name)
                 error("IMBasisSet:UnsupportedNormalization", ...
-                    "The EVP does not define a ""%s"" normalization.", name);
+                    "The basis set does not define a ""%s"" normalization.", name);
             end
-            normalizeMode = self.evp.normalizationRules.(name);
+            normalizeMode = self.normalizationNameMap{name};
             nModes = self.retainedModeCount();
             factors = zeros(1,nModes);
             for iMode = 1:nModes
@@ -626,13 +700,9 @@ classdef IMBasisSet
             end
         end
 
-        function normalization = resolveDefaultNormalization(requestedNormalization, evp)
+        function normalization = initialNormalization(requestedNormalization)
             if ~isempty(requestedNormalization)
                 normalization = requestedNormalization;
-                return;
-            end
-            if ~isempty(evp) && isprop(evp, "defaultNormalization") && ~isempty(evp.defaultNormalization)
-                normalization = evp.defaultNormalization;
                 return;
             end
             normalization = "unity";

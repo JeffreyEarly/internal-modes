@@ -34,7 +34,6 @@ Create the fixed-frequency wave-mode EVP.
 
   The canonical scalar form is
   $$-G''=\lambda(N^2-\omega^2)G/g.$$
-  The default normalization is `Normalization.omegaConstant`,
-  which selects the `omegaConstant` rule in
-  `evp.normalizationRules`. Parameters include `omega`,
-  `formulation`, `f0`, and `g`.
+  Solved fixed-frequency basis sets install the `omegaConstant`
+  normalization rule and use it by default. Parameters include
+  `omega`, `formulation`, `f0`, and `g`.
