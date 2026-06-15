@@ -88,23 +88,23 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: internal-mode EVP descriptor
             arguments
                 options.name {mustBeTextScalar} = "internalModes"
-                options.zDomain (1,2) double
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.N2 function_handle
-                options.formulation {mustBeTextScalar} = "G"
+                options.formulation {mustBeTextScalar, mustBeMember(options.formulation, ["F", "G"])} = "G"
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
-                options.hFromEigenvalue = @(lambda) 1 ./ lambda
+                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
+                options.hFromEigenvalue function_handle = @(lambda) 1 ./ lambda
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
                 options.parameters struct = struct()
             end
 
-            formulation = IMInternalModes.validateFormulation(options.formulation);
+            formulation = string(options.formulation);
             parameters = options.parameters;
             parameters.f0 = options.f0;
             parameters.g = options.g;
@@ -132,6 +132,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter solver: canonical solver
             % - Returns context: coefficient context
             % - Developer: true
+            arguments
+                self IMInternalModes
+                solver IMSolver
+            end
+
             context = contextForSolver@IMEigenvalueProblem(self, solver);
             context.N2 = @(z) self.N2(z);
             context.dzLogN2 = @(z) self.dzLogN2(z);
@@ -151,6 +156,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Declaration: values = dzLogN2(evp,z)
             % - Parameter z: physical coordinate
             % - Returns values: derivative values
+            arguments
+                self IMInternalModes
+                z double {mustBeReal, mustBeFinite}
+            end
+
             z = z(:);
             if length(z) == 1
                 scale = max(1,abs(z));
@@ -177,10 +187,10 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns spec: struct with interior and endpoint metric terms
             arguments
                 self IMInternalModes
-                variable {mustBeTextScalar} = self.formulation
+                variable {mustBeTextScalar, mustBeMember(variable, ["F", "G"])} = self.formulation
             end
 
-            variable = IMInternalModes.validateFormulation(variable);
+            variable = string(variable);
             spec.variable = variable;
             if variable == "G"
                 spec.interiorWeight = @(z,ctx) ctx.N2(z)/ctx.g;
@@ -203,6 +213,15 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
             % - Returns basisSet: internal-mode basis set
             % - Developer: true
+            arguments
+                self IMInternalModes
+                solver IMSolver
+                nativeModes (:,:) double
+                eigenvalues (1,:) double {mustBeReal, mustBeFinite}
+                modeNumber (1,:) double {mustBeInteger}
+                index struct
+            end
+
             h = self.hFromEigenvalue(eigenvalues);
             basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
@@ -237,9 +256,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: hydrostatic `G` EVP
             arguments
                 options.N2 function_handle
-                options.zDomain (1,2) double
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
@@ -271,8 +290,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: hydrostatic `F` EVP
             arguments
                 options.N2 function_handle
-                options.zDomain (1,2) double
-                options.g (1,1) double {mustBePositive} = 9.81
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
             end
@@ -305,10 +324,10 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: fixed-wavenumber `G` EVP
             arguments
                 options.N2 function_handle
-                options.zDomain (1,2) double
-                options.k (1,1) double {mustBeNonnegative}
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.k (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
@@ -345,10 +364,10 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Returns evp: fixed-frequency `G` EVP
             arguments
                 options.N2 function_handle
-                options.zDomain (1,2) double
-                options.omega (1,1) double {mustBeNonnegative}
-                options.f0 (1,1) double = 0
-                options.g (1,1) double {mustBePositive} = 9.81
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.omega (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
+                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
@@ -367,14 +386,6 @@ classdef IMInternalModes < IMEigenvalueProblem
     end
 
     methods (Static, Access = private)
-        function formulation = validateFormulation(formulation)
-            formulation = string(formulation);
-            if formulation ~= "F" && formulation ~= "G"
-                error("IMInternalModes:InvalidFormulation", ...
-                    "formulation must be ""F"" or ""G"".");
-            end
-        end
-
         function normalizations = standardNormalizations()
             normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(basisSet.evp.formulation, iMode);
             normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);

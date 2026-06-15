@@ -137,6 +137,36 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(fSpec.interiorWeight(z, context), ones(size(z)), AbsTol=0)
         end
 
+        function internalModeValidationUsesBuiltInArgumentValidation(testCase)
+            [N2, zDomain] = testCase.profile();
+            badFormulationThrows = false;
+            badVariableThrows = false;
+            badWavenumberThrows = false;
+
+            evp = IMInternalModes(name="charFormulation", formulation='F', N2=N2, zDomain=zDomain, ...
+                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), r=@(z,~) ones(size(z)));
+            try
+                IMInternalModes(formulation="u", N2=N2, zDomain=zDomain);
+            catch
+                badFormulationThrows = true;
+            end
+            try
+                evp.innerProduct("u");
+            catch
+                badVariableThrows = true;
+            end
+            try
+                IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=Inf);
+            catch
+                badWavenumberThrows = true;
+            end
+
+            testCase.verifyEqual(evp.formulation, "F")
+            testCase.verifyTrue(badFormulationThrows)
+            testCase.verifyTrue(badVariableThrows)
+            testCase.verifyTrue(badWavenumberThrows)
+        end
+
         function solverReturnsInternalModesBasisWithFAndG(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);

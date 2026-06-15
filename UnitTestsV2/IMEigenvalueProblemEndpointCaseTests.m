@@ -30,6 +30,28 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(bottom.metricWeight("bottom"), -1, AbsTol=0)
         end
 
+        function endpointDiagnosticsUseBuiltInArgumentValidation(testCase)
+            evp = IMEigenvalueProblem();
+            badLocationThrows = false;
+            badToleranceThrows = false;
+
+            try
+                evp.endpointWeights("middle");
+            catch
+                badLocationThrows = true;
+            end
+            try
+                evp.negativeEndpointWeightCount(tolerance=Inf);
+            catch
+                badToleranceThrows = true;
+            end
+
+            testCase.verifyTrue(badLocationThrows)
+            testCase.verifyTrue(badToleranceThrows)
+            testCase.verifyEmpty(evp.endpointWeights("surface"))
+            testCase.verifyEmpty(evp.endpointWeights("bottom"))
+        end
+
         function tinyEigenvalueSideCoefficientsAreInactive(testCase)
             boundary = IMBoundaryCondition(a=1, b=0, c=eps, d=0);
             evp = IMEigenvalueProblem(surfaceBoundary=boundary);
