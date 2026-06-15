@@ -48,12 +48,23 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`hydrostaticGModes`](/internal-modes/classes-v2/core/iminternalmodes/hydrostaticgmodes.html) Create the hydrostatic `G` internal-mode EVP.
   + [`waveModesAtFrequency`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatfrequency.html) Create the fixed-frequency wave-mode EVP.
   + [`waveModesAtWavenumber`](/internal-modes/classes-v2/core/iminternalmodes/wavemodesatwavenumber.html) Create the fixed-wavenumber wave-mode EVP.
++ Summarize internal-mode EVPs
+  + [`summarize`](/internal-modes/classes-v2/core/iminternalmodes/summarize.html) Print a readable internal-mode EVP summary.
 + Inspect internal-mode configuration
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodes/n2.html) Buoyancy frequency squared function.
   + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.
   + [`g`](/internal-modes/classes-v2/core/iminternalmodes/g.html) Gravitational acceleration.
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/iminternalmodes/hfromeigenvalue.html) Equivalent-depth conversion function.
++ Inspect internal-mode inner products
+  + [`innerProduct`](/internal-modes/classes-v2/core/iminternalmodes/innerproduct.html) Return the `F` or `G` inner-product recipe.
+
+
+## Developer Topics
+These items document internal implementation details and are not part of the primary public API.
++ Developer topics
+  + [`contextForSolver`](/internal-modes/classes-v2/core/iminternalmodes/contextforsolver.html) Return the internal-mode coefficient context.
+  + [`makeBasisSet`](/internal-modes/classes-v2/core/iminternalmodes/makebasisset.html) Create an internal-mode basis set.
 
 
 ---

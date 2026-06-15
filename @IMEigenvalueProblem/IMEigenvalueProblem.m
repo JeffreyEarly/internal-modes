@@ -38,6 +38,7 @@ classdef IMEigenvalueProblem
     %
     % - Topic: Create EVPs
     % - Topic: Define canonical coefficients
+    % - Topic: Summarize EVPs
     % - Topic: Inspect EVP configuration
     % - Topic: Inspect inner products
     % - Topic: Inspect definiteness diagnostics
@@ -160,6 +161,8 @@ classdef IMEigenvalueProblem
             self.bottomBoundary = options.bottomBoundary;
             self.parameters = options.parameters;
         end
+
+        summarize(self, solver)
 
         function [A, B] = assemble(self, solver)
             % Build the canonical matrix pair on a solver grid.
@@ -451,8 +454,8 @@ classdef IMEigenvalueProblem
             % Negative modes are bounded by `negativeEigenvalueBounds`.
             % Zero modes are inferred from the assembled left matrix `A`:
             % `zeroModeStatus` is `"present"` when the smallest singular
-            % value satisfies
-            % $$\sigma_{\min}(A)\le 10^{-10}\max(1,\|A\|_F),$$
+            % value is zero to the rank-style tolerance
+            % $$\sigma_{\min}(A)\le \max(\mathrm{size}(A))\epsilon(\sigma_{\max}(A)),$$
             % `"absent"` when it is larger, and `"unchecked"` when `A` is
             % omitted. Mode labels are ordered as
             % $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
@@ -526,15 +529,14 @@ classdef IMEigenvalueProblem
             zeroIndex = zeros(0,1);
             if diagnostics.zeroModeStatus == "present"
                 zeroCandidates = find(abs(eigenvalues) <= tolerance);
-                if isempty(zeroCandidates)
-                    [~, zeroCandidate] = min(abs(eigenvalues));
-                    zeroCandidates = zeroCandidate;
+                if ~isempty(zeroCandidates)
+                    [~, zeroSort] = sort(abs(eigenvalues(zeroCandidates)), "ascend");
+                    zeroIndex = zeroCandidates(zeroSort(1));
                 end
-                [~, zeroSort] = sort(abs(eigenvalues(zeroCandidates)), "ascend");
-                zeroIndex = zeroCandidates(zeroSort(1));
             end
 
             positiveCandidates = find(eigenvalues > tolerance);
+            positiveCandidates = setdiff(positiveCandidates, [negativeIndex(:); zeroIndex(:)], "stable");
             [~, positiveSort] = sort(eigenvalues(positiveCandidates), "ascend");
             positiveIndex = positiveCandidates(positiveSort);
 
@@ -694,7 +696,7 @@ classdef IMEigenvalueProblem
             end
             singularValues = svd(A);
             zeroMode.zeroModeSingularValue = min(singularValues);
-            zeroMode.zeroModeTolerance = 1e-10*max(1,norm(A,"fro"));
+            zeroMode.zeroModeTolerance = max(size(A))*eps(max(singularValues));
             zeroMode.zeroModeCount = nnz(singularValues <= zeroMode.zeroModeTolerance);
             if zeroMode.zeroModeCount > 0
                 zeroMode.zeroModeStatus = "present";

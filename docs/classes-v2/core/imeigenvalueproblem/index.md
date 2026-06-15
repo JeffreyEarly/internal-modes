@@ -70,6 +70,8 @@ basisSet = solver.solveEVP(evp,nModes=4);
   + [`r`](/internal-modes/classes-v2/core/imeigenvalueproblem/r.html) Metric coefficient multiplying the eigenvalue side.
   + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
   + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
++ Summarize EVPs
+  + [`summarize`](/internal-modes/classes-v2/core/imeigenvalueproblem/summarize.html) Print a readable mathematical summary of this EVP.
 + Inspect EVP configuration
   + [`name`](/internal-modes/classes-v2/core/imeigenvalueproblem/name.html) Short EVP name.
   + [`parameters`](/internal-modes/classes-v2/core/imeigenvalueproblem/parameters.html) Additional coefficient parameters.

@@ -30,8 +30,8 @@ Summarize negative and zero mode selection.
   Negative modes are bounded by `negativeEigenvalueBounds`.
   Zero modes are inferred from the assembled left matrix `A`:
   `zeroModeStatus` is `"present"` when the smallest singular
-  value satisfies
-  $$\sigma_{\min}(A)\le 10^{-10}\max(1,\|A\|_F),$$
+  value is zero to the rank-style tolerance
+  $$\sigma_{\min}(A)\le \max(\mathrm{size}(A))\epsilon(\sigma_{\max}(A)),$$
   `"absent"` when it is larger, and `"unchecked"` when `A` is
   omitted. Mode labels are ordered as
   $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$

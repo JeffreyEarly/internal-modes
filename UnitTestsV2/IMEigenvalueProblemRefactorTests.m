@@ -167,6 +167,82 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(badWavenumberThrows)
         end
 
+        function summarizePrintsReadableCanonicalProblem(testCase)
+            [~, zDomain] = testCase.profile();
+            evp = IMEigenvalueProblem(name="dirichletSummary", zDomain=zDomain, p=1, q=0, r=1, ...
+                parameters=struct("alpha",2));
+
+            output = string(evalc('evp.summarize();'));
+
+            testCase.verifyTrue(contains(output, "dirichletSummary"))
+            testCase.verifyTrue(contains(output, "-(d/dz)(p(z) du/dz) + q(z) u = lambda r(z) u"))
+            testCase.verifyTrue(contains(output, "z in [-1000, 0]"))
+            testCase.verifyTrue(contains(output, "surface: u(surface) = 0"))
+            testCase.verifyTrue(contains(output, "bottom: u(bottom) = 0"))
+            testCase.verifyTrue(contains(output, "Endpoint norm weights"))
+            testCase.verifyTrue(contains(output, "none"))
+            testCase.verifyTrue(contains(output, "names: alpha"))
+            testCase.verifyFalse(contains(output, "function_handle"))
+            testCase.verifyFalse(contains(output, "Internal-mode context"))
+        end
+
+        function summarizePrintsReadableRobinNeumannAndEndpointWeights(testCase)
+            [~, zDomain] = testCase.profile();
+            surface = IMBoundaryCondition(a=2, b=3);
+            bottom = IMBoundaryCondition.neumann();
+            activeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
+            robinEVP = IMEigenvalueProblem(name="robinSummary", zDomain=zDomain, p=1, q=0, r=1, ...
+                surfaceBoundary=surface, bottomBoundary=bottom);
+            activeEVP = IMEigenvalueProblem(name="activeSummary", zDomain=zDomain, p=1, q=0, r=1, ...
+                surfaceBoundary=activeSurface);
+
+            robinOutput = string(evalc('robinEVP.summarize();'));
+            activeOutput = string(evalc('activeEVP.summarize();'));
+
+            testCase.verifyTrue(contains(robinOutput, "surface: 2*u(surface) - 3*p(surface)*du/dz(surface) = 0"))
+            testCase.verifyTrue(contains(robinOutput, "bottom: p(bottom)*du/dz(bottom) = 0"))
+            testCase.verifyTrue(contains(activeOutput, "surface: -[-p(surface)*du/dz(surface)] = lambda*[u(surface)]"))
+            testCase.verifyTrue(contains(activeOutput, "surface: +1 * (u(surface))^2"))
+        end
+
+        function summarizeWithSolverPrintsGridAssessment(testCase)
+            [~, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            surface = IMBoundaryCondition(a=1, b=1);
+            bottom = IMBoundaryCondition(a=-1, b=1);
+            evp = IMEigenvalueProblem(name="gridSummary", zDomain=zDomain, p=1, q=0, r=1, ...
+                surfaceBoundary=surface, bottomBoundary=bottom);
+
+            output = string(evalc('evp.summarize(solver);'));
+
+            testCase.verifyTrue(contains(output, "Solver assessment"))
+            testCase.verifyTrue(contains(output, "solver: IMSolverSpectral"))
+            testCase.verifyTrue(contains(output, "coordinate: z"))
+            testCase.verifyTrue(contains(output, "grid size: 24"))
+            testCase.verifyTrue(contains(output, "Coefficient ranges on solver grid"))
+            testCase.verifyTrue(contains(output, "p: [1, 1]"))
+            testCase.verifyTrue(contains(output, "q: [0, 0]"))
+            testCase.verifyTrue(contains(output, "r: [1, 1]"))
+            testCase.verifyTrue(contains(output, "negative modes: possible range [0, 2]"))
+            testCase.verifyTrue(contains(output, "zero mode: absent"))
+            testCase.verifyTrue(contains(output, "reason:"))
+        end
+
+        function summarizeInternalModesAppendsPhysicalContext(testCase)
+            [N2, zDomain, ~, f0, g] = testCase.profile();
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, f0=f0, g=g);
+
+            output = string(evalc('evp.summarize();'));
+
+            testCase.verifyTrue(contains(output, "Internal-mode context"))
+            testCase.verifyTrue(contains(output, "formulation: G"))
+            testCase.verifyTrue(contains(output, "f0: 0.0001 s^-1"))
+            testCase.verifyTrue(contains(output, "g: 9.81 m s^-2"))
+            testCase.verifyTrue(contains(output, "equivalent depth: h = hFromEigenvalue(lambda)"))
+            testCase.verifyTrue(contains(output, "factory parameters: k"))
+            testCase.verifyFalse(contains(output, "function_handle"))
+        end
+
         function solverReturnsInternalModesBasisWithFAndG(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);

@@ -18,6 +18,7 @@ classdef IMInternalModes < IMEigenvalueProblem
     % ```
     %
     % - Topic: Create internal-mode EVPs
+    % - Topic: Summarize internal-mode EVPs
     % - Topic: Inspect internal-mode configuration
     % - Topic: Inspect internal-mode inner products
     % - Topic: Developer topics
@@ -126,6 +127,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             self.g = options.g;
             self.hFromEigenvalue = options.hFromEigenvalue;
         end
+
+        summarize(self, solver)
 
         function context = contextForSolver(self, solver)
             % Return the internal-mode coefficient context.

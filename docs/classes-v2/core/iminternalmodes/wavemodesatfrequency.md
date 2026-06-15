@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtFrequency
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 9
+nav_order: 13
 mathjax: true
 ---
 

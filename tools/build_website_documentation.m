@@ -203,7 +203,7 @@ switch string(className)
     case "IMSolverFiniteDifference"
         excludedSuperclasses = {"IMSolver"};
     case "IMInternalModes"
-        excludedSuperclasses = {"IMEigenvalueProblem"};
+        excludedSuperclasses = {};
     case "IMInternalModesBasis"
         excludedSuperclasses = {"IMBasisSet"};
     case {"IMBasisSetConstantStratification", "IMBasisSetExponentialStratification"}
@@ -236,6 +236,14 @@ excludedMethodNames = unique(methodNames( ...
     startsWith(methodNames, "set.") | ...
     hiddenMethods | ...
     definingClasses ~= string(className)));
+
+propertyMetadata = classMetadata.PropertyList;
+if ~isempty(propertyMetadata)
+    propertyNames = reshape(string({propertyMetadata.Name}), [], 1);
+    propertyDefiningClasses = reshape(arrayfun(@(property) string(property.DefiningClass.Name), propertyMetadata), [], 1);
+    hiddenProperties = reshape([propertyMetadata.Hidden], [], 1);
+    excludedMethodNames = unique([excludedMethodNames; propertyNames(hiddenProperties | propertyDefiningClasses ~= string(className))]);
+end
 end
 
 function trimTrailingWhitespaceInMarkdown(rootFolder)
