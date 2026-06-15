@@ -1,15 +1,25 @@
 classdef IMEigenvalueProblem
     % Describe a canonical scalar eigenvalue problem.
     %
-    % `IMEigenvalueProblem` is the solver-independent description of the
-    % scalar problem
-    % $$-(p u')' + q u = \lambda r u,$$
-    % with endpoint conditions
-    % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].$$
-    % The EVP owns the continuous problem: the physical interval,
-    % coefficient functions, endpoint conditions, and diagnostic
-    % definiteness checks. A solver owns only the numerical choices used to
-    % discretize this problem.
+    % `IMEigenvalueProblem` describes the canonical Sturm-Liouville EVP
+    % $$-\frac{\partial}{\partial z}
+    % \left(p(z)\frac{\partial u}{\partial z}\right)
+    % +q(z)u(z)=\lambda r(z)u(z).$$
+    %
+    % Endpoint conditions are written in the same eigenvalue-dependent
+    % canonical form:
+    % $$-\left[a_i u(z_i)
+    % -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
+    % =\lambda\left[c_i u(z_i)
+    % -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right],
+    % \qquad i\in\{\mathrm{bottom},\mathrm{surface}\}.$$
+    %
+    % `IMEigenvalueProblem` stores this continuous scalar problem; solvers
+    % discretize it and return an `IMBasisSet` of retained modes.
+    %
+    % For example, the Dirichlet problem
+    % $$-\frac{\partial^2 u}{\partial z^2}=\lambda u,\qquad u(-1)=u(0)=0$$
+    % is created with:
     %
     % ```matlab
     % evp = IMEigenvalueProblem(zDomain=[-1 0], ...
@@ -17,6 +27,11 @@ classdef IMEigenvalueProblem
     %     r=@(z,~) ones(size(z)), ...
     %     surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
     %     bottomBoundary=IMBoundaryCondition.dirichlet());
+    % ```
+    %
+    % A solver discretizes this EVP and returns the retained basis set:
+    %
+    % ```matlab
     % solver = IMSolverSpectral(nEVP=64);
     % basisSet = solver.solveEVP(evp,nModes=4);
     % ```
