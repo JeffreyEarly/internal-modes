@@ -1,10 +1,10 @@
 classdef IMBasisSet
     % Store solved scalar canonical EVP modes.
     %
-    % `IMBasisSet` stores native coefficient columns returned by a solver
-    % and evaluates the solved scalar variable `u` and its derivative. Modal
-    % normalization is applied lazily when values or Gram matrices are
-    % requested. For each mode,
+    % `IMBasisSet` stores the scalar modes selected from a canonical EVP and
+    % evaluates the solved variable `u` and derivative `uz`. Modal
+    % normalization is applied lazily when values, Gram matrices, or spectra
+    % are requested. For each retained mode,
     % $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
     % where the scale factor $$s_j$$ is supplied by the active
     % normalization rule.
@@ -26,9 +26,9 @@ classdef IMBasisSet
     properties
         % Active modal normalization.
         %
-        % This value selects the normalization rule used by `u`, `uz`,
-        % `evaluate`, and Gram-matrix methods. Passing `normalization=...`
-        % to an evaluation method overrides this property for that call.
+        % This value selects the normalization rule used by `u`, `uz`, and
+        % Gram-matrix methods. Passing `normalization=...` to an evaluation
+        % method overrides this property for that call.
         %
         % - Topic: Evaluate basis sets
         normalization = Normalization.unity
@@ -37,7 +37,12 @@ classdef IMBasisSet
     properties (SetAccess = protected)
         % Solver that created the native modes.
         %
-        % - Topic: Inspect basis sets
+        % This is the discretization object used to interpolate native
+        % coefficient columns. It is mainly useful for diagnostics and
+        % developer workflows.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         solver
 
         % EVP descriptor that was solved.
@@ -47,7 +52,13 @@ classdef IMBasisSet
 
         % Native mode columns.
         %
-        % - Topic: Inspect basis sets
+        % These are the columns returned by the numerical solver before
+        % interpolation onto physical coordinates and before modal
+        % normalization. Most workflows should call `u(z)` or `uz(z)`
+        % instead.
+        %
+        % - Topic: Developer topics
+        % - Developer: true
         nativeModes
 
         % Retained eigenvalues.
@@ -63,10 +74,16 @@ classdef IMBasisSet
         % - Topic: Inspect basis sets
         modeNumber
 
-        % Diagnostic index information from mode selection.
+        % Mode-selection diagnostics.
+        %
+        % This is the diagnostics struct returned by
+        % `evp.modeSelectionDiagnostics(...)` when the solver selected and
+        % labeled retained modes. Numerical solves use it to record
+        % negative-mode bounds and zero-mode status; analytical basis sets
+        % may leave it as an empty struct.
         %
         % - Topic: Inspect basis sets
-        index
+        modeSelectionDiagnostics
 
         % Additional metadata.
         %
@@ -95,7 +112,7 @@ classdef IMBasisSet
             % - Parameter options.nativeModes: native mode columns
             % - Parameter options.eigenvalues: retained eigenvalues
             % - Parameter options.modeNumber: physical mode numbers
-            % - Parameter options.index: selection diagnostics
+            % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
             % - Parameter options.normalization: active normalization
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
@@ -106,7 +123,7 @@ classdef IMBasisSet
                 options.nativeModes double = zeros(0,0)
                 options.eigenvalues double = zeros(1,0)
                 options.modeNumber double = []
-                options.index struct = struct()
+                options.modeSelectionDiagnostics struct = struct()
                 options.normalization = []
                 options.metadata struct = struct()
                 options.zDomain (1,2) double = [NaN NaN]
@@ -118,7 +135,7 @@ classdef IMBasisSet
             self.eigenvalues = reshape(options.eigenvalues,1,[]);
             nModes = max(size(options.nativeModes,2), length(self.eigenvalues));
             self.modeNumber = IMBasisSet.resolveModeNumber(options.modeNumber, nModes);
-            self.index = options.index;
+            self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
             self.normalization = IMBasisSet.resolveDefaultNormalization(options.normalization, options.evp);
             self.metadata = options.metadata;
             self.zDomain = options.zDomain;
@@ -146,7 +163,7 @@ classdef IMBasisSet
             % - Returns values: scalar mode values
             arguments
                 self IMBasisSet
-                z (:,1) double
+                z (:,1) double {mustBeReal, mustBeFinite}
                 options.normalization = self.normalization
             end
 
@@ -166,48 +183,11 @@ classdef IMBasisSet
             % - Returns values: derivative mode values
             arguments
                 self IMBasisSet
-                z (:,1) double
+                z (:,1) double {mustBeReal, mustBeFinite}
                 options.normalization = self.normalization
             end
 
             values = self.rawUz(z) ./ self.normalizationFactors(options.normalization);
-        end
-
-        function values = evaluate(self, variable, z, options)
-            % Evaluate the scalar variable.
-            %
-            % `evaluate("u",z)` is equivalent to `u(z)` and accepts the
-            % same `normalization` override.
-            %
-            % - Topic: Evaluate basis sets
-            % - Declaration: values = evaluate(basisSet,variable,z,options)
-            % - Parameter variable: `"u"`
-            % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization to apply
-            % - Returns values: scalar mode values
-            arguments
-                self IMBasisSet
-                variable {mustBeTextScalar}
-                z (:,1) double
-                options.normalization = self.normalization
-            end
-
-            if string(variable) ~= "u"
-                error("IMBasisSet:InvalidVariable", ...
-                    "Canonical scalar basis sets evaluate variable ""u"".");
-            end
-            values = self.u(z, normalization=options.normalization);
-        end
-
-        function values = evaluateAll(self, z)
-            % Evaluate all scalar fields.
-            %
-            % - Topic: Evaluate basis sets
-            % - Declaration: values = evaluateAll(basisSet,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: struct containing `u` and `uz`
-            values.u = self.u(z);
-            values.uz = self.uz(z);
         end
 
         function factors = normalizationFactors(self, normalization)
@@ -229,13 +209,18 @@ classdef IMBasisSet
             % - Declaration: factors = normalizationFactors(basisSet,normalization)
             % - Parameter normalization: normalization convention
             % - Returns factors: row vector of positive scale factors
+            arguments
+                self IMBasisSet
+                normalization = self.normalization
+            end
+
             name = char(self.normalizationName(normalization));
             if isempty(self.evp) || ~isfield(self.evp.normalizations, name)
                 error("IMBasisSet:UnsupportedNormalization", ...
                     "The EVP does not define a ""%s"" normalization.", name);
             end
             normalizeMode = self.evp.normalizations.(name);
-            nModes = max(length(self.eigenvalues), size(self.nativeModes,2));
+            nModes = self.retainedModeCount();
             factors = zeros(1,nModes);
             for iMode = 1:nModes
                 factors(iMode) = normalizeMode(self, iMode);
@@ -250,10 +235,16 @@ classdef IMBasisSet
             % The native coefficient columns are divided by the same factors
             % returned by `normalizationFactors`.
             %
-            % - Topic: Evaluate basis sets
+            % - Topic: Developer topics
             % - Declaration: modes = normalizedNativeModes(basisSet,normalization)
             % - Parameter normalization: normalization convention
             % - Returns modes: scaled native mode columns
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                normalization = self.normalization
+            end
+
             factors = self.normalizationFactors(normalization);
             modes = self.nativeModes ./ factors;
         end
@@ -264,10 +255,16 @@ classdef IMBasisSet
             % For normalized scalar modes, entries are
             % $$M_{ij}=\int r u_i u_j\,dz+
             % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
+            % The endpoint terms are the active metric weights from
+            % `evp.innerProduct()`.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet)
             % - Returns gram: scalar Gram matrix
+            arguments
+                self IMBasisSet
+            end
+
             gram = self.partialGramMatrix(self.zDomain(1), self.zDomain(2));
         end
 
@@ -285,15 +282,20 @@ classdef IMBasisSet
             % - Returns gram: scalar Gram matrix
             arguments
                 self IMBasisSet
-                zMin (1,1) double
-                zMax (1,1) double
+                zMin (1,1) double {mustBeReal, mustBeFinite}
+                zMax (1,1) double {mustBeReal, mustBeFinite}
             end
 
+            self.validateZBounds(zMin, zMax);
             gram = self.scalarGramMatrix([zMin zMax], true);
         end
 
         function windowModes = partialWindowModes(self, zMin, zMax)
             % Diagonalize a partial scalar Gram matrix.
+            %
+            % This computes the eigendecomposition of the symmetric
+            % partial-domain Gram matrix and sorts window-mode eigenvalues
+            % from largest to smallest.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: windowModes = partialWindowModes(basisSet,zMin,zMax)
@@ -302,8 +304,8 @@ classdef IMBasisSet
             % - Returns windowModes: window-mode decomposition
             arguments
                 self IMBasisSet
-                zMin (1,1) double
-                zMax (1,1) double
+                zMin (1,1) double {mustBeReal, mustBeFinite}
+                zMax (1,1) double {mustBeReal, mustBeFinite}
             end
 
             gram = self.partialGramMatrix(zMin, zMax);
@@ -318,6 +320,10 @@ classdef IMBasisSet
         function spectrum = spectrum(self, coefficients)
             % Compute a scalar modal spectrum.
             %
+            % For modal coefficients $$c_j$$ this returns
+            % $$S_j=M_{jj}|c_j|^2,$$ where $$M$$ is the full-domain scalar
+            % Gram matrix.
+            %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = spectrum(basisSet,coefficients)
             % - Parameter coefficients: modal coefficients
@@ -327,11 +333,15 @@ classdef IMBasisSet
                 coefficients (:,1) double
             end
 
+            self.validateCoefficientVector(coefficients, "coefficients");
             spectrum = self.crossSpectrum(coefficients, coefficients);
         end
 
         function spectrum = crossSpectrum(self, coefficientsA, coefficientsB)
             % Compute a scalar modal cross-spectrum.
+            %
+            % For modal coefficient vectors $$a_j$$ and $$b_j$$ this
+            % returns $$S_j=M_{jj}\operatorname{Re}(a_j b_j^*)$$.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB)
@@ -344,6 +354,8 @@ classdef IMBasisSet
                 coefficientsB (:,1) double
             end
 
+            self.validateCoefficientVector(coefficientsA, "coefficientsA");
+            self.validateCoefficientVector(coefficientsB, "coefficientsB");
             gram = self.gramMatrix();
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
@@ -426,7 +438,7 @@ classdef IMBasisSet
             if ~isempty(self.solver)
                 nGrid = max(256, 4*self.solver.nEVP);
             else
-                nGrid = max(256, 4*max(1,length(self.eigenvalues)));
+                nGrid = max(256, 4*max(1,self.retainedModeCount()));
             end
             z = linspace(min(zBounds), max(zBounds), nGrid).';
         end
@@ -525,6 +537,29 @@ classdef IMBasisSet
                     fieldName = parameterFields{iField};
                     context.(fieldName) = self.evp.parameters.(fieldName);
                 end
+            end
+        end
+
+        function nModes = retainedModeCount(self)
+            nModes = max([length(self.eigenvalues), size(self.nativeModes,2), length(self.modeNumber)]);
+        end
+
+        function validateCoefficientVector(self, coefficients, argumentName)
+            if any(~isfinite(coefficients(:)))
+                error("IMBasisSet:InvalidCoefficients", ...
+                    "%s must contain finite values.", char(argumentName));
+            end
+            nModes = self.retainedModeCount();
+            if length(coefficients) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", ...
+                    "%s must contain one value for each retained mode (%d).", char(argumentName), nModes);
+            end
+        end
+
+        function validateZBounds(~, zMin, zMax)
+            if zMin >= zMax
+                error("IMBasisSet:InvalidInterval", ...
+                    "zMin must be less than zMax.");
             end
         end
 

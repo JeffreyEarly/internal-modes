@@ -179,11 +179,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
         end
 
-        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)
+        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, modeSelectionDiagnostics)
             % Create an internal-mode basis set.
             %
             % - Topic: Developer topics
-            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
+            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,modeSelectionDiagnostics)
             % - Returns basisSet: internal-mode basis set
             % - Developer: true
             arguments
@@ -192,12 +192,12 @@ classdef IMInternalModes < IMEigenvalueProblem
                 nativeModes (:,:) double
                 eigenvalues (1,:) double {mustBeReal, mustBeFinite}
                 modeNumber (1,:) double {mustBeInteger}
-                index struct
+                modeSelectionDiagnostics struct
             end
 
             h = self.hFromEigenvalue(eigenvalues);
             basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
-                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
+                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, ...
                 zDomain=self.zDomain, N2=self.N2);
         end
     end

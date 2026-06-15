@@ -178,6 +178,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyClass(basisSet, "IMInternalModesBasis")
             testCase.verifyEqual(basisSet.h, evp.hFromEigenvalue(basisSet.eigenvalues), RelTol=1e-12)
+            testCase.verifyFalse(isprop(basisSet, "index"))
+            testCase.verifyTrue(isprop(basisSet, "modeSelectionDiagnostics"))
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "absent")
             testCase.verifySize(basisSet.G(z), [16 3])
             testCase.verifySize(basisSet.F(z), [16 3])
             testCase.verifyEqual(basisSet.gramMatrix(), basisSet.gramMatrix("G"), RelTol=1e-12)
@@ -275,9 +278,13 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(evp, "hFromEigenvalue"))
             testCase.verifyClass(basisSet, "IMBasisSet")
             testCase.verifyFalse(isprop(basisSet, "h"))
+            testCase.verifyFalse(isprop(basisSet, "index"))
+            testCase.verifyTrue(isprop(basisSet, "modeSelectionDiagnostics"))
             testCase.verifyFalse(isprop(basisSet, "N2"))
             testCase.verifyFalse(isprop(basisSet, "N2" + "Function"))
             testCase.verifyFalse(ismethod(basisSet, "dz" + "LogN2"))
+            testCase.verifyFalse(ismethod(basisSet, "eval" + "uate"))
+            testCase.verifyFalse(ismethod(basisSet, "eval" + "uateAll"))
             testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifyEqual(size(basisSet.gramMatrix()), [2 2])
@@ -287,6 +294,41 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifySize(basisSet.crossSpectrum(ones(2,1), ones(2,1)), [2 1])
             testCase.verifyError(@() wkbSolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
             testCase.verifyError(@() densitySolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
+        end
+
+        function basisSetValidationRejectsBadScalarAnalysisInputs(testCase)
+            [~, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
+            basisSet = solver.solveEVP(evp, nModes=2);
+            badCoordinateThrows = false;
+
+            try
+                basisSet.u([zDomain(1); NaN]);
+            catch
+                badCoordinateThrows = true;
+            end
+
+            testCase.verifyTrue(badCoordinateThrows)
+            testCase.verifyError(@() basisSet.partialGramMatrix(zDomain(2), zDomain(1)), "IMBasisSet:InvalidInterval")
+            testCase.verifyError(@() basisSet.spectrum(ones(1,1)), "IMBasisSet:InvalidCoefficientCount")
+            testCase.verifyError(@() basisSet.crossSpectrum(ones(2,1), ones(1,1)), "IMBasisSet:InvalidCoefficientCount")
+            testCase.verifyEqual(basisSet.normalizationFactors(), ...
+                basisSet.normalizationFactors(basisSet.normalization), RelTol=1e-12)
+            testCase.verifyEqual(basisSet.normalizedNativeModes(), ...
+                basisSet.normalizedNativeModes(basisSet.normalization), RelTol=1e-12)
+        end
+
+        function internalModeBasisUsesExplicitEvaluationMethods(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            testCase.verifyFalse(ismethod(basisSet, "eval" + "uate"))
+            testCase.verifyFalse(ismethod(basisSet, "eval" + "uateAll"))
+            testCase.verifySize(basisSet.F(linspace(zDomain(1),zDomain(2),8).'), [8 2])
+            testCase.verifySize(basisSet.G(linspace(zDomain(1),zDomain(2),8).'), [8 2])
         end
 
         function finiteDifferenceSolverSolvesCanonicalProblem(testCase)

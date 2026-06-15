@@ -515,7 +515,8 @@ classdef IMEigenvalueProblem
             % eigenvalues should be retained and whether a zero mode should
             % be included. Retained modes are labeled in the order
             % $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
-            % The full diagnostics struct is stored in `selection.index`.
+            % The full diagnostics struct is stored in
+            % `selection.modeSelectionDiagnostics`.
             %
             % - Topic: Developer topics
             % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A)
@@ -573,14 +574,14 @@ classdef IMEigenvalueProblem
 
             selection.sortIndex = sortIndex;
             selection.modeNumber = modeNumber;
-            selection.index = diagnostics;
+            selection.modeSelectionDiagnostics = diagnostics;
         end
 
-        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)
+        function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, modeSelectionDiagnostics)
             % Create the solved scalar basis set for this EVP.
             %
             % - Topic: Developer topics
-            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
+            % - Declaration: basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,modeSelectionDiagnostics)
             % - Returns basisSet: solved scalar basis set
             % - Developer: true
             arguments
@@ -589,11 +590,11 @@ classdef IMEigenvalueProblem
                 nativeModes (:,:) double
                 eigenvalues (1,:) double {mustBeReal, mustBeFinite}
                 modeNumber (1,:) double {mustBeInteger}
-                index struct
+                modeSelectionDiagnostics struct
             end
 
             basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
-                eigenvalues=eigenvalues, modeNumber=modeNumber, index=index, zDomain=self.zDomain);
+                eigenvalues=eigenvalues, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, zDomain=self.zDomain);
         end
     end
 

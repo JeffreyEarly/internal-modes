@@ -25,7 +25,7 @@ Create an internal-mode basis set.
 + `options.eigenvalues`  retained eigenvalues
 + `options.h`  equivalent depths
 + `options.modeNumber`  physical mode numbers
-+ `options.index`  selection diagnostics
++ `options.modeSelectionDiagnostics`  mode-selection diagnostics
 + `options.normalization`  active normalization
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain

@@ -44,7 +44,7 @@ classdef (Abstract) IMSolver
             eigenvalues = eigenvalues(selection.sortIndex);
             V = V(:,selection.sortIndex);
             basisSet = evp.makeBasisSet(solver, V, eigenvalues(:).', ...
-                selection.modeNumber, selection.index);
+                selection.modeNumber, selection.modeSelectionDiagnostics);
             basisSet = basisSet.orientModeSigns();
         end
     end

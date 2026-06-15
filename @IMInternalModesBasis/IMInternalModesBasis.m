@@ -1,8 +1,8 @@
 classdef IMInternalModesBasis < IMBasisSet
     % Store solved internal-mode basis functions.
     %
-    % `IMInternalModesBasis` evaluates the physical `F` and `G` variables
-    % from the solved canonical scalar mode. If the EVP solves `G`, then
+    % `IMInternalModesBasis` evaluates the physical variables with explicit
+    % `F(z)` and `G(z)` methods. If the EVP solves `G`, then
     % $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
     % $$G_j=-gN^{-2}F'_j.$$
     % Normalization is shared across both variables: if a rule gives scale
@@ -57,7 +57,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Parameter options.eigenvalues: retained eigenvalues
             % - Parameter options.h: equivalent depths
             % - Parameter options.modeNumber: physical mode numbers
-            % - Parameter options.index: selection diagnostics
+            % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
             % - Parameter options.normalization: active normalization
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
@@ -70,7 +70,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.eigenvalues double = zeros(1,0)
                 options.h double = zeros(1,0)
                 options.modeNumber double = []
-                options.index struct = struct()
+                options.modeSelectionDiagnostics struct = struct()
                 options.normalization = []
                 options.metadata struct = struct()
                 options.zDomain (1,2) double = [NaN NaN]
@@ -79,7 +79,7 @@ classdef IMInternalModesBasis < IMBasisSet
 
             self@IMBasisSet(solver=options.solver, evp=options.evp, ...
                 nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, ...
-                modeNumber=options.modeNumber, index=options.index, normalization=options.normalization, ...
+                modeNumber=options.modeNumber, modeSelectionDiagnostics=options.modeSelectionDiagnostics, normalization=options.normalization, ...
                 metadata=options.metadata, zDomain=options.zDomain);
             self.N2 = IMInternalModesBasis.resolveN2(options.N2, options.evp);
             self.h = IMInternalModesBasis.resolveEquivalentDepths(options.h, self.eigenvalues, options.evp);
@@ -100,7 +100,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Returns G: evaluated `G` modes
             arguments
                 self IMInternalModesBasis
-                z (:,1) double
+                z (:,1) double {mustBeReal, mustBeFinite}
                 options.normalization = self.normalization
             end
 
@@ -121,48 +121,11 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Returns F: evaluated `F` modes
             arguments
                 self IMInternalModesBasis
-                z (:,1) double
+                z (:,1) double {mustBeReal, mustBeFinite}
                 options.normalization = self.normalization
             end
 
             F = self.rawVariable("F", z) ./ self.normalizationFactors(options.normalization);
-        end
-
-        function values = evaluate(self, variable, z, options)
-            % Evaluate `F` or `G`.
-            %
-            % This is the variable-dispatch form of `F(z)` and `G(z)`.
-            %
-            % - Topic: Evaluate internal-mode bases
-            % - Declaration: values = evaluate(basisSet,variable,z,options)
-            % - Parameter variable: `"F"` or `"G"`
-            % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization to apply
-            % - Returns values: evaluated modes
-            arguments
-                self IMInternalModesBasis
-                variable {mustBeTextScalar}
-                z (:,1) double
-                options.normalization = self.normalization
-            end
-
-            switch IMInternalModesBasis.validateVariable(variable)
-                case "G"
-                    values = self.G(z, normalization=options.normalization);
-                case "F"
-                    values = self.F(z, normalization=options.normalization);
-            end
-        end
-
-        function values = evaluateAll(self, z)
-            % Evaluate both `F` and `G`.
-            %
-            % - Topic: Evaluate internal-mode bases
-            % - Declaration: values = evaluateAll(basisSet,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: structure with fields `F` and `G`
-            values.F = self.F(z);
-            values.G = self.G(z);
         end
 
         function gram = gramMatrix(self, variable)
@@ -479,7 +442,7 @@ classdef IMInternalModesBasis < IMBasisSet
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
             z = self.innerProductGrid(zBounds);
             if useNormalized
-                values = self.evaluate(variable, z);
+                values = self.rawVariable(variable, z) ./ self.normalizationFactors(self.normalization);
             else
                 values = self.rawVariable(variable, z);
             end
@@ -526,6 +489,7 @@ classdef IMInternalModesBasis < IMBasisSet
             end
             zMin = double(zMin);
             zMax = double(zMax);
+            self.validateZBounds(zMin, zMax);
         end
 
         function values = rawVariableForSign(self, variable, z)

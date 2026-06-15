@@ -3,7 +3,7 @@ layout: default
 title: normalization
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 12
+nav_order: 10
 mathjax: true
 ---
 
@@ -16,6 +16,6 @@ Active modal normalization.
 
 ## Discussion
 
-  This value selects the normalization rule used by `u`, `uz`,
-  `evaluate`, and Gram-matrix methods. Passing `normalization=...`
-  to an evaluation method overrides this property for that call.
+  This value selects the normalization rule used by `u`, `uz`, and
+  Gram-matrix methods. Passing `normalization=...` to an evaluation
+  method overrides this property for that call.

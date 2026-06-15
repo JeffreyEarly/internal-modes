@@ -22,8 +22,8 @@ Store solved internal-mode basis functions.
 
 ## Overview
 
-`IMInternalModesBasis` evaluates the physical `F` and `G` variables
-from the solved canonical scalar mode. If the EVP solves `G`, then
+`IMInternalModesBasis` evaluates the physical variables with explicit
+`F(z)` and `G(z)` methods. If the EVP solves `G`, then
 $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
 $$G_j=-gN^{-2}F'_j.$$
 Normalization is shared across both variables: if a rule gives scale

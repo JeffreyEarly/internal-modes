@@ -18,7 +18,7 @@ Create the solved scalar basis set for this EVP.
 
 ## Declaration
 ```matlab
- basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,index)
+ basisSet = makeBasisSet(evp,solver,nativeModes,eigenvalues,modeNumber,modeSelectionDiagnostics)
 ```
 ## Returns
 + `basisSet`  solved scalar basis set

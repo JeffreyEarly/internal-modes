@@ -97,12 +97,12 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
                 options.N0, options.b, zDomain, frequencies, phaseSpeeds, g, modeKinds);
             eigenvalues = 1 ./ h;
 
-            index = struct();
+            modeSelectionDiagnostics = struct();
             metadata = options.metadata;
             metadata.analyticalBasis = "exponentialStratification";
 
             self@IMInternalModesBasis(evp=evp, nativeModes=zeros(0,length(h)), ...
-                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
+                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
                 N2=N2);
             self.N0 = options.N0;

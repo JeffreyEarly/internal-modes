@@ -26,3 +26,6 @@ Compute a scalar modal cross-spectrum.
 + `spectrum`  modal cross-spectrum
 
 ## Discussion
+
+  For modal coefficient vectors $$a_j$$ and $$b_j$$ this
+  returns $$S_j=M_{jj}\operatorname{Re}(a_j b_j^*)$$.

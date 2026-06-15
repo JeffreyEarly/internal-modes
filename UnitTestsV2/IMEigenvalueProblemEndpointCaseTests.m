@@ -144,7 +144,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(bounds.assessmentLevel, diagnostics.assessmentLevel)
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 0)
-            testCase.verifyEqual(selection.index.zeroModeStatus, "absent")
+            testCase.verifyEqual(selection.modeSelectionDiagnostics.zeroModeStatus, "absent")
             testCase.verifyEqual(selection.sortIndex(:), [2; 3])
             testCase.verifyEqual(selection.modeNumber, [1 2])
         end
@@ -215,10 +215,10 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
             testCase.verifyEqual(zeroSelection.sortIndex(:), [2; 3; 4])
             testCase.verifyEqual(zeroSelection.modeNumber, [0 1 2])
-            testCase.verifyEqual(zeroSelection.index.zeroModeStatus, "present")
+            testCase.verifyEqual(zeroSelection.modeSelectionDiagnostics.zeroModeStatus, "present")
             testCase.verifyEqual(constrainedSelection.sortIndex(:), [2; 3])
             testCase.verifyEqual(constrainedSelection.modeNumber, [1 2])
-            testCase.verifyEqual(constrainedSelection.index.zeroModeStatus, "absent")
+            testCase.verifyEqual(constrainedSelection.modeSelectionDiagnostics.zeroModeStatus, "absent")
         end
 
         function case3InactiveRobinDirectionsSetFiniteSearchCap(testCase)
@@ -282,8 +282,8 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(isprop(evp, removedZeroProperty))
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
-            testCase.verifyEqual(basisSet.index.zeroModeStatus, "present")
-            testCase.verifyEqual(basisSet.index.zeroModeCount, 1)
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "present")
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeCount, 1)
         end
 
         function case4FailedCoefficientSignsReturnUnknown(testCase)

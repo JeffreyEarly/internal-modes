@@ -35,4 +35,5 @@ Select and label retained finite-real eigenmodes.
   eigenvalues should be retained and whether a zero mode should
   be included. Retained modes are labeled in the order
   $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
-  The full diagnostics struct is stored in `selection.index`.
+  The full diagnostics struct is stored in
+  `selection.modeSelectionDiagnostics`.

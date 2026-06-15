@@ -3,7 +3,7 @@ layout: default
 title: spectrum
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 18
+nav_order: 16
 mathjax: true
 ---
 
@@ -25,3 +25,7 @@ Compute a scalar modal spectrum.
 + `spectrum`  modal spectrum
 
 ## Discussion
+
+  For modal coefficients $$c_j$$ this returns
+  $$S_j=M_{jj}|c_j|^2,$$ where $$M$$ is the full-domain scalar
+  Gram matrix.

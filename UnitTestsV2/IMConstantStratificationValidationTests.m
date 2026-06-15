@@ -94,6 +94,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyClass(basisSet.evp, "IMInternalModes")
             testCase.verifyEqual(basisSet.evp.zDomain, zDomain)
             testCase.verifyEqual(basisSet.evp.N2(zDomain(:)), N0*N0*ones(2,1), RelTol=1e-12)
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics, struct())
         end
 
         function coordinateKindSolversAgreeWithRigidAnalyticalDepths(testCase)

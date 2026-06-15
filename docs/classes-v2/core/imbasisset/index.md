@@ -22,10 +22,10 @@ Store solved scalar canonical EVP modes.
 
 ## Overview
 
-`IMBasisSet` stores native coefficient columns returned by a solver
-and evaluates the solved scalar variable `u` and its derivative. Modal
-normalization is applied lazily when values or Gram matrices are
-requested. For each mode,
+`IMBasisSet` stores the scalar modes selected from a canonical EVP and
+evaluates the solved variable `u` and derivative `uz`. Modal
+normalization is applied lazily when values, Gram matrices, or spectra
+are requested. For each retained mode,
 $$u_j^{\mathrm{out}}(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
 where the scale factor $$s_j$$ is supplied by the active
 normalization rule.
@@ -44,11 +44,8 @@ factors = basisSet.normalizationFactors(Normalization.unity);
 + Create basis sets
   + [`IMBasisSet`](/internal-modes/classes-v2/core/imbasisset/imbasisset.html) Create a solved scalar basis set.
 + Evaluate basis sets
-  + [`evaluate`](/internal-modes/classes-v2/core/imbasisset/evaluate.html) the scalar variable.
-  + [`evaluateAll`](/internal-modes/classes-v2/core/imbasisset/evaluateall.html) Evaluate all scalar fields.
   + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active modal normalization.
   + [`normalizationFactors`](/internal-modes/classes-v2/core/imbasisset/normalizationfactors.html) Return factors for a normalization convention.
-  + [`normalizedNativeModes`](/internal-modes/classes-v2/core/imbasisset/normalizednativemodes.html) Return native modes scaled by a normalization.
   + [`u`](/internal-modes/classes-v2/core/imbasisset/u.html) Evaluate solved scalar modes.
   + [`uz`](/internal-modes/classes-v2/core/imbasisset/uz.html) Evaluate solved scalar vertical derivatives.
 + Analyze Gram matrices
@@ -60,12 +57,18 @@ factors = basisSet.normalizationFactors(Normalization.unity);
 + Inspect basis sets
   + [`eigenvalues`](/internal-modes/classes-v2/core/imbasisset/eigenvalues.html) Retained eigenvalues.
   + [`evp`](/internal-modes/classes-v2/core/imbasisset/evp.html) descriptor that was solved.
-  + [`index`](/internal-modes/classes-v2/core/imbasisset/index_.html) Diagnostic index information from mode selection.
   + [`metadata`](/internal-modes/classes-v2/core/imbasisset/metadata.html) Additional metadata.
   + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Physical mode numbers.
-  + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
-  + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
+  + [`modeSelectionDiagnostics`](/internal-modes/classes-v2/core/imbasisset/modeselectiondiagnostics.html) Mode-selection diagnostics.
   + [`zDomain`](/internal-modes/classes-v2/core/imbasisset/zdomain.html) Physical vertical domain.
+
+
+## Developer Topics
+These items document internal implementation details and are not part of the primary public API.
++ Developer topics
+  + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
+  + [`normalizedNativeModes`](/internal-modes/classes-v2/core/imbasisset/normalizednativemodes.html) Return native modes scaled by a normalization.
+  + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
 
 
 ---
