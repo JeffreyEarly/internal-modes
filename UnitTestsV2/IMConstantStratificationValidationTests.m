@@ -78,7 +78,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
 
-            basisSet = IMBasisSet.constantStratification(evp=evp, N0=N0, ...
+            basisSet = IMInternalModesBasis.constantStratification(evp=evp, N0=N0, ...
                 zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSetConstantStratification")
@@ -89,7 +89,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             zDomain = [-3000 0];
 
-            basisSet = IMBasisSet.constantStratification(N0=N0, zDomain=zDomain, nModes=2);
+            basisSet = IMInternalModesBasis.constantStratification(N0=N0, zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet.evp, "IMInternalModes")
             testCase.verifyEqual(basisSet.evp.zDomain, zDomain)

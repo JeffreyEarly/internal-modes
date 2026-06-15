@@ -78,7 +78,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3);
 
-            basisSet = IMBasisSet.exponentialStratification(evp=evp, N0=N0, ...
+            basisSet = IMInternalModesBasis.exponentialStratification(evp=evp, N0=N0, ...
                 b=b, zDomain=zDomain, nModes=2);
 
             testCase.verifyClass(basisSet, "IMBasisSetExponentialStratification")

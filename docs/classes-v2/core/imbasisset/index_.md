@@ -3,7 +3,7 @@ layout: default
 title: index
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 12
+nav_order: 8
 mathjax: true
 ---
 

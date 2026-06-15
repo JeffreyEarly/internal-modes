@@ -87,8 +87,8 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
 
             zDomain = sort(options.zDomain);
             IMBasisSetExponentialStratification.validateDomain(zDomain);
-            N2Function = @(z) options.N0*options.N0*exp(2*z/options.b);
-            evp = IMBasisSetExponentialStratification.resolveEVP(options.evp, N2Function, zDomain);
+            N2 = @(z) options.N0*options.N0*exp(2*z/options.b);
+            evp = IMBasisSetExponentialStratification.resolveEVP(options.evp, N2, zDomain);
             [f0, g] = IMBasisSetExponentialStratification.physicalConstants(evp);
             [h, roots, frequencies, modeNumber, modeKinds] = IMBasisSetExponentialStratification.solveSpectrum( ...
                 evp, options.N0, options.b, zDomain, options.nModes, f0, g);
@@ -104,7 +104,7 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
             self@IMInternalModesBasis(evp=evp, nativeModes=zeros(0,length(h)), ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
                 normalization=options.normalization, metadata=metadata, zDomain=zDomain, ...
-                N2Function=N2Function);
+                N2=N2);
             self.N0 = options.N0;
             self.b = options.b;
             self.roots = roots;
@@ -145,9 +145,9 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
     end
 
     methods (Static, Access = private)
-        function evp = resolveEVP(evp, N2Function, zDomain)
+        function evp = resolveEVP(evp, N2, zDomain)
             if isempty(evp)
-                evp = IMInternalModes.hydrostaticGModes(N2=N2Function, zDomain=zDomain);
+                evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
                 return;
             end
             if ~isa(evp, "IMInternalModes")

@@ -1,9 +1,9 @@
 ---
 layout: default
 title: constantStratification
-parent: IMBasisSet
+parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 3
+nav_order: 5
 mathjax: true
 ---
 
@@ -16,7 +16,7 @@ Create an analytical constant-stratification basis set.
 
 ## Declaration
 ```matlab
- basisSet = IMBasisSet.constantStratification(options)
+ basisSet = IMInternalModesBasis.constantStratification(options)
 ```
 ## Parameters
 + `options.evp`  internal-mode EVP descriptor

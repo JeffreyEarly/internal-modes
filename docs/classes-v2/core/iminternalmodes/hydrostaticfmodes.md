@@ -3,7 +3,7 @@ layout: default
 title: hydrostaticFModes
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 8
+nav_order: 7
 mathjax: true
 ---
 

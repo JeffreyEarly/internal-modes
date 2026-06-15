@@ -3,7 +3,7 @@ layout: default
 title: h
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 4
+nav_order: 7
 mathjax: true
 ---
 

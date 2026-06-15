@@ -16,6 +16,7 @@ classdef IMInternalModesBasis < IMBasisSet
     % G = basisSet.G(z);
     % ```
     %
+    % - Topic: Create internal-mode bases
     % - Topic: Evaluate internal-mode bases
     % - Topic: Analyze Gram matrices
     % - Topic: Inspect internal-mode bases
@@ -33,13 +34,22 @@ classdef IMInternalModesBasis < IMBasisSet
         %
         % - Topic: Inspect internal-mode bases
         h
+
+        % Buoyancy frequency squared profile.
+        %
+        % `N2` has signature `values = N2(z)`. It is copied from the
+        % internal-mode EVP unless supplied explicitly by an analytical
+        % basis class.
+        %
+        % - Topic: Inspect internal-mode bases
+        N2
     end
 
     methods
         function self = IMInternalModesBasis(options)
             % Create an internal-mode basis set.
             %
-            % - Topic: Evaluate internal-mode bases
+            % - Topic: Create internal-mode bases
             % - Declaration: basisSet = IMInternalModesBasis(options)
             % - Parameter options.solver: solver reference
             % - Parameter options.evp: internal-mode EVP descriptor
@@ -51,7 +61,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Parameter options.normalization: active normalization
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.N2Function: buoyancy frequency squared function
+            % - Parameter options.N2: buoyancy frequency squared function
             % - Returns basisSet: internal-mode basis set
             arguments
                 options.solver = []
@@ -64,13 +74,14 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.normalization = []
                 options.metadata struct = struct()
                 options.zDomain (1,2) double = [NaN NaN]
-                options.N2Function = []
+                options.N2 = []
             end
 
             self@IMBasisSet(solver=options.solver, evp=options.evp, ...
                 nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, ...
                 modeNumber=options.modeNumber, index=options.index, normalization=options.normalization, ...
-                metadata=options.metadata, zDomain=options.zDomain, N2Function=options.N2Function);
+                metadata=options.metadata, zDomain=options.zDomain);
+            self.N2 = IMInternalModesBasis.resolveN2(options.N2, options.evp);
             self.h = IMInternalModesBasis.resolveEquivalentDepths(options.h, self.eigenvalues, options.evp);
             self.validateEquivalentDepthCount();
         end
@@ -350,9 +361,71 @@ classdef IMInternalModesBasis < IMBasisSet
                 factor = 1;
             end
         end
+
+    end
+
+    methods (Static)
+        function basisSet = constantStratification(options)
+            % Create an analytical constant-stratification basis set.
+            %
+            % - Topic: Create internal-mode bases
+            % - Declaration: basisSet = IMInternalModesBasis.constantStratification(options)
+            % - Parameter options.evp: internal-mode EVP descriptor
+            % - Parameter options.N0: constant buoyancy frequency
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.nModes: number of modes
+            % - Parameter options.normalization: active normalization
+            % - Parameter options.metadata: additional metadata
+            % - Returns basisSet: analytical constant-stratification basis set
+            arguments
+                options.evp = []
+                options.N0 (1,1) double {mustBePositive} = 5.2e-3
+                options.zDomain (1,2) double = [-1 0]
+                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
+                options.normalization = []
+                options.metadata struct = struct()
+            end
+
+            basisSet = IMBasisSetConstantStratification(evp=options.evp, N0=options.N0, ...
+                zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, ...
+                metadata=options.metadata);
+        end
+
+        function basisSet = exponentialStratification(options)
+            % Create an analytical exponential-stratification basis set.
+            %
+            % - Topic: Create internal-mode bases
+            % - Declaration: basisSet = IMInternalModesBasis.exponentialStratification(options)
+            % - Parameter options.evp: internal-mode EVP descriptor
+            % - Parameter options.N0: surface buoyancy frequency
+            % - Parameter options.b: exponential e-folding depth
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.nModes: number of modes
+            % - Parameter options.normalization: active normalization
+            % - Parameter options.metadata: additional metadata
+            % - Returns basisSet: analytical exponential-stratification basis set
+            arguments
+                options.evp = []
+                options.N0 (1,1) double {mustBePositive} = 5.2e-3
+                options.b (1,1) double {mustBePositive} = 1300
+                options.zDomain (1,2) double = [-1 0]
+                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
+                options.normalization = []
+                options.metadata struct = struct()
+            end
+
+            basisSet = IMBasisSetExponentialStratification(evp=options.evp, N0=options.N0, ...
+                b=options.b, zDomain=options.zDomain, nModes=options.nModes, ...
+                normalization=options.normalization, metadata=options.metadata);
+        end
     end
 
     methods (Access = protected)
+        function context = context(self)
+            context = context@IMBasisSet(self);
+            context.N2 = @(z) self.N2(z);
+        end
+
         function values = rawU(self, z)
             if ~isempty(self.solver)
                 values = self.solver.evaluateNativeModes(self.nativeModes, z);
@@ -485,6 +558,18 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Static, Access = private)
+        function N2 = resolveN2(requestedN2, evp)
+            if isempty(requestedN2)
+                N2 = evp.N2;
+            else
+                N2 = requestedN2;
+            end
+            if ~isa(N2, "function_handle")
+                error("IMInternalModesBasis:InvalidN2", ...
+                    "N2 must be a function handle.");
+            end
+        end
+
         function h = resolveEquivalentDepths(requestedH, eigenvalues, evp)
             h = reshape(requestedH,1,[]);
             if isempty(h) && ~isempty(eigenvalues)

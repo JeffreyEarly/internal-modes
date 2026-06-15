@@ -201,22 +201,6 @@ classdef IMSolverSpectral < IMSolver
             values = self.physicalDerivativeMatrix(derivativeOrder)*coefficients;
         end
 
-        function values = dzLogN2(self, z)
-            % Evaluate $$\partial_z\log N^2$$ numerically.
-            %
-            % - Topic: Evaluate native modes
-            % - Declaration: values = dzLogN2(solver,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: derivative values
-            if isempty(self.N2Function)
-                error("IMSolverSpectral:UnsupportedOperation", ...
-                    "This spectral solver is not configured with an N2 function.");
-            end
-            N2Reference = self.N2(self.zReference);
-            dzLogN2Reference = gradient(log(N2Reference), self.zReference);
-            values = interp1(self.zReference, dzLogN2Reference, z, "pchip");
-        end
-
         function D = physicalDerivativeMatrix(self, derivativeOrder)
             % Return a native matrix for a physical derivative.
             %

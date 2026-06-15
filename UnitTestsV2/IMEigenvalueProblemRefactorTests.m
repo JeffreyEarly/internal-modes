@@ -215,7 +215,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyEqual(context.zDomain, zDomain)
             testCase.verifyEqual(context.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
-            testCase.verifyTrue(isfield(context, "dzLogN2"))
+            testCase.verifyFalse(isfield(context, "dz" + "LogN2"))
             testCase.verifyEqual(context.f0, f0, AbsTol=0)
             testCase.verifyEqual(context.g, g, AbsTol=0)
             testCase.verifyEqual(context.formulation, "G")
@@ -232,7 +232,10 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=2);
 
             testCase.verifyEqual(basisSet.zDomain, zDomain)
+            testCase.verifyClass(basisSet, "IMInternalModesBasis")
+            testCase.verifyTrue(isprop(basisSet, "N2"))
             testCase.verifyEqual(basisSet.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
+            testCase.verifyFalse(ismethod(basisSet, "dz" + "LogN2"))
             testCase.verifyEqual(basisSet.metadata, struct())
             testCase.verifyTrue(isfield(basisSet.evp.parameters, "formulation"))
         end
@@ -272,6 +275,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(evp, "hFromEigenvalue"))
             testCase.verifyClass(basisSet, "IMBasisSet")
             testCase.verifyFalse(isprop(basisSet, "h"))
+            testCase.verifyFalse(isprop(basisSet, "N2"))
+            testCase.verifyFalse(isprop(basisSet, "N2" + "Function"))
+            testCase.verifyFalse(ismethod(basisSet, "dz" + "LogN2"))
             testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifyEqual(size(basisSet.gramMatrix()), [2 2])

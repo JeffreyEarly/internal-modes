@@ -70,7 +70,6 @@ classdef (Abstract) IMSolver
         solver = configuredForEVP(self, evp)
         context = context(self)
         values = N2(self, z)
-        values = dzLogN2(self, z)
         D = physicalDerivativeMatrix(self, derivativeOrder)
         values = differentiateGridValues(self, values, derivativeOrder)
         index = boundaryIndex(self, location)

@@ -3,7 +3,7 @@ layout: default
 title: gramMatrix
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 11
+nav_order: 7
 mathjax: true
 ---
 

@@ -143,17 +143,6 @@ classdef IMSolverFiniteDifference < IMSolver
             values = self.physicalDerivativeMatrix(derivativeOrder)*values;
         end
 
-        function values = dzLogN2(self, z)
-            % Evaluate $$\partial_z\log N^2$$ numerically.
-            %
-            % - Topic: Evaluate native modes
-            % - Declaration: values = dzLogN2(solver,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: derivative values
-            error("IMSolverFiniteDifference:UnsupportedOperation", ...
-                "Finite-difference solvers do not own N2; use the EVP or basis set instead.");
-        end
-
         function D = physicalDerivativeMatrix(self, derivativeOrder)
             % Return a native finite-difference matrix for a physical derivative.
             %

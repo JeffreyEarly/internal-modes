@@ -1,9 +1,9 @@
 ---
 layout: default
 title: exponentialStratification
-parent: IMBasisSet
+parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 10
+nav_order: 6
 mathjax: true
 ---
 
@@ -16,7 +16,7 @@ Create an analytical exponential-stratification basis set.
 
 ## Declaration
 ```matlab
- basisSet = IMBasisSet.exponentialStratification(options)
+ basisSet = IMInternalModesBasis.exponentialStratification(options)
 ```
 ## Parameters
 + `options.evp`  internal-mode EVP descriptor

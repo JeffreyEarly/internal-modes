@@ -3,7 +3,7 @@ layout: default
 title: partialGramMatrix
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 19
+nav_order: 15
 mathjax: true
 ---
 

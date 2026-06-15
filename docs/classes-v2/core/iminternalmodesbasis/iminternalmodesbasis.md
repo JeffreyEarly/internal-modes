@@ -29,7 +29,7 @@ Create an internal-mode basis set.
 + `options.normalization`  active normalization
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
-+ `options.N2Function`  buoyancy frequency squared function
++ `options.N2`  buoyancy frequency squared function
 
 ## Returns
 + `basisSet`  internal-mode basis set

@@ -43,11 +43,7 @@ factors = basisSet.normalizationFactors(Normalization.unity);
 ## Topics
 + Create basis sets
   + [`IMBasisSet`](/internal-modes/classes-v2/core/imbasisset/imbasisset.html) Create a solved scalar basis set.
-  + [`constantStratification`](/internal-modes/classes-v2/core/imbasisset/constantstratification.html) Create an analytical constant-stratification basis set.
-  + [`exponentialStratification`](/internal-modes/classes-v2/core/imbasisset/exponentialstratification.html) Create an analytical exponential-stratification basis set.
 + Evaluate basis sets
-  + [`N2`](/internal-modes/classes-v2/core/imbasisset/n2.html) Evaluate buoyancy frequency squared.
-  + [`dzLogN2`](/internal-modes/classes-v2/core/imbasisset/dzlogn2.html) Evaluate the vertical derivative of `log(N2)`.
   + [`evaluate`](/internal-modes/classes-v2/core/imbasisset/evaluate.html) the scalar variable.
   + [`evaluateAll`](/internal-modes/classes-v2/core/imbasisset/evaluateall.html) Evaluate all scalar fields.
   + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active modal normalization.

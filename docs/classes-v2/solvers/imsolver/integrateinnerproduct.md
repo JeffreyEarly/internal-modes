@@ -3,7 +3,7 @@ layout: default
 title: integrateInnerProduct
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 11
+nav_order: 10
 mathjax: true
 ---
 

@@ -28,7 +28,6 @@ Create a solved scalar basis set.
 + `options.normalization`  active normalization
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
-+ `options.N2Function`  buoyancy frequency squared function
 
 ## Returns
 + `basisSet`  solved scalar basis set

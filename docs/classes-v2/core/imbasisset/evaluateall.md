@@ -3,7 +3,7 @@ layout: default
 title: evaluateAll
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 8
+nav_order: 5
 mathjax: true
 ---
 

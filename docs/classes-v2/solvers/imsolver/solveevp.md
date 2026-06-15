@@ -3,7 +3,7 @@ layout: default
 title: solveEVP
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 13
+nav_order: 12
 mathjax: true
 ---
 

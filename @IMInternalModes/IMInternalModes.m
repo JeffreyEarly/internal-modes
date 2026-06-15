@@ -125,7 +125,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Return the internal-mode coefficient context.
             %
             % The returned context extends the canonical context with `N2`,
-            % `dzLogN2`, `f0`, `g`, and `formulation`.
+            % `f0`, `g`, and `formulation`.
             %
             % - Topic: Developer topics
             % - Declaration: context = contextForSolver(evp,solver)
@@ -139,36 +139,9 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             context = contextForSolver@IMEigenvalueProblem(self, solver);
             context.N2 = @(z) self.N2(z);
-            context.dzLogN2 = @(z) self.dzLogN2(z);
             context.f0 = self.f0;
             context.g = self.g;
             context.formulation = self.formulation;
-        end
-
-        function values = dzLogN2(self, z)
-            % Evaluate the vertical derivative of `log(N2)`.
-            %
-            % This derivative is used by coordinate mappings that need the
-            % stratification slope. For more than one point it is computed
-            % by finite differences on the supplied coordinate vector.
-            %
-            % - Topic: Inspect internal-mode configuration
-            % - Declaration: values = dzLogN2(evp,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: derivative values
-            arguments
-                self IMInternalModes
-                z double {mustBeReal, mustBeFinite}
-            end
-
-            z = z(:);
-            if length(z) == 1
-                scale = max(1,abs(z));
-                dz = sqrt(eps)*scale;
-                values = (log(self.N2(z + dz)) - log(self.N2(z - dz)))/(2*dz);
-            else
-                values = gradient(log(self.N2(z)), z);
-            end
         end
 
         function spec = innerProduct(self, variable)
@@ -225,7 +198,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             h = self.hFromEigenvalue(eigenvalues);
             basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
                 eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, index=index, ...
-                zDomain=self.zDomain, N2Function=self.N2);
+                zDomain=self.zDomain, N2=self.N2);
         end
     end
 

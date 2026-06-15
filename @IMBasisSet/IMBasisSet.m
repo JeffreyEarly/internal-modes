@@ -84,14 +84,6 @@ classdef IMBasisSet
         zDomain
     end
 
-    properties (Access = protected)
-        % Buoyancy frequency squared function.
-        %
-        % - Topic: Developer topics
-        % - Developer: true
-        N2Function
-    end
-
     methods
         function self = IMBasisSet(options)
             % Create a solved scalar basis set.
@@ -107,7 +99,6 @@ classdef IMBasisSet
             % - Parameter options.normalization: active normalization
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.N2Function: buoyancy frequency squared function
             % - Returns basisSet: solved scalar basis set
             arguments
                 options.solver = []
@@ -119,7 +110,6 @@ classdef IMBasisSet
                 options.normalization = []
                 options.metadata struct = struct()
                 options.zDomain (1,2) double = [NaN NaN]
-                options.N2Function = []
             end
 
             self.solver = options.solver;
@@ -132,7 +122,6 @@ classdef IMBasisSet
             self.normalization = IMBasisSet.resolveDefaultNormalization(options.normalization, options.evp);
             self.metadata = options.metadata;
             self.zDomain = options.zDomain;
-            self.N2Function = options.N2Function;
 
             if any(isnan(self.zDomain)) && ~isempty(self.evp)
                 self.zDomain = self.evp.zDomain;
@@ -140,9 +129,6 @@ classdef IMBasisSet
                 if any(isnan(self.zDomain))
                     self.zDomain = self.solver.zDomain;
                 end
-            end
-            if isempty(self.N2Function) && isa(self.evp, "IMInternalModes")
-                self.N2Function = self.evp.N2;
             end
         end
 
@@ -362,41 +348,6 @@ classdef IMBasisSet
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
 
-        function values = N2(self, z)
-            % Evaluate buoyancy frequency squared.
-            %
-            % - Topic: Evaluate basis sets
-            % - Declaration: values = N2(basisSet,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: buoyancy frequency squared
-            if isempty(self.N2Function)
-                error("IMBasisSet:UnsupportedOperation", ...
-                    "The basis set does not have an N2 function.");
-            end
-            values = self.N2Function(z);
-        end
-
-        function values = dzLogN2(self, z)
-            % Evaluate the vertical derivative of `log(N2)`.
-            %
-            % - Topic: Evaluate basis sets
-            % - Declaration: values = dzLogN2(basisSet,z)
-            % - Parameter z: physical coordinate
-            % - Returns values: derivative values
-            if isempty(self.N2Function)
-                error("IMBasisSet:UnsupportedOperation", ...
-                    "The basis set does not have an N2 function.");
-            end
-
-            z = z(:);
-            if length(z) == 1
-                scale = max(1,abs(z));
-                dz = sqrt(eps)*scale;
-                values = (log(self.N2Function(z + dz)) - log(self.N2Function(z - dz)))/(2*dz);
-            else
-                values = gradient(log(self.N2Function(z)), z);
-            end
-        end
     end
 
     methods (Hidden)
@@ -559,8 +510,6 @@ classdef IMBasisSet
         end
 
         function context = context(self)
-            context.N2 = @(z) self.N2(z);
-            context.dzLogN2 = @(z) self.dzLogN2(z);
             context.zDomain = self.zDomain;
             context.coordinateKind = "basisSet";
             if ~isempty(self.solver)
@@ -598,62 +547,6 @@ classdef IMBasisSet
         function unsupported(~, operationName)
             error("IMBasisSet:UnsupportedOperation", ...
                 "IMBasisSet does not support %s for this basis.", operationName);
-        end
-    end
-
-    methods (Static)
-        function basisSet = constantStratification(options)
-            % Create an analytical constant-stratification basis set.
-            %
-            % - Topic: Create basis sets
-            % - Declaration: basisSet = IMBasisSet.constantStratification(options)
-            % - Parameter options.evp: internal-mode EVP descriptor
-            % - Parameter options.N0: constant buoyancy frequency
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.nModes: number of modes
-            % - Parameter options.normalization: active normalization
-            % - Parameter options.metadata: additional metadata
-            % - Returns basisSet: analytical constant-stratification basis set
-            arguments
-                options.evp = []
-                options.N0 (1,1) double {mustBePositive} = 5.2e-3
-                options.zDomain (1,2) double = [-1 0]
-                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
-                options.normalization = []
-                options.metadata struct = struct()
-            end
-
-            basisSet = IMBasisSetConstantStratification(evp=options.evp, N0=options.N0, ...
-                zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, ...
-                metadata=options.metadata);
-        end
-
-        function basisSet = exponentialStratification(options)
-            % Create an analytical exponential-stratification basis set.
-            %
-            % - Topic: Create basis sets
-            % - Declaration: basisSet = IMBasisSet.exponentialStratification(options)
-            % - Parameter options.evp: internal-mode EVP descriptor
-            % - Parameter options.N0: surface buoyancy frequency
-            % - Parameter options.b: exponential e-folding depth
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.nModes: number of modes
-            % - Parameter options.normalization: active normalization
-            % - Parameter options.metadata: additional metadata
-            % - Returns basisSet: analytical exponential-stratification basis set
-            arguments
-                options.evp = []
-                options.N0 (1,1) double {mustBePositive} = 5.2e-3
-                options.b (1,1) double {mustBePositive} = 1300
-                options.zDomain (1,2) double = [-1 0]
-                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 64
-                options.normalization = []
-                options.metadata struct = struct()
-            end
-
-            basisSet = IMBasisSetExponentialStratification(evp=options.evp, N0=options.N0, ...
-                b=options.b, zDomain=options.zDomain, nModes=options.nModes, ...
-                normalization=options.normalization, metadata=options.metadata);
         end
     end
 

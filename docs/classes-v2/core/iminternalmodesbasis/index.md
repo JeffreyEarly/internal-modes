@@ -41,11 +41,15 @@ G = basisSet.G(z);
 
 
 ## Topics
++ Create internal-mode bases
+  + [`IMInternalModesBasis`](/internal-modes/classes-v2/core/iminternalmodesbasis/iminternalmodesbasis.html) Create an internal-mode basis set.
+  + [`constantStratification`](/internal-modes/classes-v2/core/iminternalmodesbasis/constantstratification.html) Create an analytical constant-stratification basis set.
+  + [`exponentialStratification`](/internal-modes/classes-v2/core/iminternalmodesbasis/exponentialstratification.html) Create an analytical exponential-stratification basis set.
 + Evaluate internal-mode bases
   + [`F`](/internal-modes/classes-v2/core/iminternalmodesbasis/f.html) Evaluate `F` modes.
   + [`G`](/internal-modes/classes-v2/core/iminternalmodesbasis/g.html) Evaluate `G` modes.
-  + [`IMInternalModesBasis`](/internal-modes/classes-v2/core/iminternalmodesbasis/iminternalmodesbasis.html) Create an internal-mode basis set.
 + Inspect internal-mode bases
+  + [`N2`](/internal-modes/classes-v2/core/iminternalmodesbasis/n2.html) Buoyancy frequency squared profile.
   + [`h`](/internal-modes/classes-v2/core/iminternalmodesbasis/h.html) Equivalent depths for the retained internal modes.
 
 
