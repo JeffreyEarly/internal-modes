@@ -34,5 +34,6 @@ Create the fixed-wavenumber wave-mode EVP.
 
   The canonical scalar form is
   $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
-  The default normalization is `Normalization.kConstant`, and
-  parameters include `k`, `formulation`, `f0`, and `g`.
+  The default normalization is `Normalization.kConstant`, which
+  selects the `kConstant` rule in `evp.normalizationRules`.
+  Parameters include `k`, `formulation`, `f0`, and `g`.

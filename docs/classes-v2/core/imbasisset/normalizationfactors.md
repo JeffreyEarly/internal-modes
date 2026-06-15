@@ -9,7 +9,7 @@ mathjax: true
 
 #  normalizationFactors
 
-Return factors for a normalization convention.
+Return scale factors for a normalization rule.
 
 
 ---
@@ -26,14 +26,17 @@ Return factors for a normalization convention.
 
 ## Discussion
 
-  For a requested convention this returns the row vector
+  For a requested rule name this returns the row vector
   $$s_j$$ used by evaluation methods:
   $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-  The default scalar `unity` convention uses
+  The default scalar `"unity"` rule uses
   $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-  product.
+  product. Custom rules are created on
+  `basisSet.evp.normalizationRules`, the default rule is named
+  by `basisSet.evp.defaultNormalization`, and the active rule
+  is selected by `basisSet.normalization`.
 
   ```matlab
-  factors = basisSet.normalizationFactors(Normalization.unity);
-  uUnity = basisSet.u(z,normalization=Normalization.unity);
+  factors = basisSet.normalizationFactors("unity");
+  uUnity = basisSet.u(z,normalization="unity");
   ```

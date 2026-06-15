@@ -60,7 +60,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             % - Parameter options.N0: constant buoyancy frequency
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.nModes: number of retained modes
-            % - Parameter options.normalization: active normalization; omitted uses the EVP default
+            % - Parameter options.normalization: active normalization rule; omitted uses the EVP default
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: exact constant-stratification basis set
             arguments
@@ -99,7 +99,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             %
             % - Topic: Evaluate basis sets
             % - Declaration: factors = normalizationFactors(basisSet,normalization)
-            % - Parameter normalization: normalization convention
+            % - Parameter normalization: normalization rule name or enum value
             % - Returns factors: row vector of normalization factors
             arguments
                 self IMBasisSetConstantStratification
@@ -111,21 +111,22 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
     end
 
     methods (Hidden)
-        function factor = maxAbsFactor(self, variable, iMode)
+        function factor = maxAbsFactor(self, iMode, options)
             % Return an exact constant-stratification maximum-amplitude factor.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: factor = maxAbsFactor(basisSet,variable,iMode)
-            % - Parameter variable: variable name
+            % - Declaration: factor = maxAbsFactor(basisSet,iMode,options)
             % - Parameter iMode: mode index
+            % - Parameter options.variable: `"F"` or `"G"`
             % - Returns factor: maximum absolute variable amplitude
-            variable = string(variable);
-            if variable ~= "G" && variable ~= "F"
-                factor = maxAbsFactor@IMBasisSet(self, variable, iMode);
-                return;
+            arguments
+                self IMBasisSetConstantStratification
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
             end
 
+            variable = string(options.variable);
             Lz = diff(self.zDomain);
             k_z = self.verticalWavenumbers(iMode);
             hMode = self.h(iMode);
@@ -160,7 +161,7 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
                         factor = abs(hMode*k_z);
                     end
                 otherwise
-                    factor = maxAbsFactor@IMBasisSet(self, variable, iMode);
+                    factor = maxAbsFactor@IMInternalModesBasis(self, iMode, variable=variable);
             end
         end
     end

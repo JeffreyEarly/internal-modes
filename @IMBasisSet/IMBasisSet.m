@@ -11,9 +11,9 @@ classdef IMBasisSet
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet.normalization = Normalization.unity;
+    % basisSet.normalization = "unity";
     % u = basisSet.u(z);
-    % factors = basisSet.normalizationFactors(Normalization.unity);
+    % factors = basisSet.normalizationFactors("unity");
     % ```
     %
     % - Topic: Create basis sets
@@ -24,14 +24,16 @@ classdef IMBasisSet
     % - Declaration: classdef IMBasisSet
 
     properties
-        % Active modal normalization.
+        % Active normalization rule name.
         %
-        % This value selects the normalization rule used by `u`, `uz`, and
-        % Gram-matrix methods. Passing `normalization=...` to an evaluation
-        % method overrides this property for that call.
+        % This string selects a field in `basisSet.evp.normalizationRules`;
+        % create custom rules on the EVP, not on the basis set.
+        % The selected rule returns the scale factor $$s_j$$ used by `u`,
+        % `uz`, and Gram-matrix methods. Passing `normalization=...` to an
+        % evaluation method overrides this property for that call.
         %
         % - Topic: Evaluate basis sets
-        normalization = Normalization.unity
+        normalization = "unity"
     end
 
     properties (SetAccess = protected)
@@ -113,7 +115,7 @@ classdef IMBasisSet
             % - Parameter options.eigenvalues: retained eigenvalues
             % - Parameter options.modeNumber: physical mode numbers
             % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
-            % - Parameter options.normalization: active normalization
+            % - Parameter options.normalization: active normalization rule name
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
             % - Returns basisSet: solved scalar basis set
@@ -191,18 +193,21 @@ classdef IMBasisSet
         end
 
         function factors = normalizationFactors(self, normalization)
-            % Return factors for a normalization convention.
+            % Return scale factors for a normalization rule.
             %
-            % For a requested convention this returns the row vector
+            % For a requested rule name this returns the row vector
             % $$s_j$$ used by evaluation methods:
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-            % The default scalar `unity` convention uses
+            % The default scalar `"unity"` rule uses
             % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-            % product.
+            % product. Custom rules are created on
+            % `basisSet.evp.normalizationRules`, the default rule is named
+            % by `basisSet.evp.defaultNormalization`, and the active rule
+            % is selected by `basisSet.normalization`.
             %
             % ```matlab
-            % factors = basisSet.normalizationFactors(Normalization.unity);
-            % uUnity = basisSet.u(z,normalization=Normalization.unity);
+            % factors = basisSet.normalizationFactors("unity");
+            % uUnity = basisSet.u(z,normalization="unity");
             % ```
             %
             % - Topic: Evaluate basis sets
@@ -215,11 +220,11 @@ classdef IMBasisSet
             end
 
             name = char(self.normalizationName(normalization));
-            if isempty(self.evp) || ~isfield(self.evp.normalizations, name)
+            if isempty(self.evp) || ~isfield(self.evp.normalizationRules, name)
                 error("IMBasisSet:UnsupportedNormalization", ...
                     "The EVP does not define a ""%s"" normalization.", name);
             end
-            normalizeMode = self.evp.normalizations.(name);
+            normalizeMode = self.evp.normalizationRules.(name);
             nModes = self.retainedModeCount();
             factors = zeros(1,nModes);
             for iMode = 1:nModes
@@ -569,7 +574,8 @@ classdef IMBasisSet
         end
 
         function name = normalizationName(~, normalization)
-            name = erase(string(normalization), "Normalization.");
+            parts = split(string(normalization), ".");
+            name = parts(end);
         end
 
         function requireSolver(self, operationName)
@@ -607,7 +613,7 @@ classdef IMBasisSet
                 normalization = evp.defaultNormalization;
                 return;
             end
-            normalization = Normalization.unity;
+            normalization = "unity";
         end
     end
 end

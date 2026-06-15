@@ -32,9 +32,9 @@ normalization rule.
 
 ```matlab
 basisSet = solver.solveEVP(evp,nModes=4);
-basisSet.normalization = Normalization.unity;
+basisSet.normalization = "unity";
 u = basisSet.u(z);
-factors = basisSet.normalizationFactors(Normalization.unity);
+factors = basisSet.normalizationFactors("unity");
 ```
 
 
@@ -44,8 +44,8 @@ factors = basisSet.normalizationFactors(Normalization.unity);
 + Create basis sets
   + [`IMBasisSet`](/internal-modes/classes-v2/core/imbasisset/imbasisset.html) Create a solved scalar basis set.
 + Evaluate basis sets
-  + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active modal normalization.
-  + [`normalizationFactors`](/internal-modes/classes-v2/core/imbasisset/normalizationfactors.html) Return factors for a normalization convention.
+  + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active normalization rule name.
+  + [`normalizationFactors`](/internal-modes/classes-v2/core/imbasisset/normalizationfactors.html) Return scale factors for a normalization rule.
   + [`u`](/internal-modes/classes-v2/core/imbasisset/u.html) Evaluate solved scalar modes.
   + [`uz`](/internal-modes/classes-v2/core/imbasisset/uz.html) Evaluate solved scalar vertical derivatives.
 + Analyze Gram matrices

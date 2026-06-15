@@ -8,4 +8,4 @@ permalink: /classes-v2/supporting-types
 mathjax: true
 ---
 
-Reference pages for shared types used across the class API.
+Reference pages for internal-mode supporting types.

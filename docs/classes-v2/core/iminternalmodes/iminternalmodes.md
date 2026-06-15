@@ -31,6 +31,8 @@ Create an internal-mode canonical EVP.
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
 + `options.hFromEigenvalue`  equivalent-depth conversion
++ `options.defaultNormalization`  default internal-mode normalization rule
++ `options.normalizationRules`  custom normalization rule handles
 + `options.parameters`  named coefficient parameters
 
 ## Returns

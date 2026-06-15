@@ -34,6 +34,7 @@ N2 = @(z) (5.2e-3)^2*exp(2*z/1300);
 evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
 solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=4);
+basisSet.normalization = Normalization.geostrophic;
 G = basisSet.G(linspace(-4000,0,200).');
 ```
 

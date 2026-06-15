@@ -11,7 +11,7 @@ nav_order: 1
 
 #  Normalization
 
-Enumerate the supported modal normalization conventions.
+Enumerate internal-mode normalization conventions.
 
 
 ---
@@ -22,15 +22,19 @@ Enumerate the supported modal normalization conventions.
 
 ## Overview
 
-`Normalization` names the scaling conventions used by basis sets.
-Each convention selects a rule in `evp.normalizations` that returns a
-per-mode factor $$s_j$$. Evaluated modes divide every variable in mode
-$$j$$ by that factor:
+`Normalization` names the standard scaling conventions installed by
+`IMInternalModes`. Each enum value maps to a field in
+`evp.normalizationRules`; `IMInternalModesBasis.normalizationFactors`
+evaluates the selected rule and returns a per-mode factor $$s_j$$.
+Evaluated internal-mode variables divide both $$F_j$$ and $$G_j$$ by
+that same factor:
 $$V_j^{\mathrm{out}}(z)=V_j^{\mathrm{raw}}(z)/s_j.$$
+Generic canonical EVPs use string rule names directly, while
+internal-mode users may use either strings or these enum values.
 
-The valid values are:
+The internal-mode values are:
 
-- `Normalization.unity`: unit norm under the active EVP inner product
+- `Normalization.unity`: unit norm under the active internal-mode inner product
 - `Normalization.kConstant`: unit `G` inner-product norm for fixed-$$K$$ wave modes
 - `Normalization.omegaConstant`: unit `F` inner-product norm for fixed-$$\omega$$ wave modes
 - `Normalization.uMax`: scale by $$\max_z |F_j(z)|$$

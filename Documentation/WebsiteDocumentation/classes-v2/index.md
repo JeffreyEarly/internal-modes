@@ -20,7 +20,7 @@ The pages are organized around the objects that own each part of the calculation
 | [`Core`](./core) | you want canonical eigenvalue-problem descriptors, endpoint conditions, scalar basis sets, or internal-mode basis sets |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification basis sets |
-| [`Supporting types`](./supporting-types) | you want shared normalization conventions |
+| [`Supporting types`](./supporting-types) | you want internal-mode normalization conventions |
 
 ## Shared notation
 
@@ -40,7 +40,7 @@ The reference pages use the standard vertical-mode variables:
 
 ## Reading the reference
 
-- [`IMEigenvalueProblem`](./core/imeigenvalueproblem) defines the canonical scalar equation, endpoint conditions, normalization default, and grid-level diagnostics.
+- [`IMEigenvalueProblem`](./core/imeigenvalueproblem) defines the canonical scalar equation, endpoint conditions, normalization rule table, and grid-level diagnostics.
 - [`IMInternalModes`](./core/iminternalmodes) translates standard `F` and `G` mode problems into canonical form and defines how eigenvalues map to equivalent depths.
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) or [`IMInternalModesBasis`](./core/iminternalmodesbasis) objects.
 - [`IMBoundaryCondition`](./core/imboundarycondition) stores scalar endpoint coefficients for the canonical boundary equation.

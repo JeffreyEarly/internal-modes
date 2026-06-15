@@ -25,7 +25,7 @@ Create a solved scalar basis set.
 + `options.eigenvalues`  retained eigenvalues
 + `options.modeNumber`  physical mode numbers
 + `options.modeSelectionDiagnostics`  mode-selection diagnostics
-+ `options.normalization`  active normalization
++ `options.normalization`  active normalization rule name
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
 

@@ -9,13 +9,15 @@ mathjax: true
 
 #  normalization
 
-Active modal normalization.
+Active normalization rule name.
 
 
 ---
 
 ## Discussion
 
-  This value selects the normalization rule used by `u`, `uz`, and
-  Gram-matrix methods. Passing `normalization=...` to an evaluation
-  method overrides this property for that call.
+  This string selects a field in `basisSet.evp.normalizationRules`;
+  create custom rules on the EVP, not on the basis set.
+  The selected rule returns the scale factor $$s_j$$ used by `u`,
+  `uz`, and Gram-matrix methods. Passing `normalization=...` to an
+  evaluation method overrides this property for that call.

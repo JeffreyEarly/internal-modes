@@ -26,7 +26,7 @@ Create an internal-mode basis set.
 + `options.h`  equivalent depths
 + `options.modeNumber`  physical mode numbers
 + `options.modeSelectionDiagnostics`  mode-selection diagnostics
-+ `options.normalization`  active normalization
++ `options.normalization`  active normalization rule name or enum value
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
 + `options.N2`  buoyancy frequency squared function

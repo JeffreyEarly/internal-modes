@@ -24,7 +24,7 @@ Create an exact exponential-stratification basis set.
 + `options.b`  exponential e-folding depth
 + `options.zDomain`  physical vertical domain with surface at zero
 + `options.nModes`  number of retained modes
-+ `options.normalization`  active normalization; omitted uses the EVP default
++ `options.normalization`  active normalization rule; omitted uses the EVP default
 + `options.metadata`  additional metadata
 
 ## Returns

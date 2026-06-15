@@ -26,8 +26,8 @@ Create a canonical scalar EVP.
 + `options.r`  eigenvalue-side metric coefficient
 + `options.surfaceBoundary`  surface endpoint condition
 + `options.bottomBoundary`  bottom endpoint condition
-+ `options.defaultNormalization`  natural normalization
-+ `options.normalizations`  named normalization handles
++ `options.defaultNormalization`  default normalization rule name
++ `options.normalizationRules`  named normalization rule handles
 + `options.parameters`  named coefficient parameters
 
 ## Returns

@@ -7,7 +7,9 @@ classdef IMInternalModesBasis < IMBasisSet
     % $$G_j=-gN^{-2}F'_j.$$
     % Normalization is shared across both variables: if a rule gives scale
     % $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
-    % that same factor.
+    % that same factor. Standard rules are installed on
+    % `basisSet.evp.normalizationRules`, and custom rules should be added
+    % when the `IMInternalModes` EVP is created.
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
@@ -58,7 +60,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Parameter options.h: equivalent depths
             % - Parameter options.modeNumber: physical mode numbers
             % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
-            % - Parameter options.normalization: active normalization
+            % - Parameter options.normalization: active normalization rule name or enum value
             % - Parameter options.metadata: additional metadata
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.N2: buoyancy frequency squared function
@@ -96,7 +98,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Topic: Evaluate internal-mode bases
             % - Declaration: G = G(basisSet,z,options)
             % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization to apply
+            % - Parameter options.normalization: normalization rule name or enum value
             % - Returns G: evaluated `G` modes
             arguments
                 self IMInternalModesBasis
@@ -117,7 +119,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Topic: Evaluate internal-mode bases
             % - Declaration: F = F(basisSet,z,options)
             % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization to apply
+            % - Parameter options.normalization: normalization rule name or enum value
             % - Returns F: evaluated `F` modes
             arguments
                 self IMInternalModesBasis
@@ -261,17 +263,28 @@ classdef IMInternalModesBasis < IMBasisSet
             self.nativeModes = self.nativeModes .* signs;
         end
 
-        function factor = innerProductNormFactor(self, variable, iMode)
+        function factor = innerProductNormFactor(self, iMode, options)
             % Return the `F` or `G` inner-product norm factor.
             %
             % This is the raw factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
-            % to `F` or `G`.
+            % to `F` or `G`. If `variable` is omitted, the solved
+            % formulation is used. Custom normalization rules call this
+            % method from `evp.normalizationRules`.
             %
             % - Topic: Developer topics
-            % - Declaration: factor = innerProductNormFactor(basisSet,variable,iMode)
+            % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
+            % - Parameter iMode: retained mode index
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns factor: raw inner-product norm factor
             % - Developer: true
-            variable = IMInternalModesBasis.validateVariable(variable);
+            arguments
+                self IMInternalModesBasis
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+            end
+
+            variable = string(options.variable);
             gram = self.variableGramMatrix(variable, self.zDomain, false);
             factor = sqrt(abs(gram(iMode,iMode)));
         end
@@ -291,19 +304,29 @@ classdef IMInternalModesBasis < IMBasisSet
                 factor = sqrt(abs(gram(iMode,iMode)))/sqrt(diff(self.zDomain));
                 return;
             end
-            factor = self.innerProductNormFactor("G", iMode);
+            factor = self.innerProductNormFactor(iMode, variable="G");
         end
 
-        function factor = maxAbsFactor(self, variable, iMode)
+        function factor = maxAbsFactor(self, iMode, options)
             % Return the maximum amplitude of `F` or `G`.
             %
             % This is $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$ for the
-            % requested variable on the basis-set integration grid.
+            % requested variable on the basis-set integration grid. If
+            % `variable` is omitted, the solved formulation is used.
             %
             % - Topic: Developer topics
-            % - Declaration: factor = maxAbsFactor(basisSet,variable,iMode)
+            % - Declaration: factor = maxAbsFactor(basisSet,iMode,options)
+            % - Parameter iMode: retained mode index
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns factor: maximum absolute variable amplitude
             % - Developer: true
-            variable = IMInternalModesBasis.validateVariable(variable);
+            arguments
+                self IMInternalModesBasis
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+            end
+
+            variable = string(options.variable);
             z = self.integrationGrid(self.zDomain);
             values = self.rawVariable(variable, z);
             factor = max(abs(values(:,iMode)));

@@ -13,6 +13,7 @@ classdef IMInternalModes < IMEigenvalueProblem
     % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
     % solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
     % basisSet = solver.solveEVP(evp,nModes=4);
+    % basisSet.normalization = Normalization.geostrophic;
     % G = basisSet.G(linspace(-4000,0,200).');
     % ```
     %
@@ -84,6 +85,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
+            % - Parameter options.defaultNormalization: default internal-mode normalization rule
+            % - Parameter options.normalizationRules: custom normalization rule handles
             % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: internal-mode EVP descriptor
             arguments
@@ -100,11 +103,18 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.hFromEigenvalue function_handle = @(lambda) 1 ./ lambda
                 options.defaultNormalization = []
-                options.normalizations struct = struct()
+                options.normalizationRules struct = struct()
                 options.parameters struct = struct()
             end
 
             formulation = string(options.formulation);
+            defaultNormalization = options.defaultNormalization;
+            if isempty(defaultNormalization)
+                defaultNormalization = "unity";
+            else
+                defaultNormalization = IMInternalModes.normalizationRuleName(defaultNormalization);
+            end
+            normalizationRules = IMInternalModes.mergeNormalizationRules(options.normalizationRules);
             parameters = options.parameters;
             parameters.f0 = options.f0;
             parameters.g = options.g;
@@ -112,7 +122,7 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             self@IMEigenvalueProblem(name=options.name, p=options.p, q=options.q, r=options.r, ...
                 zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=options.defaultNormalization, normalizations=options.normalizations, ...
+                defaultNormalization=defaultNormalization, normalizationRules=normalizationRules, ...
                 parameters=parameters);
             self.formulation = formulation;
             self.N2 = options.N2;
@@ -208,8 +218,11 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-G''=\lambda N^2G/g.$$
-            % The default normalization is `Normalization.geostrophic`, and
-            % parameters include `formulation`, `f0`, and `g`.
+            % The default normalization is `Normalization.geostrophic`.
+            % Internal-mode normalization names select rules in
+            % `evp.normalizationRules`; the solved basis stores the active
+            % rule name in `basisSet.normalization`. Parameters include
+            % `formulation`, `f0`, and `g`.
             %
             % ```matlab
             % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
@@ -236,12 +249,11 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
 
-            normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="hydrostaticGModes", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ctx.N2(z)/ctx.g, f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.geostrophic, normalizations=normalizations);
+                defaultNormalization=Normalization.geostrophic);
         end
 
         function evp = hydrostaticFModes(options)
@@ -269,12 +281,11 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
             end
 
-            normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="hydrostaticFModes", formulation="F", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.geostrophic, normalizations=normalizations);
+                defaultNormalization=Normalization.geostrophic);
         end
 
         function evp = waveModesAtWavenumber(options)
@@ -282,8 +293,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-G''+K^2G=\lambda(N^2-f_0^2)G/g.$$
-            % The default normalization is `Normalization.kConstant`, and
-            % parameters include `k`, `formulation`, `f0`, and `g`.
+            % The default normalization is `Normalization.kConstant`, which
+            % selects the `kConstant` rule in `evp.normalizationRules`.
+            % Parameters include `k`, `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
@@ -307,14 +319,12 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             k = options.k;
             parameters = struct("k", k);
-            normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
                 f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.kConstant, normalizations=normalizations, ...
-                parameters=parameters);
+                defaultNormalization=Normalization.kConstant, parameters=parameters);
         end
 
         function evp = waveModesAtFrequency(options)
@@ -323,7 +333,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The canonical scalar form is
             % $$-G''=\lambda(N^2-\omega^2)G/g.$$
             % The default normalization is `Normalization.omegaConstant`,
-            % and parameters include `omega`, `formulation`, `f0`, and `g`.
+            % which selects the `omegaConstant` rule in
+            % `evp.normalizationRules`. Parameters include `omega`,
+            % `formulation`, `f0`, and `g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)
@@ -347,26 +359,42 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             omega = options.omega;
             parameters = struct("omega", omega);
-            normalizations = IMInternalModes.standardNormalizations();
             evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g, ...
                 f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.omegaConstant, normalizations=normalizations, ...
-                parameters=parameters);
+                defaultNormalization=Normalization.omegaConstant, parameters=parameters);
         end
     end
 
     methods (Static, Access = private)
-        function normalizations = standardNormalizations()
-            normalizations.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(basisSet.evp.formulation, iMode);
-            normalizations.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
-            normalizations.kConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("G", iMode);
-            normalizations.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor("F", iMode);
-            normalizations.wMax = @(basisSet,iMode) basisSet.maxAbsFactor("G", iMode);
-            normalizations.uMax = @(basisSet,iMode) basisSet.maxAbsFactor("F", iMode);
-            normalizations.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
+        function normalizationRules = standardNormalizationRules()
+            normalizationRules.unity = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode);
+            normalizationRules.geostrophic = @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode);
+            normalizationRules.kConstant = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G");
+            normalizationRules.omegaConstant = @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="F");
+            normalizationRules.wMax = @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="G");
+            normalizationRules.uMax = @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="F");
+            normalizationRules.surfacePressure = @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode);
+        end
+
+        function normalizationRules = mergeNormalizationRules(userRules)
+            arguments
+                userRules struct
+            end
+
+            normalizationRules = IMInternalModes.standardNormalizationRules();
+            userFields = fieldnames(userRules);
+            for iField = 1:numel(userFields)
+                fieldName = userFields{iField};
+                normalizationRules.(fieldName) = userRules.(fieldName);
+            end
+        end
+
+        function name = normalizationRuleName(normalization)
+            parts = split(string(normalization), ".");
+            name = parts(end);
         end
     end
 end

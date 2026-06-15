@@ -20,7 +20,7 @@ Evaluate `G` modes.
 ```
 ## Parameters
 + `z`  physical coordinate
-+ `options.normalization`  normalization to apply
++ `options.normalization`  normalization rule name or enum value
 
 ## Returns
 + `G`  evaluated `G` modes

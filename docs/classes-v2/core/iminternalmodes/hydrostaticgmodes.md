@@ -33,8 +33,11 @@ Create the hydrostatic `G` internal-mode EVP.
 
   The canonical scalar form is
   $$-G''=\lambda N^2G/g.$$
-  The default normalization is `Normalization.geostrophic`, and
-  parameters include `formulation`, `f0`, and `g`.
+  The default normalization is `Normalization.geostrophic`.
+  Internal-mode normalization names select rules in
+  `evp.normalizationRules`; the solved basis stores the active
+  rule name in `basisSet.normalization`. Parameters include
+  `formulation`, `f0`, and `g`.
 
   ```matlab
   evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);

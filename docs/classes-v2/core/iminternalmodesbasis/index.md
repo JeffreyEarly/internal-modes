@@ -28,7 +28,9 @@ $$F_j=h_j G'_j.$$ If the EVP solves `F`, then
 $$G_j=-gN^{-2}F'_j.$$
 Normalization is shared across both variables: if a rule gives scale
 $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
-that same factor.
+that same factor. Standard rules are installed on
+`basisSet.evp.normalizationRules`, and custom rules should be added
+when the `IMInternalModes` EVP is created.
 
 ```matlab
 basisSet = solver.solveEVP(evp,nModes=4);
