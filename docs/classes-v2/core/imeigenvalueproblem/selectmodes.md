@@ -31,7 +31,8 @@ Select and label retained finite-real eigenmodes.
 
 ## Discussion
 
-  Certified negative-count bounds decide when raw negative
-  discrete eigenvalues should be retained. With a positive metric
-  and nonnegative quadratic form, negative discrete eigenvalues
-  are ignored during mode selection.
+  Mode-selection diagnostics decide when raw negative discrete
+  eigenvalues should be retained and whether a zero mode should
+  be included. Retained modes are labeled in the order
+  $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
+  The full diagnostics struct is stored in `selection.index`.

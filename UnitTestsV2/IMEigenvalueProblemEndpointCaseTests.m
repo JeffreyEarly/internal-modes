@@ -68,9 +68,10 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             selection = evp.selectModes([-100; 1; 2; 3], 2, solver, A);
 
             testCase.verifyTrue(info.metricPositive)
-            testCase.verifyTrue(info.qNonnegativeCertified)
+            testCase.verifyTrue(info.quadraticFormNonnegative)
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 0)
+            testCase.verifyEqual(selection.index.zeroModeStatus, "absent")
             testCase.verifyEqual(selection.sortIndex(:), [2; 3])
             testCase.verifyEqual(selection.modeNumber, [1 2])
         end
@@ -83,11 +84,13 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
             info = evp.definitenessInfo(solver);
             bounds = evp.negativeEigenvalueBounds(solver, A);
+            removedZeroStatusField = "zero" + "EigenvalueStatus";
 
             testCase.verifyEqual(info.negativeEndpointWeightCount, 1)
             testCase.verifyEqual(bounds.negativeEndpointWeightCount, 1)
-            testCase.verifyTrue(info.qNonnegativeCertified)
-            testCase.verifyEqual(bounds.zeroEigenvalueStatus, "absent")
+            testCase.verifyTrue(info.quadraticFormNonnegative)
+            testCase.verifyEqual(bounds.zeroModeStatus, "absent")
+            testCase.verifyFalse(isfield(bounds, removedZeroStatusField))
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 1)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
         end
@@ -100,9 +103,49 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             bounds = evp.negativeEigenvalueBounds(solver);
 
             testCase.verifyEqual(bounds.negativeEndpointWeightCount, 1)
-            testCase.verifyEqual(bounds.zeroEigenvalueStatus, "unchecked")
+            testCase.verifyEqual(bounds.zeroModeStatus, "unchecked")
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
+        end
+
+        function modeSelectionDiagnosticsInferZeroModeFromLeftMatrix(testCase)
+            solver = testCase.canonicalSolver();
+            zeroEVP = IMEigenvalueProblem(p=1, q=0, r=1, ...
+                surfaceBoundary=IMBoundaryCondition.neumann(), ...
+                bottomBoundary=IMBoundaryCondition.neumann());
+            constrainedEVP = IMEigenvalueProblem(p=1, q=0, r=1);
+            [zeroA, ~] = zeroEVP.assemble(solver);
+            [constrainedA, ~] = constrainedEVP.assemble(solver);
+
+            present = zeroEVP.modeSelectionDiagnostics(solver, zeroA);
+            absent = constrainedEVP.modeSelectionDiagnostics(solver, constrainedA);
+
+            testCase.verifyEqual(present.zeroModeStatus, "present")
+            testCase.verifyEqual(present.zeroModeCount, 1)
+            testCase.verifyLessThanOrEqual(present.zeroModeSingularValue, present.zeroModeTolerance)
+            testCase.verifyEqual(absent.zeroModeStatus, "absent")
+            testCase.verifyEqual(absent.zeroModeCount, 0)
+            testCase.verifyGreaterThan(absent.zeroModeSingularValue, absent.zeroModeTolerance)
+        end
+
+        function selectModesIncludesZeroOnlyWhenDiagnosticsReportPresent(testCase)
+            solver = testCase.canonicalSolver();
+            zeroEVP = IMEigenvalueProblem(p=1, q=0, r=1, ...
+                surfaceBoundary=IMBoundaryCondition.neumann(), ...
+                bottomBoundary=IMBoundaryCondition.neumann());
+            constrainedEVP = IMEigenvalueProblem(p=1, q=0, r=1);
+            [zeroA, ~] = zeroEVP.assemble(solver);
+            [constrainedA, ~] = constrainedEVP.assemble(solver);
+
+            zeroSelection = zeroEVP.selectModes([-100; 0; 1; 2], 3, solver, zeroA);
+            constrainedSelection = constrainedEVP.selectModes([0; 1; 2], 2, solver, constrainedA);
+
+            testCase.verifyEqual(zeroSelection.sortIndex(:), [2; 3; 4])
+            testCase.verifyEqual(zeroSelection.modeNumber, [0 1 2])
+            testCase.verifyEqual(zeroSelection.index.zeroModeStatus, "present")
+            testCase.verifyEqual(constrainedSelection.sortIndex(:), [2; 3])
+            testCase.verifyEqual(constrainedSelection.modeNumber, [1 2])
+            testCase.verifyEqual(constrainedSelection.index.zeroModeStatus, "absent")
         end
 
         function case3InactiveRobinDirectionsSetFiniteSearchCap(testCase)
@@ -134,7 +177,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
         end
 
-        function case3GeostrophicWKBRetainsCertifiedNegativeMode(testCase)
+        function case3GeostrophicWKBRetainsAssessedNegativeMode(testCase)
             [solver, evp] = testCase.geostrophicWKBProblem();
             [A, B] = evp.assemble(solver);
             eigenvalues = eig(A, B);
@@ -149,8 +192,25 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(nnz(finiteRealEigenvalues < 0), 1)
             testCase.verifyEqual(info.endpointNumeratorNegativeDirections, 2)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 2)
+            testCase.verifyEqual(bounds.zeroModeStatus, "absent")
             testCase.verifyLessThan(basisSet.eigenvalues(1), 0)
             testCase.verifyEqual(basisSet.modeNumber(1), -1)
+        end
+
+        function hydrostaticFModesInferBarotropicZeroMode(testCase)
+            zDomain = [-1000 0];
+            N0 = 5.2e-3;
+            N2 = @(z) N0*N0*(1 + 0*z);
+            solver = IMSolverSpectral(nEVP=32);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            removedZeroProperty = "has" + "ZeroMode";
+
+            basisSet = solver.solveEVP(evp, nModes=3);
+
+            testCase.verifyFalse(isprop(evp, removedZeroProperty))
+            testCase.verifyEqual(basisSet.modeNumber(1), 0)
+            testCase.verifyEqual(basisSet.index.zeroModeStatus, "present")
+            testCase.verifyEqual(basisSet.index.zeroModeCount, 1)
         end
 
         function case4FailedCoefficientSignsReturnUnknown(testCase)

@@ -26,4 +26,4 @@ solver paths.
 | --- | --- | --- |
 | Constant analytical basis | unsupported endpoint condition | `IMBasisSetConstantStratification:UnsupportedBoundary` |
 | Exponential analytical basis | nonzero surface location or unsupported endpoint condition | `IMBasisSetExponentialStratification:UnsupportedBoundary` or `IMBasisSetExponentialStratification:UnsupportedDomain` |
-| Canonical mode selection | certified positive metric and nonnegative form with raw negative discrete values | negative candidates are ignored during selection |
+| Canonical mode selection | assessed positive metric and nonnegative form with raw negative discrete values | negative candidates are ignored during selection |

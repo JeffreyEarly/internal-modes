@@ -99,7 +99,6 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.f0 (1,1) double = 0
                 options.g (1,1) double {mustBePositive} = 9.81
                 options.hFromEigenvalue = @(lambda) 1 ./ lambda
-                options.hasZeroMode (1,1) logical = false
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
                 options.parameters struct = struct()
@@ -113,8 +112,8 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             self@IMEigenvalueProblem(name=options.name, p=options.p, q=options.q, r=options.r, ...
                 zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                hasZeroMode=options.hasZeroMode, defaultNormalization=options.defaultNormalization, ...
-                normalizations=options.normalizations, parameters=parameters);
+                defaultNormalization=options.defaultNormalization, normalizations=options.normalizations, ...
+                parameters=parameters);
             self.formulation = formulation;
             self.N2 = options.N2;
             self.f0 = options.f0;
@@ -275,7 +274,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             %
             % The canonical scalar form is
             % $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
-            % It declares the barotropic zero mode.
+            % The barotropic zero mode is inferred from the canonical left
+            % problem during mode selection.
             % Parameters include `formulation` and `g`.
             %
             % - Topic: Create internal-mode EVPs
@@ -299,8 +299,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                defaultNormalization=Normalization.geostrophic, normalizations=normalizations, ...
-                hasZeroMode=true);
+                defaultNormalization=Normalization.geostrophic, normalizations=normalizations);
         end
 
         function evp = waveModesAtWavenumber(options)

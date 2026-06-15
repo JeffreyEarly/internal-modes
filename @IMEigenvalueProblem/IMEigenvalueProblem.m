@@ -26,7 +26,7 @@ classdef IMEigenvalueProblem
     % - Topic: Inspect EVP configuration
     % - Topic: Inspect inner products
     % - Topic: Inspect definiteness diagnostics
-    % - Topic: Select modes
+    % - Topic: Inspect mode selection
     % - Topic: Developer topics
     % - Declaration: classdef IMEigenvalueProblem
 
@@ -89,14 +89,6 @@ classdef IMEigenvalueProblem
         %
         % - Topic: Define canonical coefficients
         bottomBoundary = IMBoundaryCondition.dirichlet()
-
-        % Whether the scalar problem declares a zero mode.
-        %
-        % When true, mode selection retains one eigenvalue near zero and
-        % labels it with mode number `0`.
-        %
-        % - Topic: Select modes
-        hasZeroMode = false
 
         % Natural default normalization.
         %
@@ -162,7 +154,6 @@ classdef IMEigenvalueProblem
             % - Parameter options.r: eigenvalue-side metric coefficient
             % - Parameter options.surfaceBoundary: surface endpoint condition
             % - Parameter options.bottomBoundary: bottom endpoint condition
-            % - Parameter options.hasZeroMode: whether one zero mode should be retained
             % - Parameter options.defaultNormalization: natural normalization
             % - Parameter options.normalizations: named normalization handles
             % - Parameter options.parameters: named coefficient parameters
@@ -175,7 +166,6 @@ classdef IMEigenvalueProblem
                 options.r = @(z,~) ones(size(z))
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.hasZeroMode (1,1) logical = false
                 options.defaultNormalization = []
                 options.normalizations struct = struct()
                 options.parameters struct = struct()
@@ -188,7 +178,6 @@ classdef IMEigenvalueProblem
             self.r = options.r;
             self.surfaceBoundary = options.surfaceBoundary;
             self.bottomBoundary = options.bottomBoundary;
-            self.hasZeroMode = options.hasZeroMode;
             self.defaultNormalization = options.defaultNormalization;
             self.normalizations = IMEigenvalueProblem.resolveNormalizations(options.normalizations);
             self.parameters = options.parameters;
@@ -359,17 +348,17 @@ classdef IMEigenvalueProblem
         function info = definitenessInfo(self, solver)
             % Check grid-level signs for the canonical coefficients.
             %
-            % This diagnostic certifies the assembled finite-dimensional
+            % This diagnostic assesses the assembled finite-dimensional
             % problem on the solver grid. It does not claim continuum signs
             % between grid points. The returned struct includes sampled
             % minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
             % `qNonnegative`, and `rPositive`; metric fields
             % `endpointWeights`, `negativeEndpointWeightCount`,
-            % `metricPositive`, and `hasDegenerateEndpointMetric`; numerator fields
-            % `endpointNumeratorNegativeDirections`,
+            % `metricPositive`, and `hasDegenerateEndpointMetric`; numerator
+            % fields `endpointNumeratorNegativeDirections`,
             % `endpointNumeratorNonnegative`, `interiorNonnegative`, and
-            % `qNonnegativeCertified`; and status fields
-            % `certificationLevel` and `reason`.
+            % `quadraticFormNonnegative`; and status fields
+            % `assessmentLevel` and `reason`.
             %
             % - Topic: Inspect definiteness diagnostics
             % - Declaration: info = definitenessInfo(evp,solver)
@@ -397,35 +386,36 @@ classdef IMEigenvalueProblem
             info.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
             info.endpointNumeratorNonnegative = info.endpointNumeratorNegativeDirections == 0;
             info.interiorNonnegative = info.pPositive && info.qNonnegative;
-            info.qNonnegativeCertified = info.interiorNonnegative && info.endpointNumeratorNonnegative;
-            info.certificationLevel = "grid";
+            info.quadraticFormNonnegative = info.interiorNonnegative && info.endpointNumeratorNonnegative;
+            info.assessmentLevel = "grid";
             info.reason = "Grid signs and scalar endpoint conditions were checked.";
             if info.hasDegenerateEndpointMetric
-                info.certificationLevel = "unknown";
+                info.assessmentLevel = "unknown";
                 info.reason = "An active endpoint determinant is numerically degenerate.";
             elseif ~(info.pPositive && info.rPositive && all(isfinite(qValues)))
-                info.certificationLevel = "unknown";
+                info.assessmentLevel = "unknown";
                 info.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
             end
         end
 
         function bounds = negativeEigenvalueBounds(self, solver, A)
-            % Bound negative eigenvalues using grid-level certification.
+            % Bound negative eigenvalues using a grid-level assessment.
             %
             % The returned counts describe how many negative eigenvalues are
-            % certified by the discretized canonical problem, rather than by
-            % raw negative finite-real eigenvalues alone. The returned struct
-            % includes `certificationLevel`, `negativeEndpointWeightCount`,
-            % `zeroEigenvalueStatus`, `minNegativeEigenvalueCount`,
+            % supported by the discretized canonical problem, rather than by
+            % raw negative finite-real eigenvalues alone. Exact negative
+            % counts require the zero mode to be absent. The returned struct
+            % includes `assessmentLevel`, `negativeEndpointWeightCount`,
+            % `zeroModeStatus`, `minNegativeEigenvalueCount`,
             % `maxNegativeEigenvalueCount`, and `reason`.
             % `maxNegativeEigenvalueCount` may be the string `"unknown"`
             % when coefficient signs or endpoint determinants cannot be
-            % certified on the grid.
+            % assessed on the grid.
             %
-            % - Topic: Inspect definiteness diagnostics
+            % - Topic: Inspect mode selection
             % - Declaration: bounds = negativeEigenvalueBounds(evp,solver,A)
             % - Parameter solver: canonical EVP solver
-            % - Parameter A: assembled left matrix, used for the zero-eigenvalue check
+            % - Parameter A: assembled left matrix, used for the zero-mode check
             % - Returns bounds: struct with min/max counts and a reason
             arguments
                 self IMEigenvalueProblem
@@ -434,32 +424,32 @@ classdef IMEigenvalueProblem
             end
 
             info = self.definitenessInfo(solver);
-            bounds.certificationLevel = info.certificationLevel;
+            zeroMode = self.zeroModeAssessment(A);
+            bounds.assessmentLevel = info.assessmentLevel;
             bounds.negativeEndpointWeightCount = info.negativeEndpointWeightCount;
-            bounds.zeroEigenvalueStatus = "unchecked";
+            bounds.zeroModeStatus = zeroMode.zeroModeStatus;
             bounds.minNegativeEigenvalueCount = 0;
             bounds.maxNegativeEigenvalueCount = "unknown";
             bounds.reason = info.reason;
 
-            if info.certificationLevel == "unknown"
+            if info.assessmentLevel == "unknown"
                 return;
             end
 
-            if info.metricPositive && info.qNonnegativeCertified
+            if info.metricPositive && info.quadraticFormNonnegative
                 bounds.maxNegativeEigenvalueCount = 0;
                 bounds.reason = "The grid metric is positive and the quadratic form is nonnegative.";
                 return;
             end
 
-            if info.qNonnegativeCertified && info.negativeEndpointWeightCount > 0
-                bounds.zeroEigenvalueStatus = self.zeroEigenvalueStatus(A);
-                if bounds.zeroEigenvalueStatus == "absent"
+            if info.quadraticFormNonnegative && info.negativeEndpointWeightCount > 0
+                if bounds.zeroModeStatus == "absent"
                     bounds.minNegativeEigenvalueCount = info.negativeEndpointWeightCount;
                     bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
-                    bounds.reason = "The left-definite endpoint metric has a certified finite index and zero is absent.";
+                    bounds.reason = "The left-definite endpoint metric has an assessed finite index and zero is absent.";
                 else
                     bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
-                    bounds.reason = "The negative endpoint weight count is certified, but the zero-eigenvalue check is not conclusive.";
+                    bounds.reason = "The negative endpoint weight count bounds the search, but exact negative count requires zero to be absent.";
                 end
                 return;
             end
@@ -471,13 +461,55 @@ classdef IMEigenvalueProblem
             end
         end
 
+        function diagnostics = modeSelectionDiagnostics(self, solver, A)
+            % Summarize negative and zero mode selection.
+            %
+            % Negative modes are bounded by `negativeEigenvalueBounds`.
+            % Zero modes are inferred from the assembled left matrix `A`:
+            % `zeroModeStatus` is `"present"` when the smallest singular
+            % value satisfies
+            % $$\sigma_{\min}(A)\le 10^{-10}\max(1,\|A\|_F),$$
+            % `"absent"` when it is larger, and `"unchecked"` when `A` is
+            % omitted. Mode labels are ordered as
+            % $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
+            % The returned struct includes `assessmentLevel`,
+            % `negativeEndpointWeightCount`, `minNegativeEigenvalueCount`,
+            % `maxNegativeEigenvalueCount`, `zeroModeStatus`,
+            % `zeroModeCount`, `zeroModeSingularValue`,
+            % `zeroModeTolerance`, and `reason`.
+            %
+            % - Topic: Inspect mode selection
+            % - Declaration: diagnostics = modeSelectionDiagnostics(evp,solver,A)
+            % - Parameter solver: canonical EVP solver
+            % - Parameter A: assembled left matrix
+            % - Returns diagnostics: struct with negative and zero mode selection fields
+            arguments
+                self IMEigenvalueProblem
+                solver IMSolver
+                A double = []
+            end
+
+            bounds = self.negativeEigenvalueBounds(solver, A);
+            zeroMode = self.zeroModeAssessment(A);
+            diagnostics.assessmentLevel = bounds.assessmentLevel;
+            diagnostics.negativeEndpointWeightCount = bounds.negativeEndpointWeightCount;
+            diagnostics.minNegativeEigenvalueCount = bounds.minNegativeEigenvalueCount;
+            diagnostics.maxNegativeEigenvalueCount = bounds.maxNegativeEigenvalueCount;
+            diagnostics.zeroModeStatus = zeroMode.zeroModeStatus;
+            diagnostics.zeroModeCount = zeroMode.zeroModeCount;
+            diagnostics.zeroModeSingularValue = zeroMode.zeroModeSingularValue;
+            diagnostics.zeroModeTolerance = zeroMode.zeroModeTolerance;
+            diagnostics.reason = bounds.reason + " Zero mode status is " + zeroMode.zeroModeStatus + ".";
+        end
+
         function selection = selectModes(self, eigenvalues, nModes, solver, A)
             % Select and label retained finite-real eigenmodes.
             %
-            % Certified negative-count bounds decide when raw negative
-            % discrete eigenvalues should be retained. With a positive metric
-            % and nonnegative quadratic form, negative discrete eigenvalues
-            % are ignored during mode selection.
+            % Mode-selection diagnostics decide when raw negative discrete
+            % eigenvalues should be retained and whether a zero mode should
+            % be included. Retained modes are labeled in the order
+            % $$-1,-2,\ldots,\quad 0,\quad 1,2,\ldots.$$
+            % The full diagnostics struct is stored in `selection.index`.
             %
             % - Topic: Developer topics
             % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A)
@@ -496,10 +528,10 @@ classdef IMEigenvalueProblem
             end
 
             tolerance = self.eigenvalueTolerance(eigenvalues);
-            bounds = self.negativeEigenvalueBounds(solver, A);
+            diagnostics = self.modeSelectionDiagnostics(solver, A);
             negativeCount = nnz(eigenvalues < -tolerance);
-            if isnumeric(bounds.maxNegativeEigenvalueCount)
-                negativeCount = min(negativeCount, bounds.maxNegativeEigenvalueCount);
+            if isnumeric(diagnostics.maxNegativeEigenvalueCount)
+                negativeCount = min(negativeCount, diagnostics.maxNegativeEigenvalueCount);
             end
 
             negativeCandidates = find(eigenvalues < -tolerance);
@@ -507,7 +539,7 @@ classdef IMEigenvalueProblem
             negativeIndex = negativeCandidates(negativeSort(1:min(negativeCount,numel(negativeSort))));
 
             zeroIndex = zeros(0,1);
-            if self.hasZeroMode
+            if diagnostics.zeroModeStatus == "present"
                 zeroCandidates = find(abs(eigenvalues) <= tolerance);
                 if isempty(zeroCandidates)
                     [~, zeroCandidate] = min(abs(eigenvalues));
@@ -535,7 +567,7 @@ classdef IMEigenvalueProblem
 
             selection.sortIndex = sortIndex;
             selection.modeNumber = modeNumber;
-            selection.index = bounds;
+            selection.index = diagnostics;
         end
 
         function basisSet = makeBasisSet(self, solver, nativeModes, eigenvalues, modeNumber, index)
@@ -617,17 +649,22 @@ classdef IMEigenvalueProblem
             tf = boundary.isEigenvalueDependent() && ~isfinite(boundary.metricWeight(location));
         end
 
-        function status = zeroEigenvalueStatus(~, A)
+        function zeroMode = zeroModeAssessment(~, A)
+            zeroMode.zeroModeStatus = "unchecked";
+            zeroMode.zeroModeCount = 0;
+            zeroMode.zeroModeSingularValue = NaN;
+            zeroMode.zeroModeTolerance = NaN;
             if isempty(A)
-                status = "unchecked";
                 return;
             end
             singularValues = svd(A);
-            scale = max(1,norm(A,"fro"));
-            if min(singularValues) > 1e-10*scale
-                status = "absent";
+            zeroMode.zeroModeSingularValue = min(singularValues);
+            zeroMode.zeroModeTolerance = 1e-10*max(1,norm(A,"fro"));
+            zeroMode.zeroModeCount = nnz(singularValues <= zeroMode.zeroModeTolerance);
+            if zeroMode.zeroModeCount > 0
+                zeroMode.zeroModeStatus = "present";
             else
-                status = "possible";
+                zeroMode.zeroModeStatus = "absent";
             end
         end
 

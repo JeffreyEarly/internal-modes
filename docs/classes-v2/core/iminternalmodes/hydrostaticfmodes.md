@@ -32,5 +32,6 @@ Create the hydrostatic `F` internal-mode EVP.
 
   The canonical scalar form is
   $$-\partial_z(N^{-2}F_z)=\lambda F/g.$$
-  It declares the barotropic zero mode.
+  The barotropic zero mode is inferred from the canonical left
+  problem during mode selection.
   Parameters include `formulation` and `g`.
