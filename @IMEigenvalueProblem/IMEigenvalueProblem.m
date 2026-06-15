@@ -345,25 +345,32 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function info = definitenessInfo(self, solver)
-            % Check grid-level signs for the canonical coefficients.
+        function diagnostics = definitenessDiagnostics(self, solver)
+            % Assess the norm and energy signs that control negative modes.
             %
-            % This diagnostic assesses the assembled finite-dimensional
-            % problem on the solver grid. It does not claim continuum signs
-            % between grid points. The returned struct includes sampled
-            % minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
-            % `qNonnegative`, and `rPositive`; metric fields
-            % `endpointWeights`, `negativeEndpointWeightCount`,
-            % `metricPositive`, and `hasDegenerateEndpointMetric`; numerator
-            % fields `endpointNumeratorNegativeDirections`,
+            % On the solver grid, the canonical EVP has a norm determined
+            % by the interior weight `r` and endpoint weights, and an energy
+            % determined by the interior `p`, `q` terms plus endpoint
+            % contributions. This diagnostic checks the sampled coefficients
+            % and endpoint terms that determine whether the norm is positive
+            % and whether the energy is nonnegative. These are grid-level
+            % checks for the discretized problem, not continuum guarantees
+            % between grid points.
+            %
+            % The returned struct includes sampled minima `pMin`, `qMin`,
+            % `rMin`; sign flags `pPositive`, `qNonnegative`, and
+            % `rPositive`; norm fields `endpointWeights`,
+            % `negativeEndpointWeightCount`, `metricPositive`, and
+            % `hasDegenerateEndpointMetric`; energy fields
+            % `endpointNumeratorNegativeDirections`,
             % `endpointNumeratorNonnegative`, `interiorNonnegative`, and
             % `quadraticFormNonnegative`; and status fields
             % `assessmentLevel` and `reason`.
             %
             % - Topic: Inspect definiteness diagnostics
-            % - Declaration: info = definitenessInfo(evp,solver)
+            % - Declaration: diagnostics = definitenessDiagnostics(evp,solver)
             % - Parameter solver: canonical EVP solver
-            % - Returns info: struct with sign, metric, and endpoint checks
+            % - Returns diagnostics: struct with norm and energy checks
             solver = solver.configuredForEVP(self);
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
@@ -373,28 +380,28 @@ classdef IMEigenvalueProblem
             qTol = IMEigenvalueProblem.signTolerance(qValues, tolerance);
             rTol = IMEigenvalueProblem.signTolerance(rValues, tolerance);
 
-            info.pMin = min(pValues);
-            info.qMin = min(qValues);
-            info.rMin = min(rValues);
-            info.pPositive = all(isfinite(pValues)) && info.pMin > pTol;
-            info.qNonnegative = all(isfinite(qValues)) && info.qMin >= -qTol;
-            info.rPositive = all(isfinite(rValues)) && info.rMin > rTol;
-            info.endpointWeights = self.endpointWeights();
-            info.negativeEndpointWeightCount = self.negativeEndpointWeightCount(tolerance=0);
-            info.metricPositive = info.rPositive && info.negativeEndpointWeightCount == 0;
-            info.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
-            info.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
-            info.endpointNumeratorNonnegative = info.endpointNumeratorNegativeDirections == 0;
-            info.interiorNonnegative = info.pPositive && info.qNonnegative;
-            info.quadraticFormNonnegative = info.interiorNonnegative && info.endpointNumeratorNonnegative;
-            info.assessmentLevel = "grid";
-            info.reason = "Grid signs and scalar endpoint conditions were checked.";
-            if info.hasDegenerateEndpointMetric
-                info.assessmentLevel = "unknown";
-                info.reason = "An active endpoint determinant is numerically degenerate.";
-            elseif ~(info.pPositive && info.rPositive && all(isfinite(qValues)))
-                info.assessmentLevel = "unknown";
-                info.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
+            diagnostics.pMin = min(pValues);
+            diagnostics.qMin = min(qValues);
+            diagnostics.rMin = min(rValues);
+            diagnostics.pPositive = all(isfinite(pValues)) && diagnostics.pMin > pTol;
+            diagnostics.qNonnegative = all(isfinite(qValues)) && diagnostics.qMin >= -qTol;
+            diagnostics.rPositive = all(isfinite(rValues)) && diagnostics.rMin > rTol;
+            diagnostics.endpointWeights = self.endpointWeights();
+            diagnostics.negativeEndpointWeightCount = self.negativeEndpointWeightCount(tolerance=0);
+            diagnostics.metricPositive = diagnostics.rPositive && diagnostics.negativeEndpointWeightCount == 0;
+            diagnostics.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
+            diagnostics.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
+            diagnostics.endpointNumeratorNonnegative = diagnostics.endpointNumeratorNegativeDirections == 0;
+            diagnostics.interiorNonnegative = diagnostics.pPositive && diagnostics.qNonnegative;
+            diagnostics.quadraticFormNonnegative = diagnostics.interiorNonnegative && diagnostics.endpointNumeratorNonnegative;
+            diagnostics.assessmentLevel = "grid";
+            diagnostics.reason = "Grid-level norm and energy signs were checked.";
+            if diagnostics.hasDegenerateEndpointMetric
+                diagnostics.assessmentLevel = "unknown";
+                diagnostics.reason = "An active endpoint determinant is numerically degenerate.";
+            elseif ~(diagnostics.pPositive && diagnostics.rPositive && all(isfinite(qValues)))
+                diagnostics.assessmentLevel = "unknown";
+                diagnostics.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
             end
         end
 
@@ -423,40 +430,40 @@ classdef IMEigenvalueProblem
                 A double = []
             end
 
-            info = self.definitenessInfo(solver);
+            definiteness = self.definitenessDiagnostics(solver);
             zeroMode = self.zeroModeAssessment(A);
-            bounds.assessmentLevel = info.assessmentLevel;
-            bounds.negativeEndpointWeightCount = info.negativeEndpointWeightCount;
+            bounds.assessmentLevel = definiteness.assessmentLevel;
+            bounds.negativeEndpointWeightCount = definiteness.negativeEndpointWeightCount;
             bounds.zeroModeStatus = zeroMode.zeroModeStatus;
             bounds.minNegativeEigenvalueCount = 0;
             bounds.maxNegativeEigenvalueCount = "unknown";
-            bounds.reason = info.reason;
+            bounds.reason = definiteness.reason;
 
-            if info.assessmentLevel == "unknown"
+            if definiteness.assessmentLevel == "unknown"
                 return;
             end
 
-            if info.metricPositive && info.quadraticFormNonnegative
+            if definiteness.metricPositive && definiteness.quadraticFormNonnegative
                 bounds.maxNegativeEigenvalueCount = 0;
-                bounds.reason = "The grid metric is positive and the quadratic form is nonnegative.";
+                bounds.reason = "The grid-level norm is positive and the energy is nonnegative.";
                 return;
             end
 
-            if info.quadraticFormNonnegative && info.negativeEndpointWeightCount > 0
+            if definiteness.quadraticFormNonnegative && definiteness.negativeEndpointWeightCount > 0
                 if bounds.zeroModeStatus == "absent"
-                    bounds.minNegativeEigenvalueCount = info.negativeEndpointWeightCount;
-                    bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
-                    bounds.reason = "The left-definite endpoint metric has an assessed finite index and zero is absent.";
+                    bounds.minNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
+                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
+                    bounds.reason = "The energy is nonnegative, the endpoint norm has an assessed negative-weight count, and zero is absent.";
                 else
-                    bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
+                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
                     bounds.reason = "The negative endpoint weight count bounds the search, but exact negative count requires zero to be absent.";
                 end
                 return;
             end
 
-            if info.metricPositive && info.interiorNonnegative
-                bounds.maxNegativeEigenvalueCount = info.endpointNumeratorNegativeDirections;
-                bounds.reason = "The metric is positive and only endpoint numerator directions can make the form negative.";
+            if definiteness.metricPositive && definiteness.interiorNonnegative
+                bounds.maxNegativeEigenvalueCount = definiteness.endpointNumeratorNegativeDirections;
+                bounds.reason = "The norm is positive and only endpoint energy terms can make the energy negative.";
                 return;
             end
         end

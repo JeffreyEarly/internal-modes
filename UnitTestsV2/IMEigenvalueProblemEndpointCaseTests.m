@@ -63,12 +63,13 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(p=1, q=0, r=1);
             [A, ~] = evp.assemble(solver);
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver, A);
             selection = evp.selectModes([-100; 1; 2; 3], 2, solver, A);
 
-            testCase.verifyTrue(info.metricPositive)
-            testCase.verifyTrue(info.quadraticFormNonnegative)
+            testCase.verifyTrue(diagnostics.metricPositive)
+            testCase.verifyTrue(diagnostics.quadraticFormNonnegative)
+            testCase.verifyEqual(bounds.assessmentLevel, diagnostics.assessmentLevel)
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 0)
             testCase.verifyEqual(selection.index.zeroModeStatus, "absent")
@@ -82,13 +83,13 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(p=1, q=1, r=1, bottomBoundary=bottom);
             [A, ~] = evp.assemble(solver);
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver, A);
             removedZeroStatusField = "zero" + "EigenvalueStatus";
 
-            testCase.verifyEqual(info.negativeEndpointWeightCount, 1)
+            testCase.verifyEqual(diagnostics.negativeEndpointWeightCount, 1)
             testCase.verifyEqual(bounds.negativeEndpointWeightCount, 1)
-            testCase.verifyTrue(info.quadraticFormNonnegative)
+            testCase.verifyTrue(diagnostics.quadraticFormNonnegative)
             testCase.verifyEqual(bounds.zeroModeStatus, "absent")
             testCase.verifyFalse(isfield(bounds, removedZeroStatusField))
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 1)
@@ -154,11 +155,11 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             bottom = IMBoundaryCondition(a=-1, b=1);
             evp = IMEigenvalueProblem(p=1, q=0, r=1, surfaceBoundary=surface, bottomBoundary=bottom);
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver);
 
-            testCase.verifyTrue(info.metricPositive)
-            testCase.verifyEqual(info.endpointNumeratorNegativeDirections, 2)
+            testCase.verifyTrue(diagnostics.metricPositive)
+            testCase.verifyEqual(diagnostics.endpointNumeratorNegativeDirections, 2)
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 2)
         end
@@ -168,11 +169,11 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             surface = IMBoundaryCondition(a=0, b=1, c=1, d=1);
             evp = IMEigenvalueProblem(p=1, q=0, r=1, surfaceBoundary=surface);
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver);
 
-            testCase.verifyTrue(info.metricPositive)
-            testCase.verifyEqual(info.endpointNumeratorNegativeDirections, 1)
+            testCase.verifyTrue(diagnostics.metricPositive)
+            testCase.verifyEqual(diagnostics.endpointNumeratorNegativeDirections, 1)
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
         end
@@ -185,12 +186,12 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
                 & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
             finiteRealEigenvalues = real(eigenvalues(valid));
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver, A);
             basisSet = solver.solveEVP(evp, nModes=4);
 
             testCase.verifyGreaterThanOrEqual(nnz(finiteRealEigenvalues < 0), 1)
-            testCase.verifyEqual(info.endpointNumeratorNegativeDirections, 2)
+            testCase.verifyEqual(diagnostics.endpointNumeratorNegativeDirections, 2)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 2)
             testCase.verifyEqual(bounds.zeroModeStatus, "absent")
             testCase.verifyLessThan(basisSet.eigenvalues(1), 0)
@@ -240,10 +241,10 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             surface = IMBoundaryCondition(a=0, b=1, c=0, d=1);
             evp = IMEigenvalueProblem(p=1, q=0, r=1, surfaceBoundary=surface);
 
-            info = evp.definitenessInfo(solver);
+            diagnostics = evp.definitenessDiagnostics(solver);
             bounds = evp.negativeEigenvalueBounds(solver);
 
-            testCase.verifyTrue(info.hasDegenerateEndpointMetric)
+            testCase.verifyTrue(diagnostics.hasDegenerateEndpointMetric)
             testCase.verifyEmpty(evp.endpointWeights("surface"))
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, "unknown")
