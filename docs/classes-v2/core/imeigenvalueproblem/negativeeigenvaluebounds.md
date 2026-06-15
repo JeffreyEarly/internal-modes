@@ -3,7 +3,7 @@ layout: default
 title: negativeEigenvalueBounds
 parent: IMEigenvalueProblem
 grand_parent: Core
-nav_order: 15
+nav_order: 14
 mathjax: true
 ---
 
@@ -30,7 +30,7 @@ Bound negative eigenvalues using grid-level certification.
   The returned counts describe how many negative eigenvalues are
   certified by the discretized canonical problem, rather than by
   raw negative finite-real eigenvalues alone. The returned struct
-  includes `certificationLevel`, `metricIndex`,
+  includes `certificationLevel`, `negativeEndpointWeightCount`,
   `zeroEigenvalueStatus`, `minNegativeEigenvalueCount`,
   `maxNegativeEigenvalueCount`, and `reason`.
   `maxNegativeEigenvalueCount` may be the string `"unknown"`

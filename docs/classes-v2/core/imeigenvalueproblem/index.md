@@ -63,7 +63,7 @@ basisSet = solver.solveEVP(evp,nModes=4);
 + Inspect inner products
   + [`endpointWeights`](/internal-modes/classes-v2/core/imeigenvalueproblem/endpointweights.html) Return endpoint metric terms implied by active conditions.
   + [`innerProduct`](/internal-modes/classes-v2/core/imeigenvalueproblem/innerproduct.html) Return the scalar inner-product recipe.
-  + [`metricIndex`](/internal-modes/classes-v2/core/imeigenvalueproblem/metricindex.html) Count negative endpoint directions in the metric.
+  + [`negativeEndpointWeightCount`](/internal-modes/classes-v2/core/imeigenvalueproblem/negativeendpointweightcount.html) Count negative endpoint metric weights.
 + Inspect definiteness diagnostics
   + [`definitenessInfo`](/internal-modes/classes-v2/core/imeigenvalueproblem/definitenessinfo.html) Check grid-level signs for the canonical coefficients.
   + [`negativeEigenvalueBounds`](/internal-modes/classes-v2/core/imeigenvalueproblem/negativeeigenvaluebounds.html) Bound negative eigenvalues using grid-level certification.

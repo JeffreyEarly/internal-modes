@@ -31,8 +31,8 @@ Check grid-level signs for the canonical coefficients.
   between grid points. The returned struct includes sampled
   minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
   `qNonnegative`, and `rPositive`; metric fields
-  `endpointWeights`, `metricIndex`, `metricPositive`, and
-  `hasDegenerateEndpointMetric`; numerator fields
+  `endpointWeights`, `negativeEndpointWeightCount`,
+  `metricPositive`, and `hasDegenerateEndpointMetric`; numerator fields
   `endpointNumeratorNegativeDirections`,
   `endpointNumeratorNonnegative`, `interiorNonnegative`, and
   `qNonnegativeCertified`; and status fields

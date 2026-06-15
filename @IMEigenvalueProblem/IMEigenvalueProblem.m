@@ -321,16 +321,17 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function value = metricIndex(self, options)
-            % Count negative endpoint directions in the metric.
+        function value = negativeEndpointWeightCount(self, options)
+            % Count negative endpoint metric weights.
             %
-            % `metricIndex` is the number of active endpoint metric weights
-            % with negative coefficient, after the supplied sign tolerance.
-            % It is the finite endpoint part of the indefinite metric index
-            % used by `negativeEigenvalueBounds`.
+            % `negativeEndpointWeightCount` is the number of active
+            % endpoint metric weights with negative coefficient, after the
+            % supplied sign tolerance. The canonical scalar EVP has two
+            % endpoints with at most one active metric weight per endpoint,
+            % so this value is always `0`, `1`, or `2`.
             %
             % - Topic: Inspect inner products
-            % - Declaration: value = metricIndex(evp,options)
+            % - Declaration: value = negativeEndpointWeightCount(evp,options)
             % - Parameter options.tolerance: scalar sign tolerance
             % - Returns value: number of active endpoint terms with negative metric weight
             arguments
@@ -355,8 +356,8 @@ classdef IMEigenvalueProblem
             % between grid points. The returned struct includes sampled
             % minima `pMin`, `qMin`, `rMin`; sign flags `pPositive`,
             % `qNonnegative`, and `rPositive`; metric fields
-            % `endpointWeights`, `metricIndex`, `metricPositive`, and
-            % `hasDegenerateEndpointMetric`; numerator fields
+            % `endpointWeights`, `negativeEndpointWeightCount`,
+            % `metricPositive`, and `hasDegenerateEndpointMetric`; numerator fields
             % `endpointNumeratorNegativeDirections`,
             % `endpointNumeratorNonnegative`, `interiorNonnegative`, and
             % `qNonnegativeCertified`; and status fields
@@ -382,8 +383,8 @@ classdef IMEigenvalueProblem
             info.qNonnegative = all(isfinite(qValues)) && info.qMin >= -qTol;
             info.rPositive = all(isfinite(rValues)) && info.rMin > rTol;
             info.endpointWeights = self.endpointWeights();
-            info.metricIndex = self.metricIndex(tolerance=0);
-            info.metricPositive = info.rPositive && info.metricIndex == 0;
+            info.negativeEndpointWeightCount = self.negativeEndpointWeightCount(tolerance=0);
+            info.metricPositive = info.rPositive && info.negativeEndpointWeightCount == 0;
             info.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
             info.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
             info.endpointNumeratorNonnegative = info.endpointNumeratorNegativeDirections == 0;
@@ -406,7 +407,7 @@ classdef IMEigenvalueProblem
             % The returned counts describe how many negative eigenvalues are
             % certified by the discretized canonical problem, rather than by
             % raw negative finite-real eigenvalues alone. The returned struct
-            % includes `certificationLevel`, `metricIndex`,
+            % includes `certificationLevel`, `negativeEndpointWeightCount`,
             % `zeroEigenvalueStatus`, `minNegativeEigenvalueCount`,
             % `maxNegativeEigenvalueCount`, and `reason`.
             % `maxNegativeEigenvalueCount` may be the string `"unknown"`
@@ -426,7 +427,7 @@ classdef IMEigenvalueProblem
 
             info = self.definitenessInfo(solver);
             bounds.certificationLevel = info.certificationLevel;
-            bounds.metricIndex = info.metricIndex;
+            bounds.negativeEndpointWeightCount = info.negativeEndpointWeightCount;
             bounds.zeroEigenvalueStatus = "unchecked";
             bounds.minNegativeEigenvalueCount = 0;
             bounds.maxNegativeEigenvalueCount = "unknown";
@@ -442,15 +443,15 @@ classdef IMEigenvalueProblem
                 return;
             end
 
-            if info.qNonnegativeCertified && info.metricIndex > 0
+            if info.qNonnegativeCertified && info.negativeEndpointWeightCount > 0
                 bounds.zeroEigenvalueStatus = self.zeroEigenvalueStatus(A);
                 if bounds.zeroEigenvalueStatus == "absent"
-                    bounds.minNegativeEigenvalueCount = info.metricIndex;
-                    bounds.maxNegativeEigenvalueCount = info.metricIndex;
+                    bounds.minNegativeEigenvalueCount = info.negativeEndpointWeightCount;
+                    bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
                     bounds.reason = "The left-definite endpoint metric has a certified finite index and zero is absent.";
                 else
-                    bounds.maxNegativeEigenvalueCount = info.metricIndex;
-                    bounds.reason = "The metric index is certified, but the zero-eigenvalue check is not conclusive.";
+                    bounds.maxNegativeEigenvalueCount = info.negativeEndpointWeightCount;
+                    bounds.reason = "The negative endpoint weight count is certified, but the zero-eigenvalue check is not conclusive.";
                 end
                 return;
             end

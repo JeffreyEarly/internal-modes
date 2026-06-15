@@ -45,6 +45,19 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(boundary.robinEnergyCoefficient("bottom"), 2/3, AbsTol=0)
         end
 
+        function negativeEndpointWeightCountIsEndpointBounded(testCase)
+            zeroCountEVP = IMEigenvalueProblem(p=1, q=0, r=1);
+            oneCountEVP = IMEigenvalueProblem(p=1, q=0, r=1, ...
+                bottomBoundary=IMBoundaryCondition(a=0, b=1, c=1, d=0));
+            twoCountEVP = IMEigenvalueProblem(p=1, q=0, r=1, ...
+                surfaceBoundary=IMBoundaryCondition(a=0, b=1, c=-1, d=0), ...
+                bottomBoundary=IMBoundaryCondition(a=0, b=1, c=1, d=0));
+
+            testCase.verifyEqual(zeroCountEVP.negativeEndpointWeightCount(), 0)
+            testCase.verifyEqual(oneCountEVP.negativeEndpointWeightCount(), 1)
+            testCase.verifyEqual(twoCountEVP.negativeEndpointWeightCount(), 2)
+        end
+
         function case1PositiveMetricAndNonnegativeQSuppressesNegativeCandidates(testCase)
             solver = testCase.canonicalSolver();
             evp = IMEigenvalueProblem(p=1, q=0, r=1);
@@ -62,7 +75,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             testCase.verifyEqual(selection.modeNumber, [1 2])
         end
 
-        function case2MetricIndexWithZeroAbsentHasExactNegativeCount(testCase)
+        function case2NegativeEndpointWeightCountWithZeroAbsentHasExactNegativeCount(testCase)
             solver = testCase.canonicalSolver();
             bottom = IMBoundaryCondition(a=0, b=1, c=1, d=0);
             evp = IMEigenvalueProblem(p=1, q=1, r=1, bottomBoundary=bottom);
@@ -71,20 +84,22 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             info = evp.definitenessInfo(solver);
             bounds = evp.negativeEigenvalueBounds(solver, A);
 
-            testCase.verifyEqual(info.metricIndex, 1)
+            testCase.verifyEqual(info.negativeEndpointWeightCount, 1)
+            testCase.verifyEqual(bounds.negativeEndpointWeightCount, 1)
             testCase.verifyTrue(info.qNonnegativeCertified)
             testCase.verifyEqual(bounds.zeroEigenvalueStatus, "absent")
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 1)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
         end
 
-        function case2WithoutLeftMatrixKeepsMetricIndexAsUpperBound(testCase)
+        function case2WithoutLeftMatrixKeepsNegativeEndpointWeightCountAsUpperBound(testCase)
             solver = testCase.canonicalSolver();
             bottom = IMBoundaryCondition(a=0, b=1, c=1, d=0);
             evp = IMEigenvalueProblem(p=1, q=1, r=1, bottomBoundary=bottom);
 
             bounds = evp.negativeEigenvalueBounds(solver);
 
+            testCase.verifyEqual(bounds.negativeEndpointWeightCount, 1)
             testCase.verifyEqual(bounds.zeroEigenvalueStatus, "unchecked")
             testCase.verifyEqual(bounds.minNegativeEigenvalueCount, 0)
             testCase.verifyEqual(bounds.maxNegativeEigenvalueCount, 1)
