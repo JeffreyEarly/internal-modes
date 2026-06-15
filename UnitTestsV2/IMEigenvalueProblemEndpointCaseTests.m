@@ -25,9 +25,9 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(surface.isEigenvalueDependent())
             testCase.verifyEqual(surface.determinant("surface"), 1, AbsTol=0)
-            testCase.verifyEqual(surface.metricWeight("surface"), 1, AbsTol=0)
+            testCase.verifyEqual(surface.endpointWeightCoefficient("surface"), 1, AbsTol=0)
             testCase.verifyEqual(bottom.determinant("bottom"), -1, AbsTol=0)
-            testCase.verifyEqual(bottom.metricWeight("bottom"), -1, AbsTol=0)
+            testCase.verifyEqual(bottom.endpointWeightCoefficient("bottom"), -1, AbsTol=0)
         end
 
         function endpointDiagnosticsUseBuiltInArgumentValidation(testCase)

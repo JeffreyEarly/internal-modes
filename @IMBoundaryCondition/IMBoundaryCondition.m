@@ -4,7 +4,12 @@ classdef IMBoundaryCondition
     % `IMBoundaryCondition` represents
     % $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
     % The coefficients are endpoint scalars. The EVP supplies the endpoint
-    % location when it assembles matrix rows or computes metric weights.
+    % location when it assembles matrix rows or computes endpoint weight
+    % coefficients. The stored properties `a`, `b`, `c`, and `d` define
+    % the endpoint condition; `determinant(location)` derives the signed
+    % determinant $$D_i$$; and `endpointWeightCoefficient(location)`
+    % derives the scalar $$D_i^{-1}$$ used by
+    % `IMEigenvalueProblem.endpointWeights`.
     %
     % - Topic: Create boundary conditions
     % - Topic: Inspect boundary conditions
@@ -97,11 +102,23 @@ classdef IMBoundaryCondition
             value = IMBoundaryCondition.endpointSign(location)*(self.a*self.d - self.b*self.c);
         end
 
-        function value = metricWeight(self, location)
-            % Return the endpoint metric weight.
+        function value = endpointWeightCoefficient(self, location)
+            % Return the endpoint weight coefficient.
+            %
+            % For the active endpoint condition
+            % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
+            % the stored properties `a`, `b`, `c`, and `d` define
+            % $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i),$$ where Yassin's endpoint
+            % indexing makes the sign positive at the bottom and negative
+            % at the surface. This method returns $$D_i^{-1}$$, the scalar
+            % coefficient multiplying
+            % $$(c_i u-d_i p u_z)^2$$
+            % in the endpoint part of the norm. `IMEigenvalueProblem`
+            % copies this scalar into the `coefficient` field of each
+            % `endpointWeights` struct.
             %
             % - Topic: Inspect boundary conditions
-            % - Declaration: value = metricWeight(boundary,location)
+            % - Declaration: value = endpointWeightCoefficient(boundary,location)
             % - Parameter location: `"surface"` or `"bottom"`
             % - Returns value: coefficient multiplying `(c*u-d*p*u_z)^2`
             D = self.determinant(location);

@@ -34,6 +34,9 @@ Return endpoint metric terms implied by active conditions.
   Each returned struct has fields `location`, `coefficient`,
   `c`, and `d`, representing the endpoint metric contribution
   $$D_i^{-1}(c_i u-d_i p u_z)^2.$$
+  The `coefficient` field is the scalar returned by
+  `boundary.endpointWeightCoefficient(location)`, while `c`
+  and `d` are copied from the boundary condition properties.
   These are the endpoint-only terms used by the full
   `innerProduct()` recipe: `endpointWeights("surface")` appears
   as `innerProduct().surfaceWeights`, and

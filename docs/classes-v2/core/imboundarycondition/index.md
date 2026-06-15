@@ -25,7 +25,12 @@ Store one scalar canonical endpoint condition.
 `IMBoundaryCondition` represents
 $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
 The coefficients are endpoint scalars. The EVP supplies the endpoint
-location when it assembles matrix rows or computes metric weights.
+location when it assembles matrix rows or computes endpoint weight
+coefficients. The stored properties `a`, `b`, `c`, and `d` define
+the endpoint condition; `determinant(location)` derives the signed
+determinant $$D_i$$; and `endpointWeightCoefficient(location)`
+derives the scalar $$D_i^{-1}$$ used by
+`IMEigenvalueProblem.endpointWeights`.
 
 
 
@@ -42,8 +47,8 @@ location when it assembles matrix rows or computes metric weights.
   + [`c`](/internal-modes/classes-v2/core/imboundarycondition/c.html) Coefficient multiplying endpoint value on the eigenvalue side.
   + [`d`](/internal-modes/classes-v2/core/imboundarycondition/d.html) Coefficient multiplying endpoint flux on the eigenvalue side.
   + [`determinant`](/internal-modes/classes-v2/core/imboundarycondition/determinant.html) Return the signed endpoint determinant.
+  + [`endpointWeightCoefficient`](/internal-modes/classes-v2/core/imboundarycondition/endpointweightcoefficient.html) Return the endpoint weight coefficient.
   + [`isEigenvalueDependent`](/internal-modes/classes-v2/core/imboundarycondition/iseigenvaluedependent.html) Return true when the eigenvalue side is active.
-  + [`metricWeight`](/internal-modes/classes-v2/core/imboundarycondition/metricweight.html) Return the endpoint metric weight.
 
 
 ## Developer Topics
