@@ -140,23 +140,6 @@ classdef IMInternalModes < IMEigenvalueProblem
             context.formulation = self.formulation;
         end
 
-        function profile = coordinateProfile(self, coordinateKind)
-            % Return internal-mode resources needed by a solver coordinate map.
-            %
-            % - Topic: Developer topics
-            % - Declaration: profile = coordinateProfile(evp,coordinateKind)
-            % - Parameter coordinateKind: `"z"`, `"wkb"`, or `"density"`
-            % - Returns profile: struct with coordinate resources
-            % - Developer: true
-            coordinateKind = string(coordinateKind);
-            if coordinateKind ~= "z" && coordinateKind ~= "wkb" && coordinateKind ~= "density"
-                error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
-                    "Internal-mode EVPs support coordinateKind=""z"", ""wkb"", or ""density"".");
-            end
-            profile.N2 = @(z) self.N2(z);
-            profile.dzLogN2 = @(z) self.dzLogN2(z);
-        end
-
         function values = dzLogN2(self, z)
             % Evaluate the vertical derivative of `log(N2)`.
             %

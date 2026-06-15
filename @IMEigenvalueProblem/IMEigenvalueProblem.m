@@ -236,26 +236,6 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function profile = coordinateProfile(~, coordinateKind)
-            % Return fields needed by a solver coordinate map.
-            %
-            % Generic canonical EVPs are independent of stratification and
-            % only support the physical `z` coordinate.
-            %
-            % - Topic: Developer topics
-            % - Declaration: profile = coordinateProfile(evp,coordinateKind)
-            % - Parameter coordinateKind: solver coordinate kind
-            % - Returns profile: struct with coordinate resources
-            % - Developer: true
-            coordinateKind = string(coordinateKind);
-            if coordinateKind ~= "z"
-                error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
-                    "Generic canonical EVPs support coordinateKind=""z"" only.");
-            end
-            profile.N2 = [];
-            profile.dzLogN2 = [];
-        end
-
         function spec = innerProduct(self)
             % Return the scalar inner-product recipe.
             %

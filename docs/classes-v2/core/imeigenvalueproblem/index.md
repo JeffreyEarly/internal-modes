@@ -76,7 +76,6 @@ These items document internal implementation details and are not part of the pri
 + Developer topics
   + [`assemble`](/internal-modes/classes-v2/core/imeigenvalueproblem/assemble.html) Build the canonical matrix pair on a solver grid.
   + [`contextForSolver`](/internal-modes/classes-v2/core/imeigenvalueproblem/contextforsolver.html) Return the coefficient context for this EVP and solver.
-  + [`coordinateProfile`](/internal-modes/classes-v2/core/imeigenvalueproblem/coordinateprofile.html) Return fields needed by a solver coordinate map.
   + [`evaluateCoefficient`](/internal-modes/classes-v2/core/imeigenvalueproblem/evaluatecoefficient.html) Evaluate a scalar, vector, or coefficient function.
   + [`makeBasisSet`](/internal-modes/classes-v2/core/imeigenvalueproblem/makebasisset.html) Create the solved scalar basis set for this EVP.
   + [`selectModes`](/internal-modes/classes-v2/core/imeigenvalueproblem/selectmodes.html) Select and label retained finite-real eigenmodes.

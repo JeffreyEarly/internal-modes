@@ -32,6 +32,10 @@ classdef IMSolverSpectral < IMSolver
 
         % Native coordinate kind.
         %
+        % `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
+        % and `"density"` coordinates require an `IMInternalModes` EVP
+        % because their coordinate maps use the EVP-owned `N2` profile.
+        %
         % - Topic: Inspect solvers
         coordinateKind
 
@@ -102,6 +106,11 @@ classdef IMSolverSpectral < IMSolver
         function self = IMSolverSpectral(options)
             % Create a coordinate-aware spectral solver.
             %
+            % The `"z"` coordinate works for any canonical EVP. The `"wkb"`
+            % and `"density"` coordinates use the internal-mode
+            % stratification `N2`, so they can only be configured with
+            % `IMInternalModes` EVPs.
+            %
             % - Topic: Create solvers
             % - Declaration: solver = IMSolverSpectral(options)
             % - Parameter options.nEVP: number of EVP coefficients
@@ -109,7 +118,7 @@ classdef IMSolverSpectral < IMSolver
             % - Returns solver: initialized spectral solver
             arguments
                 options.nEVP (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.nEVP, 4)} = 64
-                options.coordinateKind {mustBeTextScalar} = "z"
+                options.coordinateKind {mustBeTextScalar, mustBeMember(options.coordinateKind, ["z", "wkb", "density"])} = "z"
             end
 
             self.nEVP = options.nEVP;
@@ -131,9 +140,15 @@ classdef IMSolverSpectral < IMSolver
             end
 
             solver = self;
-            profile = evp.coordinateProfile(self.coordinateKind);
             solver.zDomain = evp.zDomain;
-            solver.N2Function = profile.N2;
+            if solver.coordinateKind == "z"
+                solver.N2Function = [];
+            elseif isa(evp, "IMInternalModes")
+                solver.N2Function = @(z) evp.N2(z);
+            else
+                error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
+                    "Only internal-mode EVPs support coordinateKind=""%s"".", solver.coordinateKind);
+            end
             solver = solver.setupCoordinate();
             solver = solver.setupNativeGrid();
         end
@@ -406,9 +421,6 @@ classdef IMSolverSpectral < IMSolver
                     q = sqrt(self.N2(z));
                 case "density"
                     q = self.N2(z);
-                otherwise
-                    error("IMSolverSpectral:InvalidCoordinateKind", ...
-                        "Unknown coordinate kind ""%s"".", self.coordinateKind);
             end
         end
 

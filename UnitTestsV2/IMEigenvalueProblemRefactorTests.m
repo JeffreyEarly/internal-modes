@@ -219,6 +219,17 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             end
         end
 
+        function spectralSolverRejectsUnknownCoordinateKind(testCase)
+            didThrow = false;
+            try
+                IMSolverSpectral(coordinateKind="bad");
+            catch
+                didThrow = true;
+            end
+
+            testCase.verifyTrue(didThrow)
+        end
+
         function genericEVPRejectsStratificationCoordinates(testCase)
             [~, zDomain, nEVP] = testCase.profile();
             evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
