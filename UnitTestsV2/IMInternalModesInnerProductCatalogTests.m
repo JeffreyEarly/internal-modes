@@ -63,6 +63,29 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyEqual(gLinkedSpec.endpointInnerProductTerms(1).coefficient, -g/2, RelTol=1e-12)
         end
 
+        function diagnosticInteriorRowsMatchCatalog(testCase)
+            [N2, zDomain] = testCase.profile();
+            fP6 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=3, d=0));
+            gP2 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=3, d=0));
+            gP4 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=0, d=3));
+
+            testCase.verifyInteriorOnly(fP6.innerProduct("G"))
+            testCase.verifyInteriorOnly(gP2.innerProduct("F"))
+            testCase.verifyInteriorOnly(gP4.innerProduct("F"))
+        end
+
+        function gFormGEqualsAFBoundaryHasDiagnosticFInnerProduct(testCase)
+            [N2, zDomain] = testCase.profile();
+            A = 7;
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=0, b=A, c=1, d=0));
+
+            testCase.verifyInteriorOnly(evp.innerProduct("F"))
+        end
+
         function endpointInnerProductTermsEnterGramMatrix(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
@@ -127,18 +150,30 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function unsupportedHydrostaticRowsHaveNoInnerProduct(testCase)
             [N2, zDomain] = testCase.profile();
-            gT3 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
-                surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=1, d=0));
-            gT1 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            fP5 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
+            fT3 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=0, d=1));
             fT2 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=1, d=1));
+            gP1 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
+            gT1 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=1, d=1));
+            gT2 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=0, d=1));
+            gT3 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=1, d=0));
             allFour = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=1, d=1));
 
+            testCase.verifyUnavailable(fP5.innerProduct("G"), "mixed identity")
+            testCase.verifyUnavailable(fT3.innerProduct("G"), "mixed identity")
             testCase.verifyUnavailable(gT3.innerProduct("F"), "derivative endpoint terms")
-            testCase.verifyUnavailable(gT1.innerProduct("F"), "derivative endpoint terms")
-            testCase.verifyUnavailable(fT2.innerProduct("G"), "derivative endpoint terms")
+            testCase.verifyUnavailable(gP1.innerProduct("F"), "eigenvalue-dependent")
+            testCase.verifyUnavailable(gT1.innerProduct("F"), "eigenvalue-dependent")
+            testCase.verifyUnavailable(gT2.innerProduct("F"), "eigenvalue-dependent")
+            testCase.verifyUnavailable(fT2.innerProduct("G"), "eigenvalue-dependent")
             testCase.verifyUnavailable(allFour.innerProduct("F"), "outside the value-only")
         end
 
@@ -227,6 +262,13 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyTrue(contains(spec.reason, reasonText))
             testCase.verifyFalse(isfield(spec, "status"))
+        end
+
+        function verifyInteriorOnly(testCase, spec)
+            testCase.verifyTrue(spec.hasInnerProduct)
+            testCase.verifyEmpty(spec.endpointInnerProductTerms)
+            testCase.verifyFalse(isfield(spec, "status"))
+            testCase.verifyTrue(contains(spec.reason, "interior-only"))
         end
 
         function verifyCoupledGeostrophicNormalization(testCase, basisSet)

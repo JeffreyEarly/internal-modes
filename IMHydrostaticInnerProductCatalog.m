@@ -96,12 +96,17 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             elseif isequal(active, [true true true false])
                 result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*g*a/b, "F", "F-T4");
-            elseif isequal(active, [true false true false]) || isequal(active, [false true false true]) ...
-                    || isequal(active, [true false false true])
+            elseif isequal(active, [false true false true]) || isequal(active, [true false true false]) ...
+                    || isequal(active, [false true true false])
                 result.reason = "The diagnostic G inner product is the interior integral for this endpoint.";
-            elseif isequal(active, [true false true true]) || isequal(active, [true true false true])
+            elseif isequal(active, [true false false true]) || isequal(active, [true true false true])
                 result.hasInnerProduct = false;
-                result.reason = "This boundary condition requires derivative endpoint terms, which are not supported.";
+                result.reason = "This boundary condition gives only a mixed identity, " ...
+                    + "not a standalone diagnostic inner product.";
+            elseif isequal(active, [true false true true])
+                result.hasInnerProduct = false;
+                result.reason = "This boundary condition gives eigenvalue-dependent endpoint terms, " ...
+                    + "which are not supported as a known diagnostic inner product.";
             elseif isequal(active, [true false false false]) || isequal(active, [false true false false]) ...
                     || isequal(active, [false false true false]) || isequal(active, [false false false true])
                 result.reason = "This endpoint adds no diagnostic endpoint term.";
@@ -131,10 +136,15 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             elseif isequal(active, [false true true true])
                 result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*d/c, "F", "G-T4");
-            elseif isequal(active, [false true false false]) || isequal(active, [true false true false])
+            elseif isequal(active, [false true true false]) || isequal(active, [true false true false]) ...
+                    || isequal(active, [false true false true])
                 result.reason = "The diagnostic F inner product is the interior integral for this endpoint.";
             elseif isequal(active, [true false false true]) || isequal(active, [true false true true]) ...
-                    || isequal(active, [true true false true]) || isequal(active, [true true true false])
+                    || isequal(active, [true true false true])
+                result.hasInnerProduct = false;
+                result.reason = "This boundary condition gives eigenvalue-dependent endpoint terms, " ...
+                    + "which are not supported as a known diagnostic inner product.";
+            elseif isequal(active, [true true true false])
                 result.hasInnerProduct = false;
                 result.reason = "This boundary condition requires derivative endpoint terms, which are not supported.";
             elseif isequal(active, [true false false false]) || isequal(active, [false false true false]) ...

@@ -17,34 +17,36 @@ nModes = 4;
 nEVP = 128;
 z = linspace(zDomain(1), zDomain(2), 512).';
 
-p = @(z,ctx) 1 ./ ctx.N2(z);
-q = @(z,~) zeros(size(z));
-r = @(z,ctx) ones(size(z))/ctx.g;
+if false
+    p = @(z,ctx) 1 ./ ctx.N2(z);
+    q = @(z,~) zeros(size(z));
+    r = @(z,ctx) ones(size(z))/ctx.g;
 
-% surfaceBoundary = IMBoundaryCondition(a=-(1/g + 1/g0), b=1);
-% bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
+    % surfaceBoundary = IMBoundaryCondition(a=-(1/g + 1/g0), b=1);
+    % bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
 
-% surfaceBoundary = IMBoundaryCondition(a=-1/g, b=1);
-% bottomBoundary = IMBoundaryCondition.neumann;
+    % surfaceBoundary = IMBoundaryCondition(a=-1/g, b=1);
+    % bottomBoundary = IMBoundaryCondition.neumann;
 
-surfaceBoundary = IMBoundaryCondition(a=1/g0, b=1);
-bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
+    surfaceBoundary = IMBoundaryCondition(a=1/g0, b=1);
+    bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
 
-evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="geostrophic", ...
-    N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
-    surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
+    evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="geostrophic", ...
+        N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
+        surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
+else
+    % This G-formulation admits a zero mode that the F-formulation does not.
+    p = @(z,ctx) ones(size(z));
+    q = @(z,~) zeros(size(z));
+    r = @(z,ctx) ctx.N2(z)/ctx.g;
 
+    surfaceBoundary = IMBoundaryCondition(a=0,b=-g/g0,c=1,d=0);
+    bottomBoundary = IMBoundaryCondition(a=0,b=-g/gd,c=1,d=0);
 
-p = @(z,ctx) ones(size(z));
-q = @(z,~) zeros(size(z));
-r = @(z,ctx) ctx.N2(z)/ctx.g;
-
-surfaceBoundary = IMBoundaryCondition(a=1/g0, b=1);
-bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
-
-evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="geostrophic", ...
-    N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
-    surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
+    evp = IMInternalModes(name="unforced-APV-modes", formulation="G", modeFamily="geostrophic", ...
+        N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
+        surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
+end
 
 solver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");
 basisSet = solver.solveEVP(evp, nModes=nModes);
@@ -63,14 +65,14 @@ plot(F, z, LineWidth=1.2)
 grid on
 xlabel("F")
 ylabel("z (m)")
-title("Solved F modes")
+title("F modes")
 legend(modeLabels, Location="best")
 
 nexttile
 plot(G, z, LineWidth=1.2)
 grid on
 xlabel("G")
-title("Diagnostic G modes")
+title("G modes")
 legend(modeLabels, Location="best")
 
 nexttile

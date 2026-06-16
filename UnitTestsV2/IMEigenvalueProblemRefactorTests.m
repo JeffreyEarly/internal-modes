@@ -154,7 +154,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=2);
 
             testCase.verifyFalse(spec.hasInnerProduct)
-            testCase.verifyTrue(contains(spec.reason, "derivative endpoint terms"))
+            testCase.verifyTrue(contains(spec.reason, "eigenvalue-dependent"))
             testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
             testCase.verifyError(@() basisSet.partialGramMatrix("F", zDomain(1), zDomain(2)), ...
                 "IMInternalModesBasis:UnavailableInnerProduct")
@@ -356,7 +356,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(contains(boundaryOutput, "diagnostic variable: F"))
             testCase.verifyTrue(contains(boundaryOutput, "inner product: unavailable"))
-            testCase.verifyTrue(contains(boundaryOutput, "derivative endpoint terms"))
+            testCase.verifyTrue(contains(boundaryOutput, "eigenvalue-dependent"))
             testCase.verifyTrue(contains(waveOutput, "factory parameters: omega"))
             testCase.verifyTrue(contains(waveOutput, "diagnostic variable: F"))
             testCase.verifyTrue(contains(waveOutput, "inner product: unavailable"))
