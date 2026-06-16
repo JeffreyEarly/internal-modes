@@ -146,10 +146,10 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % The matrix uses `evp.innerProduct(variable)`. For `G`, the
             % interior weight is $$N^2/g$$; for `F`, it is one. The
-            % requested inner product must have status `"fixed"` or
-            % `"interiorOnly"`. Diagnostic variables whose inner products
-            % are unknown, mixed, or eigenvalue-dependent throw an error
-            % rather than returning an incomplete Gram matrix.
+            % requested variable must have a known standalone inner product.
+            % If it does not, this method throws
+            % `IMInternalModesBasis:UnavailableInnerProduct` rather than
+            % returning an incomplete Gram matrix.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,variable)
@@ -186,7 +186,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Diagonalize a partial-depth Gram matrix for `F` or `G`.
             %
             % If `variable` is omitted, the solved formulation is used. The
-            % requested inner product must be fixed or interior-only.
+            % requested variable must have a known standalone inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
@@ -208,8 +208,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used. The requested inner product must be fixed or
-            % interior-only.
+            % used. The requested variable must have a known standalone
+            % inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
@@ -229,8 +229,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal cross-spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used. The requested inner product must be fixed or
-            % interior-only.
+            % used. The requested variable must have a known standalone
+            % inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
@@ -285,9 +285,9 @@ classdef IMInternalModesBasis < IMBasisSet
             % This is the raw factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
             % to `F` or `G`. If `variable` is omitted, the solved
-            % formulation is used. The requested inner product must be
-            % fixed or interior-only. Custom normalization rules registered
-            % with `addNormalization` call this method.
+            % formulation is used. The requested variable must have a known
+            % standalone inner product. Custom normalization rules
+            % registered with `addNormalization` call this method.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
@@ -309,9 +309,16 @@ classdef IMInternalModesBasis < IMBasisSet
         function factor = geostrophicNormFactor(self, iMode)
             % Return the hydrostatic geostrophic normalization factor.
             %
-            % Baroclinic modes use the `G` inner-product norm. A barotropic
-            % zero mode uses the `F` norm divided by
-            % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$.
+            % This rule is installed for `modeFamily="geostrophic"` and
+            % chooses one shared scale factor for each coupled `F`/`G`
+            % mode. Baroclinic modes use
+            % $$s_j^2=\langle G_j,G_j\rangle_G,$$
+            % so normalized modes satisfy
+            % $$\langle G_j,G_j\rangle_G=1,\qquad
+            % \langle F_j,F_j\rangle_F=h_j.$$
+            % A barotropic zero mode uses the `F` norm divided by
+            % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$ and is a
+            % separate null-mode convention.
             %
             % - Topic: Developer topics
             % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
@@ -502,6 +509,8 @@ classdef IMInternalModesBasis < IMBasisSet
                         value = value + self.endpointMetricValue([spec.surfaceWeights; spec.bottomWeights], ...
                             iMode, jMode, useNormalized, zBounds);
                     end
+                    value = value + self.endpointFunctionalValue(spec.endpointFunctionals, ...
+                        iMode, jMode, useNormalized, zBounds);
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
@@ -515,11 +524,11 @@ classdef IMInternalModesBasis < IMBasisSet
             self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="G"));
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
 
-            switch string(self.evp.name)
-                case {"hydrostaticGModes", "hydrostaticFModes"}
-                    self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
-                case "waveModesAtWavenumber"
-                    self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
+            if self.evp.modeFamily == "geostrophic"
+                self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
+            end
+            if string(self.evp.name) == "waveModesAtWavenumber"
+                self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
             end
         end
 
@@ -574,6 +583,27 @@ classdef IMInternalModesBasis < IMBasisSet
                 value = 0;
             end
         end
+
+        function value = endpointFunctionalValue(self, functionals, iMode, jMode, useNormalized, zBounds)
+            value = 0;
+            for iFunctional = 1:numel(functionals)
+                functional = functionals(iFunctional);
+                zEndpoint = self.endpointZ(functional.location);
+                if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
+                    continue;
+                end
+                values = self.endpointFunctionalValues(functional, zEndpoint, useNormalized);
+                value = value + functional.coefficient*values(iMode)*values(jMode);
+            end
+        end
+
+        function values = endpointFunctionalValues(self, functional, zEndpoint, useNormalized)
+            if useNormalized
+                values = self.rawVariable(functional.variable, zEndpoint) ./ self.normalizationFactors(self.normalization);
+            else
+                values = self.rawVariable(functional.variable, zEndpoint);
+            end
+        end
     end
 
     methods (Static, Access = private)
@@ -598,24 +628,22 @@ classdef IMInternalModesBasis < IMBasisSet
         end
 
         function normalization = initialNormalizationForEVP(evp)
-            switch string(evp.name)
-                case {"hydrostaticGModes", "hydrostaticFModes"}
-                    normalization = "geostrophic";
-                case "waveModesAtWavenumber"
-                    normalization = "kConstant";
-                otherwise
-                    normalization = "unity";
+            if evp.modeFamily == "geostrophic"
+                normalization = "geostrophic";
+            elseif string(evp.name) == "waveModesAtWavenumber"
+                normalization = "kConstant";
+            else
+                normalization = "unity";
             end
         end
 
         function assertInnerProductAvailable(spec)
-            status = string(spec.status);
-            if status == "fixed" || status == "interiorOnly"
+            if isfield(spec, "hasInnerProduct") && spec.hasInnerProduct
                 return;
             end
             error("IMInternalModesBasis:UnavailableInnerProduct", ...
-                "The %s inner product is %s for this EVP and cannot be used as a standalone Gram matrix. %s", ...
-                string(spec.variable), status, string(spec.reason));
+                "The %s inner product is unavailable for this EVP and cannot be used as a standalone Gram matrix. %s", ...
+                string(spec.variable), string(spec.reason));
         end
 
         function variable = validateVariable(variable)

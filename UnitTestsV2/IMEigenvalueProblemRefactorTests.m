@@ -89,6 +89,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyClass(evp, "IMInternalModes")
             testCase.verifyEqual(evp.formulation, "G")
+            testCase.verifyEqual(evp.modeFamily, "none")
             testCase.verifyEqual(evp.parameters.k, k, AbsTol=0)
             testCase.verifyEqual(evp.parameters.f0, f0, AbsTol=0)
             testCase.verifyEqual(evp.parameters.g, g, AbsTol=0)
@@ -132,11 +133,13 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(canonicalSpec.interiorWeight, canonicalEVP.r)
             testCase.verifyFalse(isfield(canonicalSpec, removedBoundaryFlag))
             testCase.verifyEqual(defaultSpec.variable, internalEVP.formulation)
-            testCase.verifyEqual(defaultSpec.status, "interiorOnly")
+            testCase.verifyEqual(internalEVP.modeFamily, "geostrophic")
+            testCase.verifyTrue(defaultSpec.hasInnerProduct)
             testCase.verifyTrue(isfield(defaultSpec, "reason"))
             testCase.verifyFalse(isfield(defaultSpec, removedBoundaryFlag))
-            testCase.verifyEqual(gSpec.status, "interiorOnly")
-            testCase.verifyEqual(fSpec.status, "interiorOnly")
+            testCase.verifyTrue(gSpec.hasInnerProduct)
+            testCase.verifyTrue(fSpec.hasInnerProduct)
+            testCase.verifyFalse(isfield(fSpec, "status"))
             testCase.verifyTrue(isfield(fSpec, "reason"))
             testCase.verifyEqual(gSpec.interiorWeight(z, context), N2(z)/g, RelTol=1e-12)
             testCase.verifyEqual(fSpec.interiorWeight(z, context), ones(size(z)), AbsTol=0)
@@ -146,12 +149,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
-                surfaceBoundary=IMBoundaryCondition.neumann());
+                surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
             spec = evp.innerProduct("F");
             basisSet = solver.solveEVP(evp, nModes=2);
 
-            testCase.verifyEqual(spec.status, "unknown")
-            testCase.verifyTrue(contains(spec.reason, "catalog"))
+            testCase.verifyFalse(spec.hasInnerProduct)
+            testCase.verifyTrue(contains(spec.reason, "derivative endpoint terms"))
             testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
             testCase.verifyError(@() basisSet.partialGramMatrix("F", zDomain(1), zDomain(2)), ...
                 "IMInternalModesBasis:UnavailableInnerProduct")
@@ -172,7 +175,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             spec = evp.innerProduct("F");
             basisSet = solver.solveEVP(evp, nModes=2);
 
-            testCase.verifyEqual(spec.status, "unknown")
+            testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyEqual(basisSet.normalization, "unity")
             testCase.verifyFalse(ismember("omegaConstant", basisSet.normalizationNames()))
             testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
@@ -203,9 +206,26 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             end
 
             testCase.verifyEqual(evp.formulation, "F")
+            testCase.verifyEqual(evp.modeFamily, "none")
             testCase.verifyTrue(badFormulationThrows)
             testCase.verifyTrue(badVariableThrows)
             testCase.verifyTrue(badWavenumberThrows)
+        end
+
+        function internalModeModeFamilyValidationUsesBuiltInArgumentValidation(testCase)
+            [N2, zDomain] = testCase.profile();
+            badModeFamilyThrows = false;
+
+            geostrophicEVP = IMInternalModes(name="customGeostrophic", formulation="F", ...
+                modeFamily="geostrophic", N2=N2, zDomain=zDomain);
+            try
+                IMInternalModes(name="badFamily", modeFamily="hydrostatic", N2=N2, zDomain=zDomain);
+            catch
+                badModeFamilyThrows = true;
+            end
+
+            testCase.verifyEqual(geostrophicEVP.modeFamily, "geostrophic")
+            testCase.verifyTrue(badModeFamilyThrows)
         end
 
         function summarizePrintsReadableCanonicalProblem(testCase)
@@ -277,6 +297,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(contains(output, "Internal-mode context"))
             testCase.verifyTrue(contains(output, "formulation: G"))
+            testCase.verifyTrue(contains(output, "mode family: none"))
             testCase.verifyTrue(contains(output, "f0: 0.0001 s^-1"))
             testCase.verifyTrue(contains(output, "g: 9.81 m s^-2"))
             testCase.verifyTrue(contains(output, "equivalent depth: h = hFromEigenvalue(lambda)"))
@@ -287,6 +308,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
             testCase.verifyTrue(contains(output, "Internal-mode inner products"))
             testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
+            testCase.verifyTrue(contains(output, "geostrophic normalization: unavailable for this mode family"))
             testCase.verifyFalse(contains(output, "function_handle"))
         end
 
@@ -298,10 +320,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(contains(output, "diagnostic variable: F"))
             testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
+            testCase.verifyTrue(contains(output, "mode family: geostrophic"))
             testCase.verifyTrue(contains(output, "interior weight: 1"))
-            testCase.verifyTrue(contains(output, "availability: interiorOnly"))
-            testCase.verifyTrue(contains(output, "diagnostic F inner product is the interior F integral"))
+            testCase.verifyTrue(contains(output, "inner product: known"))
+            testCase.verifyTrue(contains(output, "interior-only diagnostic inner product"))
             testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
+            testCase.verifyTrue(contains(output, "geostrophic normalization: available"))
+            testCase.verifyTrue(contains(output, "shared scale: one factor per coupled (F,G) mode"))
+            testCase.verifyTrue(contains(output, "convention: <G_j,G_j>_G = 1"))
+            testCase.verifyTrue(contains(output, "implied: <F_j,F_j>_F = h_j"))
         end
 
         function summarizeHydrostaticFReportsDiagnosticGInnerProduct(testCase)
@@ -311,28 +338,29 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             output = string(evalc('evp.summarize();'));
 
             testCase.verifyTrue(contains(output, "solved formulation: F"))
+            testCase.verifyTrue(contains(output, "mode family: geostrophic"))
             testCase.verifyTrue(contains(output, "diagnostic variable: G"))
             testCase.verifyTrue(contains(output, "diagnostic relation: G_j(z) = -g/N^2(z) dF_j/dz(z)"))
-            testCase.verifyTrue(contains(output, "availability: interiorOnly"))
-            testCase.verifyTrue(contains(output, "diagnostic G inner product is the interior N^2 G/g integral"))
+            testCase.verifyTrue(contains(output, "inner product: known"))
+            testCase.verifyTrue(contains(output, "interior-only diagnostic inner product"))
         end
 
         function summarizeReportsUnknownDiagnosticCatalogEntries(testCase)
             [N2, zDomain, ~, f0] = testCase.profile();
             boundaryEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
-                surfaceBoundary=IMBoundaryCondition.neumann());
+                surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
             waveEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0);
 
             boundaryOutput = string(evalc('boundaryEVP.summarize();'));
             waveOutput = string(evalc('waveEVP.summarize();'));
 
             testCase.verifyTrue(contains(boundaryOutput, "diagnostic variable: F"))
-            testCase.verifyTrue(contains(boundaryOutput, "availability: unknown"))
-            testCase.verifyTrue(contains(boundaryOutput, "No fixed diagnostic inner-product catalog entry"))
+            testCase.verifyTrue(contains(boundaryOutput, "inner product: unavailable"))
+            testCase.verifyTrue(contains(boundaryOutput, "derivative endpoint terms"))
             testCase.verifyTrue(contains(waveOutput, "factory parameters: omega"))
             testCase.verifyTrue(contains(waveOutput, "diagnostic variable: F"))
-            testCase.verifyTrue(contains(waveOutput, "availability: unknown"))
-            testCase.verifyTrue(contains(waveOutput, "No fixed diagnostic inner-product catalog entry"))
+            testCase.verifyTrue(contains(waveOutput, "inner product: unavailable"))
+            testCase.verifyTrue(contains(waveOutput, "value-only catalog"))
         end
 
         function solverReturnsInternalModesBasisWithFAndG(testCase)
@@ -589,6 +617,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             wavenumberBasis = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, f0=f0), nModes=2);
             frequencyBasis = solver.solveEVP(IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0), nModes=2);
 
+            testCase.verifyEqual(hydrostaticBasis.evp.modeFamily, "geostrophic")
+            testCase.verifyEqual(wavenumberBasis.evp.modeFamily, "none")
+            testCase.verifyEqual(frequencyBasis.evp.modeFamily, "none")
             testCase.verifyEqual(hydrostaticBasis.normalization, "geostrophic")
             testCase.verifyTrue(ismember("geostrophic", hydrostaticBasis.normalizationNames()))
             testCase.verifyEqual(wavenumberBasis.normalization, "kConstant")

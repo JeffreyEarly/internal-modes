@@ -18,6 +18,7 @@ function summarize(self, solver)
 %   f0: 0 s^-1
 %   g: 9.81 m s^-2
 %   equivalent depth: h = hFromEigenvalue(lambda)
+%   mode family: geostrophic
 %   factory parameters: none
 %
 % Internal-mode variables
@@ -29,25 +30,31 @@ function summarize(self, solver)
 %   F
 %     interior weight: 1
 %     endpoint terms: none
-%     availability: interiorOnly
-%     reason: For hydrostatic G modes with G=0 at both endpoints, the diagnostic F inner product is the interior F integral.
+%     inner product: known
+%     reason: The hydrostatic value-only catalog gives an interior-only diagnostic inner product for this boundary combination.
 %   G
 %     interior weight: N^2(z)/g
 %     endpoint terms: none
-%     availability: interiorOnly
+%     inner product: known
 %     reason: The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.
+%
+% Internal-mode normalization
+%   geostrophic normalization: available
+%     shared scale: one factor per coupled (F,G) mode
+%     convention: <G_j,G_j>_G = 1
+%     implied: <F_j,F_j>_F = h_j
 % ```
 %
 % For a fixed-frequency wave EVP, the diagnostic `F` inner product is
-% reported as unavailable until a fixed diagnostic catalog entry is added:
+% reported as unavailable until a wave diagnostic catalog entry is added:
 %
 % ```text
 % Internal-mode inner products
 %   F
 %     interior weight: 1
 %     endpoint terms: none
-%     availability: unknown
-%     reason: No fixed diagnostic inner-product catalog entry is installed for this EVP and boundary combination.
+%     inner product: unavailable
+%     reason: The diagnostic inner product is available only for modeFamily="geostrophic" EVPs in the value-only catalog.
 % ```
 %
 % - Topic: Summarize internal-mode EVPs
@@ -69,6 +76,7 @@ fprintf('  formulation: %s\n', self.formulation);
 fprintf('  f0: %s s^-1\n', formatNumber(self.f0));
 fprintf('  g: %s m s^-2\n', formatNumber(self.g));
 fprintf('  equivalent depth: h = hFromEigenvalue(lambda)\n');
+fprintf('  mode family: %s\n', self.modeFamily);
 fprintf('  factory parameters: %s\n', factoryParameterText(self.parameters));
 
 fprintf('\nInternal-mode variables\n');
@@ -79,6 +87,9 @@ fprintf('  diagnostic relation: %s\n', diagnosticRelationText(self));
 fprintf('\nInternal-mode inner products\n');
 printInnerProductSpec(self.innerProduct("F"));
 printInnerProductSpec(self.innerProduct("G"));
+
+fprintf('\nInternal-mode normalization\n');
+printNormalizationSummary(self);
 end
 
 function text = factoryParameterText(parameters)
@@ -101,18 +112,33 @@ end
 function text = diagnosticRelationText(evp)
 if evp.formulation == "G"
     text = "F_j(z) = h_j dG_j/dz(z)";
-elseif string(evp.name) == "hydrostaticFModes"
+elseif evp.modeFamily == "geostrophic"
     text = "G_j(z) = -g/N^2(z) dF_j/dz(z)";
 else
     text = "G_j(z) = GfromFz(z,dF_j/dz,h_j,ctx)";
 end
 end
 
+function printNormalizationSummary(evp)
+if evp.modeFamily == "geostrophic"
+    fprintf('  geostrophic normalization: available\n');
+    fprintf('    shared scale: one factor per coupled (F,G) mode\n');
+    fprintf('    convention: <G_j,G_j>_G = 1\n');
+    fprintf('    implied: <F_j,F_j>_F = h_j\n');
+else
+    fprintf('  geostrophic normalization: unavailable for this mode family\n');
+end
+end
+
 function printInnerProductSpec(spec)
 fprintf('  %s\n', spec.variable);
 fprintf('    interior weight: %s\n', interiorWeightText(spec.variable));
-fprintf('    endpoint terms: %s\n', endpointTermsText([spec.surfaceWeights; spec.bottomWeights]));
-fprintf('    availability: %s\n', spec.status);
+fprintf('    endpoint terms: %s\n', endpointTermsText(spec));
+if spec.hasInnerProduct
+    fprintf('    inner product: known\n');
+else
+    fprintf('    inner product: unavailable\n');
+end
 fprintf('    reason: %s\n', spec.reason);
 end
 
@@ -124,19 +150,38 @@ else
 end
 end
 
-function text = endpointTermsText(weights)
+function text = endpointTermsText(spec)
+weights = [spec.surfaceWeights; spec.bottomWeights];
+functionals = spec.endpointFunctionals;
 if isempty(weights)
-    text = "none";
-    return;
+    weightParts = strings(1,0);
+else
+    weightParts = strings(1,numel(weights));
+    for iWeight = 1:numel(weights)
+        weight = weights(iWeight);
+        expression = endpointExpression(weight.c, -weight.d, weight.location);
+        weightParts(iWeight) = weight.location + ": " + formatSignedNumber(weight.coefficient) + " * (" + expression + ")^2";
+    end
 end
 
-parts = strings(1,numel(weights));
-for iWeight = 1:numel(weights)
-    weight = weights(iWeight);
-    expression = endpointExpression(weight.c, -weight.d, weight.location);
-    parts(iWeight) = weight.location + ": " + formatSignedNumber(weight.coefficient) + " * (" + expression + ")^2";
+if isempty(functionals)
+    functionalParts = strings(1,0);
+else
+    functionalParts = strings(1,numel(functionals));
+    for iFunctional = 1:numel(functionals)
+        functional = functionals(iFunctional);
+        functionalParts(iFunctional) = functional.location + ": " ...
+            + formatSignedNumber(functional.coefficient) + " * " ...
+            + functional.variable + "(" + functional.location + ")^2";
+    end
 end
-text = join(parts, "; ");
+
+parts = [weightParts functionalParts];
+if isempty(parts)
+    text = "none";
+else
+    text = join(parts, "; ");
+end
 end
 
 function expression = endpointExpression(valueCoefficient, fluxCoefficient, location)

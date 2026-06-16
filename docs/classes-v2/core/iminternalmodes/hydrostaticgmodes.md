@@ -35,7 +35,8 @@ Create the hydrostatic `G` internal-mode EVP.
   $$-\frac{\partial^2 G}{\partial z^2}(z)
   =\lambda\frac{N^2(z)}{g}G(z).$$
   Solved hydrostatic basis sets install the `geostrophic`
-  normalization rule and use it by default. This factory sets
+  normalization rule and use it by default because they set
+  `modeFamily` to `"geostrophic"`. This factory sets
   `parameters.formulation`, `parameters.f0`, and `parameters.g`.
 
   ```matlab

@@ -59,6 +59,7 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.
   + [`g`](/internal-modes/classes-v2/core/iminternalmodes/g.html) Gravitational acceleration.
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/iminternalmodes/hfromeigenvalue.html) Equivalent-depth conversion function.
+  + [`modeFamily`](/internal-modes/classes-v2/core/iminternalmodes/modefamily.html) Physical mode-family declaration.
 + Inspect internal-mode inner products
   + [`innerProduct`](/internal-modes/classes-v2/core/iminternalmodes/innerproduct.html) Return the `F` or `G` inner-product recipe.
 

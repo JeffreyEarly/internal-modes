@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 14
+nav_order: 15
 mathjax: true
 ---
 
@@ -40,6 +40,7 @@ Print a readable internal-mode EVP summary.
     f0: 0 s^-1
     g: 9.81 m s^-2
     equivalent depth: h = hFromEigenvalue(lambda)
+    mode family: geostrophic
     factory parameters: none
 
   Internal-mode variables
@@ -51,23 +52,29 @@ Print a readable internal-mode EVP summary.
     F
       interior weight: 1
       endpoint terms: none
-      availability: interiorOnly
-      reason: For hydrostatic G modes with G=0 at both endpoints, the diagnostic F inner product is the interior F integral.
+      inner product: known
+      reason: The hydrostatic value-only catalog gives an interior-only diagnostic inner product for this boundary combination.
     G
       interior weight: N^2(z)/g
       endpoint terms: none
-      availability: interiorOnly
+      inner product: known
       reason: The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.
+
+  Internal-mode normalization
+    geostrophic normalization: available
+      shared scale: one factor per coupled (F,G) mode
+      convention: <G_j,G_j>_G = 1
+      implied: <F_j,F_j>_F = h_j
   ```
 
   For a fixed-frequency wave EVP, the diagnostic `F` inner product is
-  reported as unavailable until a fixed diagnostic catalog entry is added:
+  reported as unavailable until a wave diagnostic catalog entry is added:
 
   ```text
   Internal-mode inner products
     F
       interior weight: 1
       endpoint terms: none
-      availability: unknown
-      reason: No fixed diagnostic inner-product catalog entry is installed for this EVP and boundary combination.
+      inner product: unavailable
+      reason: The diagnostic inner product is available only for modeFamily="geostrophic" EVPs in the value-only catalog.
   ```

@@ -36,6 +36,19 @@ classdef IMInternalModes < IMEigenvalueProblem
         % - Topic: Inspect internal-mode configuration
         formulation = "G"
 
+        % Physical mode-family declaration.
+        %
+        % `modeFamily` tells internal-mode utilities which physical
+        % catalog and coupled normalization rules are meaningful for this
+        % EVP. The default `"none"` installs only generic internal-mode
+        % behavior. The `"geostrophic"` family declares the hydrostatic
+        % geostrophic `F`/`G` family, enabling the generalized
+        % boundary-condition catalog and the coupled `geostrophic`
+        % normalization convention.
+        %
+        % - Topic: Inspect internal-mode configuration
+        modeFamily = "none"
+
         % Buoyancy frequency squared function.
         %
         % `N2` has signature `values = N2(z)` and is owned by the EVP so
@@ -108,6 +121,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.formulation: solved variable, `"F"` or `"G"`
+            % - Parameter options.modeFamily: physical family, `"none"` or `"geostrophic"`
             % - Parameter options.p: canonical derivative-flux coefficient
             % - Parameter options.q: canonical left-side value coefficient
             % - Parameter options.r: canonical metric coefficient
@@ -125,6 +139,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.N2 function_handle
                 options.formulation {mustBeTextScalar, mustBeMember(options.formulation, ["F", "G"])} = "G"
+                options.modeFamily {mustBeTextScalar, mustBeMember(options.modeFamily, ["none", "geostrophic"])} = "none"
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
@@ -139,6 +154,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             formulation = string(options.formulation);
+            modeFamily = string(options.modeFamily);
             parameters = options.parameters;
             parameters.f0 = options.f0;
             parameters.g = options.g;
@@ -148,6 +164,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 zDomain=options.zDomain, surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 parameters=parameters);
             self.formulation = formulation;
+            self.modeFamily = modeFamily;
             self.N2 = options.N2;
             self.f0 = options.f0;
             self.g = options.g;
@@ -187,17 +204,20 @@ classdef IMInternalModes < IMEigenvalueProblem
             % For `G`, the interior weight is $$N^2/g$$. For `F`, the
             % interior weight is one. The returned struct has fields
             % `variable`, `interiorWeight`, `surfaceWeights`,
-            % `bottomWeights`, `status`, and `reason`. `status` is
-            % `"fixed"` or `"interiorOnly"` when a standalone Gram matrix is
-            % available. It is `"unknown"`, `"mixed"`, or
-            % `"eigenvalueDependent"` when the requested diagnostic
-            % variable does not yet have an installed fixed inner-product
-            % rule.
+            % `bottomWeights`, `endpointFunctionals`, `hasInnerProduct`,
+            % and `reason`. `hasInnerProduct` is true when the variable has
+            % a known standalone inner product. When it is false, Gram
+            % matrices, spectra, and inner-product normalization for that
+            % variable throw `IMInternalModesBasis:UnavailableInnerProduct`.
+            % Diagnostic variables use the value-only hydrostatic endpoint
+            % catalog only when `modeFamily` is `"geostrophic"` and a
+            % catalog row is known; other diagnostic inner products are
+            % unavailable until a family catalog is added.
             %
             % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = innerProduct(evp,variable)
             % - Parameter variable: optional variable name, `"F"` or `"G"`
-            % - Returns spec: struct with interior and endpoint metric terms
+            % - Returns spec: struct with interior and endpoint inner-product terms
             arguments
                 self IMInternalModes
                 variable {mustBeTextScalar, mustBeMember(variable, ["F", "G"])} = self.formulation
@@ -210,14 +230,18 @@ classdef IMInternalModes < IMEigenvalueProblem
             else
                 spec.interiorWeight = @(z,~) ones(size(z));
             end
+            spec.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
             if variable == self.formulation
                 spec.surfaceWeights = self.endpointWeights("surface");
                 spec.bottomWeights = self.endpointWeights("bottom");
-                [spec.status, spec.reason] = self.solvedInnerProductStatus(spec.surfaceWeights, spec.bottomWeights);
+                [spec.hasInnerProduct, spec.reason] = self.solvedInnerProductAvailability(spec.surfaceWeights, spec.bottomWeights);
             else
                 spec.surfaceWeights = IMInternalModes.emptyEndpointWeights();
                 spec.bottomWeights = IMInternalModes.emptyEndpointWeights();
-                [spec.status, spec.reason] = self.diagnosticInnerProductStatus(variable);
+                catalog = IMHydrostaticInnerProductCatalog.resolve(self, variable);
+                spec.endpointFunctionals = catalog.endpointFunctionals;
+                spec.hasInnerProduct = catalog.hasInnerProduct;
+                spec.reason = catalog.reason;
             end
         end
 
@@ -252,7 +276,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % $$-\frac{\partial^2 G}{\partial z^2}(z)
             % =\lambda\frac{N^2(z)}{g}G(z).$$
             % Solved hydrostatic basis sets install the `geostrophic`
-            % normalization rule and use it by default. This factory sets
+            % normalization rule and use it by default because they set
+            % `modeFamily` to `"geostrophic"`. This factory sets
             % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
             %
             % ```matlab
@@ -280,7 +305,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
 
-            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
+            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="geostrophic", ...
+                N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ctx.N2(z)/ctx.g, f0=options.f0, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
@@ -315,7 +341,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
             end
 
-            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", N2=options.N2, zDomain=options.zDomain, ...
+            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="geostrophic", ...
+                N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
@@ -409,40 +436,19 @@ classdef IMInternalModes < IMEigenvalueProblem
     end
 
     methods (Access = private)
-        function [status, reason] = solvedInnerProductStatus(self, surfaceWeights, bottomWeights)
+        function [hasInnerProduct, reason] = solvedInnerProductAvailability(self, surfaceWeights, bottomWeights)
             surfaceActive = self.surfaceBoundary.isEigenvalueDependent();
             bottomActive = self.bottomBoundary.isEigenvalueDependent();
             if (surfaceActive && isempty(surfaceWeights)) || (bottomActive && isempty(bottomWeights))
-                status = "unknown";
+                hasInnerProduct = false;
                 reason = "At least one active endpoint condition has a degenerate or unavailable endpoint metric weight.";
             elseif isempty(surfaceWeights) && isempty(bottomWeights)
-                status = "interiorOnly";
+                hasInnerProduct = true;
                 reason = "The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.";
             else
-                status = "fixed";
+                hasInnerProduct = true;
                 reason = "The solved formulation inner product follows the canonical scalar EVP endpoint weights.";
             end
-        end
-
-        function [status, reason] = diagnosticInnerProductStatus(self, variable)
-            if string(self.name) == "hydrostaticGModes" && self.formulation == "G" && variable == "F" && self.hasDirichletEndpoints()
-                status = "interiorOnly";
-                reason = "For hydrostatic G modes with G=0 at both endpoints, the diagnostic F inner product is the interior F integral.";
-            elseif string(self.name) == "hydrostaticFModes" && self.formulation == "F" && variable == "G" && self.hasNeumannEndpoints()
-                status = "interiorOnly";
-                reason = "For hydrostatic F modes with N^{-2} dF/dz=0 at both endpoints, the diagnostic G inner product is the interior N^2 G/g integral.";
-            else
-                status = "unknown";
-                reason = "No fixed diagnostic inner-product catalog entry is installed for this EVP and boundary combination.";
-            end
-        end
-
-        function tf = hasDirichletEndpoints(self)
-            tf = IMInternalModes.isDirichletBoundary(self.surfaceBoundary) && IMInternalModes.isDirichletBoundary(self.bottomBoundary);
-        end
-
-        function tf = hasNeumannEndpoints(self)
-            tf = IMInternalModes.isNeumannBoundary(self.surfaceBoundary) && IMInternalModes.isNeumannBoundary(self.bottomBoundary);
         end
     end
 
@@ -451,18 +457,5 @@ classdef IMInternalModes < IMEigenvalueProblem
             weights = struct("location", {}, "coefficient", {}, "c", {}, "d", {});
         end
 
-        function tf = isDirichletBoundary(boundary)
-            tolerance = IMInternalModes.coefficientTolerance(boundary);
-            tf = ~boundary.isEigenvalueDependent(tolerance) && abs(boundary.b) <= tolerance && abs(boundary.a) > tolerance;
-        end
-
-        function tf = isNeumannBoundary(boundary)
-            tolerance = IMInternalModes.coefficientTolerance(boundary);
-            tf = ~boundary.isEigenvalueDependent(tolerance) && abs(boundary.a) <= tolerance && abs(boundary.b) > tolerance;
-        end
-
-        function tolerance = coefficientTolerance(boundary)
-            tolerance = 100*eps*max([1 abs(boundary.a) abs(boundary.b) abs(boundary.c) abs(boundary.d)]);
-        end
     end
 end

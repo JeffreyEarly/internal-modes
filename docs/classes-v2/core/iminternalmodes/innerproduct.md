@@ -22,16 +22,19 @@ Return the `F` or `G` inner-product recipe.
 + `variable`  optional variable name, `"F"` or `"G"`
 
 ## Returns
-+ `spec`  struct with interior and endpoint metric terms
++ `spec`  struct with interior and endpoint inner-product terms
 
 ## Discussion
 
   For `G`, the interior weight is $$N^2/g$$. For `F`, the
   interior weight is one. The returned struct has fields
   `variable`, `interiorWeight`, `surfaceWeights`,
-  `bottomWeights`, `status`, and `reason`. `status` is
-  `"fixed"` or `"interiorOnly"` when a standalone Gram matrix is
-  available. It is `"unknown"`, `"mixed"`, or
-  `"eigenvalueDependent"` when the requested diagnostic
-  variable does not yet have an installed fixed inner-product
-  rule.
+  `bottomWeights`, `endpointFunctionals`, `hasInnerProduct`,
+  and `reason`. `hasInnerProduct` is true when the variable has
+  a known standalone inner product. When it is false, Gram
+  matrices, spectra, and inner-product normalization for that
+  variable throw `IMInternalModesBasis:UnavailableInnerProduct`.
+  Diagnostic variables use the value-only hydrostatic endpoint
+  catalog only when `modeFamily` is `"geostrophic"` and a
+  catalog row is known; other diagnostic inner products are
+  unavailable until a family catalog is added.

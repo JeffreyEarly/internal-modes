@@ -30,8 +30,9 @@ r = @(z,ctx) ones(size(z))/ctx.g;
 surfaceBoundary = IMBoundaryCondition(a=1/g0, b=1);
 bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
 
-evp = IMInternalModes(name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
-    p=p, q=q, r=r, g=g, surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
+evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="geostrophic", ...
+    N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
+    surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
 
 solver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");
 basisSet = solver.solveEVP(evp, nModes=nModes);
