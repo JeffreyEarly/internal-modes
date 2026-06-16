@@ -27,7 +27,7 @@ $$-\frac{\partial}{\partial z}
 \left(p(z)\frac{\partial u}{\partial z}\right)
 +q(z)u(z)=\lambda r(z)u(z).$$
 
-Endpoint conditions are written in the same eigenvalue-dependent
+Boundary conditions are written in the same eigenvalue-dependent
 canonical form:
 $$-\left[a_i u(z_i)
 -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
@@ -64,11 +64,11 @@ basisSet = solver.solveEVP(evp,nModes=4);
 + Create EVPs
   + [`IMEigenvalueProblem`](/internal-modes/classes-v2/core/imeigenvalueproblem/imeigenvalueproblem.html) Create a canonical scalar EVP.
 + Define canonical coefficients
-  + [`bottomBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomboundary.html) Bottom endpoint condition.
+  + [`bottomBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/bottomboundary.html) Bottom boundary condition.
   + [`p`](/internal-modes/classes-v2/core/imeigenvalueproblem/p.html) Coefficient multiplying the derivative flux.
   + [`q`](/internal-modes/classes-v2/core/imeigenvalueproblem/q.html) Coefficient multiplying the solved variable on the left side.
   + [`r`](/internal-modes/classes-v2/core/imeigenvalueproblem/r.html) Metric coefficient multiplying the eigenvalue side.
-  + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface endpoint condition.
+  + [`surfaceBoundary`](/internal-modes/classes-v2/core/imeigenvalueproblem/surfaceboundary.html) Surface boundary condition.
   + [`zDomain`](/internal-modes/classes-v2/core/imeigenvalueproblem/zdomain.html) Physical vertical domain.
 + Summarize EVPs
   + [`summarize`](/internal-modes/classes-v2/core/imeigenvalueproblem/summarize.html) Print a readable mathematical summary of this EVP.

@@ -146,7 +146,7 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % The matrix uses `evp.innerProduct(variable)`. For `G`, the
             % interior weight is $$N^2/g$$; for `F`, it is one. The
-            % requested variable must have a known standalone inner product.
+            % requested variable must have a known inner product.
             % If it does not, this method throws
             % `IMInternalModesBasis:UnavailableInnerProduct` rather than
             % returning an incomplete Gram matrix.
@@ -169,8 +169,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % Interior integrals are restricted to `[zMin,zMax]`; endpoint
             % metric terms are included only when the interval contains the
             % corresponding endpoint. If `variable` is omitted, the solved
-            % formulation is used. The requested inner product must be an
-            % available standalone inner product.
+            % formulation is used. The requested inner product must be
+            % known for this mode family and boundary condition.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = partialGramMatrix(basisSet,variable,zMin,zMax)
@@ -186,7 +186,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Diagonalize a partial-depth Gram matrix for `F` or `G`.
             %
             % If `variable` is omitted, the solved formulation is used. The
-            % requested variable must have a known standalone inner product.
+            % requested variable must have a known inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: windowModes = partialWindowModes(basisSet,variable,zMin,zMax)
@@ -208,8 +208,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used. The requested variable must have a known standalone
-            % inner product.
+            % used. The requested variable must have a known inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
@@ -229,8 +228,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Compute an internal-mode modal cross-spectrum.
             %
             % If `options.variable` is omitted, the solved formulation is
-            % used. The requested variable must have a known standalone
-            % inner product.
+            % used. The requested variable must have a known inner product.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
@@ -286,7 +284,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
             % to `F` or `G`. If `variable` is omitted, the solved
             % formulation is used. The requested variable must have a known
-            % standalone inner product. Custom normalization rules
+            % inner product. Custom normalization rules
             % registered with `addNormalization` call this method.
             %
             % - Topic: Developer topics
@@ -509,8 +507,10 @@ classdef IMInternalModesBasis < IMBasisSet
                         value = value + self.endpointMetricValue([spec.surfaceWeights; spec.bottomWeights], ...
                             iMode, jMode, useNormalized, zBounds);
                     end
-                    value = value + self.endpointFunctionalValue(spec.endpointFunctionals, ...
-                        iMode, jMode, useNormalized, zBounds);
+                    for iTerm = 1:numel(spec.endpointInnerProductTerms)
+                        value = value + self.endpointTermContribution(spec.endpointInnerProductTerms(iTerm), ...
+                            iMode, jMode, useNormalized, zBounds);
+                    end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
@@ -584,25 +584,19 @@ classdef IMInternalModesBasis < IMBasisSet
             end
         end
 
-        function value = endpointFunctionalValue(self, functionals, iMode, jMode, useNormalized, zBounds)
-            value = 0;
-            for iFunctional = 1:numel(functionals)
-                functional = functionals(iFunctional);
-                zEndpoint = self.endpointZ(functional.location);
-                if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                    continue;
-                end
-                values = self.endpointFunctionalValues(functional, zEndpoint, useNormalized);
-                value = value + functional.coefficient*values(iMode)*values(jMode);
+        function value = endpointTermContribution(self, term, iMode, jMode, useNormalized, zBounds)
+            zEndpoint = self.endpointZ(term.location);
+            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
+                value = 0;
+                return;
             end
-        end
 
-        function values = endpointFunctionalValues(self, functional, zEndpoint, useNormalized)
             if useNormalized
-                values = self.rawVariable(functional.variable, zEndpoint) ./ self.normalizationFactors(self.normalization);
+                values = self.rawVariable(term.variable, zEndpoint) ./ self.normalizationFactors(self.normalization);
             else
-                values = self.rawVariable(functional.variable, zEndpoint);
+                values = self.rawVariable(term.variable, zEndpoint);
             end
+            value = term.coefficient*values(iMode)*values(jMode);
         end
     end
 
@@ -642,7 +636,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 return;
             end
             error("IMInternalModesBasis:UnavailableInnerProduct", ...
-                "The %s inner product is unavailable for this EVP and cannot be used as a standalone Gram matrix. %s", ...
+                "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", ...
                 string(spec.variable), string(spec.reason));
         end
 

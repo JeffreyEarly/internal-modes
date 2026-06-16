@@ -1,12 +1,12 @@
 classdef IMBoundaryCondition
-    % Store one scalar canonical endpoint condition.
+    % Store one scalar canonical boundary condition.
     %
     % `IMBoundaryCondition` represents
     % $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
-    % The coefficients are endpoint scalars. The EVP supplies the endpoint
-    % location when it assembles matrix rows or computes endpoint weight
+    % The coefficients define the boundary condition. The EVP supplies the
+    % endpoint location when it assembles matrix rows or computes endpoint weight
     % coefficients. The stored properties `a`, `b`, `c`, and `d` define
-    % the endpoint condition; `determinant(location)` derives the signed
+    % the boundary condition; `determinant(location)` derives the signed
     % determinant $$D_i$$; and `endpointWeightCoefficient(location)`
     % derives the scalar $$D_i^{-1}$$ used by
     % `IMEigenvalueProblem.endpointWeights`.
@@ -40,7 +40,7 @@ classdef IMBoundaryCondition
 
     methods
         function self = IMBoundaryCondition(options)
-            % Create a scalar endpoint condition.
+            % Create a scalar boundary condition.
             %
             % - Topic: Create boundary conditions
             % - Declaration: boundary = IMBoundaryCondition(options)
@@ -48,7 +48,7 @@ classdef IMBoundaryCondition
             % - Parameter options.b: flux coefficient on the left
             % - Parameter options.c: value coefficient on the eigenvalue side
             % - Parameter options.d: flux coefficient on the eigenvalue side
-            % - Returns boundary: endpoint condition
+            % - Returns boundary: boundary condition
             arguments
                 options.a (1,1) double {mustBeReal, mustBeFinite} = 1
                 options.b (1,1) double {mustBeReal, mustBeFinite} = 0
@@ -106,7 +106,7 @@ classdef IMBoundaryCondition
         function value = endpointWeightCoefficient(self, location)
             % Return the endpoint weight coefficient.
             %
-            % For the active endpoint condition
+            % For the active boundary condition
             % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
             % the stored properties `a`, `b`, `c`, and `d` define
             % $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i),$$ where Yassin's endpoint
@@ -139,7 +139,7 @@ classdef IMBoundaryCondition
         function beta = robinEnergyCoefficient(self, location)
             % Return the ordinary Robin endpoint quadratic coefficient.
             %
-            % For inactive endpoint conditions, this is
+            % For inactive boundary conditions, this is
             % `(-1)^(i+1)*a/b` with Yassin's `z_1` bottom and `z_2`
             % surface indexing.
             %

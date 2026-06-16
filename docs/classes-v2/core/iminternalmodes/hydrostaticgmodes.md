@@ -23,8 +23,8 @@ Create the hydrostatic `G` internal-mode EVP.
 + `options.zDomain`  physical vertical domain
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 
 ## Returns
 + `evp`  hydrostatic `G` EVP

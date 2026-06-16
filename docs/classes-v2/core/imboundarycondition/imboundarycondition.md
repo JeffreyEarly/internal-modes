@@ -9,7 +9,7 @@ mathjax: true
 
 #  IMBoundaryCondition
 
-Create a scalar endpoint condition.
+Create a scalar boundary condition.
 
 
 ---
@@ -25,6 +25,6 @@ Create a scalar endpoint condition.
 + `options.d`  flux coefficient on the eigenvalue side
 
 ## Returns
-+ `boundary`  endpoint condition
++ `boundary`  boundary condition
 
 ## Discussion

@@ -125,8 +125,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.p: canonical derivative-flux coefficient
             % - Parameter options.q: canonical left-side value coefficient
             % - Parameter options.r: canonical metric coefficient
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
@@ -204,15 +204,22 @@ classdef IMInternalModes < IMEigenvalueProblem
             % For `G`, the interior weight is $$N^2/g$$. For `F`, the
             % interior weight is one. The returned struct has fields
             % `variable`, `interiorWeight`, `surfaceWeights`,
-            % `bottomWeights`, `endpointFunctionals`, `hasInnerProduct`,
-            % and `reason`. `hasInnerProduct` is true when the variable has
-            % a known standalone inner product. When it is false, Gram
+            % `bottomWeights`, `endpointInnerProductTerms`,
+            % `hasInnerProduct`, and `reason`. `hasInnerProduct` is true
+            % when the variable has a known inner product. When it is false, Gram
             % matrices, spectra, and inner-product normalization for that
             % variable throw `IMInternalModesBasis:UnavailableInnerProduct`.
             % Diagnostic variables use the value-only hydrostatic endpoint
             % catalog only when `modeFamily` is `"geostrophic"` and a
             % catalog row is known; other diagnostic inner products are
-            % unavailable until a family catalog is added.
+            % unavailable until a family catalog is added. Endpoint
+            % inner-product terms from the catalog have the form
+            % $$\alpha_\ell F_i(z_\ell)F_j(z_\ell)$$ or
+            % $$\alpha_\ell G_i(z_\ell)G_j(z_\ell),$$
+            % where $$z_\ell$$ is the bottom or surface endpoint. The
+            % variable used in the endpoint term is stored as
+            % `term.variable`, so a `G` inner product can contain an
+            % endpoint term involving `F`, and conversely.
             %
             % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = innerProduct(evp,variable)
@@ -230,7 +237,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             else
                 spec.interiorWeight = @(z,~) ones(size(z));
             end
-            spec.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
+            spec.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
             if variable == self.formulation
                 spec.surfaceWeights = self.endpointWeights("surface");
                 spec.bottomWeights = self.endpointWeights("bottom");
@@ -239,7 +246,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 spec.surfaceWeights = IMInternalModes.emptyEndpointWeights();
                 spec.bottomWeights = IMInternalModes.emptyEndpointWeights();
                 catalog = IMHydrostaticInnerProductCatalog.resolve(self, variable);
-                spec.endpointFunctionals = catalog.endpointFunctionals;
+                spec.endpointInnerProductTerms = catalog.endpointInnerProductTerms;
                 spec.hasInnerProduct = catalog.hasInnerProduct;
                 spec.reason = catalog.reason;
             end
@@ -293,8 +300,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: hydrostatic `G` EVP
             arguments
                 options.N2 function_handle
@@ -330,8 +337,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: hydrostatic `F` EVP
             arguments
                 options.N2 function_handle
@@ -366,8 +373,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.k: horizontal wavenumber
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: fixed-wavenumber `G` EVP
             arguments
                 options.N2 function_handle
@@ -410,8 +417,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.omega: wave frequency
             % - Parameter options.f0: Coriolis parameter
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: fixed-frequency `G` EVP
             arguments
                 options.N2 function_handle
@@ -441,7 +448,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             bottomActive = self.bottomBoundary.isEigenvalueDependent();
             if (surfaceActive && isempty(surfaceWeights)) || (bottomActive && isempty(bottomWeights))
                 hasInnerProduct = false;
-                reason = "At least one active endpoint condition has a degenerate or unavailable endpoint metric weight.";
+                reason = "At least one active boundary condition has a degenerate or unavailable endpoint metric weight.";
             elseif isempty(surfaceWeights) && isempty(bottomWeights)
                 hasInnerProduct = true;
                 reason = "The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.";

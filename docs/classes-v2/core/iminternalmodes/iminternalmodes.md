@@ -27,8 +27,8 @@ Create an internal-mode canonical EVP.
 + `options.p`  canonical derivative-flux coefficient
 + `options.q`  canonical left-side value coefficient
 + `options.r`  canonical metric coefficient
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
 + `options.hFromEigenvalue`  equivalent-depth conversion

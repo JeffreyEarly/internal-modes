@@ -26,7 +26,7 @@ Return endpoint metric terms implied by active conditions.
 
 ## Discussion
 
-  For an active endpoint condition
+  For an active boundary condition
   $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
   Yassin's indexing uses `z_1` for the bottom and `z_2` for the
   surface, so

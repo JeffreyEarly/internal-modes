@@ -152,7 +152,7 @@ end
 
 function text = endpointTermsText(spec)
 weights = [spec.surfaceWeights; spec.bottomWeights];
-functionals = spec.endpointFunctionals;
+terms = spec.endpointInnerProductTerms;
 if isempty(weights)
     weightParts = strings(1,0);
 else
@@ -164,19 +164,19 @@ else
     end
 end
 
-if isempty(functionals)
-    functionalParts = strings(1,0);
+if isempty(terms)
+    termParts = strings(1,0);
 else
-    functionalParts = strings(1,numel(functionals));
-    for iFunctional = 1:numel(functionals)
-        functional = functionals(iFunctional);
-        functionalParts(iFunctional) = functional.location + ": " ...
-            + formatSignedNumber(functional.coefficient) + " * " ...
-            + functional.variable + "(" + functional.location + ")^2";
+    termParts = strings(1,numel(terms));
+    for iTerm = 1:numel(terms)
+        term = terms(iTerm);
+        termParts(iTerm) = term.location + ": " ...
+            + formatSignedNumber(term.coefficient) + " * " ...
+            + term.variable + "(" + term.location + ")^2";
     end
 end
 
-parts = [weightParts functionalParts];
+parts = [weightParts termParts];
 if isempty(parts)
     text = "none";
 else

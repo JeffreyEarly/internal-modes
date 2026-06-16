@@ -24,7 +24,7 @@ Print a readable mathematical summary of this EVP.
 ## Discussion
 
   `summarize` prints the canonical scalar equation, physical domain,
-  endpoint conditions, endpoint norm weights, and parameter names. When a
+  boundary conditions, endpoint norm weights, and parameter names. When a
   solver is supplied, it also samples the coefficients on the solver grid,
   assembles the left matrix for the zero-mode check, and prints the
   grid-level negative and zero mode assessment. It does not solve the EVP.
@@ -42,7 +42,7 @@ Print a readable mathematical summary of this EVP.
     -(d/dz)(p(z) du/dz) + q(z) u = lambda r(z) u
     z in [-1, 0]
 
-  Endpoint conditions
+  Boundary conditions
     surface: u(surface) = 0
     bottom: u(bottom) = 0
   ```

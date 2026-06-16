@@ -9,12 +9,12 @@ mathjax: true
 
 #  bottomBoundary
 
-Bottom endpoint condition.
+Bottom boundary condition.
 
 
 ---
 
 ## Discussion
 
-  `bottomBoundary` stores the scalar endpoint condition at
+  `bottomBoundary` stores the scalar boundary condition at
   `zDomain(1)` in canonical `IMBoundaryCondition` form.

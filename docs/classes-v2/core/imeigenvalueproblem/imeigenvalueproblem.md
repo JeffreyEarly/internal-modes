@@ -24,8 +24,8 @@ Create a canonical scalar EVP.
 + `options.p`  derivative-flux coefficient
 + `options.q`  left-side value coefficient
 + `options.r`  eigenvalue-side metric coefficient
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 + `options.parameters`  named coefficient parameters
 
 ## Returns

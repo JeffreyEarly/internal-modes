@@ -24,7 +24,7 @@ Return the scalar inner-product recipe.
 ## Discussion
 
   The canonical basis set uses `r` in the interior and the
-  endpoint metric terms implied by active endpoint conditions:
+  endpoint metric terms implied by active boundary conditions:
   $$M_{ij}=\int r u_i u_j\,dz+
   \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
   The returned struct has fields `variable`, `interiorWeight`,

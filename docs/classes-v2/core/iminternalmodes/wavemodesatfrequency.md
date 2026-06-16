@@ -24,8 +24,8 @@ Create the fixed-frequency wave-mode EVP.
 + `options.omega`  wave frequency
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 
 ## Returns
 + `evp`  fixed-frequency `G` EVP

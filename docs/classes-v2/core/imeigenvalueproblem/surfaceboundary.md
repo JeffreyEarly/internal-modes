@@ -9,12 +9,12 @@ mathjax: true
 
 #  surfaceBoundary
 
-Surface endpoint condition.
+Surface boundary condition.
 
 
 ---
 
 ## Discussion
 
-  `surfaceBoundary` stores the scalar endpoint condition at
+  `surfaceBoundary` stores the scalar boundary condition at
   `zDomain(2)` in canonical `IMBoundaryCondition` form.

@@ -6,7 +6,7 @@ classdef IMEigenvalueProblem
     % \left(p(z)\frac{\partial u}{\partial z}\right)
     % +q(z)u(z)=\lambda r(z)u(z).$$
     %
-    % Endpoint conditions are written in the same eigenvalue-dependent
+    % Boundary conditions are written in the same eigenvalue-dependent
     % canonical form:
     % $$-\left[a_i u(z_i)
     % -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
@@ -90,17 +90,17 @@ classdef IMEigenvalueProblem
         % - Topic: Define canonical coefficients
         r = @(z,~) ones(size(z))
 
-        % Surface endpoint condition.
+        % Surface boundary condition.
         %
-        % `surfaceBoundary` stores the scalar endpoint condition at
+        % `surfaceBoundary` stores the scalar boundary condition at
         % `zDomain(2)` in canonical `IMBoundaryCondition` form.
         %
         % - Topic: Define canonical coefficients
         surfaceBoundary = IMBoundaryCondition.dirichlet()
 
-        % Bottom endpoint condition.
+        % Bottom boundary condition.
         %
-        % `bottomBoundary` stores the scalar endpoint condition at
+        % `bottomBoundary` stores the scalar boundary condition at
         % `zDomain(1)` in canonical `IMBoundaryCondition` form.
         %
         % - Topic: Define canonical coefficients
@@ -137,8 +137,8 @@ classdef IMEigenvalueProblem
             % - Parameter options.p: derivative-flux coefficient
             % - Parameter options.q: left-side value coefficient
             % - Parameter options.r: eigenvalue-side metric coefficient
-            % - Parameter options.surfaceBoundary: surface endpoint condition
-            % - Parameter options.bottomBoundary: bottom endpoint condition
+            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.bottomBoundary: bottom boundary condition
             % - Parameter options.parameters: named coefficient parameters
             % - Returns evp: canonical EVP descriptor
             arguments
@@ -231,7 +231,7 @@ classdef IMEigenvalueProblem
             % Return the scalar inner-product recipe.
             %
             % The canonical basis set uses `r` in the interior and the
-            % endpoint metric terms implied by active endpoint conditions:
+            % endpoint metric terms implied by active boundary conditions:
             % $$M_{ij}=\int r u_i u_j\,dz+
             % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
             % The returned struct has fields `variable`, `interiorWeight`,
@@ -256,7 +256,7 @@ classdef IMEigenvalueProblem
         function weights = endpointWeights(self, location)
             % Return endpoint metric terms implied by active conditions.
             %
-            % For an active endpoint condition
+            % For an active boundary condition
             % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
             % Yassin's indexing uses `z_1` for the bottom and `z_2` for the
             % surface, so

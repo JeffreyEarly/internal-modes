@@ -1,5 +1,5 @@
 classdef (Hidden) IMHydrostaticInnerProductCatalog
-    % Map hydrostatic boundary conditions to value-only diagnostic inner products.
+    % Map hydrostatic boundary conditions to endpoint inner-product terms.
 
     methods (Static)
         function result = resolve(evp, variable)
@@ -12,7 +12,7 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             result.hasInnerProduct = false;
             result.reason = "The diagnostic inner product is available only for " ...
                 + "modeFamily=""geostrophic"" EVPs in the value-only catalog.";
-            result.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
+            result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
 
             if evp.modeFamily ~= "geostrophic"
                 return;
@@ -25,21 +25,21 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
 
             surface = IMHydrostaticInnerProductCatalog.endpointResult(evp, variable, "surface", evp.surfaceBoundary);
             bottom = IMHydrostaticInnerProductCatalog.endpointResult(evp, variable, "bottom", evp.bottomBoundary);
-            result.endpointFunctionals = [surface.endpointFunctionals; bottom.endpointFunctionals];
+            result.endpointInnerProductTerms = [surface.endpointInnerProductTerms; bottom.endpointInnerProductTerms];
             result.hasInnerProduct = surface.hasInnerProduct && bottom.hasInnerProduct;
-            if result.hasInnerProduct && isempty(result.endpointFunctionals)
+            if result.hasInnerProduct && isempty(result.endpointInnerProductTerms)
                 result.reason = "The hydrostatic value-only catalog gives an " ...
                     + "interior-only diagnostic inner product for this boundary combination.";
             elseif result.hasInnerProduct
                 result.reason = "The hydrostatic value-only catalog gives a " ...
-                    + "standalone diagnostic inner product with endpoint value terms.";
+                    + "known diagnostic inner product with endpoint inner-product terms.";
             else
                 result.reason = IMHydrostaticInnerProductCatalog.joinReasons([surface.reason bottom.reason]);
             end
         end
 
-        function functionals = emptyEndpointFunctionals()
-            functionals = struct("location", {}, "coefficient", {}, ...
+        function terms = emptyEndpointInnerProductTerms()
+            terms = struct("location", {}, "coefficient", {}, ...
                 "variable", {}, "description", {}, "catalogCase", {});
         end
     end
@@ -51,7 +51,7 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             active = abs(coefficients) > tolerance;
             result.hasInnerProduct = true;
             result.reason = "This endpoint adds no diagnostic endpoint term.";
-            result.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
+            result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
 
             if nnz(active) <= 1
                 return;
@@ -82,19 +82,19 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             eta = IMHydrostaticInnerProductCatalog.eta(location);
             result.hasInnerProduct = true;
             result.reason = "The hydrostatic catalog provides a value-only diagnostic G inner product.";
-            result.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
+            result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
 
             if isequal(active, [false false true true])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*d/c, "G", "F-P1");
             elseif isequal(active, [true true false false])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*b/(g*a), "G", "F-P2");
             elseif isequal(active, [false true true true])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*d/c, "G", "F-T1");
             elseif isequal(active, [true true true false])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*g*a/b, "F", "F-T4");
             elseif isequal(active, [true false true false]) || isequal(active, [false true false true]) ...
                     || isequal(active, [true false false true])
@@ -108,7 +108,7 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             else
                 result.hasInnerProduct = false;
                 result.reason = "This boundary condition does not provide a " ...
-                    + "standalone value-only diagnostic inner product.";
+                    + "known value-only diagnostic inner product.";
             end
         end
 
@@ -120,16 +120,16 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             eta = IMHydrostaticInnerProductCatalog.eta(location);
             result.hasInnerProduct = true;
             result.reason = "The hydrostatic catalog provides a value-only diagnostic F inner product.";
-            result.endpointFunctionals = IMHydrostaticInnerProductCatalog.emptyEndpointFunctionals();
+            result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
 
             if isequal(active, [true true false false])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*b/a, "F", "G-P5");
             elseif isequal(active, [false false true true])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*d/c, "F", "G-P6");
             elseif isequal(active, [false true true true])
-                result.endpointFunctionals = IMHydrostaticInnerProductCatalog.functional( ...
+                result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.innerProductTerm( ...
                     location, -eta*d/c, "F", "G-T4");
             elseif isequal(active, [false true false false]) || isequal(active, [true false true false])
                 result.reason = "The diagnostic F inner product is the interior integral for this endpoint.";
@@ -143,12 +143,12 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             else
                 result.hasInnerProduct = false;
                 result.reason = "This boundary condition does not provide a " ...
-                    + "standalone value-only diagnostic inner product.";
+                    + "known value-only diagnostic inner product.";
             end
         end
 
-        function functional = functional(location, coefficient, variable, catalogCase)
-            functional = struct( ...
+        function term = innerProductTerm(location, coefficient, variable, catalogCase)
+            term = struct( ...
                 "location", string(location), ...
                 "coefficient", coefficient, ...
                 "variable", string(variable), ...

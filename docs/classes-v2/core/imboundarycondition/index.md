@@ -11,7 +11,7 @@ nav_order: 2
 
 #  IMBoundaryCondition
 
-Store one scalar canonical endpoint condition.
+Store one scalar canonical boundary condition.
 
 
 ---
@@ -24,10 +24,10 @@ Store one scalar canonical endpoint condition.
 
 `IMBoundaryCondition` represents
 $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
-The coefficients are endpoint scalars. The EVP supplies the endpoint
-location when it assembles matrix rows or computes endpoint weight
+The coefficients define the boundary condition. The EVP supplies the
+endpoint location when it assembles matrix rows or computes endpoint weight
 coefficients. The stored properties `a`, `b`, `c`, and `d` define
-the endpoint condition; `determinant(location)` derives the signed
+the boundary condition; `determinant(location)` derives the signed
 determinant $$D_i$$; and `endpointWeightCoefficient(location)`
 derives the scalar $$D_i^{-1}$$ used by
 `IMEigenvalueProblem.endpointWeights`.
@@ -37,7 +37,7 @@ derives the scalar $$D_i^{-1}$$ used by
 
 ## Topics
 + Create boundary conditions
-  + [`IMBoundaryCondition`](/internal-modes/classes-v2/core/imboundarycondition/imboundarycondition.html) Create a scalar endpoint condition.
+  + [`IMBoundaryCondition`](/internal-modes/classes-v2/core/imboundarycondition/imboundarycondition.html) Create a scalar boundary condition.
   + [`dirichlet`](/internal-modes/classes-v2/core/imboundarycondition/dirichlet.html) Create `u=0`.
   + [`neumann`](/internal-modes/classes-v2/core/imboundarycondition/neumann.html) Create `p*u_z=0`.
   + [`robin`](/internal-modes/classes-v2/core/imboundarycondition/robin.html) Create `a*u-b*p*u_z=0`.

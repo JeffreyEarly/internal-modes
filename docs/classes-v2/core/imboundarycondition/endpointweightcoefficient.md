@@ -26,7 +26,7 @@ Return the endpoint weight coefficient.
 
 ## Discussion
 
-  For the active endpoint condition
+  For the active boundary condition
   $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
   the stored properties `a`, `b`, `c`, and `d` define
   $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i),$$ where Yassin's endpoint

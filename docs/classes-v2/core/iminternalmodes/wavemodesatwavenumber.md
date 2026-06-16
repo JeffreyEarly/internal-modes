@@ -24,8 +24,8 @@ Create the fixed-wavenumber wave-mode EVP.
 + `options.k`  horizontal wavenumber
 + `options.f0`  Coriolis parameter
 + `options.g`  gravitational acceleration
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 
 ## Returns
 + `evp`  fixed-wavenumber `G` EVP

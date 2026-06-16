@@ -22,8 +22,8 @@ Create the hydrostatic `F` internal-mode EVP.
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
 + `options.g`  gravitational acceleration
-+ `options.surfaceBoundary`  surface endpoint condition
-+ `options.bottomBoundary`  bottom endpoint condition
++ `options.surfaceBoundary`  surface boundary condition
++ `options.bottomBoundary`  bottom boundary condition
 
 ## Returns
 + `evp`  hydrostatic `F` EVP

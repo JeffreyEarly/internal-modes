@@ -29,9 +29,10 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(fSpec.hasInnerProduct)
             testCase.verifyTrue(gSpec.hasInnerProduct)
-            testCase.verifyEmpty(fSpec.endpointFunctionals)
-            testCase.verifyEmpty(gSpec.endpointFunctionals)
+            testCase.verifyEmpty(fSpec.endpointInnerProductTerms)
+            testCase.verifyEmpty(gSpec.endpointInnerProductTerms)
             testCase.verifyFalse(isfield(fSpec, "status"))
+            testCase.verifyFalse(isfield(fSpec, "endpointFunctionals"))
             testCase.verifyTrue(contains(fSpec.reason, "interior-only"))
         end
 
@@ -49,20 +50,20 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             gLinkedSpec = fLinkedEVP.innerProduct("G");
 
             testCase.verifyTrue(fSpec.hasInnerProduct)
-            testCase.verifyEqual(fSpec.endpointFunctionals(1).catalogCase, "G-P5")
-            testCase.verifyEqual(fSpec.endpointFunctionals(1).variable, "F")
-            testCase.verifyEqual(fSpec.endpointFunctionals(1).coefficient, -3/2, AbsTol=0)
+            testCase.verifyEqual(fSpec.endpointInnerProductTerms(1).catalogCase, "G-P5")
+            testCase.verifyEqual(fSpec.endpointInnerProductTerms(1).variable, "F")
+            testCase.verifyEqual(fSpec.endpointInnerProductTerms(1).coefficient, -3/2, AbsTol=0)
             testCase.verifyTrue(gRobinSpec.hasInnerProduct)
-            testCase.verifyEqual(gRobinSpec.endpointFunctionals(1).catalogCase, "F-P2")
-            testCase.verifyEqual(gRobinSpec.endpointFunctionals(1).variable, "G")
-            testCase.verifyEqual(gRobinSpec.endpointFunctionals(1).coefficient, -3/(2*g), RelTol=1e-12)
+            testCase.verifyEqual(gRobinSpec.endpointInnerProductTerms(1).catalogCase, "F-P2")
+            testCase.verifyEqual(gRobinSpec.endpointInnerProductTerms(1).variable, "G")
+            testCase.verifyEqual(gRobinSpec.endpointInnerProductTerms(1).coefficient, -3/(2*g), RelTol=1e-12)
             testCase.verifyTrue(gLinkedSpec.hasInnerProduct)
-            testCase.verifyEqual(gLinkedSpec.endpointFunctionals(1).catalogCase, "F-T4")
-            testCase.verifyEqual(gLinkedSpec.endpointFunctionals(1).variable, "F")
-            testCase.verifyEqual(gLinkedSpec.endpointFunctionals(1).coefficient, -g/2, RelTol=1e-12)
+            testCase.verifyEqual(gLinkedSpec.endpointInnerProductTerms(1).catalogCase, "F-T4")
+            testCase.verifyEqual(gLinkedSpec.endpointInnerProductTerms(1).variable, "F")
+            testCase.verifyEqual(gLinkedSpec.endpointInnerProductTerms(1).coefficient, -g/2, RelTol=1e-12)
         end
 
-        function valueOnlyEndpointFunctionalsEnterGramMatrix(testCase)
+        function endpointInnerProductTermsEnterGramMatrix(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
@@ -81,12 +82,25 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 end
             end
             FSurface = basisSet.F(zDomain(2));
-            expected = gramInterior + spec.endpointFunctionals(1).coefficient*(FSurface.'*FSurface);
+            expected = gramInterior + spec.endpointInnerProductTerms(1).coefficient*(FSurface.'*FSurface);
+            partialBounds = [zDomain(1) mean(zDomain)];
+            zPartial = solver.configuredForEVP(evp).innerProductGrid(partialBounds);
+            FPartial = basisSet.F(zPartial);
+            expectedPartial = zeros(2,2);
+            for iMode = 1:2
+                for jMode = iMode:2
+                    value = basisSet.solver.integrateInnerProduct(zPartial, FPartial(:,iMode).*FPartial(:,jMode), partialBounds);
+                    expectedPartial(iMode,jMode) = value;
+                    expectedPartial(jMode,iMode) = value;
+                end
+            end
 
             testCase.verifyEqual(basisSet.gramMatrix("F"), expected, RelTol=1e-10, AbsTol=1e-10)
+            testCase.verifyEqual(basisSet.partialGramMatrix("F", partialBounds(1), partialBounds(2)), ...
+                expectedPartial, RelTol=1e-10, AbsTol=1e-10)
         end
 
-        function linkedValueEndpointFunctionalsEnterGramMatrix(testCase)
+        function linkedEndpointInnerProductTermsEnterGramMatrix(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, ...
@@ -106,7 +120,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 end
             end
             FSurface = basisSet.F(zDomain(2));
-            expected = gramInterior + spec.endpointFunctionals(1).coefficient*(FSurface.'*FSurface);
+            expected = gramInterior + spec.endpointInnerProductTerms(1).coefficient*(FSurface.'*FSurface);
 
             testCase.verifyEqual(basisSet.gramMatrix("G"), expected, RelTol=1e-10, AbsTol=1e-10)
         end
@@ -165,9 +179,9 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyEqual(evp.name, "unforced-APV-modes")
             testCase.verifyEqual(evp.modeFamily, "geostrophic")
             testCase.verifyTrue(spec.hasInnerProduct)
-            testCase.verifyEqual([spec.endpointFunctionals.catalogCase], ["F-P2" "F-P2"])
-            testCase.verifyEqual(spec.endpointFunctionals(1).coefficient, -3/(2*g), RelTol=1e-12)
-            testCase.verifyEqual(spec.endpointFunctionals(2).coefficient, -5/(4*g), RelTol=1e-12)
+            testCase.verifyEqual([spec.endpointInnerProductTerms.catalogCase], ["F-P2" "F-P2"])
+            testCase.verifyEqual(spec.endpointInnerProductTerms(1).coefficient, -3/(2*g), RelTol=1e-12)
+            testCase.verifyEqual(spec.endpointInnerProductTerms(2).coefficient, -5/(4*g), RelTol=1e-12)
         end
 
         function geostrophicNormalizationCouplesFAndGForGFormulatedModes(testCase)
