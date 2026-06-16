@@ -279,9 +279,28 @@ classdef IMInternalModes < IMEigenvalueProblem
         function evp = hydrostaticGModes(options)
             % Create the hydrostatic `G` internal-mode EVP.
             %
-            % The canonical scalar form is
-            % $$-\frac{\partial^2 G}{\partial z^2}(z)
-            % =\lambda\frac{N^2(z)}{g}G(z).$$
+            % This factory creates the hydrostatic `G`-form problem
+            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            % =
+            % \lambda_j\frac{N^2(z)}{g}G_j(z),
+            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            % $$-\left[
+            % a_\ell G_j(z_\ell)
+            % -
+            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell G_j(z_\ell)
+            % -
+            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].$$
+            % The default surface and bottom boundary conditions are
+            % `IMBoundaryCondition.dirichlet()`, giving rigid-lid and
+            % rigid-bottom conditions
+            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
             % Solved hydrostatic basis sets install the `geostrophic`
             % normalization rule and use it by default because they set
             % `modeFamily` to `"geostrophic"`. This factory sets
@@ -322,10 +341,41 @@ classdef IMInternalModes < IMEigenvalueProblem
         function evp = hydrostaticFModes(options)
             % Create the hydrostatic `F` internal-mode EVP.
             %
-            % The canonical scalar form is
-            % $$-\frac{\partial}{\partial z}\left(N^{-2}(z)
-            % \frac{\partial F}{\partial z}(z)\right)
-            % =\lambda\frac{F(z)}{g}.$$
+            % This factory creates the hydrostatic `F`-form problem
+            % $$-\frac{\partial}{\partial z}
+            % \left(
+            % \frac{1}{N^2(z)}
+            % \frac{\partial F_j}{\partial z}(z)
+            % \right)
+            % =
+            % \lambda_j\frac{F_j(z)}{g},
+            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            % $$-\left[
+            % a_\ell F_j(z_\ell)
+            % -
+            % b_\ell\frac{1}{N^2(z_\ell)}
+            % \frac{\partial F_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell F_j(z_\ell)
+            % -
+            % d_\ell\frac{1}{N^2(z_\ell)}
+            % \frac{\partial F_j}{\partial z}(z_\ell)
+            % \right].$$
+            % The default surface and bottom boundary conditions are
+            % `IMBoundaryCondition.neumann()`, giving
+            % $$\frac{1}{N^2(z_s)}
+            % \frac{\partial F_j}{\partial z}(z_s)=0,\qquad
+            % \frac{1}{N^2(z_b)}
+            % \frac{\partial F_j}{\partial z}(z_b)=0.$$
+            % Through the hydrostatic relation
+            % $$G_j(z)=-\frac{g}{N^2(z)}
+            % \frac{\partial F_j}{\partial z}(z),$$
+            % these are the same rigid-lid and rigid-bottom conditions
+            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
             % The barotropic zero mode is inferred from the canonical left
             % problem during mode selection.
             % This factory sets `parameters.formulation` and `parameters.g`;
@@ -358,9 +408,39 @@ classdef IMInternalModes < IMEigenvalueProblem
         function evp = waveModesAtWavenumber(options)
             % Create the fixed-wavenumber wave-mode EVP.
             %
-            % The canonical scalar form is
-            % $$-\frac{\partial^2 G}{\partial z^2}(z)+K^2G(z)
-            % =\lambda\frac{N^2(z)-f_0^2}{g}G(z).$$
+            % This factory creates the fixed-wavenumber `G`-form problem
+            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            % +k^2G_j(z)
+            % =
+            % \lambda_j\frac{N^2(z)-f_0^2}{g}G_j(z),
+            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            % $$-\left[
+            % a_\ell G_j(z_\ell)
+            % -
+            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell G_j(z_\ell)
+            % -
+            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].$$
+            % The default surface and bottom boundary conditions are
+            % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
+            % conditions
+            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            % A linear free-surface condition at the surface can be written
+            % as
+            % $$G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},$$
+            % equivalently
+            % $$\frac{\partial G_j}{\partial z}(z_s)
+            % =
+            % \lambda_j G_j(z_s).$$
+            % In canonical boundary-condition coefficients this is
+            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
             % Solved fixed-wavenumber basis sets install the `kConstant`
             % normalization rule and use it by default.
             % This factory adds `parameters.k` and sets
@@ -400,9 +480,38 @@ classdef IMInternalModes < IMEigenvalueProblem
         function evp = waveModesAtFrequency(options)
             % Create the fixed-frequency wave-mode EVP.
             %
-            % The canonical scalar form is
-            % $$-\frac{\partial^2 G}{\partial z^2}(z)
-            % =\lambda\frac{N^2(z)-\omega^2}{g}G(z).$$
+            % This factory creates the fixed-frequency `G`-form problem
+            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            % =
+            % \lambda_j\frac{N^2(z)-\omega^2}{g}G_j(z),
+            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            % $$-\left[
+            % a_\ell G_j(z_\ell)
+            % -
+            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell G_j(z_\ell)
+            % -
+            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].$$
+            % The default surface and bottom boundary conditions are
+            % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
+            % conditions
+            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            % A linear free-surface condition at the surface can be written
+            % as
+            % $$G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},$$
+            % equivalently
+            % $$\frac{\partial G_j}{\partial z}(z_s)
+            % =
+            % \lambda_j G_j(z_s).$$
+            % In canonical boundary-condition coefficients this is
+            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
             % Solved fixed-frequency basis sets use the generic `unity`
             % normalization by default. A fixed-frequency diagnostic `F`
             % inner-product normalization is deferred until the wave

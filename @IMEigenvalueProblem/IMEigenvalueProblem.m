@@ -2,23 +2,33 @@ classdef IMEigenvalueProblem
     % Describe a canonical scalar eigenvalue problem.
     %
     % `IMEigenvalueProblem` describes the canonical Sturm-Liouville EVP
-    % $$-\frac{\partial}{\partial z}
+    %
+    % $$
+    % -\frac{\partial}{\partial z}
     % \left(p(z)\frac{\partial u}{\partial z}\right)
-    % +q(z)u(z)=\lambda r(z)u(z).$$
+    % +q(z)u(z)=\lambda r(z)u(z).
+    % $$
     %
     % Boundary conditions are written in the same eigenvalue-dependent
     % canonical form:
-    % $$-\left[a_i u(z_i)
+    %
+    % $$
+    % -\left[a_i u(z_i)
     % -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
     % =\lambda\left[c_i u(z_i)
     % -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right],
-    % \qquad i\in\{\mathrm{bottom},\mathrm{surface}\}.$$
+    % \qquad i\in\{\mathrm{bottom},\mathrm{surface}\}.
+    % $$
     %
     % `IMEigenvalueProblem` stores this continuous scalar problem; solvers
     % discretize it and return an `IMBasisSet` of retained modes.
     %
     % For example, the Dirichlet problem
-    % $$-\frac{\partial^2 u}{\partial z^2}=\lambda u,\qquad u(-1)=u(0)=0$$
+    %
+    % $$
+    % -\frac{\partial^2 u}{\partial z^2}=\lambda u,\qquad u(-1)=u(0)=0
+    % $$
+    %
     % is created with:
     %
     % ```matlab
