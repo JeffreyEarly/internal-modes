@@ -142,6 +142,28 @@ classdef IMBasisSetExponentialStratification < IMInternalModesBasis
                 end
             end
         end
+
+        function values = rawUz(self, z)
+            z = z(:);
+            values = zeros(length(z), length(self.h));
+            for iMode = 1:length(self.h)
+                if self.modeKinds(iMode) == "null"
+                    values(:,iMode) = zeros(size(z));
+                    continue;
+                end
+                [G, F] = IMBasisSetExponentialStratification.rawModeValues( ...
+                    z, self.N0, self.b, self.zDomain, self.frequencies(iMode), ...
+                    self.phaseSpeeds(iMode), self.evp.g);
+                G = self.signFactors(iMode)*G;
+                F = self.signFactors(iMode)*F;
+
+                if self.evp.formulation == "G"
+                    values(:,iMode) = F ./ self.h(iMode);
+                else
+                    values(:,iMode) = -(self.N2(z)/self.evp.g).*G;
+                end
+            end
+        end
     end
 
     methods (Static, Access = private)

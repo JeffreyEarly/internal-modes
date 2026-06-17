@@ -668,6 +668,23 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifySize(basisSet.G(linspace(zDomain(1),zDomain(2),8).'), [8 2])
         end
 
+        function internalModeBasisWithoutSolverRejectsDerivativeFallback(testCase)
+            [N2, zDomain] = testCase.profile();
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            basisSet = IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), ...
+                eigenvalues=1, h=1, modeNumber=1, zDomain=zDomain, N2=N2);
+
+            testCase.verifyError(@() basisSet.uz(mean(zDomain)), "IMBasisSet:UnsupportedOperation")
+        end
+
+        function internalModeBasisHasNoFiniteDifferenceDerivativeFallback(testCase)
+            repoRoot = fileparts(fileparts(mfilename('fullpath')));
+            source = fileread(fullfile(repoRoot, "@IMInternalModesBasis", "IMInternalModesBasis.m"));
+
+            testCase.verifyFalse(contains(source, "sqrt(eps)"))
+            testCase.verifyFalse(contains(source, "gradient("))
+        end
+
         function finiteDifferenceSolverSolvesCanonicalProblem(testCase)
             z = linspace(-1000, 0, 32).';
             solver = IMSolverFiniteDifference(z=z);

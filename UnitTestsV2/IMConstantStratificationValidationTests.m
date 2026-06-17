@@ -72,6 +72,55 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(G(:,1), zeros(size(z)), AbsTol=1e-12)
         end
 
+        function analyticalGModesReturnExactSolvedDerivative(testCase)
+            N0 = 5.2e-3;
+            g = 9.81;
+            zDomain = [-5000 0];
+            nModes = 3;
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
+            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
+                zDomain=zDomain, nModes=nModes);
+            z = linspace(zDomain(1), zDomain(2), 11).';
+            s = z - zDomain(1);
+
+            expected = zeros(length(z), nModes);
+            for iMode = 1:nModes
+                k_z = basisSet.verticalWavenumbers(iMode);
+                signValue = (-1)^basisSet.modeNumber(iMode);
+                expected(:,iMode) = signValue*k_z*cos(k_z*s);
+            end
+            expected = expected ./ basisSet.normalizationFactors("unity");
+
+            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, ...
+                RelTol=1e-12, AbsTol=1e-14)
+        end
+
+        function analyticalFModesReturnExactSolvedDerivative(testCase)
+            N0 = 5.2e-3;
+            zDomain = [-4000 0];
+            nModes = 4;
+            N2 = @(z) N0*N0*ones(size(z));
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
+                zDomain=zDomain, nModes=nModes);
+            z = linspace(zDomain(1), zDomain(2), 11).';
+            s = z - zDomain(1);
+
+            expected = zeros(length(z), nModes);
+            for iMode = 1:nModes
+                k_z = basisSet.verticalWavenumbers(iMode);
+                signValue = (-1)^basisSet.modeNumber(iMode);
+                expected(:,iMode) = -signValue*k_z*sin(k_z*s);
+            end
+            expected = expected ./ basisSet.normalizationFactors("unity");
+
+            actual = basisSet.uz(z, normalization="unity");
+            testCase.verifyEqual(actual, expected, ...
+                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(actual(:,1), zeros(size(z)), AbsTol=1e-14)
+        end
+
         function analyticalFactoryCreatesConstantBasis(testCase)
             zDomain = [-3000 0];
             N0 = 5.2e-3;

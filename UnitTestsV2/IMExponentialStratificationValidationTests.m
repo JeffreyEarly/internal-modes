@@ -71,6 +71,41 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(G(:,1), zeros(size(z)), AbsTol=1e-12)
         end
 
+        function analyticalGModesReturnSolvedDerivative(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
+                zDomain=zDomain, nModes=3);
+            z = linspace(zDomain(1), zDomain(2), 12).';
+
+            expected = basisSet.F(z, normalization="unity") ./ basisSet.h;
+
+            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, ...
+                RelTol=1e-12, AbsTol=1e-14)
+        end
+
+        function analyticalFModesReturnSolvedDerivative(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
+                zDomain=zDomain, nModes=3);
+            z = linspace(zDomain(1), zDomain(2), 12).';
+
+            expected = -(N2(z)/evp.g).*basisSet.G(z, normalization="unity");
+
+            actual = basisSet.uz(z, normalization="unity");
+            testCase.verifyEqual(actual, expected, ...
+                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(actual(:,1), zeros(size(z)), AbsTol=1e-14)
+            testCase.verifyTrue(all(isfinite(actual(:))))
+        end
+
         function analyticalFactoryCreatesExponentialBasis(testCase)
             N0 = 5.2e-3;
             b = 1300;

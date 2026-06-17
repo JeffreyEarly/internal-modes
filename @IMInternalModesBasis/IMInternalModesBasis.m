@@ -447,14 +447,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
                 return;
             end
-            z = z(:);
-            if length(z) == 1
-                scale = max(1,abs(z));
-                dz = sqrt(eps)*scale;
-                values = (self.rawU(z + dz) - self.rawU(z - dz))/(2*dz);
-            else
-                values = gradient(self.rawU(z), z);
-            end
+            self.unsupported("evaluate analytical derivatives without a subclass implementation");
         end
 
         function values = rawVariable(self, variable, z)

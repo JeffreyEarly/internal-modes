@@ -196,6 +196,32 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
                 end
             end
         end
+
+        function values = rawUz(self, z)
+            z = z(:);
+            s = z - self.zDomain(1);
+            values = zeros(length(z), length(self.h));
+            for iMode = 1:length(self.h)
+                k_z = self.verticalWavenumbers(iMode);
+                hMode = self.h(iMode);
+                if self.isBoundaryMode(iMode)
+                    [dGdz, dFdz] = self.rawBoundaryModeDerivatives(self.solutionTypes(iMode), k_z, hMode, s);
+                elseif self.evp.formulation == "F"
+                    [dGdz, dFdz] = self.rawHydrostaticFModeDerivatives( ...
+                        k_z, self.baroclinicNumbers(iMode), s);
+                else
+                    signValue = (-1)^self.baroclinicNumbers(iMode);
+                    dGdz = signValue*k_z*cos(k_z*s);
+                    dFdz = -signValue*hMode*k_z*k_z*sin(k_z*s);
+                end
+
+                if self.evp.formulation == "G"
+                    values(:,iMode) = dGdz;
+                else
+                    values(:,iMode) = dFdz;
+                end
+            end
+        end
     end
 
     methods (Access = private)
@@ -301,6 +327,18 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
             G = signValue*(self.evp.g*k_z/(self.N0*self.N0))*sin(k_z*s);
         end
 
+        function [dGdz, dFdz] = rawHydrostaticFModeDerivatives(self, k_z, modeNumber, s)
+            if abs(k_z) <= eps
+                dFdz = zeros(size(s));
+                dGdz = zeros(size(s));
+                return;
+            end
+
+            signValue = (-1)^modeNumber;
+            dFdz = -signValue*k_z*sin(k_z*s);
+            dGdz = signValue*(self.evp.g*k_z*k_z/(self.N0*self.N0))*cos(k_z*s);
+        end
+
         function [G, F] = rawBoundaryMode(self, solutionType, k_z, hMode, s)
             Lz = diff(self.zDomain);
             switch string(solutionType)
@@ -313,6 +351,23 @@ classdef IMBasisSetConstantStratification < IMInternalModesBasis
                 case "trig"
                     G = sin(k_z*s);
                     F = hMode*k_z*cos(k_z*s);
+                otherwise
+                    error("IMBasisSetConstantStratification:InvalidSolutionType", ...
+                        "Unknown solution type ""%s"".", string(solutionType));
+            end
+        end
+
+        function [dGdz, dFdz] = rawBoundaryModeDerivatives(~, solutionType, k_z, hMode, s)
+            switch string(solutionType)
+                case "linear"
+                    dGdz = ones(size(s));
+                    dFdz = zeros(size(s));
+                case "hyperbolic"
+                    dGdz = k_z*cosh(k_z*s);
+                    dFdz = hMode*k_z*k_z*sinh(k_z*s);
+                case "trig"
+                    dGdz = k_z*cos(k_z*s);
+                    dFdz = -hMode*k_z*k_z*sin(k_z*s);
                 otherwise
                     error("IMBasisSetConstantStratification:InvalidSolutionType", ...
                         "Unknown solution type ""%s"".", string(solutionType));
