@@ -21,9 +21,9 @@ classdef IMInternalModesBasis < IMBasisSet
     % ```
     %
     % - Topic: Create internal-mode bases
-    % - Topic: Evaluate internal-mode bases
-    % - Topic: Analyze Gram matrices
-    % - Topic: Inspect internal-mode bases
+    % - Topic: Evaluate modes
+    % - Topic: Analyze modes
+    % - Topic: Inspect basis sets
     % - Topic: Developer topics
     % - Declaration: classdef IMInternalModesBasis < IMBasisSet
 
@@ -34,7 +34,7 @@ classdef IMInternalModesBasis < IMBasisSet
         % $$h_j=\texttt{evp.hFromEigenvalue}(\lambda_j),$$
         % where $$\lambda_j$$ is `eigenvalues(j)`.
         %
-        % - Topic: Inspect internal-mode bases
+        % - Topic: Inspect basis sets
         h
 
         % Buoyancy frequency squared profile.
@@ -42,7 +42,7 @@ classdef IMInternalModesBasis < IMBasisSet
         % `N2` has signature `values = N2(z)` and is copied from the
         % internal-mode EVP.
         %
-        % - Topic: Inspect internal-mode bases
+        % - Topic: Inspect basis sets
         N2
     end
 
@@ -102,7 +102,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % but individual EVPs may supply a different diagnostic
             % relation.
             %
-            % - Topic: Evaluate internal-mode bases
+            % - Topic: Evaluate modes
             % - Declaration: G = G(basisSet,z,options)
             % - Parameter z: physical coordinate
             % - Parameter options.normalization: normalization rule name or enum value
@@ -124,7 +124,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % by `evp.FfromGz`; the default relation is
             % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
             %
-            % - Topic: Evaluate internal-mode bases
+            % - Topic: Evaluate modes
             % - Declaration: F = F(basisSet,z,options)
             % - Parameter z: physical coordinate
             % - Parameter options.normalization: normalization rule name or enum value
@@ -156,7 +156,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % `IMInternalModesBasis:UnavailableInnerProduct` rather than
             % returning an incomplete Gram matrix.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: gram = gramMatrix(basisSet,options)
             % - Parameter options.variable: `"F"` or `"G"`
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
@@ -187,7 +187,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Endpoint terms are omitted when `zBounds` does not include
             % that endpoint.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Gram-matrix assembly
             % - Declaration: terms = endpointGramTerms(basisSet,options)
             % - Parameter options.variable: `"F"` or `"G"`
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
@@ -249,7 +249,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % formulation is used. The requested variable must have a known
             % inner product.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: windowModes = partialWindowModes(basisSet,options)
             % - Parameter options.variable: `"F"` or `"G"`
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
@@ -278,7 +278,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % If `options.variable` is omitted, the solved formulation is
             % used. The requested variable must have a known inner product.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
             % - Parameter coefficients: modal coefficients
             % - Parameter options.variable: optional variable name, `"F"` or `"G"`
@@ -298,7 +298,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % If `options.variable` is omitted, the solved formulation is
             % used. The requested variable must have a known inner product.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB,options)
             % - Parameter coefficientsA: first modal coefficients
             % - Parameter coefficientsB: second modal coefficients
@@ -336,7 +336,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % basisSet = basisSet.orientModeSigns();
             % ```
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Diagnostic variables
             % - Declaration: basisSet = orientModeSigns(basisSet)
             % - Returns basisSet: basis set with oriented native mode signs
             % - Developer: true
@@ -372,7 +372,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % The factor is computed from raw, unnormalized modes before
             % the active basis normalization is applied.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
             % - Parameter iMode: retained mode index
             % - Parameter options.variable: `"F"` or `"G"`
@@ -404,7 +404,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$ and is a
             % separate null-mode convention.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
             % - Parameter iMode: retained mode index
             % - Returns factor: raw geostrophic scale factor
@@ -424,7 +424,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % requested variable on the basis-set integration grid. If
             % `variable` is omitted, the solved formulation is used.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = maxAmplitudeNormFactor(basisSet,iMode,options)
             % - Parameter iMode: retained mode index
             % - Parameter options.variable: `"F"` or `"G"`
@@ -452,7 +452,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % nonfinite, it returns `1` so normalization remains well
             % defined.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
             % - Parameter iMode: retained mode index
             % - Returns factor: raw surface-pressure scale factor

@@ -19,8 +19,9 @@ classdef IMBasisSet
     % ```
     %
     % - Topic: Create basis sets
-    % - Topic: Evaluate basis sets
-    % - Topic: Analyze Gram matrices
+    % - Topic: Evaluate modes
+    % - Topic: Normalize modes
+    % - Topic: Analyze modes
     % - Topic: Inspect basis sets
     % - Topic: Developer topics
     % - Declaration: classdef IMBasisSet
@@ -34,7 +35,7 @@ classdef IMBasisSet
         % `uz`, and Gram-matrix methods. Passing `normalization=name` to an
         % evaluation method overrides this property for that call.
         %
-        % - Topic: Evaluate basis sets
+        % - Topic: Normalize modes
         normalization = "unity"
     end
 
@@ -45,7 +46,7 @@ classdef IMBasisSet
         % coefficient columns. It is mainly useful for diagnostics and
         % developer workflows.
         %
-        % - Topic: Developer topics
+        % - Topic: Developer topics — Native representation
         % - Developer: true
         solver
 
@@ -61,7 +62,7 @@ classdef IMBasisSet
         % normalization. Most workflows should call `u(z)` or `uz(z)`
         % instead.
         %
-        % - Topic: Developer topics
+        % - Topic: Developer topics — Native representation
         % - Developer: true
         nativeModes
 
@@ -209,7 +210,7 @@ classdef IMBasisSet
             %
             % If `name` already exists, the rule is overwritten.
             %
-            % - Topic: Evaluate basis sets
+            % - Topic: Normalize modes
             % - Declaration: basisSet = addNormalization(basisSet,name,rule)
             % - Parameter name: normalization rule name
             % - Parameter rule: function handle with signature `scale = rule(basisSet,iMode)`
@@ -231,7 +232,7 @@ classdef IMBasisSet
             % `normalizationFactors` and selectable by
             % `basisSet.normalization`.
             %
-            % - Topic: Inspect basis sets
+            % - Topic: Normalize modes
             % - Declaration: names = normalizationNames(basisSet)
             % - Returns names: string array of installed normalization names
             arguments
@@ -248,7 +249,7 @@ classdef IMBasisSet
             % $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
             % where $$s_j$$ comes from `normalizationFactors`.
             %
-            % - Topic: Evaluate basis sets
+            % - Topic: Evaluate modes
             % - Declaration: values = u(basisSet,z,options)
             % - Parameter z: physical coordinate
             % - Parameter options.normalization: normalization to apply
@@ -268,7 +269,7 @@ classdef IMBasisSet
             % Derivatives are scaled by the same modal factors used for
             % `u`, so $$u'_j(z)=u_j^{\mathrm{raw}\prime}(z)/s_j$$.
             %
-            % - Topic: Evaluate basis sets
+            % - Topic: Evaluate modes
             % - Declaration: values = uz(basisSet,z,options)
             % - Parameter z: physical coordinate
             % - Parameter options.normalization: normalization to apply
@@ -300,7 +301,7 @@ classdef IMBasisSet
             % uUnity = basisSet.u(z,normalization="unity");
             % ```
             %
-            % - Topic: Evaluate basis sets
+            % - Topic: Normalize modes
             % - Declaration: factors = normalizationFactors(basisSet,normalization)
             % - Parameter normalization: normalization convention
             % - Returns factors: row vector of positive scale factors
@@ -338,7 +339,7 @@ classdef IMBasisSet
             % Use `endpointGramTerms` to inspect the prepared endpoint
             % vectors that generate the rank-one endpoint updates.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: gram = gramMatrix(basisSet,options)
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
             % - Returns gram: scalar Gram matrix
@@ -389,7 +390,7 @@ classdef IMBasisSet
             % Endpoint terms are omitted when `zBounds` does not include
             % that endpoint.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Gram-matrix assembly
             % - Declaration: terms = endpointGramTerms(basisSet,options)
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
             % - Parameter options.normalization: normalization rule name
@@ -449,7 +450,7 @@ classdef IMBasisSet
             % matrix on `zBounds` and sorts window-mode eigenvalues from
             % largest to smallest.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: windowModes = partialWindowModes(basisSet,options)
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
             % - Returns windowModes: window-mode decomposition
@@ -477,7 +478,7 @@ classdef IMBasisSet
             % $$S_j=M_{jj}|c_j|^2,$$ where $$M$$ is the full-domain scalar
             % Gram matrix.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: spectrum = spectrum(basisSet,coefficients)
             % - Parameter coefficients: modal coefficients
             % - Returns spectrum: modal spectrum
@@ -495,7 +496,7 @@ classdef IMBasisSet
             % For modal coefficient vectors $$a_j$$ and $$b_j$$ this
             % returns $$S_j=M_{jj}\operatorname{Re}(a_j b_j^*)$$.
             %
-            % - Topic: Analyze Gram matrices
+            % - Topic: Analyze modes
             % - Declaration: spectrum = crossSpectrum(basisSet,coefficientsA,coefficientsB)
             % - Parameter coefficientsA: first modal coefficients
             % - Parameter coefficientsB: second modal coefficients
@@ -529,7 +530,7 @@ classdef IMBasisSet
             % basisSet = basisSet.orientModeSigns();
             % ```
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Native representation
             % - Declaration: basisSet = orientModeSigns(basisSet)
             % - Returns basisSet: basis set with oriented native mode signs
             % - Developer: true
@@ -558,7 +559,7 @@ classdef IMBasisSet
             % The scalar inner product includes the interior weight and
             % any canonical endpoint terms prepared by `endpointGramTerms`.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
             % - Parameter iMode: retained mode index
             % - Returns factor: raw scalar inner-product scale factor
@@ -596,7 +597,7 @@ classdef IMBasisSet
             % use this factor to make the largest scalar mode amplitude
             % equal to one.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = maxAmplitudeNormFactor(basisSet,iMode)
             % - Parameter iMode: retained mode index
             % - Returns factor: maximum raw scalar amplitude
@@ -620,7 +621,7 @@ classdef IMBasisSet
             % $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
             % where $$s_j$$ comes from `normalizationFactors`.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Native representation
             % - Declaration: values = rawU(basisSet,z)
             % - Parameter z: physical coordinate
             % - Returns values: unnormalized scalar mode values
@@ -644,7 +645,7 @@ classdef IMBasisSet
             % \frac{\partial u_j^{\mathrm{raw}}}{\partial z}(z)/s_j,$$
             % where $$s_j$$ comes from `normalizationFactors`.
             %
-            % - Topic: Developer topics
+            % - Topic: Developer topics — Native representation
             % - Declaration: values = rawUz(basisSet,z)
             % - Parameter z: physical coordinate
             % - Returns values: unnormalized scalar derivative values

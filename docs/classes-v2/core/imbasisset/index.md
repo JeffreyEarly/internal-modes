@@ -45,13 +45,15 @@ factors = basisSet.normalizationFactors("unity");
 ## Topics
 + Create basis sets
   + [`IMBasisSet`](/internal-modes/classes-v2/core/imbasisset/imbasisset.html) Create a solved scalar basis set.
-+ Evaluate basis sets
++ Evaluate modes
+  + [`u`](/internal-modes/classes-v2/core/imbasisset/u.html) Evaluate solved scalar modes.
+  + [`uz`](/internal-modes/classes-v2/core/imbasisset/uz.html) Evaluate solved scalar vertical derivatives.
++ Normalize modes
   + [`addNormalization`](/internal-modes/classes-v2/core/imbasisset/addnormalization.html) Add a named normalization rule.
   + [`normalization`](/internal-modes/classes-v2/core/imbasisset/normalization.html) Active normalization rule name.
   + [`normalizationFactors`](/internal-modes/classes-v2/core/imbasisset/normalizationfactors.html) Return scale factors for a normalization rule.
-  + [`u`](/internal-modes/classes-v2/core/imbasisset/u.html) Evaluate solved scalar modes.
-  + [`uz`](/internal-modes/classes-v2/core/imbasisset/uz.html) Evaluate solved scalar vertical derivatives.
-+ Analyze Gram matrices
+  + [`normalizationNames`](/internal-modes/classes-v2/core/imbasisset/normalizationnames.html) Return installed normalization rule names.
++ Analyze modes
   + [`crossSpectrum`](/internal-modes/classes-v2/core/imbasisset/crossspectrum.html) Compute a scalar modal cross-spectrum.
   + [`gramMatrix`](/internal-modes/classes-v2/core/imbasisset/grammatrix.html) Return a scalar Gram matrix.
   + [`partialWindowModes`](/internal-modes/classes-v2/core/imbasisset/partialwindowmodes.html) Diagonalize a partial scalar Gram matrix.
@@ -62,21 +64,23 @@ factors = basisSet.normalizationFactors("unity");
   + [`metadata`](/internal-modes/classes-v2/core/imbasisset/metadata.html) Additional metadata.
   + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Retained-mode labels.
   + [`modeSelectionDiagnostics`](/internal-modes/classes-v2/core/imbasisset/modeselectiondiagnostics.html) Mode-selection diagnostics.
-  + [`normalizationNames`](/internal-modes/classes-v2/core/imbasisset/normalizationnames.html) Return installed normalization rule names.
   + [`zDomain`](/internal-modes/classes-v2/core/imbasisset/zdomain.html) Physical vertical domain.
 
 
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + [`endpointGramTerms`](/internal-modes/classes-v2/core/imbasisset/endpointgramterms.html) Prepare rank-one endpoint terms for scalar Gram matrices.
-  + [`innerProductNormFactor`](/internal-modes/classes-v2/core/imbasisset/innerproductnormfactor.html) Return the scalar inner-product norm factor.
-  + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/imbasisset/maxamplitudenormfactor.html) Return the maximum scalar amplitude.
-  + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
-  + [`orientModeSigns`](/internal-modes/classes-v2/core/imbasisset/orientmodesigns.html) Orient scalar modes with a deterministic sign convention.
-  + [`rawU`](/internal-modes/classes-v2/core/imbasisset/rawu.html) Evaluate raw solved scalar modes.
-  + [`rawUz`](/internal-modes/classes-v2/core/imbasisset/rawuz.html) Evaluate raw solved scalar derivatives.
-  + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
+  + Gram-matrix assembly
+    + [`endpointGramTerms`](/internal-modes/classes-v2/core/imbasisset/endpointgramterms.html) Prepare rank-one endpoint terms for scalar Gram matrices.
+  + Normalization rules
+    + [`innerProductNormFactor`](/internal-modes/classes-v2/core/imbasisset/innerproductnormfactor.html) Return the scalar inner-product norm factor.
+    + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/imbasisset/maxamplitudenormfactor.html) Return the maximum scalar amplitude.
+  + Native representation
+    + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
+    + [`orientModeSigns`](/internal-modes/classes-v2/core/imbasisset/orientmodesigns.html) Orient scalar modes with a deterministic sign convention.
+    + [`rawU`](/internal-modes/classes-v2/core/imbasisset/rawu.html) Evaluate raw solved scalar modes.
+    + [`rawUz`](/internal-modes/classes-v2/core/imbasisset/rawuz.html) Evaluate raw solved scalar derivatives.
+    + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
 
 
 ---
