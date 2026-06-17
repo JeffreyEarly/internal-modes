@@ -235,23 +235,14 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Returns spectrum: modal cross-spectrum
             arguments
                 self IMInternalModesBasis
-                coefficientsA (:,1) double
-                coefficientsB (:,1) double
+                coefficientsA (:,1) double {mustBeFinite}
+                coefficientsB (:,1) double {mustBeFinite}
                 options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
             end
 
             nModes = size(self.nativeModes,2);
-            if any(~isfinite(coefficientsA(:)))
-                error("IMBasisSet:InvalidCoefficients", "coefficientsA must contain finite values.");
-            end
-            if any(~isfinite(coefficientsB(:)))
-                error("IMBasisSet:InvalidCoefficients", "coefficientsB must contain finite values.");
-            end
-            if length(coefficientsA) ~= nModes
-                error("IMBasisSet:InvalidCoefficientCount", "coefficientsA must contain one value for each retained mode (%d).", nModes);
-            end
-            if length(coefficientsB) ~= nModes
-                error("IMBasisSet:InvalidCoefficientCount", "coefficientsB must contain one value for each retained mode (%d).", nModes);
+            if length(coefficientsA) ~= nModes || length(coefficientsB) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "Coefficient vectors must contain one value for each retained mode (%d).", nModes);
             end
             gram = self.gramMatrix(variable=options.variable);
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
