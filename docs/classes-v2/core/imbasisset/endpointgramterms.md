@@ -36,6 +36,6 @@ Prepare rank-one endpoint terms for scalar Gram matrices.
   contribution. Canonical endpoint weights use
   $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell),$$
   and the Gram matrix applies the rank-one update
-  $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+  $$M \leftarrow M+D_\ell^{-1}L_\ell L_\ell^\mathsf{T}.$$
   Endpoint terms are omitted when `zBounds` does not include
   that endpoint.
