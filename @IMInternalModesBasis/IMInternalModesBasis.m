@@ -79,7 +79,15 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMInternalModesBasis:InvalidEquivalentDepthCount", "hFromEigenvalue must return one equivalent depth for each native mode column.");
             end
 
-            self = self.installInternalModeNormalizationRules();
+            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
+            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
+            self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
+            if self.evp.modeFamily == "geostrophic"
+                self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
+            end
+            if string(self.evp.name) == "waveModesAtWavenumber"
+                self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
+            end
             if isempty(options.normalization)
                 if self.evp.modeFamily == "geostrophic"
                     self.normalization = "geostrophic";
@@ -209,7 +217,9 @@ classdef IMInternalModesBasis < IMBasisSet
 
             variable = string(options.variable);
             spec = self.evp.innerProduct(variable);
-            IMInternalModesBasis.assertInnerProductAvailable(spec);
+            if ~isfield(spec, "hasInnerProduct") || ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
+            end
             terms = struct("location", {}, "coefficient", {}, "values", {}, "kind", {});
             if variable == self.evp.formulation
                 terms = endpointGramTerms@IMBasisSet(self, zBounds=options.zBounds, normalization=options.normalization, useNormalized=options.useNormalized);
@@ -345,13 +355,43 @@ classdef IMInternalModesBasis < IMBasisSet
             end
             zSurface = self.zDomain(2);
             zGrid = self.solver.innerProductGrid(self.zDomain);
-            FReferences = self.modeSignReferences("F", zSurface, zGrid);
-            GReferences = self.modeSignReferences("G", zSurface, zGrid);
+            variables = ["F", "G"];
+            references = NaN(2,size(self.nativeModes,2));
+            for iVariable = 1:numel(variables)
+                surfaceValues = [];
+                gridValues = [];
+                try
+                    surfaceValues = self.rawVariable(variables(iVariable), zSurface);
+                    gridValues = self.rawVariable(variables(iVariable), zGrid);
+                catch exception
+                    if string(exception.identifier) ~= "IMBasisSet:UnsupportedOperation"
+                        rethrow(exception)
+                    end
+                end
+
+                for iMode = 1:size(self.nativeModes,2)
+                    value = NaN;
+                    tolerance = 0;
+                    if ~isempty(surfaceValues)
+                        value = surfaceValues(1,iMode);
+                        tolerance = 1e-10*max(1,abs(value));
+                    end
+                    if (isempty(surfaceValues) || abs(value) <= tolerance) && ~isempty(gridValues)
+                        [scale, index] = max(abs(gridValues(:,iMode)));
+                        value = gridValues(index,iMode);
+                        tolerance = 1e-10*max(1,scale);
+                    end
+                    if abs(value) <= tolerance
+                        value = 0;
+                    end
+                    references(iVariable,iMode) = value;
+                end
+            end
             signs = ones(1,size(self.nativeModes,2));
             for iMode = 1:size(self.nativeModes,2)
-                reference = FReferences(iMode);
+                reference = references(1,iMode);
                 if ~isfinite(reference) || reference == 0
-                    reference = GReferences(iMode);
+                    reference = references(2,iMode);
                 end
                 if isfinite(reference) && reference < 0
                     signs(iMode) = -1;
@@ -520,7 +560,9 @@ classdef IMInternalModesBasis < IMBasisSet
             z = self.solver.innerProductGrid(zBounds);
             context = self.evp.contextForSolver(self.solver);
             spec = self.evp.innerProduct(variable);
-            IMInternalModesBasis.assertInnerProductAvailable(spec);
+            if ~isfield(spec, "hasInnerProduct") || ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
+            end
             normalizationFactors = [];
             if useNormalized
                 normalizationFactors = self.normalizationFactors(self.normalization);
@@ -548,64 +590,6 @@ classdef IMInternalModesBasis < IMBasisSet
                 gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
             end
         end
-    end
-
-    methods (Access = private)
-        function self = installInternalModeNormalizationRules(self)
-            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
-            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
-            self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
-
-            if self.evp.modeFamily == "geostrophic"
-                self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
-            end
-            if string(self.evp.name) == "waveModesAtWavenumber"
-                self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
-            end
-        end
-
-        function references = modeSignReferences(self, variable, zSurface, zGrid)
-            surfaceValues = [];
-            gridValues = [];
-            try
-                surfaceValues = self.rawVariable(variable, zSurface);
-                gridValues = self.rawVariable(variable, zGrid);
-            catch exception
-                if string(exception.identifier) ~= "IMBasisSet:UnsupportedOperation"
-                    rethrow(exception)
-                end
-            end
-
-            references = NaN(1,size(self.nativeModes,2));
-            for iMode = 1:size(self.nativeModes,2)
-                value = NaN;
-                tolerance = 0;
-                if ~isempty(surfaceValues)
-                    value = surfaceValues(1,iMode);
-                    tolerance = 1e-10*max(1,abs(value));
-                end
-                if (isempty(surfaceValues) || abs(value) <= tolerance) && ~isempty(gridValues)
-                    [scale, index] = max(abs(gridValues(:,iMode)));
-                    value = gridValues(index,iMode);
-                    tolerance = 1e-10*max(1,scale);
-                end
-                if abs(value) <= tolerance
-                    value = 0;
-                end
-                references(iMode) = value;
-            end
-        end
-
-    end
-
-    methods (Static, Access = private)
-        function assertInnerProductAvailable(spec)
-            if isfield(spec, "hasInnerProduct") && spec.hasInnerProduct
-                return;
-            end
-            error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
-        end
-
     end
 
 end
