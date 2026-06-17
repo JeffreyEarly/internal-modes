@@ -12,8 +12,7 @@ classdef IMBasisSet
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet = basisSet.addNormalization("constantScaled", ...
-    %     @(basisSet,j) C*basisSet.innerProductNormFactor(j));
+    % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
     % basisSet.normalization = "unity";
     % u = basisSet.u(z);
     % factors = basisSet.normalizationFactors("unity");
@@ -32,7 +31,7 @@ classdef IMBasisSet
         % This string selects a rule in the basis-set normalization
         % registry. Create custom rules with `addNormalization`.
         % The selected rule returns the scale factor $$s_j$$ used by `u`,
-        % `uz`, and Gram-matrix methods. Passing `normalization=...` to an
+        % `uz`, and Gram-matrix methods. Passing `normalization=name` to an
         % evaluation method overrides this property for that call.
         %
         % - Topic: Evaluate basis sets
@@ -104,7 +103,7 @@ classdef IMBasisSet
         % Mode-selection diagnostics.
         %
         % This is the diagnostics struct returned by
-        % `evp.modeSelectionDiagnostics(...)` when the solver selected and
+        % `evp.modeSelectionDiagnostics` when the solver selected and
         % labeled retained modes. Numerical solves use it to record
         % negative-mode bounds and zero-mode status; analytical basis sets
         % may leave it as an empty struct.
@@ -166,9 +165,20 @@ classdef IMBasisSet
             self.nativeModes = options.nativeModes;
             self.eigenvalues = reshape(options.eigenvalues,1,[]);
             nModes = max(size(options.nativeModes,2), length(self.eigenvalues));
-            self.modeNumber = IMBasisSet.resolveModeNumber(options.modeNumber, nModes);
+            if isempty(options.modeNumber)
+                self.modeNumber = 1:nModes;
+            else
+                self.modeNumber = reshape(options.modeNumber,1,[]);
+                if length(self.modeNumber) ~= nModes
+                    error("IMBasisSet:InvalidModeNumber", "modeNumber must have one entry for each retained mode.");
+                end
+            end
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
-            self.normalization = IMBasisSet.initialNormalization(options.normalization);
+            if isempty(options.normalization)
+                self.normalization = "unity";
+            else
+                self.normalization = options.normalization;
+            end
             self.metadata = options.metadata;
             self.zDomain = options.zDomain;
             self.normalizationNameMap = configureDictionary("string","cell");
@@ -198,8 +208,7 @@ classdef IMBasisSet
             %
             % ```matlab
             % C = 2;
-            % basisSet = basisSet.addNormalization("constantScaled", ...
-            %     @(basisSet,j) C*basisSet.innerProductNormFactor(j));
+            % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
             % basisSet.normalization = "constantScaled";
             % ```
             %
@@ -208,9 +217,7 @@ classdef IMBasisSet
             % use:
             %
             % ```matlab
-            % basisSet = basisSet.addNormalization("eigenvalueScaled", ...
-            %     @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j))) * ...
-            %     basisSet.innerProductNormFactor(j));
+            % basisSet = basisSet.addNormalization("eigenvalueScaled", @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j)))*basisSet.innerProductNormFactor(j));
             % ```
             %
             % If `name` already exists, the rule is overwritten.
@@ -317,8 +324,7 @@ classdef IMBasisSet
 
             name = self.normalizationName(normalization);
             if ~isKey(self.normalizationNameMap, name)
-                error("IMBasisSet:UnsupportedNormalization", ...
-                    "The basis set does not define a ""%s"" normalization.", name);
+                error("IMBasisSet:UnsupportedNormalization", "The basis set does not define a ""%s"" normalization.", name);
             end
             normalizeMode = self.normalizationNameMap{name};
             nModes = self.retainedModeCount();
@@ -487,12 +493,16 @@ classdef IMBasisSet
 
     methods (Access = protected)
         function values = rawU(self, z)
-            self.requireSolver("evaluate solved scalar modes");
+            if isempty(self.solver)
+                self.unsupported("evaluate solved scalar modes");
+            end
             values = self.solver.evaluateNativeModes(self.nativeModes, z);
         end
 
         function values = rawUz(self, z)
-            self.requireSolver("evaluate scalar derivatives");
+            if isempty(self.solver)
+                self.unsupported("evaluate scalar derivatives");
+            end
             values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
         end
 
@@ -538,28 +548,23 @@ classdef IMBasisSet
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
                     value = self.integrateInnerProduct(z, integrand, zBounds);
-                    value = value + self.endpointMetricValue([spec.surfaceWeights; spec.bottomWeights], ...
-                        iMode, jMode, useNormalized, zBounds);
+                    endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
+                    for iWeight = 1:numel(endpointWeights)
+                        value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds);
+                    end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
             end
         end
 
-        function value = endpointMetricValue(self, weights, iMode, jMode, useNormalized, zBounds)
-            value = 0;
-            for iWeight = 1:numel(weights)
-                weight = weights(iWeight);
-                zEndpoint = self.endpointZ(weight.location);
-                if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                    continue;
-                end
-                left = self.endpointMetricFactor(weight, zEndpoint, useNormalized);
-                value = value + weight.coefficient*left(iMode)*left(jMode);
+        function value = endpointWeightContribution(self, weight, iMode, jMode, useNormalized, zBounds)
+            zEndpoint = self.endpointZ(weight.location);
+            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
+                value = 0;
+                return;
             end
-        end
 
-        function values = endpointMetricFactor(self, weight, zEndpoint, useNormalized)
             if useNormalized
                 uValues = self.u(zEndpoint);
                 uzValues = self.uz(zEndpoint);
@@ -569,6 +574,7 @@ classdef IMBasisSet
             end
             pValue = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, self.context());
             values = weight.c*uValues - weight.d*pValue*uzValues;
+            value = weight.coefficient*values(iMode)*values(jMode);
         end
 
         function zEndpoint = endpointZ(self, location)
@@ -578,8 +584,7 @@ classdef IMBasisSet
                 case "bottom"
                     zEndpoint = self.zDomain(1);
                 otherwise
-                    error("IMBasisSet:InvalidBoundaryLocation", ...
-                        "Boundary location must be ""surface"" or ""bottom"".");
+                    error("IMBasisSet:InvalidBoundaryLocation", "Boundary location must be ""surface"" or ""bottom"".");
             end
         end
 
@@ -608,20 +613,17 @@ classdef IMBasisSet
 
         function validateCoefficientVector(self, coefficients, argumentName)
             if any(~isfinite(coefficients(:)))
-                error("IMBasisSet:InvalidCoefficients", ...
-                    "%s must contain finite values.", char(argumentName));
+                error("IMBasisSet:InvalidCoefficients", "%s must contain finite values.", char(argumentName));
             end
             nModes = self.retainedModeCount();
             if length(coefficients) ~= nModes
-                error("IMBasisSet:InvalidCoefficientCount", ...
-                    "%s must contain one value for each retained mode (%d).", char(argumentName), nModes);
+                error("IMBasisSet:InvalidCoefficientCount", "%s must contain one value for each retained mode (%d).", char(argumentName), nModes);
             end
         end
 
         function validateZBounds(~, zMin, zMax)
             if zMin >= zMax
-                error("IMBasisSet:InvalidInterval", ...
-                    "zMin must be less than zMax.");
+                error("IMBasisSet:InvalidInterval", "zMin must be less than zMax.");
             end
         end
 
@@ -635,38 +637,9 @@ classdef IMBasisSet
             name = parts(end);
         end
 
-        function requireSolver(self, operationName)
-            if isempty(self.solver)
-                error("IMBasisSet:UnsupportedOperation", ...
-                    "The basis set does not have a solver reference and cannot perform %s.", operationName);
-            end
-        end
-
         function unsupported(~, operationName)
-            error("IMBasisSet:UnsupportedOperation", ...
-                "IMBasisSet does not support %s for this basis.", operationName);
+            error("IMBasisSet:UnsupportedOperation", "IMBasisSet does not support %s for this basis.", operationName);
         end
     end
 
-    methods (Static, Access = private)
-        function modeNumber = resolveModeNumber(requestedModeNumber, nModes)
-            if isempty(requestedModeNumber)
-                modeNumber = 1:nModes;
-                return;
-            end
-            modeNumber = reshape(requestedModeNumber,1,[]);
-            if length(modeNumber) ~= nModes
-                error("IMBasisSet:InvalidModeNumber", ...
-                    "modeNumber must have one entry for each retained mode.");
-            end
-        end
-
-        function normalization = initialNormalization(requestedNormalization)
-            if ~isempty(requestedNormalization)
-                normalization = requestedNormalization;
-                return;
-            end
-            normalization = "unity";
-        end
-    end
 end

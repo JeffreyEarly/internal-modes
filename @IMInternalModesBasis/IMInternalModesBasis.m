@@ -81,16 +81,37 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.N2 = []
             end
 
-            self@IMBasisSet(solver=options.solver, evp=options.evp, ...
-                nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, ...
-                modeNumber=options.modeNumber, modeSelectionDiagnostics=options.modeSelectionDiagnostics, normalization=options.normalization, ...
-                metadata=options.metadata, zDomain=options.zDomain);
-            self.N2 = IMInternalModesBasis.resolveN2(options.N2, options.evp);
-            self.h = IMInternalModesBasis.resolveEquivalentDepths(options.h, self.eigenvalues, options.evp);
-            self.validateEquivalentDepthCount();
+            self@IMBasisSet(solver=options.solver, evp=options.evp, nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, modeNumber=options.modeNumber, modeSelectionDiagnostics=options.modeSelectionDiagnostics, normalization=options.normalization, metadata=options.metadata, zDomain=options.zDomain);
+            if isempty(options.N2)
+                self.N2 = options.evp.N2;
+            else
+                self.N2 = options.N2;
+            end
+            if ~isa(self.N2, "function_handle")
+                error("IMInternalModesBasis:InvalidN2", "N2 must be a function handle.");
+            end
+
+            self.h = reshape(options.h,1,[]);
+            if isempty(self.h) && ~isempty(self.eigenvalues)
+                self.h = options.evp.hFromEigenvalue(reshape(self.eigenvalues,1,[]));
+                self.h = reshape(self.h,1,[]);
+            end
+            if ~isempty(self.h)
+                nModes = max([size(self.nativeModes,2), length(self.eigenvalues), length(self.modeNumber)]);
+                if length(self.h) ~= nModes
+                    error("IMInternalModesBasis:InvalidEquivalentDepthCount", "h must contain one equivalent depth for each retained mode.");
+                end
+            end
+
             self = self.installInternalModeNormalizationRules();
             if isempty(options.normalization)
-                self.normalization = IMInternalModesBasis.initialNormalizationForEVP(self.evp);
+                if self.evp.modeFamily == "geostrophic"
+                    self.normalization = "geostrophic";
+                elseif string(self.evp.name) == "waveModesAtWavenumber"
+                    self.normalization = "kConstant";
+                else
+                    self.normalization = "unity";
+                end
             end
         end
 
@@ -256,15 +277,13 @@ classdef IMInternalModesBasis < IMBasisSet
             end
             zSurface = self.zDomain(2);
             zGrid = self.innerProductGrid(self.zDomain);
-            FSurface = self.rawVariableForSign("F", zSurface);
-            FGrid = self.rawVariableForSign("F", zGrid);
-            GSurface = self.rawVariableForSign("G", zSurface);
-            GGrid = self.rawVariableForSign("G", zGrid);
+            FReferences = self.modeSignReferences("F", zSurface, zGrid);
+            GReferences = self.modeSignReferences("G", zSurface, zGrid);
             signs = ones(1,size(self.nativeModes,2));
             for iMode = 1:size(self.nativeModes,2)
-                reference = self.referenceValue(FSurface, FGrid, iMode);
+                reference = FReferences(iMode);
                 if ~isfinite(reference) || reference == 0
-                    reference = self.referenceValue(GSurface, GGrid, iMode);
+                    reference = GReferences(iMode);
                 end
                 if isfinite(reference) && reference < 0
                     signs(iMode) = -1;
@@ -390,9 +409,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.metadata struct = struct()
             end
 
-            basisSet = IMBasisSetConstantStratification(evp=options.evp, N0=options.N0, ...
-                zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, ...
-                metadata=options.metadata);
+            basisSet = IMBasisSetConstantStratification(evp=options.evp, N0=options.N0, zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, metadata=options.metadata);
         end
 
         function basisSet = exponentialStratification(options)
@@ -418,9 +435,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.metadata struct = struct()
             end
 
-            basisSet = IMBasisSetExponentialStratification(evp=options.evp, N0=options.N0, ...
-                b=options.b, zDomain=options.zDomain, nModes=options.nModes, ...
-                normalization=options.normalization, metadata=options.metadata);
+            basisSet = IMBasisSetExponentialStratification(evp=options.evp, N0=options.N0, b=options.b, zDomain=options.zDomain, nModes=options.nModes, normalization=options.normalization, metadata=options.metadata);
         end
     end
 
@@ -447,7 +462,13 @@ classdef IMInternalModesBasis < IMBasisSet
         end
 
         function values = rawVariable(self, variable, z)
-            variable = IMInternalModesBasis.validateVariable(variable);
+            arguments
+                self IMInternalModesBasis
+                variable {mustBeTextScalar, mustBeMember(variable, ["F", "G"])}
+                z (:,1) double {mustBeReal, mustBeFinite}
+            end
+
+            variable = string(variable);
             if variable == self.evp.formulation
                 if isempty(self.solver)
                     self.unsupported("evaluate analytical " + variable + " modes without a subclass implementation");
@@ -493,12 +514,13 @@ classdef IMInternalModesBasis < IMBasisSet
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
                     value = self.integrateInnerProduct(z, integrand, zBounds);
                     if variable == self.evp.formulation
-                        value = value + self.endpointMetricValue([spec.surfaceWeights; spec.bottomWeights], ...
-                            iMode, jMode, useNormalized, zBounds);
+                        endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
+                        for iWeight = 1:numel(endpointWeights)
+                            value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds);
+                        end
                     end
                     for iTerm = 1:numel(spec.endpointInnerProductTerms)
-                        value = value + self.endpointTermContribution(spec.endpointInnerProductTerms(iTerm), ...
-                            iMode, jMode, useNormalized, zBounds);
+                        value = value + self.endpointTermContribution(spec.endpointInnerProductTerms(iTerm), iMode, jMode, useNormalized, zBounds);
                     end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
@@ -521,31 +543,35 @@ classdef IMInternalModesBasis < IMBasisSet
             end
         end
 
-        function values = rawVariableForSign(self, variable, z)
-            values = [];
+        function references = modeSignReferences(self, variable, zSurface, zGrid)
+            surfaceValues = [];
+            gridValues = [];
             try
-                values = self.rawVariable(variable, z);
+                surfaceValues = self.rawVariable(variable, zSurface);
+                gridValues = self.rawVariable(variable, zGrid);
             catch exception
                 if string(exception.identifier) ~= "IMBasisSet:UnsupportedOperation"
                     rethrow(exception)
                 end
             end
-        end
 
-        function value = referenceValue(~, surfaceValues, gridValues, iMode)
-            value = NaN;
-            tolerance = 0;
-            if ~isempty(surfaceValues)
-                value = surfaceValues(1,iMode);
-                tolerance = 1e-10*max(1,abs(value));
-            end
-            if (isempty(surfaceValues) || abs(value) <= tolerance) && ~isempty(gridValues)
-                [scale, index] = max(abs(gridValues(:,iMode)));
-                value = gridValues(index,iMode);
-                tolerance = 1e-10*max(1,scale);
-            end
-            if abs(value) <= tolerance
-                value = 0;
+            references = NaN(1,size(self.nativeModes,2));
+            for iMode = 1:size(self.nativeModes,2)
+                value = NaN;
+                tolerance = 0;
+                if ~isempty(surfaceValues)
+                    value = surfaceValues(1,iMode);
+                    tolerance = 1e-10*max(1,abs(value));
+                end
+                if (isempty(surfaceValues) || abs(value) <= tolerance) && ~isempty(gridValues)
+                    [scale, index] = max(abs(gridValues(:,iMode)));
+                    value = gridValues(index,iMode);
+                    tolerance = 1e-10*max(1,scale);
+                end
+                if abs(value) <= tolerance
+                    value = 0;
+                end
+                references(iMode) = value;
             end
         end
 
@@ -566,64 +592,13 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Static, Access = private)
-        function N2 = resolveN2(requestedN2, evp)
-            if isempty(requestedN2)
-                N2 = evp.N2;
-            else
-                N2 = requestedN2;
-            end
-            if ~isa(N2, "function_handle")
-                error("IMInternalModesBasis:InvalidN2", ...
-                    "N2 must be a function handle.");
-            end
-        end
-
-        function h = resolveEquivalentDepths(requestedH, eigenvalues, evp)
-            h = reshape(requestedH,1,[]);
-            if isempty(h) && ~isempty(eigenvalues)
-                h = evp.hFromEigenvalue(reshape(eigenvalues,1,[]));
-                h = reshape(h,1,[]);
-            end
-        end
-
-        function normalization = initialNormalizationForEVP(evp)
-            if evp.modeFamily == "geostrophic"
-                normalization = "geostrophic";
-            elseif string(evp.name) == "waveModesAtWavenumber"
-                normalization = "kConstant";
-            else
-                normalization = "unity";
-            end
-        end
-
         function assertInnerProductAvailable(spec)
             if isfield(spec, "hasInnerProduct") && spec.hasInnerProduct
                 return;
             end
-            error("IMInternalModesBasis:UnavailableInnerProduct", ...
-                "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", ...
-                string(spec.variable), string(spec.reason));
+            error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
         end
 
-        function variable = validateVariable(variable)
-            variable = string(variable);
-            if variable ~= "F" && variable ~= "G"
-                error("IMInternalModesBasis:InvalidVariable", ...
-                    "variable must be ""F"" or ""G"".");
-            end
-        end
     end
 
-    methods (Access = private)
-        function validateEquivalentDepthCount(self)
-            if isempty(self.h)
-                return;
-            end
-            nModes = max([size(self.nativeModes,2), length(self.eigenvalues), length(self.modeNumber)]);
-            if length(self.h) ~= nModes
-                error("IMInternalModesBasis:InvalidEquivalentDepthCount", ...
-                    "h must contain one equivalent depth for each retained mode.");
-            end
-        end
-    end
 end
