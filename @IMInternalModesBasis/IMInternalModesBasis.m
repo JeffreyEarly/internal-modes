@@ -464,10 +464,25 @@ classdef IMInternalModesBasis < IMBasisSet
             end
         end
 
-    end
-
-    methods (Access = protected)
         function values = rawVariable(self, variable, z)
+            % Evaluate raw physical `F` or `G` modes.
+            %
+            % This developer utility evaluates unnormalized internal-mode
+            % physical variables. The public `F` and `G` methods apply the
+            % active basis normalization after this step:
+            % $$F_j(z)=F_j^{\mathrm{raw}}(z)/s_j,\qquad
+            % G_j(z)=G_j^{\mathrm{raw}}(z)/s_j.$$
+            % If `variable` is the solved formulation, values come
+            % directly from the native modes. Otherwise the diagnostic
+            % variable is recovered through the EVP-owned diagnostic
+            % relation.
+            %
+            % - Topic: Developer topics — Diagnostic variables
+            % - Declaration: values = rawVariable(basisSet,variable,z)
+            % - Parameter variable: `"F"` or `"G"`
+            % - Parameter z: physical coordinate
+            % - Returns values: unnormalized physical mode values
+            % - Developer: true
             arguments
                 self IMInternalModesBasis
                 variable {mustBeTextScalar, mustBeMember(variable, ["F", "G"])}
@@ -498,7 +513,9 @@ classdef IMInternalModesBasis < IMBasisSet
                     self.unsupported("evaluate " + variable);
             end
         end
+    end
 
+    methods (Access = protected)
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
             z = self.solver.innerProductGrid(zBounds);
             context = self.evp.contextForSolver(self.solver);

@@ -710,7 +710,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             analyticalBasis = solution.internalModes(internalEVP, nModes=2);
 
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor", "rawU", "rawUz"])))
-            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor", "rawVariable"])))
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMAnalyticalInternalModesBasis", ["innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
 
             scalarBasis = scalarBasis.orientModeSigns();
@@ -721,6 +721,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             scalarFactors = scalarBasis.normalizationFactors();
             internalRawU = internalBasis.rawU(z);
             internalRawUz = internalBasis.rawUz(z);
+            internalRawF = internalBasis.rawVariable("F", z);
+            internalRawG = internalBasis.rawVariable("G", z);
+            internalFactors = internalBasis.normalizationFactors();
 
             testCase.verifyGreaterThan(scalarBasis.innerProductNormFactor(1), 0)
             testCase.verifyGreaterThan(scalarBasis.maxAmplitudeNormFactor(1), 0)
@@ -728,6 +731,11 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(scalarRawUz ./ scalarFactors, scalarBasis.uz(z), RelTol=1e-12, AbsTol=1e-12)
             testCase.verifySize(internalRawU, [numel(z), numel(internalBasis.eigenvalues)])
             testCase.verifySize(internalRawUz, [numel(z), numel(internalBasis.eigenvalues)])
+            testCase.verifySize(internalRawF, [numel(z), numel(internalBasis.eigenvalues)])
+            testCase.verifySize(internalRawG, [numel(z), numel(internalBasis.eigenvalues)])
+            testCase.verifyEqual(internalRawF ./ internalFactors, internalBasis.F(z), RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(internalRawG ./ internalFactors, internalBasis.G(z), RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(internalBasis.rawVariable(internalBasis.evp.formulation, z), internalRawU, RelTol=1e-12, AbsTol=1e-12)
             testCase.verifyGreaterThan(internalBasis.innerProductNormFactor(1, variable="G"), 0)
             testCase.verifyGreaterThan(internalBasis.geostrophicNormFactor(1), 0)
             testCase.verifyGreaterThan(internalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)

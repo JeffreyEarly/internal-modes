@@ -72,6 +72,7 @@ These items document internal implementation details and are not part of the pri
     + [`surfacePressureNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/surfacepressurenormfactor.html) Return the raw surface `F` value.
   + Diagnostic variables
     + [`orientModeSigns`](/internal-modes/classes-v2/core/iminternalmodesbasis/orientmodesigns.html) Orient modes so the surface `F` value is positive when possible.
+    + [`rawVariable`](/internal-modes/classes-v2/core/iminternalmodesbasis/rawvariable.html) Evaluate raw physical `F` or `G` modes.
 
 
 ---
