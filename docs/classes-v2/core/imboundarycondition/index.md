@@ -32,6 +32,29 @@ determinant $$D_i$$; and `endpointWeightCoefficient(location)`
 derives the scalar $$D_i^{-1}$$ used by
 `IMEigenvalueProblem.endpointWeights`.
 
+At endpoint $$z_\ell$$, define
+$$P_\ell=p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).$$
+The signed determinant is
+$$D_\ell=\sigma_\ell(ad-bc),\qquad
+\sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.$$
+Only active boundary conditions, where `(c,d) ~= (0,0)`, produce
+endpoint norm weights:
+
+| Boundary condition | Endpoint equation | Endpoint norm contribution |
+| --- | --- | --- |
+| Dirichlet | $$u_\ell=0$$ | none |
+| Neumann | $$P_\ell=0$$ | none |
+| Robin | $$a u_\ell-bP_\ell=0$$ | none; `robinEnergyCoefficient` is an energy diagnostic |
+| Active value condition | eigenvalue side uses $$c u_\ell$$ | $$D_\ell^{-1}(c u_\ell)^2$$ |
+| Active flux condition | eigenvalue side uses $$-dP_\ell$$ | $$D_\ell^{-1}(-dP_\ell)^2$$ |
+| General active condition | $$-[a u_\ell-bP_\ell]=\lambda[c u_\ell-dP_\ell]$$ | $$D_\ell^{-1}(c u_\ell-dP_\ell)^2$$ |
+| Degenerate active condition | `(c,d) ~= (0,0)` and $$D_\ell=0$$ | unavailable |
+
+For example, `IMBoundaryCondition(a=0,b=1,c=1,d=0)` has
+$$D_\mathrm{surface}=+1$$ and $$D_\mathrm{bottom}=-1$$, so the
+same boundary condition contributes $$+u_s^2$$ at the surface and
+$$-u_b^2$$ at the bottom.
+
 
 
 

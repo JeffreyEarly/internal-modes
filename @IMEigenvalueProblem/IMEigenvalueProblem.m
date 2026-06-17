@@ -277,9 +277,13 @@ classdef IMEigenvalueProblem
             % The `coefficient` field is the scalar returned by
             % `boundary.endpointWeightCoefficient(location)`, while `c`
             % and `d` are copied from the boundary condition properties.
-            % These are the endpoint-only terms used by the full
-            % `innerProduct()` recipe: `endpointWeights("surface")` appears
-            % as `innerProduct().surfaceWeights`, and
+            % In other words, `IMBoundaryCondition` derives the
+            % boundary-level scalar coefficient $$D_i^{-1}$$, and this
+            % method packages that coefficient with `location`, `c`, and
+            % `d` so basis sets can assemble the endpoint Gram-matrix
+            % term. These are the endpoint-only terms used by the full
+            % `innerProduct()` recipe: `endpointWeights("surface")`
+            % appears as `innerProduct().surfaceWeights`, and
             % `endpointWeights("bottom")` appears as
             % `innerProduct().bottomWeights`.
             %

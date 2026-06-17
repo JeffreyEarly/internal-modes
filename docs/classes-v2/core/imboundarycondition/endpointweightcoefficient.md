@@ -37,3 +37,8 @@ Return the endpoint weight coefficient.
   in the endpoint part of the norm. `IMEigenvalueProblem`
   copies this scalar into the `coefficient` field of each
   `endpointWeights` struct.
+
+  This method returns only the scalar coefficient
+  $$D_i^{-1}$$. The full endpoint norm term is assembled by
+  `IMEigenvalueProblem.endpointWeights` from this coefficient
+  and the boundary properties `c` and `d`.
