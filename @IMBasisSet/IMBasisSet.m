@@ -330,86 +330,47 @@ classdef IMBasisSet
             factors(factors == 0 | ~isfinite(factors)) = 1;
         end
 
-        function modes = normalizedNativeModes(self, normalization)
-            % Return native modes scaled by a normalization.
+        function gram = gramMatrix(self, options)
+            % Return a scalar Gram matrix.
             %
-            % The native coefficient columns are divided by the same factors
-            % returned by `normalizationFactors`.
-            %
-            % - Topic: Developer topics
-            % - Declaration: modes = normalizedNativeModes(basisSet,normalization)
-            % - Parameter normalization: normalization convention
-            % - Returns modes: scaled native mode columns
-            % - Developer: true
-            arguments
-                self IMBasisSet
-                normalization = self.normalization
-            end
-
-            factors = self.normalizationFactors(normalization);
-            modes = self.nativeModes ./ factors;
-        end
-
-        function gram = gramMatrix(self)
-            % Return the full-domain scalar Gram matrix.
-            %
-            % For normalized scalar modes, entries are
-            % $$M_{ij}=\int r u_i u_j\,dz+
-            % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j].$$
-            % The endpoint terms are the active metric weights from
-            % `evp.innerProduct()`.
+            % With no arguments this uses the full basis-set domain. Passing
+            % `zBounds=[zMin zMax]` restricts the interior integral to that
+            % interval and includes endpoint terms only when the interval
+            % contains the corresponding physical endpoint. For normalized
+            % scalar modes,
+            % $$M_{ij}=\int_{z_a}^{z_b} r(z)u_i(z)u_j(z)\,dz+
+            % \text{included endpoint terms}.$$
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: gram = gramMatrix(basisSet)
+            % - Declaration: gram = gramMatrix(basisSet,options)
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
             % - Returns gram: scalar Gram matrix
             arguments
                 self IMBasisSet
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
-            gram = self.partialGramMatrix(self.zDomain(1), self.zDomain(2));
+            self.validateZBounds(options.zBounds(1), options.zBounds(2));
+            gram = self.scalarGramMatrix(options.zBounds, true);
         end
 
-        function gram = partialGramMatrix(self, zMin, zMax)
-            % Return a partial-domain scalar Gram matrix.
-            %
-            % Interior integrals are restricted to `[zMin,zMax]`. Endpoint
-            % metric terms are included only when the requested interval
-            % contains the corresponding physical endpoint.
-            %
-            % - Topic: Analyze Gram matrices
-            % - Declaration: gram = partialGramMatrix(basisSet,zMin,zMax)
-            % - Parameter zMin: lower physical bound
-            % - Parameter zMax: upper physical bound
-            % - Returns gram: scalar Gram matrix
-            arguments
-                self IMBasisSet
-                zMin (1,1) double {mustBeReal, mustBeFinite}
-                zMax (1,1) double {mustBeReal, mustBeFinite}
-            end
-
-            self.validateZBounds(zMin, zMax);
-            gram = self.scalarGramMatrix([zMin zMax], true);
-        end
-
-        function windowModes = partialWindowModes(self, zMin, zMax)
+        function windowModes = partialWindowModes(self, options)
             % Diagonalize a partial scalar Gram matrix.
             %
-            % This computes the eigendecomposition of the symmetric
-            % partial-domain Gram matrix and sorts window-mode eigenvalues
-            % from largest to smallest.
+            % This computes the eigendecomposition of the symmetric Gram
+            % matrix on `zBounds` and sorts window-mode eigenvalues from
+            % largest to smallest.
             %
             % - Topic: Analyze Gram matrices
-            % - Declaration: windowModes = partialWindowModes(basisSet,zMin,zMax)
-            % - Parameter zMin: lower physical bound
-            % - Parameter zMax: upper physical bound
+            % - Declaration: windowModes = partialWindowModes(basisSet,options)
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
             % - Returns windowModes: window-mode decomposition
             arguments
                 self IMBasisSet
-                zMin (1,1) double {mustBeReal, mustBeFinite}
-                zMax (1,1) double {mustBeReal, mustBeFinite}
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
-            gram = self.partialGramMatrix(zMin, zMax);
+            gram = self.gramMatrix(zBounds=options.zBounds);
             gram = 0.5*(gram + gram.');
             [R, D] = eig(gram);
             [eigenvalues, sortIndex] = sort(diag(D), "descend");

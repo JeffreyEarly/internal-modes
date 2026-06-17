@@ -3,7 +3,7 @@ layout: default
 title: partialWindowModes
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 16
+nav_order: 14
 mathjax: true
 ---
 
@@ -16,17 +16,16 @@ Diagonalize a partial scalar Gram matrix.
 
 ## Declaration
 ```matlab
- windowModes = partialWindowModes(basisSet,zMin,zMax)
+ windowModes = partialWindowModes(basisSet,options)
 ```
 ## Parameters
-+ `zMin`  lower physical bound
-+ `zMax`  upper physical bound
++ `options.zBounds`  integration bounds `[zMin zMax]`
 
 ## Returns
 + `windowModes`  window-mode decomposition
 
 ## Discussion
 
-  This computes the eigendecomposition of the symmetric
-  partial-domain Gram matrix and sorts window-mode eigenvalues
-  from largest to smallest.
+  This computes the eigendecomposition of the symmetric Gram
+  matrix on `zBounds` and sorts window-mode eigenvalues from
+  largest to smallest.

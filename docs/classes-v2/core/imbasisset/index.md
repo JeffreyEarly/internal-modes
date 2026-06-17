@@ -54,8 +54,7 @@ factors = basisSet.normalizationFactors("unity");
   + [`uz`](/internal-modes/classes-v2/core/imbasisset/uz.html) Evaluate solved scalar vertical derivatives.
 + Analyze Gram matrices
   + [`crossSpectrum`](/internal-modes/classes-v2/core/imbasisset/crossspectrum.html) Compute a scalar modal cross-spectrum.
-  + [`gramMatrix`](/internal-modes/classes-v2/core/imbasisset/grammatrix.html) Return the full-domain scalar Gram matrix.
-  + [`partialGramMatrix`](/internal-modes/classes-v2/core/imbasisset/partialgrammatrix.html) Return a partial-domain scalar Gram matrix.
+  + [`gramMatrix`](/internal-modes/classes-v2/core/imbasisset/grammatrix.html) Return a scalar Gram matrix.
   + [`partialWindowModes`](/internal-modes/classes-v2/core/imbasisset/partialwindowmodes.html) Diagonalize a partial scalar Gram matrix.
   + [`spectrum`](/internal-modes/classes-v2/core/imbasisset/spectrum.html) Compute a scalar modal spectrum.
 + Inspect basis sets
@@ -72,7 +71,6 @@ factors = basisSet.normalizationFactors("unity");
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
   + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
-  + [`normalizedNativeModes`](/internal-modes/classes-v2/core/imbasisset/normalizednativemodes.html) Return native modes scaled by a normalization.
   + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
 
 

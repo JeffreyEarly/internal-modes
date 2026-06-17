@@ -118,8 +118,8 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 end
             end
 
-            testCase.verifyEqual(basisSet.gramMatrix("F"), expected, RelTol=1e-10, AbsTol=1e-10)
-            testCase.verifyEqual(basisSet.partialGramMatrix("F", partialBounds(1), partialBounds(2)), ...
+            testCase.verifyEqual(basisSet.gramMatrix(variable="F"), expected, RelTol=1e-10, AbsTol=1e-10)
+            testCase.verifyEqual(basisSet.gramMatrix(zBounds=partialBounds, variable="F"), ...
                 expectedPartial, RelTol=1e-10, AbsTol=1e-10)
         end
 
@@ -145,7 +145,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             FSurface = basisSet.F(zDomain(2));
             expected = gramInterior + spec.endpointInnerProductTerms(1).coefficient*(FSurface.'*FSurface);
 
-            testCase.verifyEqual(basisSet.gramMatrix("G"), expected, RelTol=1e-10, AbsTol=1e-10)
+            testCase.verifyEqual(basisSet.gramMatrix(variable="G"), expected, RelTol=1e-10, AbsTol=1e-10)
         end
 
         function unsupportedHydrostaticRowsHaveNoInnerProduct(testCase)
@@ -184,7 +184,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
             basisSet = solver.solveEVP(evp, nModes=2);
 
-            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
         function waveDiagnosticInnerProductsRemainUnavailable(testCase)
@@ -196,7 +196,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyTrue(contains(spec.reason, "geostrophic"))
-            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
         function customGeostrophicFamilyUsesCatalogWithoutHydrostaticName(testCase)
@@ -247,7 +247,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=2);
             basisSet = basisSet.addNormalization("raw", @(~,~) 1);
             basisSet.normalization = "raw";
-            rawGGram = basisSet.gramMatrix("G");
+            rawGGram = basisSet.gramMatrix(variable="G");
             rawFactor = sqrt(abs(rawGGram(1,1)));
             factors = basisSet.normalizationFactors("geostrophic");
 
@@ -273,8 +273,8 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function verifyCoupledGeostrophicNormalization(testCase, basisSet)
             baroclinic = basisSet.modeNumber ~= 0;
-            gramG = basisSet.gramMatrix("G");
-            gramF = basisSet.gramMatrix("F");
+            gramG = basisSet.gramMatrix(variable="G");
+            gramF = basisSet.gramMatrix(variable="F");
 
             testCase.verifyEqual(diag(gramG(baroclinic,baroclinic)).', ...
                 ones(1,nnz(baroclinic)), RelTol=2e-8, AbsTol=2e-8)

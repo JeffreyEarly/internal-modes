@@ -155,10 +155,10 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyTrue(contains(spec.reason, "eigenvalue-dependent"))
-            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
-            testCase.verifyError(@() basisSet.partialGramMatrix("F", zDomain(1), zDomain(2)), ...
+            testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.gramMatrix(zBounds=zDomain, variable="F"), ...
                 "IMInternalModesBasis:UnavailableInnerProduct")
-            testCase.verifyError(@() basisSet.partialWindowModes("F", zDomain(1), zDomain(2)), ...
+            testCase.verifyError(@() basisSet.partialWindowModes(zBounds=zDomain, variable="F"), ...
                 "IMInternalModesBasis:UnavailableInnerProduct")
             testCase.verifyError(@() basisSet.spectrum(ones(2,1), variable="F"), ...
                 "IMInternalModesBasis:UnavailableInnerProduct")
@@ -178,7 +178,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyEqual(basisSet.normalization, "unity")
             testCase.verifyFalse(ismember("omegaConstant", basisSet.normalizationNames()))
-            testCase.verifyError(@() basisSet.gramMatrix("F"), "IMInternalModesBasis:UnavailableInnerProduct")
+            testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
         function internalModeValidationUsesBuiltInArgumentValidation(testCase)
@@ -379,12 +379,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "absent")
             testCase.verifySize(basisSet.G(z), [16 3])
             testCase.verifySize(basisSet.F(z), [16 3])
-            testCase.verifyEqual(basisSet.gramMatrix(), basisSet.gramMatrix("G"), RelTol=1e-12)
-            testCase.verifyEqual(size(basisSet.gramMatrix("G")), [3 3])
-            testCase.verifyEqual(size(basisSet.gramMatrix("F")), [3 3])
-            testCase.verifyEqual(basisSet.partialGramMatrix(zDomain(1), zDomain(2)), ...
-                basisSet.partialGramMatrix("G", zDomain(1), zDomain(2)), RelTol=1e-12)
-            testCase.verifyEqual(size(basisSet.partialWindowModes("F", zDomain(1), zDomain(2)).gramMatrix), [3 3])
+            testCase.verifyEqual(basisSet.gramMatrix(), basisSet.gramMatrix(variable="G"), RelTol=1e-12)
+            testCase.verifyEqual(size(basisSet.gramMatrix(variable="G")), [3 3])
+            testCase.verifyEqual(size(basisSet.gramMatrix(variable="F")), [3 3])
+            testCase.verifyEqual(basisSet.gramMatrix(zBounds=zDomain), ...
+                basisSet.gramMatrix(zBounds=zDomain, variable="G"), RelTol=1e-12)
+            testCase.verifyEqual(size(basisSet.partialWindowModes(zBounds=zDomain, variable="F").gramMatrix), [3 3])
             testCase.verifySize(basisSet.spectrum(coefficients), [3 1])
             testCase.verifySize(basisSet.spectrum(coefficients, variable="F"), [3 1])
             testCase.verifySize(basisSet.crossSpectrum(coefficients, coefficients, variable="G"), [3 1])
@@ -546,8 +546,8 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifyEqual(size(basisSet.gramMatrix()), [2 2])
-            testCase.verifyEqual(size(basisSet.partialGramMatrix(zDomain(1), zDomain(2))), [2 2])
-            testCase.verifyEqual(size(basisSet.partialWindowModes(zDomain(1), zDomain(2)).gramMatrix), [2 2])
+            testCase.verifyEqual(size(basisSet.gramMatrix(zBounds=zDomain)), [2 2])
+            testCase.verifyEqual(size(basisSet.partialWindowModes(zBounds=zDomain).gramMatrix), [2 2])
             testCase.verifySize(basisSet.spectrum(ones(2,1)), [2 1])
             testCase.verifySize(basisSet.crossSpectrum(ones(2,1), ones(2,1)), [2 1])
             testCase.verifyError(@() wkbSolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
@@ -639,21 +639,37 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
             basisSet = solver.solveEVP(evp, nModes=2);
             badCoordinateThrows = false;
+            badBoundsThrows = false;
+            badVariableThrows = false;
 
             try
                 basisSet.u([zDomain(1); NaN]);
             catch
                 badCoordinateThrows = true;
             end
+            try
+                basisSet.gramMatrix(zBounds=[zDomain(1) NaN]);
+            catch
+                badBoundsThrows = true;
+            end
+            internalEVP = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)), zDomain=zDomain);
+            internalBasis = solver.solveEVP(internalEVP, nModes=2);
+            try
+                internalBasis.gramMatrix(variable="u");
+            catch
+                badVariableThrows = true;
+            end
 
             testCase.verifyTrue(badCoordinateThrows)
-            testCase.verifyError(@() basisSet.partialGramMatrix(zDomain(2), zDomain(1)), "IMBasisSet:InvalidInterval")
+            testCase.verifyTrue(badBoundsThrows)
+            testCase.verifyTrue(badVariableThrows)
+            testCase.verifyFalse(ismethod(basisSet, "partial" + "GramMatrix"))
+            testCase.verifyFalse(ismethod(basisSet, "normalized" + "NativeModes"))
+            testCase.verifyError(@() basisSet.gramMatrix(zBounds=[zDomain(2) zDomain(1)]), "IMBasisSet:InvalidInterval")
             testCase.verifyError(@() basisSet.spectrum(ones(1,1)), "IMBasisSet:InvalidCoefficientCount")
             testCase.verifyError(@() basisSet.crossSpectrum(ones(2,1), ones(1,1)), "IMBasisSet:InvalidCoefficientCount")
             testCase.verifyEqual(basisSet.normalizationFactors(), ...
                 basisSet.normalizationFactors(basisSet.normalization), RelTol=1e-12)
-            testCase.verifyEqual(basisSet.normalizedNativeModes(), ...
-                basisSet.normalizedNativeModes(basisSet.normalization), RelTol=1e-12)
         end
 
         function internalModeBasisUsesExplicitEvaluationMethods(testCase)
