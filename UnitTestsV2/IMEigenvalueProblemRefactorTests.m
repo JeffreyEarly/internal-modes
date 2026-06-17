@@ -501,6 +501,26 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(isfield(basisSet.evp.parameters, "formulation"))
         end
 
+        function numericalBasisConstructorsEnforceRetainedModeColumns(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
+            configuredSolver = solver.configuredForEVP(evp);
+            nativeModes = eye(nEVP,2);
+
+            basisSet = IMBasisSet(solver=configuredSolver, evp=evp, nativeModes=nativeModes, eigenvalues=[1 4], modeNumber=[1 2]);
+
+            testCase.verifyEqual(basisSet.zDomain, evp.zDomain)
+            testCase.verifyError(@() IMBasisSet(solver=configuredSolver, evp=evp, nativeModes=nativeModes, eigenvalues=1, modeNumber=[1 2]), "IMBasisSet:InvalidEigenvalueCount")
+            testCase.verifyError(@() IMBasisSet(solver=configuredSolver, evp=evp, nativeModes=nativeModes, eigenvalues=[1 4], modeNumber=1), "IMBasisSet:InvalidModeNumber")
+
+            internalEVP = IMInternalModes(name="custom-depth", N2=N2, zDomain=zDomain, hFromEigenvalue=@(lambda) 2./lambda);
+            internalSolver = solver.configuredForEVP(internalEVP);
+            internalBasis = IMInternalModesBasis(solver=internalSolver, evp=internalEVP, nativeModes=nativeModes, eigenvalues=[2 4], modeNumber=[1 2]);
+
+            testCase.verifyEqual(internalBasis.h, [1 0.5], AbsTol=0)
+        end
+
         function spectralSolverSupportsCoordinateKinds(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
@@ -687,8 +707,14 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function internalModeBasisWithoutSolverRejectsDerivativeFallback(testCase)
             [N2, zDomain] = testCase.profile();
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            didThrow = false;
+            try
+                IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), eigenvalues=1, modeNumber=1);
+            catch
+                didThrow = true;
+            end
 
-            testCase.verifyError(@() IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), eigenvalues=1, h=1, modeNumber=1, zDomain=zDomain), "IMBasisSet:MissingSolver")
+            testCase.verifyTrue(didThrow)
         end
 
         function internalModeBasisHasNoFiniteDifferenceDerivativeFallback(testCase)

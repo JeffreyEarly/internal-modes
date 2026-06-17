@@ -87,7 +87,6 @@ classdef IMBasisSet
         % surface, bottom, or any other fixed physical branch. The label
         % `0` marks an inferred zero, barotropic, or null mode when one is
         % retained. Positive labels mark ordinary positive/interior modes.
-        % If no labels are supplied, `IMBasisSet` uses `1:nModes`.
         %
         % ```matlab
         % basisSet.modeNumber
@@ -145,36 +144,30 @@ classdef IMBasisSet
             % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
             % - Parameter options.normalization: active normalization rule name
             % - Parameter options.metadata: additional metadata
-            % - Parameter options.zDomain: physical vertical domain
             % - Returns basisSet: solved scalar basis set
             arguments
-                options.solver = []
-                options.evp = []
-                options.nativeModes double = zeros(0,0)
-                options.eigenvalues double = zeros(1,0)
-                options.modeNumber double = []
+                options.solver IMSolver
+                options.evp IMEigenvalueProblem
+                options.nativeModes (:,:) double
+                options.eigenvalues (1,:) double {mustBeReal, mustBeFinite}
+                options.modeNumber (1,:) double {mustBeInteger}
                 options.modeSelectionDiagnostics struct = struct()
                 options.normalization = []
                 options.metadata struct = struct()
-                options.zDomain (1,2) double = [NaN NaN]
             end
 
-            if isempty(options.solver)
-                error("IMBasisSet:MissingSolver", "IMBasisSet requires the solver that created its native modes.");
+            nModes = size(options.nativeModes,2);
+            if length(options.eigenvalues) ~= nModes
+                error("IMBasisSet:InvalidEigenvalueCount", "eigenvalues must contain one value for each native mode column.");
+            end
+            if length(options.modeNumber) ~= nModes
+                error("IMBasisSet:InvalidModeNumber", "modeNumber must contain one value for each native mode column.");
             end
             self.solver = options.solver;
             self.evp = options.evp;
             self.nativeModes = options.nativeModes;
             self.eigenvalues = reshape(options.eigenvalues,1,[]);
-            nModes = max(size(options.nativeModes,2), length(self.eigenvalues));
-            if isempty(options.modeNumber)
-                self.modeNumber = 1:nModes;
-            else
-                self.modeNumber = reshape(options.modeNumber,1,[]);
-                if length(self.modeNumber) ~= nModes
-                    error("IMBasisSet:InvalidModeNumber", "modeNumber must have one entry for each retained mode.");
-                end
-            end
+            self.modeNumber = reshape(options.modeNumber,1,[]);
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
             if isempty(options.normalization)
                 self.normalization = "unity";
@@ -182,17 +175,9 @@ classdef IMBasisSet
                 self.normalization = options.normalization;
             end
             self.metadata = options.metadata;
-            self.zDomain = options.zDomain;
+            self.zDomain = self.evp.zDomain;
             self.normalizationNameMap = configureDictionary("string","cell");
             self = self.addNormalization("unity", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode));
-
-            if any(isnan(self.zDomain)) && ~isempty(self.evp)
-                self.zDomain = self.evp.zDomain;
-            else
-                if any(isnan(self.zDomain))
-                    self.zDomain = self.solver.zDomain;
-                end
-            end
         end
 
         function self = addNormalization(self, name, rule)
@@ -329,7 +314,7 @@ classdef IMBasisSet
                 error("IMBasisSet:UnsupportedNormalization", "The basis set does not define a ""%s"" normalization.", name);
             end
             normalizeMode = self.normalizationNameMap{name};
-            nModes = self.retainedModeCount();
+            nModes = size(self.nativeModes,2);
             factors = zeros(1,nModes);
             for iMode = 1:nModes
                 factors(iMode) = normalizeMode(self, iMode);
@@ -358,7 +343,9 @@ classdef IMBasisSet
                 options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
-            self.validateZBounds(options.zBounds(1), options.zBounds(2));
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
             gram = self.scalarGramMatrix(options.zBounds, true);
         end
 
@@ -378,6 +365,9 @@ classdef IMBasisSet
                 options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
             gram = self.gramMatrix(zBounds=options.zBounds);
             gram = 0.5*(gram + gram.');
             [R, D] = eig(gram);
@@ -403,7 +393,6 @@ classdef IMBasisSet
                 coefficients (:,1) double
             end
 
-            self.validateCoefficientVector(coefficients, "coefficients");
             spectrum = self.crossSpectrum(coefficients, coefficients);
         end
 
@@ -424,8 +413,19 @@ classdef IMBasisSet
                 coefficientsB (:,1) double
             end
 
-            self.validateCoefficientVector(coefficientsA, "coefficientsA");
-            self.validateCoefficientVector(coefficientsB, "coefficientsB");
+            nModes = size(self.nativeModes,2);
+            if any(~isfinite(coefficientsA(:)))
+                error("IMBasisSet:InvalidCoefficients", "coefficientsA must contain finite values.");
+            end
+            if any(~isfinite(coefficientsB(:)))
+                error("IMBasisSet:InvalidCoefficients", "coefficientsB must contain finite values.");
+            end
+            if length(coefficientsA) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "coefficientsA must contain one value for each retained mode (%d).", nModes);
+            end
+            if length(coefficientsB) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "coefficientsB must contain one value for each retained mode (%d).", nModes);
+            end
             gram = self.gramMatrix();
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
@@ -442,7 +442,7 @@ classdef IMBasisSet
             if isempty(self.nativeModes)
                 return;
             end
-            z = self.innerProductGrid(self.zDomain);
+            z = self.solver.innerProductGrid(self.zDomain);
             values = self.rawU(z);
             signs = ones(1,size(values,2));
             for iMode = 1:size(values,2)
@@ -487,7 +487,7 @@ classdef IMBasisSet
                 iMode (1,1) double {mustBeInteger, mustBePositive}
             end
 
-            z = self.integrationGrid(self.zDomain);
+            z = self.solver.innerProductGrid(self.zDomain);
             values = self.rawU(z);
             factor = max(abs(values(:,iMode)));
         end
@@ -502,28 +502,16 @@ classdef IMBasisSet
             values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
         end
 
-        function z = integrationGrid(self, zBounds)
-            nGrid = max(256, 4*self.solver.nEVP);
-            z = linspace(min(zBounds), max(zBounds), nGrid).';
-        end
-
-        function z = innerProductGrid(self, zBounds)
-            z = self.solver.innerProductGrid(zBounds);
-        end
-
-        function value = integrateInnerProduct(self, z, integrand, zBounds)
-            value = self.solver.integrateInnerProduct(z, integrand, zBounds);
-        end
-
         function gram = scalarGramMatrix(self, zBounds, useNormalized)
-            z = self.innerProductGrid(zBounds);
+            z = self.solver.innerProductGrid(zBounds);
+            context = self.evp.contextForSolver(self.solver);
             if useNormalized
                 values = self.u(z);
             else
                 values = self.rawU(z);
             end
             spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, self.context());
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
@@ -531,10 +519,10 @@ classdef IMBasisSet
             for iMode = 1:size(values,2)
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.integrateInnerProduct(z, integrand, zBounds);
+                    value = self.solver.integrateInnerProduct(z, integrand, zBounds);
                     endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
                     for iWeight = 1:numel(endpointWeights)
-                        value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds);
+                        value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds, context);
                     end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
@@ -542,7 +530,7 @@ classdef IMBasisSet
             end
         end
 
-        function value = endpointWeightContribution(self, weight, iMode, jMode, useNormalized, zBounds)
+        function value = endpointWeightContribution(self, weight, iMode, jMode, useNormalized, zBounds, context)
             zEndpoint = self.endpointZ(weight.location);
             if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
                 value = 0;
@@ -556,7 +544,7 @@ classdef IMBasisSet
                 uValues = self.rawU(zEndpoint);
                 uzValues = self.rawUz(zEndpoint);
             end
-            pValue = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, self.context());
+            pValue = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
             values = weight.c*uValues - weight.d*pValue*uzValues;
             value = weight.coefficient*values(iMode)*values(jMode);
         end
@@ -569,43 +557,6 @@ classdef IMBasisSet
                     zEndpoint = self.zDomain(1);
                 otherwise
                     error("IMBasisSet:InvalidBoundaryLocation", "Boundary location must be ""surface"" or ""bottom"".");
-            end
-        end
-
-        function context = context(self)
-            context.zDomain = self.zDomain;
-            context.coordinateKind = "basisSet";
-            solverContext = self.solver.context();
-            contextFields = fieldnames(solverContext);
-            for iField = 1:numel(contextFields)
-                context.(contextFields{iField}) = solverContext.(contextFields{iField});
-            end
-            if ~isempty(self.evp)
-                parameterFields = fieldnames(self.evp.parameters);
-                for iField = 1:numel(parameterFields)
-                    fieldName = parameterFields{iField};
-                    context.(fieldName) = self.evp.parameters.(fieldName);
-                end
-            end
-        end
-
-        function nModes = retainedModeCount(self)
-            nModes = max([length(self.eigenvalues), size(self.nativeModes,2), length(self.modeNumber)]);
-        end
-
-        function validateCoefficientVector(self, coefficients, argumentName)
-            if any(~isfinite(coefficients(:)))
-                error("IMBasisSet:InvalidCoefficients", "%s must contain finite values.", char(argumentName));
-            end
-            nModes = self.retainedModeCount();
-            if length(coefficients) ~= nModes
-                error("IMBasisSet:InvalidCoefficientCount", "%s must contain one value for each retained mode (%d).", char(argumentName), nModes);
-            end
-        end
-
-        function validateZBounds(~, zMin, zMax)
-            if zMin >= zMax
-                error("IMBasisSet:InvalidInterval", "zMin must be less than zMax.");
             end
         end
 

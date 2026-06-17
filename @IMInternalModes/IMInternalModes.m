@@ -268,8 +268,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 modeSelectionDiagnostics struct
             end
 
-            h = self.hFromEigenvalue(eigenvalues);
-            basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, zDomain=self.zDomain);
+            basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, eigenvalues=eigenvalues, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics);
         end
     end
 

@@ -583,8 +583,7 @@ classdef IMEigenvalueProblem
                 modeSelectionDiagnostics struct
             end
 
-            basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, ...
-                eigenvalues=eigenvalues, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, zDomain=self.zDomain);
+            basisSet = IMBasisSet(solver=solver, evp=self, nativeModes=nativeModes, eigenvalues=eigenvalues, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics);
         end
     end
 

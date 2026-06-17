@@ -28,7 +28,6 @@ Retained-mode labels.
   surface, bottom, or any other fixed physical branch. The label
   `0` marks an inferred zero, barotropic, or null mode when one is
   retained. Positive labels mark ordinary positive/interior modes.
-  If no labels are supplied, `IMBasisSet` uses `1:nModes`.
 
   ```matlab
   basisSet.modeNumber

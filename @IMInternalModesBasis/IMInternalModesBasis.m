@@ -56,42 +56,27 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Parameter options.evp: internal-mode EVP descriptor
             % - Parameter options.nativeModes: native mode columns
             % - Parameter options.eigenvalues: retained eigenvalues
-            % - Parameter options.h: equivalent depths
             % - Parameter options.modeNumber: physical mode numbers
             % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
             % - Parameter options.normalization: active normalization rule name or enum value
             % - Parameter options.metadata: additional metadata
-            % - Parameter options.zDomain: physical vertical domain
             % - Returns basisSet: internal-mode basis set
             arguments
-                options.solver = []
+                options.solver IMSolver
                 options.evp IMInternalModes
-                options.nativeModes double = zeros(0,0)
-                options.eigenvalues double = zeros(1,0)
-                options.h double = zeros(1,0)
-                options.modeNumber double = []
+                options.nativeModes (:,:) double
+                options.eigenvalues (1,:) double {mustBeReal, mustBeFinite}
+                options.modeNumber (1,:) double {mustBeInteger}
                 options.modeSelectionDiagnostics struct = struct()
                 options.normalization = []
                 options.metadata struct = struct()
-                options.zDomain (1,2) double = [NaN NaN]
             end
 
-            self@IMBasisSet(solver=options.solver, evp=options.evp, nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, modeNumber=options.modeNumber, modeSelectionDiagnostics=options.modeSelectionDiagnostics, normalization=options.normalization, metadata=options.metadata, zDomain=options.zDomain);
+            self@IMBasisSet(solver=options.solver, evp=options.evp, nativeModes=options.nativeModes, eigenvalues=options.eigenvalues, modeNumber=options.modeNumber, modeSelectionDiagnostics=options.modeSelectionDiagnostics, normalization=options.normalization, metadata=options.metadata);
             self.N2 = options.evp.N2;
-            if ~isa(self.N2, "function_handle")
-                error("IMInternalModesBasis:InvalidN2", "N2 must be a function handle.");
-            end
-
-            self.h = reshape(options.h,1,[]);
-            if isempty(self.h) && ~isempty(self.eigenvalues)
-                self.h = options.evp.hFromEigenvalue(reshape(self.eigenvalues,1,[]));
-                self.h = reshape(self.h,1,[]);
-            end
-            if ~isempty(self.h)
-                nModes = max([size(self.nativeModes,2), length(self.eigenvalues), length(self.modeNumber)]);
-                if length(self.h) ~= nModes
-                    error("IMInternalModesBasis:InvalidEquivalentDepthCount", "h must contain one equivalent depth for each retained mode.");
-                end
+            self.h = reshape(options.evp.hFromEigenvalue(self.eigenvalues),1,[]);
+            if length(self.h) ~= size(self.nativeModes,2)
+                error("IMInternalModesBasis:InvalidEquivalentDepthCount", "hFromEigenvalue must return one equivalent depth for each native mode column.");
             end
 
             self = self.installInternalModeNormalizationRules();
@@ -179,7 +164,9 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
-            self.validateZBounds(options.zBounds(1), options.zBounds(2));
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
         end
 
@@ -202,7 +189,9 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
             end
 
-            self.validateZBounds(options.zBounds(1), options.zBounds(2));
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
             gram = 0.5*(gram + gram.');
             [R, D] = eig(gram);
@@ -248,9 +237,22 @@ classdef IMInternalModesBasis < IMBasisSet
                 self IMInternalModesBasis
                 coefficientsA (:,1) double
                 coefficientsB (:,1) double
-                options.variable {mustBeTextScalar} = self.evp.formulation
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
             end
 
+            nModes = size(self.nativeModes,2);
+            if any(~isfinite(coefficientsA(:)))
+                error("IMBasisSet:InvalidCoefficients", "coefficientsA must contain finite values.");
+            end
+            if any(~isfinite(coefficientsB(:)))
+                error("IMBasisSet:InvalidCoefficients", "coefficientsB must contain finite values.");
+            end
+            if length(coefficientsA) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "coefficientsA must contain one value for each retained mode (%d).", nModes);
+            end
+            if length(coefficientsB) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "coefficientsB must contain one value for each retained mode (%d).", nModes);
+            end
             gram = self.gramMatrix(variable=options.variable);
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
@@ -267,7 +269,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 return;
             end
             zSurface = self.zDomain(2);
-            zGrid = self.innerProductGrid(self.zDomain);
+            zGrid = self.solver.innerProductGrid(self.zDomain);
             FReferences = self.modeSignReferences("F", zSurface, zGrid);
             GReferences = self.modeSignReferences("G", zSurface, zGrid);
             signs = ones(1,size(self.nativeModes,2));
@@ -355,7 +357,7 @@ classdef IMInternalModesBasis < IMBasisSet
             end
 
             variable = string(options.variable);
-            z = self.integrationGrid(self.zDomain);
+            z = self.solver.innerProductGrid(self.zDomain);
             values = self.rawVariable(variable, z);
             factor = max(abs(values(:,iMode)));
         end
@@ -379,19 +381,6 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Access = protected)
-        function context = context(self)
-            context = context@IMBasisSet(self);
-            context.N2 = @(z) self.N2(z);
-        end
-
-        function values = rawU(self, z)
-            values = self.solver.evaluateNativeModes(self.nativeModes, z);
-        end
-
-        function values = rawUz(self, z)
-            values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
-        end
-
         function values = rawVariable(self, variable, z)
             arguments
                 self IMInternalModesBasis
@@ -400,6 +389,7 @@ classdef IMInternalModesBasis < IMBasisSet
             end
 
             variable = string(variable);
+            context = self.evp.contextForSolver(self.solver);
             if variable == self.evp.formulation
                 values = self.solver.evaluateNativeModes(self.nativeModes, z);
                 return;
@@ -411,20 +401,21 @@ classdef IMInternalModesBasis < IMBasisSet
                         self.unsupported("evaluate " + variable);
                     end
                     dGdz = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
-                    values = self.evp.FfromGz(z(:), dGdz, self.h, self.context());
+                    values = self.evp.FfromGz(z(:), dGdz, self.h, context);
                 case "F"
                     if variable ~= "G"
                         self.unsupported("evaluate " + variable);
                     end
                     dFdz = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
-                    values = self.evp.GfromFz(z(:), dFdz, self.h, self.context());
+                    values = self.evp.GfromFz(z(:), dFdz, self.h, context);
                 otherwise
                     self.unsupported("evaluate " + variable);
             end
         end
 
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
-            z = self.innerProductGrid(zBounds);
+            z = self.solver.innerProductGrid(zBounds);
+            context = self.evp.contextForSolver(self.solver);
             spec = self.evp.innerProduct(variable);
             IMInternalModesBasis.assertInnerProductAvailable(spec);
             if useNormalized
@@ -432,7 +423,7 @@ classdef IMInternalModesBasis < IMBasisSet
             else
                 values = self.rawVariable(variable, z);
             end
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, self.context());
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
@@ -440,11 +431,11 @@ classdef IMInternalModesBasis < IMBasisSet
             for iMode = 1:size(values,2)
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.integrateInnerProduct(z, integrand, zBounds);
+                    value = self.solver.integrateInnerProduct(z, integrand, zBounds);
                     if variable == self.evp.formulation
                         endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
                         for iWeight = 1:numel(endpointWeights)
-                            value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds);
+                            value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds, context);
                         end
                     end
                     for iTerm = 1:numel(spec.endpointInnerProductTerms)
