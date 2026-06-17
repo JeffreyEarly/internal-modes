@@ -33,8 +33,7 @@ normalization rule. Custom rules are added after solving with
 
 ```matlab
 basisSet = solver.solveEVP(evp,nModes=4);
-basisSet = basisSet.addNormalization("constantScaled", ...
-    @(basisSet,j) C*basisSet.innerProductNormFactor(j));
+basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
 basisSet.normalization = "unity";
 u = basisSet.u(z);
 factors = basisSet.normalizationFactors("unity");

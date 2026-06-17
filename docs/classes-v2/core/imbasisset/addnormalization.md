@@ -39,8 +39,7 @@ Add a named normalization rule.
 
   ```matlab
   C = 2;
-  basisSet = basisSet.addNormalization("constantScaled", ...
-      @(basisSet,j) C*basisSet.innerProductNormFactor(j));
+  basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
   basisSet.normalization = "constantScaled";
   ```
 
@@ -49,9 +48,7 @@ Add a named normalization rule.
   use:
 
   ```matlab
-  basisSet = basisSet.addNormalization("eigenvalueScaled", ...
-      @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j))) * ...
-      basisSet.innerProductNormFactor(j));
+  basisSet = basisSet.addNormalization("eigenvalueScaled", @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j)))*basisSet.innerProductNormFactor(j));
   ```
 
   If `name` already exists, the rule is overwritten.

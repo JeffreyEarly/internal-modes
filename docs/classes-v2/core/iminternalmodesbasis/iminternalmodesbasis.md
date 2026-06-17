@@ -29,7 +29,6 @@ Create an internal-mode basis set.
 + `options.normalization`  active normalization rule name or enum value
 + `options.metadata`  additional metadata
 + `options.zDomain`  physical vertical domain
-+ `options.N2`  buoyancy frequency squared function
 
 ## Returns
 + `basisSet`  internal-mode basis set

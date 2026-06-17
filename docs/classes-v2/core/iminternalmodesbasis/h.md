@@ -3,7 +3,7 @@ layout: default
 title: h
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 7
+nav_order: 5
 mathjax: true
 ---
 
@@ -16,8 +16,6 @@ Equivalent depths for the retained internal modes.
 
 ## Discussion
 
-  For numerical internal-mode solves, these are computed from the
-  parent EVP as
+  These are computed from the parent EVP as
   $$h_j=\texttt{evp.hFromEigenvalue}(\lambda_j),$$
-  where $$\lambda_j$$ is `eigenvalues(j)`. Analytical basis classes
-  may pass exact equivalent depths directly.
+  where $$\lambda_j$$ is `eigenvalues(j)`.

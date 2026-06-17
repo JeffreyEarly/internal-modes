@@ -3,14 +3,15 @@
 This note summarizes the V2 analytical-solution validation tests in
 `UnitTestsV2`. The tests now exercise the canonical EVP stack:
 `IMEigenvalueProblem`, `IMBoundaryCondition`, `IMInternalModes`,
-`IMBasisSet`, and `IMInternalModesBasis`.
+`IMAnalyticalSolution`, `IMAnalyticalInternalModesBasis`, and
+`IMAnalyticalSQGBasis`.
 
 ## Current Coverage
 
-| Test suite | Analytical basis | Main purpose |
+| Test suite | Analytical solution family | Main purpose |
 | --- | --- | --- |
-| `IMConstantStratificationValidationTests.m` | `IMBasisSetConstantStratification` | Constant-stratification spectra, free-surface branch construction, hydrostatic `F` zero mode, and spectral coordinate smoke checks. |
-| `IMExponentialStratificationValidationTests.m` | `IMBasisSetExponentialStratification` | Exponential Bessel-branch construction, free-surface branch construction, hydrostatic `F` null branch, and unsupported-boundary rejection. |
+| `IMConstantStratificationValidationTests.m` | `IMConstantStratificationSolution` | Constant-stratification spectra, free-surface branch construction, hydrostatic `F` zero mode, SQG boundary modes, and spectral coordinate smoke checks. |
+| `IMExponentialStratificationValidationTests.m` | `IMExponentialStratificationSolution` | Exponential Bessel-branch construction, free-surface branch construction, hydrostatic `F` null branch, SQG boundary modes, and unsupported-boundary rejection. |
 
 ## Solver Validation
 
@@ -24,6 +25,6 @@ solver paths.
 
 | Area | Case | Expected result |
 | --- | --- | --- |
-| Constant analytical basis | unsupported boundary condition | `IMBasisSetConstantStratification:UnsupportedBoundary` |
-| Exponential analytical basis | nonzero surface location or unsupported boundary condition | `IMBasisSetExponentialStratification:UnsupportedBoundary` or `IMBasisSetExponentialStratification:UnsupportedDomain` |
+| Constant analytical solution | unsupported boundary condition | `IMConstantStratificationSolution:UnsupportedBoundary` |
+| Exponential analytical solution | nonzero surface location or unsupported boundary condition | `IMExponentialStratificationSolution:UnsupportedBoundary` or `IMExponentialStratificationSolution:UnsupportedDomain` |
 | Canonical mode selection | assessed positive metric and nonnegative form with raw negative discrete values | negative candidates are ignored during selection |

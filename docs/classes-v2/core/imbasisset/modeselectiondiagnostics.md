@@ -17,7 +17,6 @@ Mode-selection diagnostics.
 ## Discussion
 
   This is the diagnostics struct returned by
-  `evp.modeSelectionDiagnostics(...)` when the solver selected and
+  `evp.modeSelectionDiagnostics` when the solver selected and
   labeled retained modes. Numerical solves use it to record
-  negative-mode bounds and zero-mode status; analytical basis sets
-  may leave it as an empty struct.
+  negative-mode bounds and zero-mode status.

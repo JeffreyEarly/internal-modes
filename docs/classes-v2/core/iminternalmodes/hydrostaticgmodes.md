@@ -40,13 +40,13 @@ Create the hydrostatic `G` internal-mode EVP.
   `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
   $$-\left[
   a_\ell G_j(z_\ell)
-  -
+
   b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
   \right]
   =
   \lambda_j\left[
   c_\ell G_j(z_\ell)
-  -
+
   d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
   \right].$$
   The default surface and bottom boundary conditions are

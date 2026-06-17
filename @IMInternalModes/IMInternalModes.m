@@ -269,9 +269,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             h = self.hFromEigenvalue(eigenvalues);
-            basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, ...
-                eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, ...
-                zDomain=self.zDomain, N2=self.N2);
+            basisSet = IMInternalModesBasis(solver=solver, evp=self, nativeModes=nativeModes, eigenvalues=eigenvalues, h=h, modeNumber=modeNumber, modeSelectionDiagnostics=modeSelectionDiagnostics, zDomain=self.zDomain);
         end
     end
 
@@ -288,13 +286,13 @@ classdef IMInternalModes < IMEigenvalueProblem
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
             % $$-\left[
             % a_\ell G_j(z_\ell)
-            % -
+            %
             % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
-            % -
+            %
             % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right].$$
             % The default surface and bottom boundary conditions are
@@ -354,14 +352,14 @@ classdef IMInternalModes < IMEigenvalueProblem
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
             % $$-\left[
             % a_\ell F_j(z_\ell)
-            % -
+            %
             % b_\ell\frac{1}{N^2(z_\ell)}
             % \frac{\partial F_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell F_j(z_\ell)
-            % -
+            %
             % d_\ell\frac{1}{N^2(z_\ell)}
             % \frac{\partial F_j}{\partial z}(z_\ell)
             % \right].$$
@@ -418,13 +416,13 @@ classdef IMInternalModes < IMEigenvalueProblem
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
             % $$-\left[
             % a_\ell G_j(z_\ell)
-            % -
+            %
             % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
-            % -
+            %
             % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right].$$
             % The default surface and bottom boundary conditions are
@@ -489,13 +487,13 @@ classdef IMInternalModes < IMEigenvalueProblem
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
             % $$-\left[
             % a_\ell G_j(z_\ell)
-            % -
+            %
             % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
-            % -
+            %
             % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right].$$
             % The default surface and bottom boundary conditions are

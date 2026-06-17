@@ -43,14 +43,14 @@ Create the hydrostatic `F` internal-mode EVP.
   `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
   $$-\left[
   a_\ell F_j(z_\ell)
-  -
+
   b_\ell\frac{1}{N^2(z_\ell)}
   \frac{\partial F_j}{\partial z}(z_\ell)
   \right]
   =
   \lambda_j\left[
   c_\ell F_j(z_\ell)
-  -
+
   d_\ell\frac{1}{N^2(z_\ell)}
   \frac{\partial F_j}{\partial z}(z_\ell)
   \right].$$

@@ -687,10 +687,8 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function internalModeBasisWithoutSolverRejectsDerivativeFallback(testCase)
             [N2, zDomain] = testCase.profile();
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
-            basisSet = IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), ...
-                eigenvalues=1, h=1, modeNumber=1, zDomain=zDomain, N2=N2);
 
-            testCase.verifyError(@() basisSet.uz(mean(zDomain)), "IMBasisSet:UnsupportedOperation")
+            testCase.verifyError(@() IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), eigenvalues=1, h=1, modeNumber=1, zDomain=zDomain), "IMBasisSet:MissingSolver")
         end
 
         function internalModeBasisHasNoFiniteDifferenceDerivativeFallback(testCase)

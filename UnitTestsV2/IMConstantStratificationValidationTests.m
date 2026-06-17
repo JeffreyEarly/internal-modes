@@ -27,12 +27,13 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
 
-            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=nModes);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            basisSet = solution.internalModes(evp, nModes=nModes);
             D = diff(zDomain);
             expectedH = (N0*N0)./(g*((1:nModes)*pi/D).^2);
 
-            testCase.verifyClass(basisSet, "IMBasisSetConstantStratification")
+            testCase.verifyClass(solution, "IMConstantStratificationSolution")
+            testCase.verifyClass(basisSet, "IMAnalyticalInternalModesBasis")
             testCase.verifyEqual(basisSet.h, expectedH, RelTol=1e-12)
             testCase.verifyEqual(basisSet.modeNumber, 1:nModes)
             testCase.verifySize(basisSet.G(linspace(zDomain(1),zDomain(2),12).'), [12 nModes])
@@ -45,8 +46,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             freeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
 
-            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
 
             testCase.verifyEqual(basisSet.modeNumber(1), -1)
             testCase.verifyTrue(all(isfinite(basisSet.h)))
@@ -59,8 +60,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
 
-            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=4);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=4);
             z = linspace(zDomain(1), zDomain(2), 10).';
 
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
@@ -79,21 +80,20 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             nModes = 3;
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
-            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=nModes);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            basisSet = solution.internalModes(evp, nModes=nModes);
             z = linspace(zDomain(1), zDomain(2), 11).';
             s = z - zDomain(1);
 
             expected = zeros(length(z), nModes);
             for iMode = 1:nModes
-                k_z = basisSet.verticalWavenumbers(iMode);
+                k_z = basisSet.metadata.verticalWavenumbers(iMode);
                 signValue = (-1)^basisSet.modeNumber(iMode);
                 expected(:,iMode) = signValue*k_z*cos(k_z*s);
             end
             expected = expected ./ basisSet.normalizationFactors("unity");
 
-            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, ...
-                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, RelTol=1e-12, AbsTol=1e-14)
         end
 
         function analyticalFModesReturnExactSolvedDerivative(testCase)
@@ -102,43 +102,43 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             nModes = 4;
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
-            basisSet = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=nModes);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=nModes);
             z = linspace(zDomain(1), zDomain(2), 11).';
             s = z - zDomain(1);
 
             expected = zeros(length(z), nModes);
             for iMode = 1:nModes
-                k_z = basisSet.verticalWavenumbers(iMode);
+                k_z = basisSet.metadata.verticalWavenumbers(iMode);
                 signValue = (-1)^basisSet.modeNumber(iMode);
                 expected(:,iMode) = -signValue*k_z*sin(k_z*s);
             end
             expected = expected ./ basisSet.normalizationFactors("unity");
 
             actual = basisSet.uz(z, normalization="unity");
-            testCase.verifyEqual(actual, expected, ...
-                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(actual, expected, RelTol=1e-12, AbsTol=1e-14)
             testCase.verifyEqual(actual(:,1), zeros(size(z)), AbsTol=1e-14)
         end
 
-        function analyticalFactoryCreatesConstantBasis(testCase)
+        function solutionCreatesConstantBasis(testCase)
             zDomain = [-3000 0];
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
 
-            basisSet = IMInternalModesBasis.constantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=2);
+            basisSet = solution.internalModes(evp, nModes=2);
 
-            testCase.verifyClass(basisSet, "IMBasisSetConstantStratification")
+            testCase.verifyClass(basisSet, "IMAnalyticalInternalModesBasis")
             testCase.verifyEqual(basisSet.evp.parameters.k, 1e-4, AbsTol=0)
         end
 
-        function analyticalFactoryCreatesMatchingDefaultEVP(testCase)
+        function solutionCreatesMatchingDefaultEVP(testCase)
             N0 = 5.2e-3;
             zDomain = [-3000 0];
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
 
-            basisSet = IMInternalModesBasis.constantStratification(N0=N0, zDomain=zDomain, nModes=2);
+            basisSet = solution.internalModes(nModes=2);
 
             testCase.verifyClass(basisSet.evp, "IMInternalModes")
             testCase.verifyEqual(basisSet.evp.zDomain, zDomain)
@@ -154,8 +154,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             nEVP = 48;
             N2 = @(z) N0*N0*ones(size(z));
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
-            analytical = IMBasisSetConstantStratification(evp=evp, N0=N0, ...
-                zDomain=zDomain, nModes=nModes);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            analytical = solution.internalModes(evp, nModes=nModes);
 
             coordinateKinds = ["z", "wkb", "density"];
             for coordinateKind = coordinateKinds
@@ -163,6 +163,29 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
                 numerical = solver.solveEVP(evp, nModes=nModes);
                 testCase.verifyEqual(numerical.h, analytical.h, RelTol=1e-4)
             end
+        end
+
+        function constantSQGModesMatchReferenceFormulas(testCase)
+            N0 = 5.2e-3;
+            f0 = 1e-4;
+            zDomain = [-5000 0];
+            k = [1e-4 2e-4];
+            z = linspace(zDomain(1), zDomain(2), 9).';
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, f0=f0);
+
+            surface = solution.sqgModesAtWavenumber(k, boundary="surface");
+            bottom = solution.sqgModesAtWavenumber(k, boundary="bottom");
+
+            depth = diff(zDomain);
+            zRel = z - zDomain(2);
+            lambda = k*(N0/f0);
+            denominator = k.*(1 - exp(-2*lambda*depth));
+            expectedSurface = (1/N0)*(exp(zRel.*lambda) + exp(-(zRel + 2*depth).*lambda))./denominator;
+            expectedBottom = -(1/N0)*(exp((zRel - depth).*lambda) + exp(-(zRel + depth).*lambda))./denominator;
+
+            testCase.verifyClass(surface, "IMAnalyticalSQGBasis")
+            testCase.verifyEqual(surface.psi(z), expectedSurface, RelTol=1e-12)
+            testCase.verifyEqual(bottom.psi(z), expectedBottom, RelTol=1e-12)
         end
     end
 end

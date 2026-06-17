@@ -26,11 +26,12 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
 
-            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 24).';
 
-            testCase.verifyClass(basisSet, "IMBasisSetExponentialStratification")
+            testCase.verifyClass(solution, "IMExponentialStratificationSolution")
+            testCase.verifyClass(basisSet, "IMAnalyticalInternalModesBasis")
             testCase.verifyTrue(all(isfinite(basisSet.h)))
             testCase.verifySize(basisSet.G(z), [24 3])
             testCase.verifySize(basisSet.F(z), [24 3])
@@ -45,11 +46,11 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             freeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
 
-            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
 
             testCase.verifyEqual(basisSet.modeNumber(1), -1)
-            testCase.verifyTrue(all(isfinite(basisSet.roots)))
+            testCase.verifyTrue(all(isfinite(basisSet.metadata.roots)))
         end
 
         function hydrostaticFModesIncludeNullBranch(testCase)
@@ -59,8 +60,8 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
 
-            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
@@ -77,14 +78,13 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
-            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
             expected = basisSet.F(z, normalization="unity") ./ basisSet.h;
 
-            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, ...
-                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, RelTol=1e-12, AbsTol=1e-14)
         end
 
         function analyticalFModesReturnSolvedDerivative(testCase)
@@ -93,30 +93,29 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
-            basisSet = IMBasisSetExponentialStratification(evp=evp, N0=N0, b=b, ...
-                zDomain=zDomain, nModes=3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
             expected = -(N2(z)/evp.g).*basisSet.G(z, normalization="unity");
 
             actual = basisSet.uz(z, normalization="unity");
-            testCase.verifyEqual(actual, expected, ...
-                RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(actual, expected, RelTol=1e-12, AbsTol=1e-14)
             testCase.verifyEqual(actual(:,1), zeros(size(z)), AbsTol=1e-14)
             testCase.verifyTrue(all(isfinite(actual(:))))
         end
 
-        function analyticalFactoryCreatesExponentialBasis(testCase)
+        function solutionCreatesExponentialBasis(testCase)
             N0 = 5.2e-3;
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
 
-            basisSet = IMInternalModesBasis.exponentialStratification(evp=evp, N0=N0, ...
-                b=b, zDomain=zDomain, nModes=2);
+            basisSet = solution.internalModes(evp, nModes=2);
 
-            testCase.verifyClass(basisSet, "IMBasisSetExponentialStratification")
+            testCase.verifyClass(basisSet, "IMAnalyticalInternalModesBasis")
             testCase.verifyEqual(basisSet.evp.parameters.omega, 1e-3, AbsTol=0)
         end
 
@@ -127,9 +126,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
 
-            testCase.verifyError(@() IMBasisSetExponentialStratification(evp=evp, ...
-                N0=N0, b=b, zDomain=[-4000 0], nModes=2), ...
-                "IMBasisSetExponentialStratification:DomainMismatch")
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=[-4000 0]);
+
+            testCase.verifyError(@() solution.internalModes(evp, nModes=2), "IMExponentialStratificationSolution:DomainMismatch")
         end
 
         function unsupportedBoundaryIsRejected(testCase)
@@ -139,9 +138,39 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             N2 = @(z) N0*N0*exp(2*z/b);
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, bottomBoundary=IMBoundaryCondition.neumann());
 
-            testCase.verifyError(@() IMBasisSetExponentialStratification(evp=evp, ...
-                N0=N0, b=b, zDomain=zDomain, nModes=2), ...
-                "IMBasisSetExponentialStratification:UnsupportedBoundary")
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+
+            testCase.verifyError(@() solution.internalModes(evp, nModes=2), "IMExponentialStratificationSolution:UnsupportedBoundary")
+        end
+
+        function exponentialSQGModesMatchReferenceFormulas(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            f0 = 1e-4;
+            zDomain = [-5000 0];
+            k = [1e-4 2e-4];
+            z = linspace(zDomain(1), zDomain(2), 9).';
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain, f0=f0);
+
+            surface = solution.sqgModesAtWavenumber(k, boundary="surface");
+            bottom = solution.sqgModesAtWavenumber(k, boundary="bottom");
+
+            alpha = 2/b;
+            eta = N0*k/(alpha*f0);
+            depth = diff(zDomain);
+            zRel = z - zDomain(2);
+            argument = 2*exp(alpha*zRel/2).*eta;
+            bottomFactor = exp(-alpha*depth/2);
+            surfaceNumerator = besselk(0,2*eta*bottomFactor).*besseli(1,argument) + besseli(0,2*eta*bottomFactor).*besselk(1,argument);
+            surfaceDenominator = besseli(0,2*eta).*besselk(0,2*eta*bottomFactor) - besselk(0,2*eta).*besseli(0,2*eta*bottomFactor);
+            expectedSurface = (1./(eta*alpha*f0)).*exp(alpha*zRel/2).*surfaceNumerator./surfaceDenominator;
+            bottomNumerator = besselk(0,2*eta).*besseli(1,argument) + besseli(0,2*eta).*besselk(1,argument);
+            bottomDenominator = besselk(0,2*eta).*besseli(0,2*eta*bottomFactor) - besseli(0,2*eta).*besselk(0,2*eta*bottomFactor);
+            expectedBottom = (1./(eta*alpha*f0)).*exp(alpha*(zRel + 2*depth)/2).*bottomNumerator./bottomDenominator;
+
+            testCase.verifyClass(surface, "IMAnalyticalSQGBasis")
+            testCase.verifyEqual(surface.psi(z), expectedSurface, RelTol=1e-12)
+            testCase.verifyEqual(bottom.psi(z), expectedBottom, RelTol=1e-12)
         end
     end
 end

@@ -8,4 +8,4 @@ permalink: /classes-v2/analytical-bases
 mathjax: true
 ---
 
-Reference pages for exact basis sets under constant and exponential stratification profiles.
+Reference pages for analytical solution families, exact internal-mode bases, and SQG boundary modes under constant and exponential stratification profiles.

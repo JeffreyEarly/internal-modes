@@ -105,8 +105,7 @@ classdef IMBasisSet
         % This is the diagnostics struct returned by
         % `evp.modeSelectionDiagnostics` when the solver selected and
         % labeled retained modes. Numerical solves use it to record
-        % negative-mode bounds and zero-mode status; analytical basis sets
-        % may leave it as an empty struct.
+        % negative-mode bounds and zero-mode status.
         %
         % - Topic: Inspect basis sets
         modeSelectionDiagnostics
@@ -160,6 +159,9 @@ classdef IMBasisSet
                 options.zDomain (1,2) double = [NaN NaN]
             end
 
+            if isempty(options.solver)
+                error("IMBasisSet:MissingSolver", "IMBasisSet requires the solver that created its native modes.");
+            end
             self.solver = options.solver;
             self.evp = options.evp;
             self.nativeModes = options.nativeModes;
@@ -186,7 +188,7 @@ classdef IMBasisSet
 
             if any(isnan(self.zDomain)) && ~isempty(self.evp)
                 self.zDomain = self.evp.zDomain;
-            elseif ~isempty(self.solver)
+            else
                 if any(isnan(self.zDomain))
                     self.zDomain = self.solver.zDomain;
                 end
@@ -493,42 +495,24 @@ classdef IMBasisSet
 
     methods (Access = protected)
         function values = rawU(self, z)
-            if isempty(self.solver)
-                self.unsupported("evaluate solved scalar modes");
-            end
             values = self.solver.evaluateNativeModes(self.nativeModes, z);
         end
 
         function values = rawUz(self, z)
-            if isempty(self.solver)
-                self.unsupported("evaluate scalar derivatives");
-            end
             values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
         end
 
         function z = integrationGrid(self, zBounds)
-            if ~isempty(self.solver)
-                nGrid = max(256, 4*self.solver.nEVP);
-            else
-                nGrid = max(256, 4*max(1,self.retainedModeCount()));
-            end
+            nGrid = max(256, 4*self.solver.nEVP);
             z = linspace(min(zBounds), max(zBounds), nGrid).';
         end
 
         function z = innerProductGrid(self, zBounds)
-            if ~isempty(self.solver)
-                z = self.solver.innerProductGrid(zBounds);
-            else
-                z = self.integrationGrid(zBounds);
-            end
+            z = self.solver.innerProductGrid(zBounds);
         end
 
         function value = integrateInnerProduct(self, z, integrand, zBounds)
-            if ~isempty(self.solver)
-                value = self.solver.integrateInnerProduct(z, integrand, zBounds);
-            else
-                value = trapz(z, integrand);
-            end
+            value = self.solver.integrateInnerProduct(z, integrand, zBounds);
         end
 
         function gram = scalarGramMatrix(self, zBounds, useNormalized)
@@ -591,12 +575,10 @@ classdef IMBasisSet
         function context = context(self)
             context.zDomain = self.zDomain;
             context.coordinateKind = "basisSet";
-            if ~isempty(self.solver)
-                solverContext = self.solver.context();
-                contextFields = fieldnames(solverContext);
-                for iField = 1:numel(contextFields)
-                    context.(contextFields{iField}) = solverContext.(contextFields{iField});
-                end
+            solverContext = self.solver.context();
+            contextFields = fieldnames(solverContext);
+            for iField = 1:numel(contextFields)
+                context.(contextFields{iField}) = solverContext.(contextFields{iField});
             end
             if ~isempty(self.evp)
                 parameterFields = fieldnames(self.evp.parameters);
