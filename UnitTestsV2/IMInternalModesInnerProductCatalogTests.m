@@ -105,8 +105,12 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 end
             end
             FSurface = basisSet.F(zDomain(2));
-            expected = gramInterior + spec.endpointInnerProductTerms(1).coefficient*(FSurface.'*FSurface);
+            endpointTerms = basisSet.endpointGramTerms(variable="F");
+            rawEndpointTerms = basisSet.endpointGramTerms(variable="F", useNormalized=false);
+            factors = basisSet.normalizationFactors(basisSet.normalization);
+            expected = gramInterior + endpointTerms(1).coefficient*(endpointTerms(1).values(:)*endpointTerms(1).values(:).');
             partialBounds = [zDomain(1) mean(zDomain)];
+            partialEndpointTerms = basisSet.endpointGramTerms(variable="F", zBounds=partialBounds);
             zPartial = solver.configuredForEVP(evp).innerProductGrid(partialBounds);
             FPartial = basisSet.F(zPartial);
             expectedPartial = zeros(2,2);
@@ -118,6 +122,13 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
                 end
             end
 
+            testCase.verifyNumElements(endpointTerms, 1)
+            testCase.verifyEqual(endpointTerms(1).kind, "endpointInnerProductTerm")
+            testCase.verifyEqual(endpointTerms(1).location, "surface")
+            testCase.verifyEqual(endpointTerms(1).coefficient, spec.endpointInnerProductTerms(1).coefficient, AbsTol=0)
+            testCase.verifyEqual(endpointTerms(1).values, FSurface, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(endpointTerms(1).values, rawEndpointTerms(1).values./factors, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEmpty(partialEndpointTerms)
             testCase.verifyEqual(basisSet.gramMatrix(variable="F"), expected, RelTol=1e-10, AbsTol=1e-10)
             testCase.verifyEqual(basisSet.gramMatrix(zBounds=partialBounds, variable="F"), ...
                 expectedPartial, RelTol=1e-10, AbsTol=1e-10)

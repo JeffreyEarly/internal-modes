@@ -147,7 +147,10 @@ classdef IMInternalModesBasis < IMBasisSet
             % interior integral. Endpoint terms are included only when the
             % interval contains the corresponding physical endpoint:
             % $$M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
-            % \text{included endpoint terms}.$$
+            % \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
+            % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).$$
+            % Use `endpointGramTerms` to inspect the prepared endpoint
+            % vectors that generate the rank-one endpoint updates.
             % The requested variable must have a known inner product; if it
             % does not, this method throws
             % `IMInternalModesBasis:UnavailableInnerProduct` rather than
@@ -168,6 +171,74 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
             end
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
+        end
+
+        function terms = endpointGramTerms(self, options)
+            % Prepare rank-one endpoint terms for `F` or `G` Gram matrices.
+            %
+            % `endpointGramTerms` returns endpoint vectors over all retained
+            % modes. Solved-form endpoint weights use
+            % $$L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),$$
+            % and contribute
+            % $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+            % Catalog endpoint value terms use $$V_j(z_\ell)$$ and
+            % contribute
+            % $$M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.$$
+            % Endpoint terms are omitted when `zBounds` does not include
+            % that endpoint.
+            %
+            % - Topic: Developer topics
+            % - Declaration: terms = endpointGramTerms(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
+            % - Parameter options.normalization: normalization rule name or enum value
+            % - Parameter options.useNormalized: whether returned values use the normalization
+            % - Returns terms: struct array with `location`, `coefficient`, `values`, and `kind`
+            % - Developer: true
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+                options.normalization = self.normalization
+                options.useNormalized (1,1) logical = true
+            end
+
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
+
+            variable = string(options.variable);
+            spec = self.evp.innerProduct(variable);
+            IMInternalModesBasis.assertInnerProductAvailable(spec);
+            terms = struct("location", {}, "coefficient", {}, "values", {}, "kind", {});
+            if variable == self.evp.formulation
+                terms = endpointGramTerms@IMBasisSet(self, zBounds=options.zBounds, normalization=options.normalization, useNormalized=options.useNormalized);
+            end
+
+            normalizationFactors = [];
+            for iTerm = 1:numel(spec.endpointInnerProductTerms)
+                endpointTerm = spec.endpointInnerProductTerms(iTerm);
+                if string(endpointTerm.location) == "surface"
+                    zEndpoint = self.zDomain(2);
+                else
+                    zEndpoint = self.zDomain(1);
+                end
+
+                tolerance = 100*eps(max(1,max(abs([options.zBounds(:); zEndpoint]))));
+                endpointIsIncluded = abs(min(options.zBounds) - zEndpoint) <= tolerance || abs(max(options.zBounds) - zEndpoint) <= tolerance;
+                if ~endpointIsIncluded
+                    continue;
+                end
+
+                values = self.rawVariable(endpointTerm.variable, zEndpoint);
+                if options.useNormalized
+                    if isempty(normalizationFactors)
+                        normalizationFactors = self.normalizationFactors(options.normalization);
+                    end
+                    values = values ./ normalizationFactors;
+                end
+                terms(end+1) = struct("location", string(endpointTerm.location), "coefficient", endpointTerm.coefficient, "values", values, "kind", "endpointInnerProductTerm");
+            end
         end
 
         function windowModes = partialWindowModes(self, options)
@@ -249,12 +320,25 @@ classdef IMInternalModesBasis < IMBasisSet
         end
     end
 
-    methods (Hidden)
+    methods
         function self = orientModeSigns(self)
             % Orient modes so the surface `F` value is positive when possible.
             %
+            % This developer utility applies the internal-mode sign
+            % convention used after numerical solves: prefer a finite
+            % nonzero surface `F` value, fall back to the largest `F`
+            % value on the solver grid, then fall back to `G`. The same
+            % sign flip is applied to the coupled `F`/`G` mode pair.
+            % `IMInternalModesBasis` is a value class, so callers must keep
+            % the returned basis set:
+            %
+            % ```matlab
+            % basisSet = basisSet.orientModeSigns();
+            % ```
+            %
             % - Topic: Developer topics
             % - Declaration: basisSet = orientModeSigns(basisSet)
+            % - Returns basisSet: basis set with oriented native mode signs
             % - Developer: true
             if isempty(self.nativeModes)
                 return;
@@ -285,6 +369,8 @@ classdef IMInternalModesBasis < IMBasisSet
             % formulation is used. The requested variable must have a known
             % inner product. Custom normalization rules
             % registered with `addNormalization` call this method.
+            % The factor is computed from raw, unnormalized modes before
+            % the active basis normalization is applied.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
@@ -306,9 +392,10 @@ classdef IMInternalModesBasis < IMBasisSet
         function factor = geostrophicNormFactor(self, iMode)
             % Return the hydrostatic geostrophic normalization factor.
             %
-            % This rule is installed for `modeFamily="geostrophic"` and
-            % chooses one shared scale factor for each coupled `F`/`G`
-            % mode. Baroclinic modes use
+            % This developer utility implements the normalization rule
+            % installed for `modeFamily="geostrophic"`. It chooses one
+            % shared raw scale factor for each coupled `F`/`G` mode.
+            % Baroclinic modes use
             % $$s_j^2=\langle G_j,G_j\rangle_G,$$
             % so normalized modes satisfy
             % $$\langle G_j,G_j\rangle_G=1,\qquad
@@ -319,6 +406,8 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % - Topic: Developer topics
             % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: raw geostrophic scale factor
             % - Developer: true
             if self.modeNumber(iMode) == 0
                 gram = self.variableGramMatrix("F", self.zDomain, false);
@@ -328,7 +417,7 @@ classdef IMInternalModesBasis < IMBasisSet
             factor = self.innerProductNormFactor(iMode, variable="G");
         end
 
-        function factor = maxAbsFactor(self, iMode, options)
+        function factor = maxAmplitudeNormFactor(self, iMode, options)
             % Return the maximum amplitude of `F` or `G`.
             %
             % This is $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$ for the
@@ -336,7 +425,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % `variable` is omitted, the solved formulation is used.
             %
             % - Topic: Developer topics
-            % - Declaration: factor = maxAbsFactor(basisSet,iMode,options)
+            % - Declaration: factor = maxAmplitudeNormFactor(basisSet,iMode,options)
             % - Parameter iMode: retained mode index
             % - Parameter options.variable: `"F"` or `"G"`
             % - Returns factor: maximum absolute variable amplitude
@@ -356,11 +445,17 @@ classdef IMInternalModesBasis < IMBasisSet
         function factor = surfacePressureNormFactor(self, iMode)
             % Return the raw surface `F` value.
             %
-            % This scale gives unit surface `F` value when the raw surface
-            % value is finite and nonzero.
+            % This developer utility returns the raw surface value
+            % $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
+            % It gives unit surface `F` value when the raw surface value is
+            % finite and nonzero. If that value is unavailable, zero, or
+            % nonfinite, it returns `1` so normalization remains well
+            % defined.
             %
             % - Topic: Developer topics
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: raw surface-pressure scale factor
             % - Developer: true
             values = self.rawVariable("F", self.zDomain(2));
             factor = values(1,iMode);
@@ -409,8 +504,10 @@ classdef IMInternalModesBasis < IMBasisSet
             context = self.evp.contextForSolver(self.solver);
             spec = self.evp.innerProduct(variable);
             IMInternalModesBasis.assertInnerProductAvailable(spec);
+            normalizationFactors = [];
             if useNormalized
-                values = self.rawVariable(variable, z) ./ self.normalizationFactors(self.normalization);
+                normalizationFactors = self.normalizationFactors(self.normalization);
+                values = self.rawVariable(variable, z) ./ normalizationFactors;
             else
                 values = self.rawVariable(variable, z);
             end
@@ -423,26 +520,23 @@ classdef IMInternalModesBasis < IMBasisSet
                 for jMode = iMode:size(values,2)
                     integrand = weight(:).*values(:,iMode).*values(:,jMode);
                     value = self.solver.integrateInnerProduct(z, integrand, zBounds);
-                    if variable == self.evp.formulation
-                        endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
-                        for iWeight = 1:numel(endpointWeights)
-                            value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds, context);
-                        end
-                    end
-                    for iTerm = 1:numel(spec.endpointInnerProductTerms)
-                        value = value + self.endpointTermContribution(spec.endpointInnerProductTerms(iTerm), iMode, jMode, useNormalized, zBounds);
-                    end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
+            end
+
+            endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values(:);
+                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
             end
         end
     end
 
     methods (Access = private)
         function self = installInternalModeNormalizationRules(self)
-            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="F"));
-            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="G"));
+            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
+            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
 
             if self.evp.modeFamily == "geostrophic"
@@ -485,20 +579,6 @@ classdef IMInternalModesBasis < IMBasisSet
             end
         end
 
-        function value = endpointTermContribution(self, term, iMode, jMode, useNormalized, zBounds)
-            zEndpoint = self.endpointZ(term.location);
-            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                value = 0;
-                return;
-            end
-
-            if useNormalized
-                values = self.rawVariable(term.variable, zEndpoint) ./ self.normalizationFactors(self.normalization);
-            else
-                values = self.rawVariable(term.variable, zEndpoint);
-            end
-            value = term.coefficient*values(iMode)*values(jMode);
-        end
     end
 
     methods (Static, Access = private)

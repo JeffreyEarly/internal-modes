@@ -3,7 +3,7 @@ layout: default
 title: gramMatrix
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 6
+nav_order: 7
 mathjax: true
 ---
 
@@ -32,4 +32,8 @@ Return a scalar Gram matrix.
   contains the corresponding physical endpoint. For normalized
   scalar modes,
   $$M_{ij}=\int_{z_a}^{z_b} r(z)u_i(z)u_j(z)\,dz+
-  \text{included endpoint terms}.$$
+  \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j],$$
+  where included endpoint terms use
+  $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell).$$
+  Use `endpointGramTerms` to inspect the prepared endpoint
+  vectors that generate the rank-one endpoint updates.

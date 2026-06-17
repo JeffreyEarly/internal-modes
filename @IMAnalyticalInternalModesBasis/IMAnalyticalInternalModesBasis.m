@@ -236,6 +236,14 @@ classdef IMAnalyticalInternalModesBasis
         function gram = gramMatrix(self, options)
             % Return a Gram matrix for exact `F` or `G` modes.
             %
+            % For variable $$V$$, endpoint terms are included only when
+            % `zBounds` reaches the corresponding physical endpoint:
+            % $$M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
+            % \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
+            % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).$$
+            % Use `endpointGramTerms` to inspect the prepared endpoint
+            % vectors that generate the rank-one endpoint updates.
+            %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,options)
             % - Parameter options.variable: `"F"` or `"G"`
@@ -249,6 +257,100 @@ classdef IMAnalyticalInternalModesBasis
 
             self.validateZBounds(options.zBounds);
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
+        end
+
+        function terms = endpointGramTerms(self, options)
+            % Prepare rank-one endpoint terms for exact Gram matrices.
+            %
+            % `endpointGramTerms` returns endpoint vectors over all retained
+            % analytical modes. Solved-form endpoint weights use
+            % $$L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),$$
+            % and contribute
+            % $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+            % Catalog endpoint value terms use $$V_j(z_\ell)$$ and
+            % contribute
+            % $$M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.$$
+            % Endpoint terms are omitted when `zBounds` does not include
+            % that endpoint.
+            %
+            % - Topic: Developer topics
+            % - Declaration: terms = endpointGramTerms(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
+            % - Parameter options.normalization: normalization rule name or enum value
+            % - Parameter options.useNormalized: whether returned values use the normalization
+            % - Returns terms: struct array with `location`, `coefficient`, `values`, and `kind`
+            % - Developer: true
+            arguments
+                self IMAnalyticalInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+                options.normalization = self.normalization
+                options.useNormalized (1,1) logical = true
+            end
+
+            self.validateZBounds(options.zBounds);
+            variable = string(options.variable);
+            spec = self.evp.innerProduct(variable);
+            IMAnalyticalInternalModesBasis.assertInnerProductAvailable(spec);
+            terms = struct("location", {}, "coefficient", {}, "values", {}, "kind", {});
+            context = self.context();
+            normalizationFactors = [];
+
+            if variable == self.evp.formulation
+                endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
+                for iWeight = 1:numel(endpointWeights)
+                    endpointWeight = endpointWeights(iWeight);
+                    if string(endpointWeight.location) == "surface"
+                        zEndpoint = self.zDomain(2);
+                    else
+                        zEndpoint = self.zDomain(1);
+                    end
+
+                    tolerance = 100*eps(max(1,max(abs([options.zBounds(:); zEndpoint]))));
+                    endpointIsIncluded = abs(min(options.zBounds) - zEndpoint) <= tolerance || abs(max(options.zBounds) - zEndpoint) <= tolerance;
+                    if ~endpointIsIncluded
+                        continue;
+                    end
+
+                    uEndpoint = self.rawVariable(self.evp.formulation, zEndpoint);
+                    uzEndpoint = self.rawUz(zEndpoint);
+                    if options.useNormalized
+                        if isempty(normalizationFactors)
+                            normalizationFactors = self.normalizationFactors(options.normalization);
+                        end
+                        uEndpoint = uEndpoint ./ normalizationFactors;
+                        uzEndpoint = uzEndpoint ./ normalizationFactors;
+                    end
+                    pEndpoint = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
+                    values = endpointWeight.c*uEndpoint - endpointWeight.d*pEndpoint*uzEndpoint;
+                    terms(end+1) = struct("location", string(endpointWeight.location), "coefficient", endpointWeight.coefficient, "values", values, "kind", "endpointWeight");
+                end
+            end
+
+            for iTerm = 1:numel(spec.endpointInnerProductTerms)
+                endpointTerm = spec.endpointInnerProductTerms(iTerm);
+                if string(endpointTerm.location) == "surface"
+                    zEndpoint = self.zDomain(2);
+                else
+                    zEndpoint = self.zDomain(1);
+                end
+
+                tolerance = 100*eps(max(1,max(abs([options.zBounds(:); zEndpoint]))));
+                endpointIsIncluded = abs(min(options.zBounds) - zEndpoint) <= tolerance || abs(max(options.zBounds) - zEndpoint) <= tolerance;
+                if ~endpointIsIncluded
+                    continue;
+                end
+
+                values = self.rawVariable(endpointTerm.variable, zEndpoint);
+                if options.useNormalized
+                    if isempty(normalizationFactors)
+                        normalizationFactors = self.normalizationFactors(options.normalization);
+                    end
+                    values = values ./ normalizationFactors;
+                end
+                terms(end+1) = struct("location", string(endpointTerm.location), "coefficient", endpointTerm.coefficient, "values", values, "kind", "endpointInnerProductTerm");
+            end
         end
 
         function windowModes = partialWindowModes(self, options)
@@ -314,15 +416,21 @@ classdef IMAnalyticalInternalModesBasis
         end
     end
 
-    methods (Hidden)
+    methods
         function factor = innerProductNormFactor(self, iMode, options)
             % Return the raw inner-product norm factor.
+            %
+            % This developer utility returns the raw scale factor
+            % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$
+            % for exact analytical `F` or `G` modes before the active
+            % normalization is applied. The requested variable must have a
+            % known inner product.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
             % - Parameter iMode: retained mode index
             % - Parameter options.variable: `"F"` or `"G"`
-            % - Returns factor: normalization factor
+            % - Returns factor: raw inner-product scale factor
             % - Developer: true
             arguments
                 self IMAnalyticalInternalModesBasis
@@ -337,9 +445,17 @@ classdef IMAnalyticalInternalModesBasis
         function factor = geostrophicNormFactor(self, iMode)
             % Return the geostrophic normalization factor.
             %
+            % This developer utility implements the analytical
+            % `modeFamily="geostrophic"` normalization rule. Baroclinic
+            % modes use one shared scale factor for the coupled `F`/`G`
+            % pair based on the raw `G` inner product. A barotropic zero
+            % mode uses the `F` norm divided by
+            % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$.
+            %
             % - Topic: Developer topics
             % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
-            % - Returns factor: normalization factor
+            % - Parameter iMode: retained mode index
+            % - Returns factor: raw geostrophic scale factor
             % - Developer: true
             if self.modeNumber(iMode) == 0
                 gram = self.variableGramMatrix("F", self.zDomain, false);
@@ -349,14 +465,20 @@ classdef IMAnalyticalInternalModesBasis
             factor = self.innerProductNormFactor(iMode, variable="G");
         end
 
-        function factor = maxAbsFactor(self, iMode, options)
+        function factor = maxAmplitudeNormFactor(self, iMode, options)
             % Return the maximum amplitude of `F` or `G`.
             %
+            % This developer utility returns the raw maximum-amplitude
+            % scale
+            % $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$
+            % for exact analytical modes on the analytical integration
+            % grid.
+            %
             % - Topic: Developer topics
-            % - Declaration: factor = maxAbsFactor(basisSet,iMode,options)
+            % - Declaration: factor = maxAmplitudeNormFactor(basisSet,iMode,options)
             % - Parameter iMode: retained mode index
             % - Parameter options.variable: `"F"` or `"G"`
-            % - Returns factor: maximum amplitude
+            % - Returns factor: maximum raw variable amplitude
             % - Developer: true
             arguments
                 self IMAnalyticalInternalModesBasis
@@ -371,9 +493,16 @@ classdef IMAnalyticalInternalModesBasis
         function factor = surfacePressureNormFactor(self, iMode)
             % Return the raw surface `F` value.
             %
+            % This developer utility returns the exact raw surface value
+            % $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
+            % It gives unit surface `F` value when that value is finite and
+            % nonzero. If the raw value is unavailable, zero, or nonfinite,
+            % it returns `1` so normalization remains well defined.
+            %
             % - Topic: Developer topics
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
-            % - Returns factor: normalization factor
+            % - Parameter iMode: retained mode index
+            % - Returns factor: raw surface-pressure scale factor
             % - Developer: true
             values = self.rawVariable("F", self.zDomain(2));
             factor = values(1,iMode);
@@ -386,8 +515,8 @@ classdef IMAnalyticalInternalModesBasis
     methods (Access = private)
         function self = installNormalizationRules(self)
             self = self.addNormalization("unity", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode));
-            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="F"));
-            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAbsFactor(iMode, variable="G"));
+            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
+            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
             if self.evp.modeFamily == "geostrophic"
                 self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
@@ -419,12 +548,15 @@ classdef IMAnalyticalInternalModesBasis
             spec = self.evp.innerProduct(variable);
             IMAnalyticalInternalModesBasis.assertInnerProductAvailable(spec);
             z = self.integrationGrid(zBounds);
+            context = self.context();
+            normalizationFactors = [];
             if useNormalized
-                values = self.rawVariable(variable, z) ./ self.normalizationFactors(self.normalization);
+                normalizationFactors = self.normalizationFactors(self.normalization);
+                values = self.rawVariable(variable, z) ./ normalizationFactors;
             else
                 values = self.rawVariable(variable, z);
             end
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, self.context());
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
@@ -432,51 +564,16 @@ classdef IMAnalyticalInternalModesBasis
             for iMode = 1:size(values,2)
                 for jMode = iMode:size(values,2)
                     value = trapz(z, weight(:).*values(:,iMode).*values(:,jMode));
-                    if variable == self.evp.formulation
-                        endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
-                        for iWeight = 1:numel(endpointWeights)
-                            value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds);
-                        end
-                    end
-                    for iTerm = 1:numel(spec.endpointInnerProductTerms)
-                        value = value + self.endpointTermContribution(spec.endpointInnerProductTerms(iTerm), iMode, jMode, useNormalized, zBounds);
-                    end
                     gram(iMode,jMode) = value;
                     gram(jMode,iMode) = value;
                 end
             end
-        end
 
-        function value = endpointWeightContribution(self, weight, iMode, jMode, useNormalized, zBounds)
-            zEndpoint = self.endpointZ(weight.location);
-            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                value = 0;
-                return;
+            endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values(:);
+                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
             end
-            if useNormalized
-                uValues = self.rawVariable(self.evp.formulation, zEndpoint) ./ self.normalizationFactors(self.normalization);
-                uzValues = self.rawUz(zEndpoint) ./ self.normalizationFactors(self.normalization);
-            else
-                uValues = self.rawVariable(self.evp.formulation, zEndpoint);
-                uzValues = self.rawUz(zEndpoint);
-            end
-            pValue = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, self.context());
-            values = weight.c*uValues - weight.d*pValue*uzValues;
-            value = weight.coefficient*values(iMode)*values(jMode);
-        end
-
-        function value = endpointTermContribution(self, term, iMode, jMode, useNormalized, zBounds)
-            zEndpoint = self.endpointZ(term.location);
-            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                value = 0;
-                return;
-            end
-            if useNormalized
-                values = self.rawVariable(term.variable, zEndpoint) ./ self.normalizationFactors(self.normalization);
-            else
-                values = self.rawVariable(term.variable, zEndpoint);
-            end
-            value = term.coefficient*values(iMode)*values(jMode);
         end
 
         function z = integrationGrid(~, zBounds)
@@ -510,22 +607,6 @@ classdef IMAnalyticalInternalModesBasis
             if length(coefficients) ~= length(self.h)
                 error("IMAnalyticalInternalModesBasis:InvalidCoefficientCount", "%s must contain one value for each retained mode (%d).", char(argumentName), length(self.h));
             end
-        end
-
-        function zEndpoint = endpointZ(self, location)
-            switch string(location)
-                case "surface"
-                    zEndpoint = self.zDomain(2);
-                case "bottom"
-                    zEndpoint = self.zDomain(1);
-                otherwise
-                    error("IMAnalyticalInternalModesBasis:InvalidBoundaryLocation", "Boundary location must be ""surface"" or ""bottom"".");
-            end
-        end
-
-        function isIncluded = boundsIncludeEndpoint(~, zBounds, endpoint)
-            tolerance = 100*eps(max(1,max(abs([zBounds(:); endpoint]))));
-            isIncluded = abs(min(zBounds) - endpoint) <= tolerance || abs(max(zBounds) - endpoint) <= tolerance;
         end
 
         function name = normalizationName(~, normalization)

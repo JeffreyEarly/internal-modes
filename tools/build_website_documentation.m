@@ -205,7 +205,7 @@ switch string(className)
     case "IMInternalModes"
         excludedSuperclasses = {};
     case "IMInternalModesBasis"
-        excludedSuperclasses = {"IMBasisSet"};
+        excludedSuperclasses = {};
     otherwise
         excludedSuperclasses = {};
 end

@@ -3,7 +3,7 @@ layout: default
 title: normalization
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 14
+nav_order: 18
 mathjax: true
 ---
 

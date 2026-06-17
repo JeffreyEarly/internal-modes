@@ -332,7 +332,11 @@ classdef IMBasisSet
             % contains the corresponding physical endpoint. For normalized
             % scalar modes,
             % $$M_{ij}=\int_{z_a}^{z_b} r(z)u_i(z)u_j(z)\,dz+
-            % \text{included endpoint terms}.$$
+            % \sum_\ell \gamma_\ell L_\ell[u_i]L_\ell[u_j],$$
+            % where included endpoint terms use
+            % $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell).$$
+            % Use `endpointGramTerms` to inspect the prepared endpoint
+            % vectors that generate the rank-one endpoint updates.
             %
             % - Topic: Analyze Gram matrices
             % - Declaration: gram = gramMatrix(basisSet,options)
@@ -346,7 +350,96 @@ classdef IMBasisSet
             if options.zBounds(1) >= options.zBounds(2)
                 error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
             end
-            gram = self.scalarGramMatrix(options.zBounds, true);
+            z = self.solver.innerProductGrid(options.zBounds);
+            context = self.evp.contextForSolver(self.solver);
+            normalizationFactors = self.normalizationFactors(self.normalization);
+            values = self.rawU(z) ./ normalizationFactors;
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            end
+            gram = zeros(size(values,2), size(values,2));
+            for iMode = 1:size(values,2)
+                for jMode = iMode:size(values,2)
+                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
+                    value = self.solver.integrateInnerProduct(z, integrand, options.zBounds);
+                    gram(iMode,jMode) = value;
+                    gram(jMode,iMode) = value;
+                end
+            end
+
+            endpointTerms = self.endpointGramTerms(zBounds=options.zBounds, normalization=self.normalization, useNormalized=true);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values(:);
+                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
+            end
+        end
+
+        function terms = endpointGramTerms(self, options)
+            % Prepare rank-one endpoint terms for scalar Gram matrices.
+            %
+            % `endpointGramTerms` returns the endpoint pieces that enter the
+            % scalar Gram matrix. Each returned element contains a full
+            % row vector over retained modes, not one pairwise matrix
+            % contribution. Canonical endpoint weights use
+            % $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell),$$
+            % and the Gram matrix applies the rank-one update
+            % $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+            % Endpoint terms are omitted when `zBounds` does not include
+            % that endpoint.
+            %
+            % - Topic: Developer topics
+            % - Declaration: terms = endpointGramTerms(basisSet,options)
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
+            % - Parameter options.normalization: normalization rule name
+            % - Parameter options.useNormalized: whether returned values use the normalization
+            % - Returns terms: struct array with `location`, `coefficient`, `values`, and `kind`
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+                options.normalization = self.normalization
+                options.useNormalized (1,1) logical = true
+            end
+
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
+
+            terms = struct("location", {}, "coefficient", {}, "values", {}, "kind", {});
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct();
+            endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
+            normalizationFactors = [];
+            for iWeight = 1:numel(endpointWeights)
+                endpointWeight = endpointWeights(iWeight);
+                if string(endpointWeight.location) == "surface"
+                    zEndpoint = self.zDomain(2);
+                else
+                    zEndpoint = self.zDomain(1);
+                end
+
+                tolerance = 100*eps(max(1,max(abs([options.zBounds(:); zEndpoint]))));
+                endpointIsIncluded = abs(min(options.zBounds) - zEndpoint) <= tolerance || abs(max(options.zBounds) - zEndpoint) <= tolerance;
+                if ~endpointIsIncluded
+                    continue;
+                end
+
+                uEndpoint = self.rawU(zEndpoint);
+                uzEndpoint = self.rawUz(zEndpoint);
+                if options.useNormalized
+                    if isempty(normalizationFactors)
+                        normalizationFactors = self.normalizationFactors(options.normalization);
+                    end
+                    uEndpoint = uEndpoint ./ normalizationFactors;
+                    uzEndpoint = uzEndpoint ./ normalizationFactors;
+                end
+
+                pEndpoint = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
+                values = endpointWeight.c*uEndpoint - endpointWeight.d*pEndpoint*uzEndpoint;
+                terms(end+1) = struct("location", string(endpointWeight.location), "coefficient", endpointWeight.coefficient, "values", values, "kind", "endpointWeight");
+            end
         end
 
         function windowModes = partialWindowModes(self, options)
@@ -423,12 +516,22 @@ classdef IMBasisSet
 
     end
 
-    methods (Hidden)
+    methods
         function self = orientModeSigns(self)
             % Orient scalar modes with a deterministic sign convention.
             %
+            % This developer utility flips native mode columns so each
+            % scalar mode has a deterministic sign based on its largest
+            % amplitude on the solver integration grid. `IMBasisSet` is a
+            % value class, so callers must keep the returned basis set:
+            %
+            % ```matlab
+            % basisSet = basisSet.orientModeSigns();
+            % ```
+            %
             % - Topic: Developer topics
             % - Declaration: basisSet = orientModeSigns(basisSet)
+            % - Returns basisSet: basis set with oriented native mode signs
             % - Developer: true
             if isempty(self.nativeModes)
                 return;
@@ -448,30 +551,55 @@ classdef IMBasisSet
         function factor = innerProductNormFactor(self, iMode)
             % Return the scalar inner-product norm factor.
             %
-            % This is the raw factor
-            % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ computed before any
-            % modal normalization has been applied.
+            % This developer utility returns the raw scale factor used by
+            % the default `"unity"` normalization rule before any modal
+            % normalization has been applied:
+            % $$s_j=\sqrt{|\langle u_j,u_j\rangle_\mu|}.$$
+            % The scalar inner product includes the interior weight and
+            % any canonical endpoint terms prepared by `endpointGramTerms`.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: raw scalar inner-product scale factor
             % - Developer: true
             arguments
                 self IMBasisSet
                 iMode (1,1) double {mustBeInteger, mustBePositive}
             end
 
-            gram = self.scalarGramMatrix(self.zDomain, false);
-            factor = sqrt(abs(gram(iMode,iMode)));
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            end
+            integrand = weight(:).*values(:,iMode).*values(:,iMode);
+            value = self.solver.integrateInnerProduct(z, integrand, self.zDomain);
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values;
+                value = value + endpointTerms(iTerm).coefficient*valuesAtEndpoint(iMode)^2;
+            end
+            factor = sqrt(abs(value));
         end
 
-        function factor = maxAbsFactor(self, iMode)
+        function factor = maxAmplitudeNormFactor(self, iMode)
             % Return the maximum scalar amplitude.
             %
-            % This is $$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$ on the
-            % basis-set integration grid.
+            % This developer utility returns the raw maximum-amplitude
+            % scale
+            % $$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$
+            % on the basis-set integration grid. Normalization rules can
+            % use this factor to make the largest scalar mode amplitude
+            % equal to one.
             %
             % - Topic: Developer topics
-            % - Declaration: factor = maxAbsFactor(basisSet,iMode)
+            % - Declaration: factor = maxAmplitudeNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: maximum raw scalar amplitude
             % - Developer: true
             arguments
                 self IMBasisSet
@@ -491,69 +619,6 @@ classdef IMBasisSet
 
         function values = rawUz(self, z)
             values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
-        end
-
-        function gram = scalarGramMatrix(self, zBounds, useNormalized)
-            z = self.solver.innerProductGrid(zBounds);
-            context = self.evp.contextForSolver(self.solver);
-            if useNormalized
-                values = self.u(z);
-            else
-                values = self.rawU(z);
-            end
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.solver.integrateInnerProduct(z, integrand, zBounds);
-                    endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
-                    for iWeight = 1:numel(endpointWeights)
-                        value = value + self.endpointWeightContribution(endpointWeights(iWeight), iMode, jMode, useNormalized, zBounds, context);
-                    end
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
-            end
-        end
-
-        function value = endpointWeightContribution(self, weight, iMode, jMode, useNormalized, zBounds, context)
-            zEndpoint = self.endpointZ(weight.location);
-            if ~self.boundsIncludeEndpoint(zBounds, zEndpoint)
-                value = 0;
-                return;
-            end
-
-            if useNormalized
-                uValues = self.u(zEndpoint);
-                uzValues = self.uz(zEndpoint);
-            else
-                uValues = self.rawU(zEndpoint);
-                uzValues = self.rawUz(zEndpoint);
-            end
-            pValue = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
-            values = weight.c*uValues - weight.d*pValue*uzValues;
-            value = weight.coefficient*values(iMode)*values(jMode);
-        end
-
-        function zEndpoint = endpointZ(self, location)
-            switch string(location)
-                case "surface"
-                    zEndpoint = self.zDomain(2);
-                case "bottom"
-                    zEndpoint = self.zDomain(1);
-                otherwise
-                    error("IMBasisSet:InvalidBoundaryLocation", "Boundary location must be ""surface"" or ""bottom"".");
-            end
-        end
-
-        function isIncluded = boundsIncludeEndpoint(~, zBounds, endpoint)
-            tolerance = 100*eps(max(1,max(abs([zBounds(:); endpoint]))));
-            isIncluded = abs(min(zBounds) - endpoint) <= tolerance || abs(max(zBounds) - endpoint) <= tolerance;
         end
 
         function name = normalizationName(~, normalization)

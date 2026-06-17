@@ -50,9 +50,25 @@ G = basisSet.G(z);
 + Evaluate internal-mode bases
   + [`F`](/internal-modes/classes-v2/core/iminternalmodesbasis/f.html) Evaluate `F` modes.
   + [`G`](/internal-modes/classes-v2/core/iminternalmodesbasis/g.html) Evaluate `G` modes.
++ Analyze Gram matrices
+  + [`crossSpectrum`](/internal-modes/classes-v2/core/iminternalmodesbasis/crossspectrum.html) Compute an internal-mode modal cross-spectrum.
+  + [`gramMatrix`](/internal-modes/classes-v2/core/iminternalmodesbasis/grammatrix.html) Return a Gram matrix for `F` or `G`.
+  + [`partialWindowModes`](/internal-modes/classes-v2/core/iminternalmodesbasis/partialwindowmodes.html) Diagonalize a partial-depth Gram matrix for `F` or `G`.
+  + [`spectrum`](/internal-modes/classes-v2/core/iminternalmodesbasis/spectrum.html) Compute an internal-mode modal spectrum.
 + Inspect internal-mode bases
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodesbasis/n2.html) Buoyancy frequency squared profile.
   + [`h`](/internal-modes/classes-v2/core/iminternalmodesbasis/h.html) Equivalent depths for the retained internal modes.
+
+
+## Developer Topics
+These items document internal implementation details and are not part of the primary public API.
++ Developer topics
+  + [`endpointGramTerms`](/internal-modes/classes-v2/core/iminternalmodesbasis/endpointgramterms.html) Prepare rank-one endpoint terms for `F` or `G` Gram matrices.
+  + [`geostrophicNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/geostrophicnormfactor.html) Return the hydrostatic geostrophic normalization factor.
+  + [`innerProductNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/innerproductnormfactor.html) Return the `F` or `G` inner-product norm factor.
+  + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/maxamplitudenormfactor.html) Return the maximum amplitude of `F` or `G`.
+  + [`orientModeSigns`](/internal-modes/classes-v2/core/iminternalmodesbasis/orientmodesigns.html) Orient modes so the surface `F` value is positive when possible.
+  + [`surfacePressureNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/surfacepressurenormfactor.html) Return the raw surface `F` value.
 
 
 ---

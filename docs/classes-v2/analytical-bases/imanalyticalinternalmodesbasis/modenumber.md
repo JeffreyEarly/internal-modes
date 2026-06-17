@@ -3,7 +3,7 @@ layout: default
 title: modeNumber
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 12
+nav_order: 16
 mathjax: true
 ---
 

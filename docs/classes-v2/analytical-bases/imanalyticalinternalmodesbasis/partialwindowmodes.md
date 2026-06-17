@@ -3,7 +3,7 @@ layout: default
 title: partialWindowModes
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 17
+nav_order: 21
 mathjax: true
 ---
 

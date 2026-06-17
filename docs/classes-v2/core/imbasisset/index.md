@@ -69,7 +69,11 @@ factors = basisSet.normalizationFactors("unity");
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
+  + [`endpointGramTerms`](/internal-modes/classes-v2/core/imbasisset/endpointgramterms.html) Prepare rank-one endpoint terms for scalar Gram matrices.
+  + [`innerProductNormFactor`](/internal-modes/classes-v2/core/imbasisset/innerproductnormfactor.html) Return the scalar inner-product norm factor.
+  + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/imbasisset/maxamplitudenormfactor.html) Return the maximum scalar amplitude.
   + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
+  + [`orientModeSigns`](/internal-modes/classes-v2/core/imbasisset/orientmodesigns.html) Orient scalar modes with a deterministic sign convention.
   + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
 
 

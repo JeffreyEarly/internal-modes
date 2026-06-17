@@ -574,6 +574,53 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyError(@() densitySolver.solveEVP(evp, nModes=2), "IMEigenvalueProblem:UnsupportedCoordinateKind")
         end
 
+        function scalarGramIncludesEndpointWeightOuterProduct(testCase)
+            [~, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            surfaceBoundary = IMBoundaryCondition(a=0, b=1, c=1, d=0);
+            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1, surfaceBoundary=surfaceBoundary, bottomBoundary=IMBoundaryCondition.dirichlet());
+            basisSet = solver.solveEVP(evp, nModes=2);
+
+            z = basisSet.solver.innerProductGrid(zDomain);
+            context = evp.contextForSolver(basisSet.solver);
+            values = basisSet.u(z);
+            weight = IMEigenvalueProblem.evaluateCoefficient(evp.innerProduct().interiorWeight, z, context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            end
+
+            expected = zeros(2,2);
+            for iMode = 1:2
+                for jMode = iMode:2
+                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
+                    value = basisSet.solver.integrateInnerProduct(z, integrand, zDomain);
+                    expected(iMode,jMode) = value;
+                    expected(jMode,iMode) = value;
+                end
+            end
+
+            endpointWeight = evp.innerProduct().surfaceWeights(1);
+            zSurface = zDomain(2);
+            pSurface = IMEigenvalueProblem.evaluateCoefficient(evp.p, zSurface, context);
+            L = endpointWeight.c*basisSet.u(zSurface) - endpointWeight.d*pSurface*basisSet.uz(zSurface);
+            endpointTerms = basisSet.endpointGramTerms();
+            rawEndpointTerms = basisSet.endpointGramTerms(useNormalized=false);
+            partialEndpointTerms = basisSet.endpointGramTerms(zBounds=[zDomain(1) mean(zDomain)]);
+            factors = basisSet.normalizationFactors("unity");
+
+            testCase.verifyNumElements(endpointTerms, 1)
+            testCase.verifyEqual(endpointTerms(1).kind, "endpointWeight")
+            testCase.verifyEqual(endpointTerms(1).location, "surface")
+            testCase.verifyEqual(endpointTerms(1).coefficient, endpointWeight.coefficient, AbsTol=0)
+            testCase.verifyEqual(endpointTerms(1).values, L, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(endpointTerms(1).values, rawEndpointTerms(1).values./factors, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEmpty(partialEndpointTerms)
+
+            expected = expected + endpointTerms(1).coefficient*(endpointTerms(1).values(:)*endpointTerms(1).values(:).');
+
+            testCase.verifyEqual(basisSet.gramMatrix(), expected, RelTol=1e-10, AbsTol=1e-10)
+        end
+
         function genericNormalizationRulesUseStringNames(testCase)
             [~, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
@@ -651,6 +698,34 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyError(@() wavenumberBasis.normalizationFactors(Normalization.geostrophic), ...
                 "IMBasisSet:UnsupportedNormalization")
             testCase.verifyTrue(testCase.normalizationEnumMemberThrows("omegaConstant"))
+        end
+
+        function developerBasisMethodsArePublicAndCallable(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            scalarBasis = solver.solveEVP(IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1), nModes=2);
+            internalEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            internalBasis = solver.solveEVP(internalEVP, nModes=2);
+            solution = IMConstantStratificationSolution(N0=sqrt(N2(0)), zDomain=zDomain);
+            analyticalBasis = solution.internalModes(internalEVP, nModes=2);
+
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMAnalyticalInternalModesBasis", ["innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
+
+            scalarBasis = scalarBasis.orientModeSigns();
+            internalBasis = internalBasis.orientModeSigns();
+
+            testCase.verifyGreaterThan(scalarBasis.innerProductNormFactor(1), 0)
+            testCase.verifyGreaterThan(scalarBasis.maxAmplitudeNormFactor(1), 0)
+            testCase.verifyGreaterThan(internalBasis.innerProductNormFactor(1, variable="G"), 0)
+            testCase.verifyGreaterThan(internalBasis.geostrophicNormFactor(1), 0)
+            testCase.verifyGreaterThan(internalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)
+            testCase.verifyTrue(isfinite(internalBasis.surfacePressureNormFactor(1)))
+            testCase.verifyGreaterThan(analyticalBasis.innerProductNormFactor(1, variable="G"), 0)
+            testCase.verifyGreaterThan(analyticalBasis.geostrophicNormFactor(1), 0)
+            testCase.verifyGreaterThan(analyticalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)
+            testCase.verifyTrue(isfinite(analyticalBasis.surfacePressureNormFactor(1)))
         end
 
         function basisSetValidationRejectsBadScalarAnalysisInputs(testCase)
@@ -770,6 +845,19 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
                 eval("Normalization." + string(name));
             catch
                 tf = true;
+            end
+        end
+
+        function hiddenFlags = methodHiddenFlags(className, methodNames)
+            classMetadata = meta.class.fromName(className);
+            availableNames = string({classMetadata.MethodList.Name});
+            hiddenFlags = true(size(methodNames));
+            for iMethod = 1:numel(methodNames)
+                methodName = string(methodNames(iMethod));
+                index = find(availableNames == methodName, 1);
+                if ~isempty(index)
+                    hiddenFlags(iMethod) = classMetadata.MethodList(index).Hidden;
+                end
             end
         end
 

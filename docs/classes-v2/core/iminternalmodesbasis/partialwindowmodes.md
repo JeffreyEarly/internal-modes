@@ -1,15 +1,15 @@
 ---
 layout: default
 title: partialWindowModes
-parent: IMBasisSet
+parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 18
+nav_order: 13
 mathjax: true
 ---
 
 #  partialWindowModes
 
-Diagonalize a partial scalar Gram matrix.
+Diagonalize a partial-depth Gram matrix for `F` or `G`.
 
 
 ---
@@ -19,6 +19,7 @@ Diagonalize a partial scalar Gram matrix.
  windowModes = partialWindowModes(basisSet,options)
 ```
 ## Parameters
++ `options.variable`  `"F"` or `"G"`
 + `options.zBounds`  integration bounds `[zMin zMax]`
 
 ## Returns
@@ -27,5 +28,6 @@ Diagonalize a partial scalar Gram matrix.
 ## Discussion
 
   This computes the eigendecomposition of the symmetric Gram
-  matrix on `zBounds` and sorts window-mode eigenvalues from
-  largest to smallest.
+  matrix on `zBounds`. If `variable` is omitted, the solved
+  formulation is used. The requested variable must have a known
+  inner product.
