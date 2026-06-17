@@ -610,17 +610,55 @@ classdef IMBasisSet
             values = self.rawU(z);
             factor = max(abs(values(:,iMode)));
         end
-    end
 
-    methods (Access = protected)
         function values = rawU(self, z)
+            % Evaluate raw solved scalar modes.
+            %
+            % This developer utility evaluates the unnormalized native
+            % mode columns on the physical grid `z`. The public `u` method
+            % applies the active normalization rule after this step:
+            % $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+            % where $$s_j$$ comes from `normalizationFactors`.
+            %
+            % - Topic: Developer topics
+            % - Declaration: values = rawU(basisSet,z)
+            % - Parameter z: physical coordinate
+            % - Returns values: unnormalized scalar mode values
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                z (:,1) double {mustBeReal, mustBeFinite}
+            end
+
             values = self.solver.evaluateNativeModes(self.nativeModes, z);
         end
 
         function values = rawUz(self, z)
+            % Evaluate raw solved scalar derivatives.
+            %
+            % This developer utility evaluates the unnormalized physical
+            % $$z$$-derivative of the solved native modes. The public `uz`
+            % method applies the active normalization rule after this
+            % step:
+            % $$\frac{\partial u_j}{\partial z}(z)=
+            % \frac{\partial u_j^{\mathrm{raw}}}{\partial z}(z)/s_j,$$
+            % where $$s_j$$ comes from `normalizationFactors`.
+            %
+            % - Topic: Developer topics
+            % - Declaration: values = rawUz(basisSet,z)
+            % - Parameter z: physical coordinate
+            % - Returns values: unnormalized scalar derivative values
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                z (:,1) double {mustBeReal, mustBeFinite}
+            end
+
             values = self.solver.evaluatePhysicalDerivative(self.nativeModes, z, 1);
         end
+    end
 
+    methods (Access = protected)
         function name = normalizationName(~, normalization)
             parts = split(string(normalization), ".");
             name = parts(end);

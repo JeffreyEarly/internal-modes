@@ -709,15 +709,25 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             solution = IMConstantStratificationSolution(N0=sqrt(N2(0)), zDomain=zDomain);
             analyticalBasis = solution.internalModes(internalEVP, nModes=2);
 
-            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor", "rawU", "rawUz"])))
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMAnalyticalInternalModesBasis", ["innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
 
             scalarBasis = scalarBasis.orientModeSigns();
             internalBasis = internalBasis.orientModeSigns();
+            z = linspace(zDomain(1), zDomain(2), 8).';
+            scalarRawU = scalarBasis.rawU(z);
+            scalarRawUz = scalarBasis.rawUz(z);
+            scalarFactors = scalarBasis.normalizationFactors();
+            internalRawU = internalBasis.rawU(z);
+            internalRawUz = internalBasis.rawUz(z);
 
             testCase.verifyGreaterThan(scalarBasis.innerProductNormFactor(1), 0)
             testCase.verifyGreaterThan(scalarBasis.maxAmplitudeNormFactor(1), 0)
+            testCase.verifyEqual(scalarRawU ./ scalarFactors, scalarBasis.u(z), RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(scalarRawUz ./ scalarFactors, scalarBasis.uz(z), RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifySize(internalRawU, [numel(z), numel(internalBasis.eigenvalues)])
+            testCase.verifySize(internalRawUz, [numel(z), numel(internalBasis.eigenvalues)])
             testCase.verifyGreaterThan(internalBasis.innerProductNormFactor(1, variable="G"), 0)
             testCase.verifyGreaterThan(internalBasis.geostrophicNormFactor(1), 0)
             testCase.verifyGreaterThan(internalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)

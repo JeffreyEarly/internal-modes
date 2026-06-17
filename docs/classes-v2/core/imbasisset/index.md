@@ -74,6 +74,8 @@ These items document internal implementation details and are not part of the pri
   + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/imbasisset/maxamplitudenormfactor.html) Return the maximum scalar amplitude.
   + [`nativeModes`](/internal-modes/classes-v2/core/imbasisset/nativemodes.html) Native mode columns.
   + [`orientModeSigns`](/internal-modes/classes-v2/core/imbasisset/orientmodesigns.html) Orient scalar modes with a deterministic sign convention.
+  + [`rawU`](/internal-modes/classes-v2/core/imbasisset/rawu.html) Evaluate raw solved scalar modes.
+  + [`rawUz`](/internal-modes/classes-v2/core/imbasisset/rawuz.html) Evaluate raw solved scalar derivatives.
   + [`solver`](/internal-modes/classes-v2/core/imbasisset/solver.html) that created the native modes.
 
 
