@@ -29,7 +29,15 @@ Return the endpoint weight coefficient.
   For the active boundary condition
 
   $$
-  -[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].
+  -\left[
+  a_i u(z_i)
+  -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+  \right]
+  =
+  \lambda\left[
+  c_i u(z_i)
+  -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+  \right].
   $$
 
   the stored properties `a`, `b`, `c`, and `d` define
@@ -43,7 +51,10 @@ Return the endpoint weight coefficient.
   $$D_i^{-1}$$, the scalar coefficient multiplying
 
   $$
-  (c_i u-d_i p u_z)^2
+  \left(
+  c_i u(z_i)
+  -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+  \right)^2
   $$
 
   in the endpoint part of the norm. `IMEigenvalueProblem`

@@ -35,7 +35,29 @@ classdef IMHydrostaticBoundaryCondition
     % $$\lambda=1/h$$ and cannot be represented by one canonical linear
     % boundary row.
     %
-    % Known physical endpoint additions from the hydrostatic catalog:
+    % The hydrostatic catalog reports endpoint additions to the physical
+    % bilinear forms
+    %
+    % $$
+    % \langle F_i,F_j\rangle_F
+    % =
+    % \int_{z_b}^{z_s}F_i(z)F_j(z)\,dz
+    % +
+    % \sum_\ell \Delta_F^\ell,
+    % $$
+    %
+    % and
+    %
+    % $$
+    % \langle G_i,G_j\rangle_G
+    % =
+    % \frac{1}{g}\int_{z_b}^{z_s}N^2(z)G_i(z)G_j(z)\,dz
+    % +
+    % \sum_\ell \Delta_G^\ell.
+    % $$
+    %
+    % The table lists the endpoint additions $$\Delta_F^\ell$$ and
+    % $$\Delta_G^\ell$$ supplied by the hydrostatic catalog when known:
     %
     % | Endpoint law | $$\Delta_F^\ell$$ | $$\Delta_G^\ell$$ |
     % | --- | --- | --- |

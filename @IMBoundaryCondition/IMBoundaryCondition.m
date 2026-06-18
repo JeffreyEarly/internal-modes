@@ -4,7 +4,15 @@ classdef IMBoundaryCondition
     % `IMBoundaryCondition` represents
     %
     % $$
-    % -[a u-b(pu')]=\lambda[c u-d(pu')].
+    % -\left[
+    % a\,u(z_\ell)
+    % -b\,p(z_\ell)\frac{\partial u}{\partial z}(z_\ell)
+    % \right]
+    % =
+    % \lambda\left[
+    % c\,u(z_\ell)
+    % -d\,p(z_\ell)\frac{\partial u}{\partial z}(z_\ell)
+    % \right].
     % $$
     %
     % The coefficients define the boundary condition. The EVP supplies the
@@ -27,6 +35,26 @@ classdef IMBoundaryCondition
     % D_\ell=\sigma_\ell(ad-bc),\qquad
     % \sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.
     % $$
+    %
+    % These endpoint weights appear in the full solved-variable inner
+    % product
+    %
+    % $$
+    % \langle u_i,u_j\rangle_\mu
+    % =
+    % \int_{z_b}^{z_s}r(z)u_i(z)u_j(z)\,dz
+    % +
+    % \sum_{\ell\in S}D_\ell^{-1}L_\ell[u_i]L_\ell[u_j],
+    % $$
+    %
+    % where $$S$$ is the active, nondegenerate endpoint set and
+    %
+    % $$
+    % L_\ell[u]=c\,u(z_\ell)-d\,p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).
+    % $$
+    %
+    % The table's "Endpoint norm contribution" column is one summand in
+    % this endpoint sum.
     %
     % Only active boundary conditions, where `(c,d) ~= (0,0)`, produce
     % endpoint norm weights:
@@ -144,7 +172,15 @@ classdef IMBoundaryCondition
             % For the active boundary condition
             %
             % $$
-            % -[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].
+            % -\left[
+            % a_i u(z_i)
+            % -b_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+            % \right]
+            % =
+            % \lambda\left[
+            % c_i u(z_i)
+            % -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+            % \right].
             % $$
             %
             % the stored properties `a`, `b`, `c`, and `d` define
@@ -158,7 +194,10 @@ classdef IMBoundaryCondition
             % $$D_i^{-1}$$, the scalar coefficient multiplying
             %
             % $$
-            % (c_i u-d_i p u_z)^2
+            % \left(
+            % c_i u(z_i)
+            % -d_i p(z_i)\frac{\partial u}{\partial z}(z_i)
+            % \right)^2
             % $$
             %
             % in the endpoint part of the norm. `IMEigenvalueProblem`
