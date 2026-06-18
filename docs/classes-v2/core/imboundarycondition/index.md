@@ -23,7 +23,11 @@ Store one scalar canonical boundary condition.
 ## Overview
 
 `IMBoundaryCondition` represents
-$$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
+
+$$
+-[a u-b(pu')]=\lambda[c u-d(pu')].
+$$
+
 The coefficients define the boundary condition. The EVP supplies the
 endpoint location when it assembles matrix rows or computes endpoint weight
 coefficients. The stored properties `a`, `b`, `c`, and `d` define
@@ -33,10 +37,18 @@ derives the scalar $$D_i^{-1}$$ used by
 `IMEigenvalueProblem.endpointWeights`.
 
 At endpoint $$z_\ell$$, define
-$$P_\ell=p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).$$
+
+$$
+P_\ell=p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).
+$$
+
 The signed determinant is
-$$D_\ell=\sigma_\ell(ad-bc),\qquad
-\sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.$$
+
+$$
+D_\ell=\sigma_\ell(ad-bc),\qquad
+\sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.
+$$
+
 Only active boundary conditions, where `(c,d) ~= (0,0)`, produce
 endpoint norm weights:
 

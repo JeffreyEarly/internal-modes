@@ -2,7 +2,11 @@ classdef IMBoundaryCondition
     % Store one scalar canonical boundary condition.
     %
     % `IMBoundaryCondition` represents
-    % $$-[a u-b(pu')]=\lambda[c u-d(pu')].$$
+    %
+    % $$
+    % -[a u-b(pu')]=\lambda[c u-d(pu')].
+    % $$
+    %
     % The coefficients define the boundary condition. The EVP supplies the
     % endpoint location when it assembles matrix rows or computes endpoint weight
     % coefficients. The stored properties `a`, `b`, `c`, and `d` define
@@ -12,10 +16,18 @@ classdef IMBoundaryCondition
     % `IMEigenvalueProblem.endpointWeights`.
     %
     % At endpoint $$z_\ell$$, define
-    % $$P_\ell=p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).$$
+    %
+    % $$
+    % P_\ell=p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).
+    % $$
+    %
     % The signed determinant is
-    % $$D_\ell=\sigma_\ell(ad-bc),\qquad
-    % \sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.$$
+    %
+    % $$
+    % D_\ell=\sigma_\ell(ad-bc),\qquad
+    % \sigma_\mathrm{bottom}=+1,\quad \sigma_\mathrm{surface}=-1.
+    % $$
+    %
     % Only active boundary conditions, where `(c,d) ~= (0,0)`, produce
     % endpoint norm weights:
     %
@@ -130,13 +142,25 @@ classdef IMBoundaryCondition
             % Return the endpoint weight coefficient.
             %
             % For the active boundary condition
-            % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
+            %
+            % $$
+            % -[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].
+            % $$
+            %
             % the stored properties `a`, `b`, `c`, and `d` define
-            % $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i),$$ where Yassin's endpoint
-            % indexing makes the sign positive at the bottom and negative
-            % at the surface. This method returns $$D_i^{-1}$$, the scalar
-            % coefficient multiplying
-            % $$(c_i u-d_i p u_z)^2$$
+            %
+            % $$
+            % D_i=(-1)^{i+1}(a_i d_i-b_i c_i),
+            % $$
+            %
+            % where Yassin's endpoint indexing makes the sign positive at
+            % the bottom and negative at the surface. This method returns
+            % $$D_i^{-1}$$, the scalar coefficient multiplying
+            %
+            % $$
+            % (c_i u-d_i p u_z)^2
+            % $$
+            %
             % in the endpoint part of the norm. `IMEigenvalueProblem`
             % copies this scalar into the `coefficient` field of each
             % `endpointWeights` struct.

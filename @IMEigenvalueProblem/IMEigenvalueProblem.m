@@ -178,7 +178,12 @@ classdef IMEigenvalueProblem
             % Build the canonical matrix pair on a solver grid.
             %
             % Interior rows discretize
-            % $$-(p u')' + q u = \lambda r u.$$
+            %
+            % $$
+            % -\frac{\partial}{\partial z}\left(p(z)\frac{\partial u}{\partial z}\right)
+            % +q(z)u(z)=\lambda r(z)u(z).
+            % $$
+            %
             % The surface and bottom rows are replaced by the endpoint
             % conditions using endpoint values of `p`, producing the matrix
             % pencil $$A q = \lambda B q$$. This method is mainly for solver
@@ -241,12 +246,19 @@ classdef IMEigenvalueProblem
             % Return the scalar inner-product recipe.
             %
             % The canonical solved-variable inner product is
-            % $$\langle u_i,u_j\rangle_\mu=
+            %
+            % $$
+            % \langle u_i,u_j\rangle_\mu=
             % \int_{z_b}^{z_s}r(z)u_i(z)u_j(z)\,dz+
-            % \sum_{\ell\in S}D_\ell^{-1}L_\ell[u_i]L_\ell[u_j],$$
+            % \sum_{\ell\in S}D_\ell^{-1}L_\ell[u_i]L_\ell[u_j],
+            % $$
+            %
             % where $$S$$ is the set of active, nondegenerate endpoints,
-            % $$D_\ell=\sigma_\ell(a_\ell d_\ell-b_\ell c_\ell),$$ and
-            % $$L_\ell[u]=c_\ell u(z_\ell)-d_\ell p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).$$
+            % $$D_\ell=\sigma_\ell(a_\ell d_\ell-b_\ell c_\ell)$$, and
+            %
+            % $$
+            % L_\ell[u]=c_\ell u(z_\ell)-d_\ell p(z_\ell)\frac{\partial u}{\partial z}(z_\ell).
+            % $$
             %
             % The returned struct has fields `variable`, `interiorWeight`,
             % `surfaceWeights`, and `bottomWeights`. `interiorWeight`
@@ -273,13 +285,25 @@ classdef IMEigenvalueProblem
             % Return endpoint metric terms implied by active conditions.
             %
             % For an active boundary condition
-            % $$-[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')],$$
+            %
+            % $$
+            % -[a_i u-b_i(pu')]=\lambda[c_i u-d_i(pu')].
+            % $$
+            %
             % Yassin's indexing uses `z_1` for the bottom and `z_2` for the
             % surface, so
-            % $$D_i=(-1)^{i+1}(a_i d_i-b_i c_i).$$
+            %
+            % $$
+            % D_i=(-1)^{i+1}(a_i d_i-b_i c_i).
+            % $$
+            %
             % Each returned struct has fields `location`, `coefficient`,
             % `c`, and `d`, representing the endpoint metric contribution
-            % $$D_i^{-1}(c_i u-d_i p u_z)^2.$$
+            %
+            % $$
+            % D_i^{-1}(c_i u-d_i p u_z)^2.
+            % $$
+            %
             % The `coefficient` field is the scalar returned by
             % `boundary.endpointWeightCoefficient(location)`, while `c`
             % and `d` are copied from the boundary condition properties.

@@ -332,11 +332,19 @@ classdef IMBasisSet
             % interval and includes endpoint terms only when the interval
             % contains the corresponding physical endpoint. For normalized
             % scalar modes,
-            % $$M_{ij}(z_a,z_b)=
+            %
+            % $$
+            % M_{ij}(z_a,z_b)=
             % \int_{z_a}^{z_b}r(z)u_i(z)u_j(z)\,dz+
-            % \sum_{\ell\in S,\ z_\ell\in[z_a,z_b]}D_\ell^{-1}L_\ell[u_i]L_\ell[u_j],$$
+            % \sum_{\ell\in S,\ z_\ell\in[z_a,z_b]}D_\ell^{-1}L_\ell[u_i]L_\ell[u_j],
+            % $$
+            %
             % where included endpoint terms use
-            % $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell).$$
+            %
+            % $$
+            % L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell).
+            % $$
+            %
             % Use `endpointGramTerms` to inspect the prepared endpoint
             % vectors that generate the rank-one endpoint updates.
             %
@@ -385,9 +393,17 @@ classdef IMBasisSet
             % scalar Gram matrix. Each returned element contains a full
             % row vector over retained modes, not one pairwise matrix
             % contribution. Canonical endpoint weights use
-            % $$L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell),$$
+            %
+            % $$
+            % L_\ell[u_j]=c_\ell u_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial u_j}{\partial z}(z_\ell),
+            % $$
+            %
             % and the Gram matrix applies the rank-one update
-            % $$M \leftarrow M+D_\ell^{-1}L_\ell L_\ell^\mathsf{T}.$$
+            %
+            % $$
+            % M \leftarrow M+D_\ell^{-1}L_\ell L_\ell^\mathsf{T}.
+            % $$
+            %
             % Endpoint terms are omitted when `zBounds` does not include
             % that endpoint.
             %

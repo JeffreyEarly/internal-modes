@@ -154,9 +154,13 @@ classdef IMInternalModesBasis < IMBasisSet
             % a physical variable, and `zBounds=[zMin zMax]` to restrict the
             % interior integral. Endpoint terms are included only when the
             % interval contains the corresponding physical endpoint:
-            % $$M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
+            %
+            % $$
+            % M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
             % \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
-            % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).$$
+            % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).
+            % $$
+            %
             % Use `endpointGramTerms` to inspect the prepared endpoint
             % vectors that generate the rank-one endpoint updates.
             % The requested variable must have a known inner product; if it
@@ -186,12 +190,24 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % `endpointGramTerms` returns endpoint vectors over all retained
             % modes. Solved-form endpoint weights use
-            % $$L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),$$
+            %
+            % $$
+            % L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),
+            % $$
+            %
             % and contribute
-            % $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+            %
+            % $$
+            % M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.
+            % $$
+            %
             % Catalog endpoint value terms use $$V_j(z_\ell)$$ and
             % contribute
-            % $$M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.$$
+            %
+            % $$
+            % M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.
+            % $$
+            %
             % Endpoint terms are omitted when `zBounds` does not include
             % that endpoint.
             %

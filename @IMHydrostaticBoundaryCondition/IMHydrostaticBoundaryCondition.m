@@ -2,22 +2,34 @@ classdef IMHydrostaticBoundaryCondition
     % Convert a hydrostatic `F`/`G` endpoint law to canonical form.
     %
     % `IMHydrostaticBoundaryCondition` stores one physical hydrostatic
-    % endpoint law,
-    % $$g\left[a+\frac{c}{gh}\right]F(z_\ell)
+    % endpoint law:
+    %
+    % $$
+    % g\left[a+\frac{c}{gh}\right]F(z_\ell)
     % =
-    % \left[b+\frac{d}{gh}+egh\right]G(z_\ell).$$
+    % \left[b+\frac{d}{gh}+egh\right]G(z_\ell).
+    % $$
+    %
     % It is a helper for creating the canonical `IMBoundaryCondition`
     % required by `IMInternalModes` factories. EVPs still store only
     % `IMBoundaryCondition` objects.
     %
     % For an `F`-formulated EVP, the law must have $$e=0$$ and converts to
-    % $$\left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
+    %
+    % $$
+    % \left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
     % =
-    % \left(-a,b,-\frac{c}{g},\frac{d}{g}\right).$$
+    % \left(-a,b,-\frac{c}{g},\frac{d}{g}\right).
+    % $$
+    %
     % For a `G`-formulated EVP, the law must have $$d=0$$ and converts to
-    % $$\left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
+    %
+    % $$
+    % \left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
     % =
-    % \left(e,a,\frac{b}{g},\frac{c}{g}\right).$$
+    % \left(e,a,\frac{b}{g},\frac{c}{g}\right).
+    % $$
+    %
     % If the requested formulation would put both $$h$$ and $$1/h$$ on the
     % same side of the endpoint law, the conversion is nonlinear in
     % $$\lambda=1/h$$ and cannot be represented by one canonical linear

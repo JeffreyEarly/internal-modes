@@ -276,27 +276,37 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the hydrostatic `G` internal-mode EVP.
             %
             % This factory creates the hydrostatic `G`-form problem
-            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            %
+            % $$
+            % -\frac{\partial^2 G_j}{\partial z^2}(z)
             % =
             % \lambda_j\frac{N^2(z)}{g}G_j(z),
-            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
             % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            % $$-\left[
-            % a_\ell G_j(z_\ell)
             %
-            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % $$
+            % -\left[
+            % a_\ell G_j(z_\ell)
+            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
+            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].
+            % $$
             %
-            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right].$$
             % The default surface and bottom boundary conditions are
             % `IMBoundaryCondition.dirichlet()`, giving rigid-lid and
             % rigid-bottom conditions
-            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
             % Physical hydrostatic endpoint laws written in `F` and `G`
             % can be converted with `IMHydrostaticBoundaryCondition`
             % before they are passed to this factory:
@@ -351,40 +361,58 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the hydrostatic `F` internal-mode EVP.
             %
             % This factory creates the hydrostatic `F`-form problem
-            % $$-\frac{\partial}{\partial z}
+            %
+            % $$
+            % -\frac{\partial}{\partial z}
             % \left(
             % \frac{1}{N^2(z)}
             % \frac{\partial F_j}{\partial z}(z)
             % \right)
             % =
             % \lambda_j\frac{F_j(z)}{g},
-            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
             % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            % $$-\left[
-            % a_\ell F_j(z_\ell)
             %
-            % b_\ell\frac{1}{N^2(z_\ell)}
+            % $$
+            % -\left[
+            % a_\ell F_j(z_\ell)
+            % -b_\ell\frac{1}{N^2(z_\ell)}
             % \frac{\partial F_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell F_j(z_\ell)
-            %
-            % d_\ell\frac{1}{N^2(z_\ell)}
+            % -d_\ell\frac{1}{N^2(z_\ell)}
             % \frac{\partial F_j}{\partial z}(z_\ell)
-            % \right].$$
+            % \right].
+            % $$
+            %
             % The default surface and bottom boundary conditions are
             % `IMBoundaryCondition.neumann()`, giving
-            % $$\frac{1}{N^2(z_s)}
+            %
+            % $$
+            % \frac{1}{N^2(z_s)}
             % \frac{\partial F_j}{\partial z}(z_s)=0,\qquad
             % \frac{1}{N^2(z_b)}
-            % \frac{\partial F_j}{\partial z}(z_b)=0.$$
+            % \frac{\partial F_j}{\partial z}(z_b)=0.
+            % $$
+            %
             % Through the hydrostatic relation
-            % $$G_j(z)=-\frac{g}{N^2(z)}
-            % \frac{\partial F_j}{\partial z}(z),$$
+            %
+            % $$
+            % G_j(z)=-\frac{g}{N^2(z)}
+            % \frac{\partial F_j}{\partial z}(z),
+            % $$
+            %
             % these are the same rigid-lid and rigid-bottom conditions
-            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
             % Physical hydrostatic endpoint laws written in `F` and `G`
             % can be converted with `IMHydrostaticBoundaryCondition`
             % before they are passed to this factory:
@@ -431,36 +459,54 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the fixed-wavenumber wave-mode EVP.
             %
             % This factory creates the fixed-wavenumber `G`-form problem
-            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            %
+            % $$
+            % -\frac{\partial^2 G_j}{\partial z^2}(z)
             % +k^2G_j(z)
             % =
             % \lambda_j\frac{N^2(z)-f_0^2}{g}G_j(z),
-            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
             % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            % $$-\left[
-            % a_\ell G_j(z_\ell)
             %
-            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % $$
+            % -\left[
+            % a_\ell G_j(z_\ell)
+            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
+            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].
+            % $$
             %
-            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right].$$
             % The default surface and bottom boundary conditions are
             % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
             % conditions
-            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
             % A linear free-surface condition at the surface can be written
             % as
-            % $$G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
-            % \qquad \lambda_j=\frac{1}{h_j},$$
+            %
+            % $$
+            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},
+            % $$
+            %
             % equivalently
-            % $$\frac{\partial G_j}{\partial z}(z_s)
+            %
+            % $$
+            % \frac{\partial G_j}{\partial z}(z_s)
             % =
-            % \lambda_j G_j(z_s).$$
+            % \lambda_j G_j(z_s).
+            % $$
+            %
             % In canonical boundary-condition coefficients this is
             % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
             % Solved fixed-wavenumber basis sets install the `kConstant`
@@ -503,35 +549,53 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Create the fixed-frequency wave-mode EVP.
             %
             % This factory creates the fixed-frequency `G`-form problem
-            % $$-\frac{\partial^2 G_j}{\partial z^2}(z)
+            %
+            % $$
+            % -\frac{\partial^2 G_j}{\partial z^2}(z)
             % =
             % \lambda_j\frac{N^2(z)-\omega^2}{g}G_j(z),
-            % \qquad \lambda_j=\frac{1}{h_j}.$$
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
             % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
             % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            % $$-\left[
-            % a_\ell G_j(z_\ell)
             %
-            % b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % $$
+            % -\left[
+            % a_\ell G_j(z_\ell)
+            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
             % \right]
             % =
             % \lambda_j\left[
             % c_\ell G_j(z_\ell)
+            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].
+            % $$
             %
-            % d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right].$$
             % The default surface and bottom boundary conditions are
             % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
             % conditions
-            % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
             % A linear free-surface condition at the surface can be written
             % as
-            % $$G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
-            % \qquad \lambda_j=\frac{1}{h_j},$$
+            %
+            % $$
+            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},
+            % $$
+            %
             % equivalently
-            % $$\frac{\partial G_j}{\partial z}(z_s)
+            %
+            % $$
+            % \frac{\partial G_j}{\partial z}(z_s)
             % =
-            % \lambda_j G_j(z_s).$$
+            % \lambda_j G_j(z_s).
+            % $$
+            %
             % In canonical boundary-condition coefficients this is
             % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
             % Solved fixed-frequency basis sets use the generic `unity`
