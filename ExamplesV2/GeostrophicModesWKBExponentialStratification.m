@@ -7,7 +7,7 @@ D = 4000;
 N0 = 5.2e-3;
 b = 1300;
 g = 9.81;
-g0 = N0*N0*b;
+g0 = -N0*N0*b;
 gd = -N0*N0*b; % exp(-2*D/b)
 zDomain = [-D 0];
 
@@ -17,7 +17,7 @@ nModes = 4;
 nEVP = 128;
 z = linspace(zDomain(1), zDomain(2), 512).';
 
-if false
+if true
     p = @(z,ctx) 1 ./ ctx.N2(z);
     q = @(z,~) zeros(size(z));
     r = @(z,ctx) ones(size(z))/ctx.g;
@@ -28,8 +28,11 @@ if false
     % surfaceBoundary = IMBoundaryCondition(a=-1/g, b=1);
     % bottomBoundary = IMBoundaryCondition.neumann;
 
-    surfaceBoundary = IMBoundaryCondition(a=1/g0, b=1);
+    surfaceBoundary = IMBoundaryCondition(a=-1/g0, b=1);
     bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
+
+    law = IMHydrostaticBoundaryCondition(a=1/g0,b=1);
+    surfaceBoundary = law.canonicalBoundary(formulation="F",g=g);
 
     evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="hydrostatic", ...
         N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...

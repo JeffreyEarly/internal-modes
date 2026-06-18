@@ -10,33 +10,12 @@ classdef IMHydrostaticBoundaryCondition
     % \left[b+\frac{d}{gh}+egh\right]G(z_\ell).
     % $$
     %
-    % It is a helper for creating the canonical `IMBoundaryCondition`
-    % required by `IMInternalModes` factories. EVPs still store only
-    % `IMBoundaryCondition` objects.
+    % The coefficients `a`, `b`, `c`, `d`, and `e` belong to this
+    % physical endpoint law. They are not the raw constructor coefficients
+    % of `IMBoundaryCondition`.
     %
-    % For an `F`-formulated EVP, the law must have $$e=0$$ and converts to
-    %
-    % $$
-    % \left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
-    % =
-    % \left(-a,b,-\frac{c}{g},\frac{d}{g}\right).
-    % $$
-    %
-    % For a `G`-formulated EVP, the law must have $$d=0$$ and converts to
-    %
-    % $$
-    % \left(a_\mathrm{code},b_\mathrm{code},c_\mathrm{code},d_\mathrm{code}\right)
-    % =
-    % \left(e,a,\frac{b}{g},\frac{c}{g}\right).
-    % $$
-    %
-    % If the requested formulation would put both $$h$$ and $$1/h$$ on the
-    % same side of the endpoint law, the conversion is nonlinear in
-    % $$\lambda=1/h$$ and cannot be represented by one canonical linear
-    % boundary row.
-    %
-    % The hydrostatic catalog reports endpoint additions to the physical
-    % bilinear forms
+    % The known hydrostatic endpoint rules give endpoint additions to the
+    % physical bilinear forms
     %
     % $$
     % \langle F_i,F_j\rangle_F
@@ -57,7 +36,7 @@ classdef IMHydrostaticBoundaryCondition
     % $$
     %
     % The table lists the endpoint additions $$\Delta_F^\ell$$ and
-    % $$\Delta_G^\ell$$ supplied by the hydrostatic catalog when known:
+    % $$\Delta_G^\ell$$ for supported rows:
     %
     % | Endpoint law | $$\Delta_F^\ell$$ | $$\Delta_G^\ell$$ |
     % | --- | --- | --- |
@@ -71,6 +50,25 @@ classdef IMHydrostaticBoundaryCondition
     % | $$gaF=eghG$$ | $$-\eta_\ell\frac{a}{e}F^i_\ell F^j_\ell$$ | $$0$$ |
     % | $$\frac{c}{h}F=\left(b+\frac{d}{gh}\right)G$$ | $$-\eta_\ell\frac{1}{bc}\left(cF^i_\ell-\frac{d}{g}G^i_\ell\right)\left(cF^j_\ell-\frac{d}{g}G^j_\ell\right)$$ | $$\eta_\ell\frac{d}{gc}G^i_\ell G^j_\ell$$ |
     % | $$gaF=(b+egh)G$$ | $$-\eta_\ell\frac{1}{ae}\left(aF^i_\ell-\frac{b}{g}G^i_\ell\right)\left(aF^j_\ell-\frac{b}{g}G^j_\ell\right)$$ | $$\eta_\ell\frac{b}{ga}G^i_\ell G^j_\ell$$ |
+    %
+    % Conversion to canonical EVP boundaries is handled by
+    % `canonicalBoundary`. For an `F`-formulated EVP, the law must have
+    % $$e=0$$ and converts as
+    %
+    % ```matlab
+    % boundary = IMBoundaryCondition(a=-law.a,b=law.b,c=-law.c/g,d=law.d/g);
+    % ```
+    %
+    % For a `G`-formulated EVP, the law must have $$d=0$$ and converts as
+    %
+    % ```matlab
+    % boundary = IMBoundaryCondition(a=law.e,b=law.a,c=law.b/g,d=law.c/g);
+    % ```
+    %
+    % If the requested formulation would put both $$h$$ and $$1/h$$ on the
+    % same side of the endpoint law, the conversion is nonlinear in
+    % $$\lambda=1/h$$ and cannot be represented by one canonical linear
+    % boundary row.
     %
     % After conversion, `IMInternalModes.innerProduct("F")` and
     % `IMInternalModes.innerProduct("G")` report which bilinear forms are
@@ -151,9 +149,11 @@ classdef IMHydrostaticBoundaryCondition
             % Convert to a canonical scalar boundary condition.
             %
             % `canonicalBoundary` converts the physical hydrostatic law to
-            % the `IMBoundaryCondition` coefficients used by a canonical
+            % the `IMBoundaryCondition` object required by a canonical
             % scalar EVP. Use `formulation="F"` for hydrostatic `F` EVPs
-            % and `formulation="G"` for hydrostatic `G` EVPs.
+            % and `formulation="G"` for hydrostatic `G` EVPs. The
+            % conversion follows the constructor-shaped rules in the class
+            % overview.
             %
             % - Topic: Convert hydrostatic boundary laws
             % - Declaration: boundary = canonicalBoundary(law,formulation="G",g=9.81)

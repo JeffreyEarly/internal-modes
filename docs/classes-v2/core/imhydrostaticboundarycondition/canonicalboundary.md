@@ -28,6 +28,8 @@ Convert to a canonical scalar boundary condition.
 ## Discussion
 
   `canonicalBoundary` converts the physical hydrostatic law to
-  the `IMBoundaryCondition` coefficients used by a canonical
+  the `IMBoundaryCondition` object required by a canonical
   scalar EVP. Use `formulation="F"` for hydrostatic `F` EVPs
-  and `formulation="G"` for hydrostatic `G` EVPs.
+  and `formulation="G"` for hydrostatic `G` EVPs. The
+  conversion follows the constructor-shaped rules in the class
+  overview.
