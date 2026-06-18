@@ -298,6 +298,19 @@ classdef IMInternalModes < IMEigenvalueProblem
             % `IMBoundaryCondition.dirichlet()`, giving rigid-lid and
             % rigid-bottom conditions
             % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            % Physical hydrostatic endpoint laws written in `F` and `G`
+            % can be converted with `IMHydrostaticBoundaryCondition`
+            % before they are passed to this factory:
+            %
+            % ```matlab
+            % law = IMHydrostaticBoundaryCondition(a=A/g,b=1);
+            % surfaceBoundary = law.canonicalBoundary(formulation="G",g=g);
+            % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g,surfaceBoundary=surfaceBoundary);
+            % ```
+            %
+            % After conversion, `innerProduct("F")` and
+            % `innerProduct("G")` use the hydrostatic endpoint catalog to
+            % report which bilinear forms are known.
             % Solved hydrostatic basis sets install the `geostrophic`
             % normalization rule and use it by default because they set
             % `modeFamily` to `"geostrophic"`. This factory sets
@@ -373,6 +386,19 @@ classdef IMInternalModes < IMEigenvalueProblem
             % \frac{\partial F_j}{\partial z}(z),$$
             % these are the same rigid-lid and rigid-bottom conditions
             % $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+            % Physical hydrostatic endpoint laws written in `F` and `G`
+            % can be converted with `IMHydrostaticBoundaryCondition`
+            % before they are passed to this factory:
+            %
+            % ```matlab
+            % law = IMHydrostaticBoundaryCondition(b=B,c=C);
+            % surfaceBoundary = law.canonicalBoundary(formulation="F",g=g);
+            % evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain,g=g,surfaceBoundary=surfaceBoundary);
+            % ```
+            %
+            % After conversion, `innerProduct("F")` and
+            % `innerProduct("G")` use the hydrostatic endpoint catalog to
+            % report which bilinear forms are known.
             % The barotropic zero mode is inferred from the canonical left
             % problem during mode selection.
             % This factory sets `parameters.formulation` and `parameters.g`;

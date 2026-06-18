@@ -17,7 +17,7 @@ The pages are organized around the objects that own each part of the calculation
 
 | Class group | Use it when |
 | --- | --- |
-| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, endpoint conditions, scalar basis sets, or internal-mode basis sets |
+| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, or internal-mode basis sets |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification solution families, internal-mode bases, or SQG boundary modes |
 | [`Supporting types`](./supporting-types) | you want internal-mode normalization conventions |
@@ -44,4 +44,5 @@ The reference pages use the standard vertical-mode variables:
 - [`IMInternalModes`](./core/iminternalmodes) translates standard `F` and `G` mode problems into canonical form and defines how eigenvalues map to equivalent depths.
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) or [`IMInternalModesBasis`](./core/iminternalmodesbasis) objects.
 - [`IMBoundaryCondition`](./core/imboundarycondition) stores scalar endpoint coefficients for the canonical boundary equation.
+- [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.

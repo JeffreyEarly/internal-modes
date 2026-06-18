@@ -53,6 +53,19 @@ Create the hydrostatic `G` internal-mode EVP.
   `IMBoundaryCondition.dirichlet()`, giving rigid-lid and
   rigid-bottom conditions
   $$G_j(z_s)=0,\qquad G_j(z_b)=0.$$
+  Physical hydrostatic endpoint laws written in `F` and `G`
+  can be converted with `IMHydrostaticBoundaryCondition`
+  before they are passed to this factory:
+
+  ```matlab
+  law = IMHydrostaticBoundaryCondition(a=A/g,b=1);
+  surfaceBoundary = law.canonicalBoundary(formulation="G",g=g);
+  evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g,surfaceBoundary=surfaceBoundary);
+  ```
+
+  After conversion, `innerProduct("F")` and
+  `innerProduct("G")` use the hydrostatic endpoint catalog to
+  report which bilinear forms are known.
   Solved hydrostatic basis sets install the `geostrophic`
   normalization rule and use it by default because they set
   `modeFamily` to `"geostrophic"`. This factory sets
