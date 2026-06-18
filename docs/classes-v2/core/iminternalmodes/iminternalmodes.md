@@ -23,7 +23,7 @@ Create an internal-mode canonical EVP.
 + `options.zDomain`  physical vertical domain
 + `options.N2`  buoyancy frequency squared function
 + `options.formulation`  solved variable, `"F"` or `"G"`
-+ `options.modeFamily`  physical family, `"none"` or `"geostrophic"`
++ `options.modeFamily`  physical family, `"none"` or `"hydrostatic"`
 + `options.p`  canonical derivative-flux coefficient
 + `options.q`  canonical left-side value coefficient
 + `options.r`  canonical metric coefficient

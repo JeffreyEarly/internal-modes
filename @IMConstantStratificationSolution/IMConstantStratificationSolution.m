@@ -350,7 +350,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
 
         function normalizations = supportedNormalizations(evp)
             normalizations = ["unity", "uMax", "wMax", "surfacePressure"];
-            if evp.modeFamily == "geostrophic"
+            if evp.modeFamily == "hydrostatic"
                 normalizations(end+1) = "geostrophic";
             end
             if string(evp.name) == "waveModesAtWavenumber"

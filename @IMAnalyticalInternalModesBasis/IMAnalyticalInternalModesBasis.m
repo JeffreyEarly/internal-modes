@@ -446,7 +446,7 @@ classdef IMAnalyticalInternalModesBasis
             % Return the geostrophic normalization factor.
             %
             % This developer utility implements the analytical
-            % `modeFamily="geostrophic"` normalization rule. Baroclinic
+            % `modeFamily="hydrostatic"` normalization rule. Baroclinic
             % modes use one shared scale factor for the coupled `F`/`G`
             % pair based on the raw `G` inner product. A barotropic zero
             % mode uses the `F` norm divided by
@@ -518,7 +518,7 @@ classdef IMAnalyticalInternalModesBasis
             self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
             self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
-            if self.evp.modeFamily == "geostrophic"
+            if self.evp.modeFamily == "hydrostatic"
                 self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
             end
             if string(self.evp.name) == "waveModesAtWavenumber"
@@ -527,7 +527,7 @@ classdef IMAnalyticalInternalModesBasis
         end
 
         function name = defaultNormalization(self)
-            if self.evp.modeFamily == "geostrophic"
+            if self.evp.modeFamily == "hydrostatic"
                 name = "geostrophic";
             elseif string(self.evp.name) == "waveModesAtWavenumber"
                 name = "kConstant";

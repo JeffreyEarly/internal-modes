@@ -82,14 +82,14 @@ classdef IMInternalModesBasis < IMBasisSet
             self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
             self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
-            if self.evp.modeFamily == "geostrophic"
+            if self.evp.modeFamily == "hydrostatic"
                 self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
             end
             if string(self.evp.name) == "waveModesAtWavenumber"
                 self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
             end
             if isempty(options.normalization)
-                if self.evp.modeFamily == "geostrophic"
+                if self.evp.modeFamily == "hydrostatic"
                     self.normalization = "geostrophic";
                 elseif string(self.evp.name) == "waveModesAtWavenumber"
                     self.normalization = "kConstant";
@@ -433,7 +433,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % Return the hydrostatic geostrophic normalization factor.
             %
             % This developer utility implements the normalization rule
-            % installed for `modeFamily="geostrophic"`. It chooses one
+            % installed for `modeFamily="hydrostatic"`. It chooses one
             % shared raw scale factor for each coupled `F`/`G` mode.
             % Baroclinic modes use
             % $$s_j^2=\langle G_j,G_j\rangle_G,$$

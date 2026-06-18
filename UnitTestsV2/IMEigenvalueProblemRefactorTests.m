@@ -133,7 +133,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(canonicalSpec.interiorWeight, canonicalEVP.r)
             testCase.verifyFalse(isfield(canonicalSpec, removedBoundaryFlag))
             testCase.verifyEqual(defaultSpec.variable, internalEVP.formulation)
-            testCase.verifyEqual(internalEVP.modeFamily, "geostrophic")
+            testCase.verifyEqual(internalEVP.modeFamily, "hydrostatic")
             testCase.verifyTrue(defaultSpec.hasInnerProduct)
             testCase.verifyTrue(isfield(defaultSpec, "reason"))
             testCase.verifyFalse(isfield(defaultSpec, removedBoundaryFlag))
@@ -216,15 +216,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [N2, zDomain] = testCase.profile();
             badModeFamilyThrows = false;
 
-            geostrophicEVP = IMInternalModes(name="customGeostrophic", formulation="F", ...
-                modeFamily="geostrophic", N2=N2, zDomain=zDomain);
+            hydrostaticEVP = IMInternalModes(name="customHydrostatic", formulation="F", ...
+                modeFamily="hydrostatic", N2=N2, zDomain=zDomain);
             try
-                IMInternalModes(name="badFamily", modeFamily="hydrostatic", N2=N2, zDomain=zDomain);
+                IMInternalModes(name="badFamily", modeFamily="geo" + "strophic", N2=N2, zDomain=zDomain);
             catch
                 badModeFamilyThrows = true;
             end
 
-            testCase.verifyEqual(geostrophicEVP.modeFamily, "geostrophic")
+            testCase.verifyEqual(hydrostaticEVP.modeFamily, "hydrostatic")
             testCase.verifyTrue(badModeFamilyThrows)
         end
 
@@ -320,7 +320,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(contains(output, "diagnostic variable: F"))
             testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
-            testCase.verifyTrue(contains(output, "mode family: geostrophic"))
+            testCase.verifyTrue(contains(output, "mode family: hydrostatic"))
             testCase.verifyTrue(contains(output, "interior weight: 1"))
             testCase.verifyTrue(contains(output, "inner product: known"))
             testCase.verifyTrue(contains(output, "interior-only diagnostic inner product"))
@@ -338,7 +338,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             output = string(evalc('evp.summarize();'));
 
             testCase.verifyTrue(contains(output, "solved formulation: F"))
-            testCase.verifyTrue(contains(output, "mode family: geostrophic"))
+            testCase.verifyTrue(contains(output, "mode family: hydrostatic"))
             testCase.verifyTrue(contains(output, "diagnostic variable: G"))
             testCase.verifyTrue(contains(output, "diagnostic relation: G_j(z) = -g/N^2(z) dF_j/dz(z)"))
             testCase.verifyTrue(contains(output, "inner product: known"))
@@ -684,7 +684,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             wavenumberBasis = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, f0=f0), nModes=2);
             frequencyBasis = solver.solveEVP(IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, f0=f0), nModes=2);
 
-            testCase.verifyEqual(hydrostaticBasis.evp.modeFamily, "geostrophic")
+            testCase.verifyEqual(hydrostaticBasis.evp.modeFamily, "hydrostatic")
             testCase.verifyEqual(wavenumberBasis.evp.modeFamily, "none")
             testCase.verifyEqual(frequencyBasis.evp.modeFamily, "none")
             testCase.verifyEqual(hydrostaticBasis.normalization, "geostrophic")

@@ -35,7 +35,7 @@ Return the `F` or `G` inner-product recipe.
   matrices, spectra, and inner-product normalization for that
   variable throw `IMInternalModesBasis:UnavailableInnerProduct`.
   Diagnostic variables use the value-only hydrostatic endpoint
-  catalog only when `modeFamily` is `"geostrophic"` and a
+  catalog only when `modeFamily` is `"hydrostatic"` and a
   catalog row is known; other diagnostic inner products are
   unavailable until a family catalog is added. Endpoint
   inner-product terms from the catalog have the form

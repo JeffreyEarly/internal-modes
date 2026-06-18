@@ -18,7 +18,7 @@ function summarize(self, solver)
 %   f0: 0 s^-1
 %   g: 9.81 m s^-2
 %   equivalent depth: h = hFromEigenvalue(lambda)
-%   mode family: geostrophic
+%   mode family: hydrostatic
 %   factory parameters: none
 %
 % Internal-mode variables
@@ -54,7 +54,7 @@ function summarize(self, solver)
 %     interior weight: 1
 %     endpoint terms: none
 %     inner product: unavailable
-%     reason: The diagnostic inner product is available only for modeFamily="geostrophic" EVPs in the value-only catalog.
+%     reason: The diagnostic inner product is available only for modeFamily="hydrostatic" EVPs in the value-only catalog.
 % ```
 %
 % - Topic: Summarize internal-mode EVPs
@@ -112,7 +112,7 @@ end
 function text = diagnosticRelationText(evp)
 if evp.formulation == "G"
     text = "F_j(z) = h_j dG_j/dz(z)";
-elseif evp.modeFamily == "geostrophic"
+elseif evp.modeFamily == "hydrostatic"
     text = "G_j(z) = -g/N^2(z) dF_j/dz(z)";
 else
     text = "G_j(z) = GfromFz(z,dF_j/dz,h_j,ctx)";
@@ -120,7 +120,7 @@ end
 end
 
 function printNormalizationSummary(evp)
-if evp.modeFamily == "geostrophic"
+if evp.modeFamily == "hydrostatic"
     fprintf('  geostrophic normalization: available\n');
     fprintf('    shared scale: one factor per coupled (F,G) mode\n');
     fprintf('    convention: <G_j,G_j>_G = 1\n');

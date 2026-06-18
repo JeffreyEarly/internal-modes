@@ -40,7 +40,7 @@ Print a readable internal-mode EVP summary.
     f0: 0 s^-1
     g: 9.81 m s^-2
     equivalent depth: h = hFromEigenvalue(lambda)
-    mode family: geostrophic
+    mode family: hydrostatic
     factory parameters: none
 
   Internal-mode variables
@@ -76,5 +76,5 @@ Print a readable internal-mode EVP summary.
       interior weight: 1
       endpoint terms: none
       inner product: unavailable
-      reason: The diagnostic inner product is available only for modeFamily="geostrophic" EVPs in the value-only catalog.
+      reason: The diagnostic inner product is available only for modeFamily="hydrostatic" EVPs in the value-only catalog.
   ```

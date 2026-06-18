@@ -41,10 +41,9 @@ classdef IMInternalModes < IMEigenvalueProblem
         % `modeFamily` tells internal-mode utilities which physical
         % catalog and coupled normalization rules are meaningful for this
         % EVP. The default `"none"` installs only generic internal-mode
-        % behavior. The `"geostrophic"` family declares the hydrostatic
-        % geostrophic `F`/`G` family, enabling the generalized
-        % boundary-condition catalog and the coupled `geostrophic`
-        % normalization convention.
+        % behavior. The `"hydrostatic"` family declares the hydrostatic
+        % `F`/`G` family, enabling the generalized boundary-condition
+        % catalog and the coupled `geostrophic` normalization convention.
         %
         % - Topic: Inspect internal-mode configuration
         modeFamily = "none"
@@ -121,7 +120,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.formulation: solved variable, `"F"` or `"G"`
-            % - Parameter options.modeFamily: physical family, `"none"` or `"geostrophic"`
+            % - Parameter options.modeFamily: physical family, `"none"` or `"hydrostatic"`
             % - Parameter options.p: canonical derivative-flux coefficient
             % - Parameter options.q: canonical left-side value coefficient
             % - Parameter options.r: canonical metric coefficient
@@ -139,7 +138,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.N2 function_handle
                 options.formulation {mustBeTextScalar, mustBeMember(options.formulation, ["F", "G"])} = "G"
-                options.modeFamily {mustBeTextScalar, mustBeMember(options.modeFamily, ["none", "geostrophic"])} = "none"
+                options.modeFamily {mustBeTextScalar, mustBeMember(options.modeFamily, ["none", "hydrostatic"])} = "none"
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
@@ -210,7 +209,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % matrices, spectra, and inner-product normalization for that
             % variable throw `IMInternalModesBasis:UnavailableInnerProduct`.
             % Diagnostic variables use the value-only hydrostatic endpoint
-            % catalog only when `modeFamily` is `"geostrophic"` and a
+            % catalog only when `modeFamily` is `"hydrostatic"` and a
             % catalog row is known; other diagnostic inner products are
             % unavailable until a family catalog is added. Endpoint
             % inner-product terms from the catalog have the form
@@ -313,7 +312,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % report which bilinear forms are known.
             % Solved hydrostatic basis sets install the `geostrophic`
             % normalization rule and use it by default because they set
-            % `modeFamily` to `"geostrophic"`. This factory sets
+            % `modeFamily` to `"hydrostatic"`. This factory sets
             % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
             %
             % ```matlab
@@ -341,7 +340,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
 
-            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="geostrophic", ...
+            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="hydrostatic", ...
                 N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ctx.N2(z)/ctx.g, f0=options.f0, g=options.g, ...
@@ -421,7 +420,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
             end
 
-            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="geostrophic", ...
+            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="hydrostatic", ...
                 N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...

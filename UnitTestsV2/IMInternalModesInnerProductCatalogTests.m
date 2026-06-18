@@ -206,16 +206,16 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             spec = evp.innerProduct("F");
 
             testCase.verifyFalse(spec.hasInnerProduct)
-            testCase.verifyTrue(contains(spec.reason, "geostrophic"))
+            testCase.verifyTrue(contains(spec.reason, "hydrostatic"))
             testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
-        function customGeostrophicFamilyUsesCatalogWithoutHydrostaticName(testCase)
+        function customHydrostaticFamilyUsesCatalogWithoutHydrostaticName(testCase)
             [N2, zDomain, ~, g] = testCase.profile();
             surface = IMBoundaryCondition(a=2, b=3);
             bottom = IMBoundaryCondition(a=-4, b=5);
             evp = IMInternalModes(name="unforced-APV-modes", formulation="F", ...
-                modeFamily="geostrophic", N2=N2, zDomain=zDomain, ...
+                modeFamily="hydrostatic", N2=N2, zDomain=zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=g, ...
                 surfaceBoundary=surface, bottomBoundary=bottom);
@@ -223,7 +223,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             spec = evp.innerProduct("G");
 
             testCase.verifyEqual(evp.name, "unforced-APV-modes")
-            testCase.verifyEqual(evp.modeFamily, "geostrophic")
+            testCase.verifyEqual(evp.modeFamily, "hydrostatic")
             testCase.verifyTrue(spec.hasInnerProduct)
             testCase.verifyEqual([spec.endpointInnerProductTerms.catalogCase], ["F-P2" "F-P2"])
             testCase.verifyEqual(spec.endpointInnerProductTerms(1).coefficient, -3/(2*g), RelTol=1e-12)

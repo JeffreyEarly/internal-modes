@@ -11,10 +11,10 @@ classdef (Hidden) IMHydrostaticInnerProductCatalog
             variable = string(variable);
             result.hasInnerProduct = false;
             result.reason = "The diagnostic inner product is available only for " ...
-                + "modeFamily=""geostrophic"" EVPs in the value-only catalog.";
+                + "modeFamily=""hydrostatic"" EVPs in the value-only catalog.";
             result.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
 
-            if evp.modeFamily ~= "geostrophic"
+            if evp.modeFamily ~= "hydrostatic"
                 return;
             end
             if variable == evp.formulation

@@ -29,7 +29,7 @@ Return the hydrostatic geostrophic normalization factor.
 ## Discussion
 
   This developer utility implements the normalization rule
-  installed for `modeFamily="geostrophic"`. It chooses one
+  installed for `modeFamily="hydrostatic"`. It chooses one
   shared raw scale factor for each coupled `F`/`G` mode.
   Baroclinic modes use
   $$s_j^2=\langle G_j,G_j\rangle_G,$$

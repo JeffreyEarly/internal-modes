@@ -68,7 +68,7 @@ Create the hydrostatic `G` internal-mode EVP.
   report which bilinear forms are known.
   Solved hydrostatic basis sets install the `geostrophic`
   normalization rule and use it by default because they set
-  `modeFamily` to `"geostrophic"`. This factory sets
+  `modeFamily` to `"hydrostatic"`. This factory sets
   `parameters.formulation`, `parameters.f0`, and `parameters.g`.
 
   ```matlab
