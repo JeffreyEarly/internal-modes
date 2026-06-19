@@ -9,7 +9,7 @@ mathjax: true
 
 # Class Documentation V2
 
-This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes, and evaluating basis sets in `internal-modes`.
+This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and surface-geostrophic boundary modes, and evaluating basis sets in `internal-modes`.
 
 The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, and analytical solution families provide exact references for common stratifications.
 
@@ -17,7 +17,7 @@ The pages are organized around the objects that own each part of the calculation
 
 | Class group | Use it when |
 | --- | --- |
-| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, or internal-mode basis sets |
+| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, internal-mode basis sets, or surface-geostrophic boundary modes |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification solution families, internal-mode bases, or SQG boundary modes |
 | [`Supporting types`](./supporting-types) | you want internal-mode normalization conventions |
@@ -45,4 +45,5 @@ The reference pages use the standard vertical-mode variables:
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) or [`IMInternalModesBasis`](./core/iminternalmodesbasis) objects.
 - [`IMBoundaryCondition`](./core/imboundarycondition) stores scalar endpoint coefficients for the canonical boundary equation.
 - [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
+- [`IMSurfaceGeostrophicModes`](./core/imsurfacegeostrophicmodes) describes SQG boundary modes at fixed horizontal wavenumber, and solvers return [`IMSurfaceGeostrophicModesBasis`](./core/imsurfacegeostrophicmodesbasis) objects.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.

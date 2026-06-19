@@ -13,6 +13,7 @@ classdef IMSolverFiniteDifference < IMSolver
     % - Topic: Create solvers
     % - Topic: Inspect solvers
     % - Topic: Solve EVPs
+    % - Topic: Solve surface-geostrophic modes
     % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
     % - Topic: Developer topics
@@ -99,6 +100,28 @@ classdef IMSolverFiniteDifference < IMSolver
             if max(abs(self.zDomain - expectedDomain)) > tolerance
                 error("IMSolverFiniteDifference:DomainMismatch", ...
                     "The finite-difference grid domain must match evp.zDomain.");
+            end
+        end
+
+        function solver = configuredForSurfaceGeostrophicModes(self, problem)
+            % Return a finite-difference solver configured for SQG modes.
+            %
+            % - Topic: Solve surface-geostrophic modes
+            % - Topic: Developer topics
+            % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
+            % - Parameter problem: surface-geostrophic boundary-mode problem
+            % - Returns solver: validated solver
+            % - Developer: true
+            arguments
+                self IMSolverFiniteDifference
+                problem IMSurfaceGeostrophicModes
+            end
+
+            solver = self;
+            expectedDomain = sort(problem.zDomain);
+            tolerance = 100*eps(max([1 abs(expectedDomain) abs(self.zDomain)]));
+            if max(abs(self.zDomain - expectedDomain)) > tolerance
+                error("IMSolverFiniteDifference:DomainMismatch", "The finite-difference grid domain must match problem.zDomain.");
             end
         end
 

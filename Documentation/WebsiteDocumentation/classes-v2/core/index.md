@@ -8,4 +8,4 @@ permalink: /classes-v2/core
 mathjax: true
 ---
 
-Reference pages for canonical eigenvalue problems, scalar endpoint conditions, solved scalar basis sets, and internal-mode interpretations.
+Reference pages for canonical eigenvalue problems, scalar endpoint conditions, solved scalar basis sets, internal-mode interpretations, and surface-geostrophic boundary modes.

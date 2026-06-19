@@ -6,6 +6,7 @@ classdef (Abstract) IMSolver
     % base class owns the common generalized-eigenvalue workflow.
     %
     % - Topic: Solve EVPs
+    % - Topic: Solve surface-geostrophic modes
     % - Topic: Developer topics
     % - Declaration: classdef (Abstract) IMSolver
 
@@ -47,6 +48,65 @@ classdef (Abstract) IMSolver
                 selection.modeNumber, selection.modeSelectionDiagnostics);
             basisSet = basisSet.orientModeSigns();
         end
+
+        function basisSet = solveSurfaceGeostrophicModes(self, problem)
+            % Solve surface-geostrophic boundary modes.
+            %
+            % `solveSurfaceGeostrophicModes` solves the boundary-value
+            % problem stored by `IMSurfaceGeostrophicModes` and returns an
+            % `IMSurfaceGeostrophicModesBasis`.
+            %
+            % - Topic: Solve surface-geostrophic modes
+            % - Declaration: basisSet = solveSurfaceGeostrophicModes(solver,problem)
+            % - Parameter problem: surface-geostrophic boundary-mode problem
+            % - Returns basisSet: solved surface-geostrophic basis
+            arguments
+                self IMSolver
+                problem IMSurfaceGeostrophicModes
+            end
+
+            solver = self.configuredForSurfaceGeostrophicModes(problem);
+            z = solver.zNative;
+            n = length(z);
+            D0 = solver.physicalDerivativeMatrix(0);
+            D1 = solver.physicalDerivativeMatrix(1);
+            D2 = solver.physicalDerivativeMatrix(2);
+            N2Values = problem.N2(z);
+            N2Values = N2Values(:);
+            if length(N2Values) ~= n
+                error("IMSurfaceGeostrophicModes:InvalidStratification", "N2 must return one value for each solver grid point.");
+            end
+            if any(~isfinite(N2Values)) || any(N2Values <= 0)
+                error("IMSurfaceGeostrophicModes:InvalidStratification", "N2 must be finite and positive on the solver grid.");
+            end
+
+            N2z = solver.differentiateGridValues(N2Values, 1);
+            baseMatrix = diag(N2Values)*D2 - diag(N2z)*D1;
+            metricMatrix = diag(N2Values.*N2Values)*D0;
+            surfaceIndex = solver.boundaryIndex("surface");
+            bottomIndex = solver.boundaryIndex("bottom");
+            activeIndex = surfaceIndex;
+            if problem.boundary == "bottom"
+                activeIndex = bottomIndex;
+            end
+
+            rhs = zeros(n, 1);
+            nativeModes = zeros(n, numel(problem.k));
+            for iK = 1:numel(problem.k)
+                matrix = baseMatrix - (problem.k(iK)^2/problem.f0^2)*metricMatrix;
+                matrix(surfaceIndex,:) = problem.f0*D1(surfaceIndex,:);
+                matrix(bottomIndex,:) = problem.f0*D1(bottomIndex,:);
+                rhs(:) = 0;
+                rhs(activeIndex) = 1;
+                nativeModes(:,iK) = matrix \ rhs;
+            end
+
+            metadata = problem.metadata;
+            metadata.solutionKind = "surfaceGeostrophicModes";
+            metadata.boundary = problem.boundary;
+            metadata.k = problem.k;
+            basisSet = IMSurfaceGeostrophicModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, metadata=metadata);
+        end
     end
 
     methods (Access = private)
@@ -68,6 +128,20 @@ classdef (Abstract) IMSolver
 
     methods (Abstract)
         solver = configuredForEVP(self, evp)
+
+        % Return a solver configured for surface-geostrophic modes.
+        %
+        % Concrete solvers prepare their native grid, coordinate mapping,
+        % and derivative matrices for the supplied SQG problem.
+        %
+        % - Topic: Solve surface-geostrophic modes
+        % - Topic: Developer topics
+        % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
+        % - Parameter problem: surface-geostrophic boundary-mode problem
+        % - Returns solver: configured solver
+        % - Developer: true
+        solver = configuredForSurfaceGeostrophicModes(self, problem)
+
         context = context(self)
         values = N2(self, z)
         D = physicalDerivativeMatrix(self, derivativeOrder)

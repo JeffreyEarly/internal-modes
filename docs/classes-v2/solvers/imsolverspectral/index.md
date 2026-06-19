@@ -24,7 +24,8 @@ Solve physical-coordinate EVPs with a Chebyshev spectral discretization.
 
 `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
 resolution, derivative matrices, and physical-coordinate pullback
-rules. It is configured against an EVP before solving.
+rules. It is configured against an EVP or surface-geostrophic problem
+before solving.
 
 ```matlab
 evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);

@@ -3,7 +3,8 @@ classdef IMSolverSpectral < IMSolver
     %
     % `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
     % resolution, derivative matrices, and physical-coordinate pullback
-    % rules. It is configured against an EVP before solving.
+    % rules. It is configured against an EVP or surface-geostrophic problem
+    % before solving.
     %
     % ```matlab
     % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
@@ -14,6 +15,7 @@ classdef IMSolverSpectral < IMSolver
     % - Topic: Create solvers
     % - Topic: Inspect solvers
     % - Topic: Solve EVPs
+    % - Topic: Solve surface-geostrophic modes
     % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
     % - Topic: Developer topics
@@ -33,8 +35,9 @@ classdef IMSolverSpectral < IMSolver
         % Native coordinate kind.
         %
         % `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
-        % and `"density"` coordinates require an `IMInternalModes` EVP
-        % because their coordinate maps use the EVP-owned `N2` profile.
+        % and `"density"` coordinates require an `IMInternalModes` EVP or
+        % `IMSurfaceGeostrophicModes` problem because their coordinate maps
+        % use the problem-owned `N2` profile.
         %
         % - Topic: Inspect solvers
         coordinateKind
@@ -107,9 +110,9 @@ classdef IMSolverSpectral < IMSolver
             % Create a coordinate-aware spectral solver.
             %
             % The `"z"` coordinate works for any canonical EVP. The `"wkb"`
-            % and `"density"` coordinates use the internal-mode
-            % stratification `N2`, so they can only be configured with
-            % `IMInternalModes` EVPs.
+            % and `"density"` coordinates use the problem stratification
+            % `N2`, so they can only be configured with `IMInternalModes`
+            % EVPs or `IMSurfaceGeostrophicModes` problems.
             %
             % - Topic: Create solvers
             % - Declaration: solver = IMSolverSpectral(options)
@@ -149,6 +152,27 @@ classdef IMSolverSpectral < IMSolver
                 error("IMEigenvalueProblem:UnsupportedCoordinateKind", ...
                     "Only internal-mode EVPs support coordinateKind=""%s"".", solver.coordinateKind);
             end
+            solver = solver.setupCoordinate();
+            solver = solver.setupNativeGrid();
+        end
+
+        function solver = configuredForSurfaceGeostrophicModes(self, problem)
+            % Return a spectral solver configured for SQG modes.
+            %
+            % - Topic: Solve surface-geostrophic modes
+            % - Topic: Developer topics
+            % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
+            % - Parameter problem: surface-geostrophic boundary-mode problem
+            % - Returns solver: solver with SQG grid and coordinate matrices initialized
+            % - Developer: true
+            arguments
+                self IMSolverSpectral
+                problem IMSurfaceGeostrophicModes
+            end
+
+            solver = self;
+            solver.zDomain = problem.zDomain;
+            solver.N2Function = @(z) problem.N2(z);
             solver = solver.setupCoordinate();
             solver = solver.setupNativeGrid();
         end

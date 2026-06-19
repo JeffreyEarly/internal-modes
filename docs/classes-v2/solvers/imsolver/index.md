@@ -33,6 +33,8 @@ base class owns the common generalized-eigenvalue workflow.
 + Solve EVPs
   + [`IMSolver`](/internal-modes/classes-v2/solvers/imsolver/imsolver.html) Define the shared protocol for canonical EVP solvers.
   + [`solveEVP`](/internal-modes/classes-v2/solvers/imsolver/solveevp.html) Solve an EVP and return a basis set.
++ Solve surface-geostrophic modes
+  + [`solveSurfaceGeostrophicModes`](/internal-modes/classes-v2/solvers/imsolver/solvesurfacegeostrophicmodes.html) Solve surface-geostrophic boundary modes.
 + Other
   + [`N2`](/internal-modes/classes-v2/solvers/imsolver/n2.html)
   + [`boundaryIndex`](/internal-modes/classes-v2/solvers/imsolver/boundaryindex.html)
@@ -44,6 +46,12 @@ base class owns the common generalized-eigenvalue workflow.
   + [`innerProductGrid`](/internal-modes/classes-v2/solvers/imsolver/innerproductgrid.html)
   + [`integrateInnerProduct`](/internal-modes/classes-v2/solvers/imsolver/integrateinnerproduct.html)
   + [`physicalDerivativeMatrix`](/internal-modes/classes-v2/solvers/imsolver/physicalderivativematrix.html)
+
+
+## Developer Topics
+These items document internal implementation details and are not part of the primary public API.
++ Solve surface-geostrophic modes
+  + [`configuredForSurfaceGeostrophicModes`](/internal-modes/classes-v2/solvers/imsolver/configuredforsurfacegeostrophicmodes.html) Return a solver configured for surface-geostrophic modes.
 
 
 ---
