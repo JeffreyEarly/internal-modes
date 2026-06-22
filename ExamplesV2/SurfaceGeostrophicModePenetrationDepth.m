@@ -10,8 +10,9 @@ g0 = -N0*N0*b;
 zDomain = [-4000 0];
 N2 = @(z) N0*N0*exp(2*z/b);
 
-k = logspace(log10(2*pi/1e6), log10(2*pi/10^2.7), 80);
-L = 2*pi./k;
+wavelength = logspace(log10(1000e3), log10(100), 80);
+wavelengthKm = wavelength/1000;
+k = 2*pi./wavelength;
 nEVP = 512;
 z = linspace(zDomain(1), zDomain(2), 4000).';
 threshold = 0.01;
@@ -29,6 +30,7 @@ for iCross = 1:length(iSignChange)
     logKCrossing = log(k(iLeft)) + fraction*(log(k(iLeft+1)) - log(k(iLeft)));
     kSignChange(iCross) = exp(logKCrossing);
 end
+wavelengthSignChangeKm = 2*pi./kSignChange/1000;
 
 F = basisSet.F(z);
 surfaceAmplitude = abs(F(end,:));
@@ -61,26 +63,37 @@ for iMode = 1:length(k)
     penetrationDepth(iMode) = zDomain(2) - zCrossing;
 end
 
-figure(Name="V2 surface geostrophic mode penetration depth", Color="w");
+figure(Name="Surface geostrophic mode penetration depth", Color="w");
 tiledlayout(2, 1, TileSpacing="compact", Padding="compact");
 
 topAxes = nexttile;
-semilogx(k, h, LineWidth=1.5)
+hPositive = abs(h);
+hPositive(h <= 0) = NaN;
+hNegative = abs(h);
+hNegative(h >= 0) = NaN;
+semilogx(wavelengthKm, hPositive, LineWidth=1.5)
+hold on
+semilogx(wavelengthKm, hNegative, "--", LineWidth=1.5)
+hold off
+set(topAxes, YScale="log")
 grid on
-yline(0, "k-", LineWidth=0.75)
 for iCross = 1:length(kSignChange)
-    xline(kSignChange(iCross), "-", LineWidth=0.75, Color=[0.35 0.35 0.35])
+    xline(wavelengthSignChangeKm(iCross), "-", LineWidth=0.75, Color=[0.35 0.35 0.35])
 end
-ylabel("h (m)")
-title("Surface-mode eigendepth and penetration depth")
+ylabel("|h| (m)")
+topAxes.XTickLabel = [];
+% title("Surface-mode eigendepth and penetration depth")
+legend(["h > 0" "h < 0"], Location="best")
 
 bottomAxes = nexttile;
-semilogx(k, -penetrationDepth, LineWidth=1.5)
+semilogx(wavelengthKm, -penetrationDepth, LineWidth=1.5)
 grid on
 for iCross = 1:length(kSignChange)
-    xline(kSignChange(iCross), "-", LineWidth=0.75, Color=[0.35 0.35 0.35])
+    xline(wavelengthSignChangeKm(iCross), "-", LineWidth=0.75, Color=[0.35 0.35 0.35])
 end
-xlabel("\kappa (m^{-1})")
-ylabel("z where |F(z)| < 0.01 |F(0)| (m)")
+xlabel("wavelength (km)")
+ylabel("penetration depth (m)")
 ylim(zDomain)
+set([topAxes bottomAxes], XDir="reverse")
 linkaxes([topAxes bottomAxes], "x")
+xlim(bottomAxes, [min(wavelengthKm) max(wavelengthKm)])
