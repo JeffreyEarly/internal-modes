@@ -19,90 +19,120 @@ classdef IMSurfaceGeostrophicModesTests < matlab.unittest.TestCase
     end
 
     methods (Test)
-        function spectralSurfaceModesMatchConstantSolution(testCase)
-            N0 = 5.2e-3;
-            f0 = 1e-4;
-            zDomain = [-5000 0];
-            k = [1e-4 2e-4];
-            N2 = @(z) N0*N0*ones(size(z));
-            problem = IMSurfaceGeostrophicModes.surfaceModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k);
-            solver = IMSolverSpectral(nEVP=96);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, f0=f0);
+        function constructorSupportsEndpointCombinations(testCase)
+            N2 = @(z) ones(size(z));
 
-            basisSet = solver.solveSurfaceGeostrophicModes(problem);
-            exact = solution.sqgModesAtWavenumber(k, boundary="surface");
-            z = linspace(zDomain(1), zDomain(2), 17).';
+            surface = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, g0=3);
+            bottom = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, gd=4);
+            both = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, g0=3, gd=4, surfaceAnomaly="noFreeSurface");
 
-            testCase.verifyClass(basisSet, "IMSurfaceGeostrophicModesBasis")
-            testCase.verifyEqual(basisSet.psi(z), exact.psi(z), AbsTol=1e-6)
+            testCase.verifyEqual(surface.modesPerWavenumber(), 1)
+            testCase.verifyEqual(bottom.modesPerWavenumber(), 1)
+            testCase.verifyEqual(both.modesPerWavenumber(), 2)
+            testCase.verifyEqual(surface.g0, 3)
+            testCase.verifyTrue(isinf(surface.gd))
+            testCase.verifyEqual(bottom.gd, 4)
+            testCase.verifyEqual(both.surfaceAnomaly, "noFreeSurface")
         end
 
-        function spectralBottomModesMatchConstantSolution(testCase)
-            N0 = 5.2e-3;
-            f0 = 1e-4;
-            zDomain = [-5000 0];
-            k = [1e-4 2e-4];
-            N2 = @(z) N0*N0*ones(size(z));
-            problem = IMSurfaceGeostrophicModes.bottomModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k);
-            solver = IMSolverSpectral(nEVP=96);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, f0=f0);
+        function constructorRejectsInvalidEndpointChoices(testCase)
+            N2 = @(z) ones(size(z));
 
-            basisSet = solver.solveSurfaceGeostrophicModes(problem);
-            exact = solution.sqgModesAtWavenumber(k, boundary="bottom");
-            z = linspace(zDomain(1), zDomain(2), 17).';
-
-            testCase.verifyEqual(basisSet.psi(z), exact.psi(z), AbsTol=1e-6)
+            testCase.verifyError(@() IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2), "IMSurfaceGeostrophicModes:NoBoundaryAnomaly")
+            testCase.verifyError(@() IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, g0=0), "IMSurfaceGeostrophicModes:InvalidEndpointWeight")
+            testCase.verifyError(@() IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, gd=0), "IMSurfaceGeostrophicModes:InvalidEndpointWeight")
+            testCase.verifyError(@() IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=0, k=2, g0=3), "IMSurfaceGeostrophicModes:InvalidCoriolis")
+            testCase.verifyTrue(testCase.throwsAny(@() IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=[-1 0], f0=1, k=2, g0=3, surfaceAnomaly="bad")))
         end
 
-        function spectralModesMatchExponentialSolution(testCase)
-            N0 = 5.2e-3;
-            b = 1300;
-            f0 = 1e-4;
-            zDomain = [-5000 0];
-            k = [1e-4 2e-4];
-            N2 = @(z) N0*N0*exp(2*z/b);
-            solver = IMSolverSpectral(nEVP=160);
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain, f0=f0);
-            z = linspace(zDomain(1), zDomain(2), 17).';
-
-            surface = solver.solveSurfaceGeostrophicModes(IMSurfaceGeostrophicModes.surfaceModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k));
-            bottom = solver.solveSurfaceGeostrophicModes(IMSurfaceGeostrophicModes.bottomModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k));
-
-            testCase.verifyEqual(surface.psi(z), solution.sqgModesAtWavenumber(k, boundary="surface").psi(z), AbsTol=1e-4)
-            testCase.verifyEqual(bottom.psi(z), solution.sqgModesAtWavenumber(k, boundary="bottom").psi(z), AbsTol=1e-4)
-        end
-
-        function vectorWavenumbersSetOutputColumns(testCase)
+        function surfaceOnlySolveReportsProjectedFields(testCase)
             N0 = 5.2e-3;
             f0 = 1e-4;
+            g = 9.81;
+            g0 = 0.04;
             zDomain = [-1000 0];
-            k = [1e-4 2e-4 3e-4];
+            k = [1e-4 2e-4];
             N2 = @(z) N0*N0*ones(size(z));
-            problem = IMSurfaceGeostrophicModes(N2=N2, zDomain=zDomain, f0=f0, k=k, boundary="surface");
-            solver = IMSolverSpectral(nEVP=64);
+            problem = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=zDomain, f0=f0, g=g, k=k, g0=g0);
+            solver = IMSolverSpectral(nEVP=96);
+
             basisSet = solver.solveSurfaceGeostrophicModes(problem);
             z = linspace(zDomain(1), zDomain(2), 11).';
 
+            testCase.verifyClass(basisSet, "IMSurfaceGeostrophicModesBasis")
             testCase.verifyEqual(basisSet.k, k)
-            testCase.verifySize(basisSet.psi(z), [length(z) length(k)])
-            testCase.verifySize(basisSet.psiz(z), [length(z) length(k)])
+            testCase.verifyEqual(basisSet.modeNumber, [1 1])
+            testCase.verifySize(basisSet.F(z), [length(z) length(k)])
+            testCase.verifySize(basisSet.G(z), [length(z) length(k)])
+            testCase.verifyEqual(basisSet.h, 2*basisSet.k.^2.*basisSet.energyEigenvalues, RelTol=1e-12)
+
+            etaSurface = f0/g*(basisSet.G(zDomain(2)) - basisSet.F(zDomain(2)));
+            etaBottom = f0/g*basisSet.G(zDomain(1));
+            expectedSurface = basisSet.mixingCoefficients(1,:)*g0/(N0*N0);
+            testCase.verifyEqual(etaSurface, expectedSurface, RelTol=1e-8, AbsTol=1e-9)
+            testCase.verifyEqual(etaBottom, zeros(size(etaBottom)), AbsTol=1e-9)
         end
 
-        function boundaryForcingIsAppliedOnSolverGrid(testCase)
+        function noFreeSurfaceSurfaceAnomalyOmitsFValue(testCase)
             N0 = 5.2e-3;
             f0 = 1e-4;
-            zDomain = [-5000 0];
-            k = [1e-4 2e-4];
+            g = 9.81;
+            g0 = 0.04;
+            zDomain = [-1000 0];
             N2 = @(z) N0*N0*ones(size(z));
-            solver = IMSolverSpectral(nEVP=96);
+            problem = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=zDomain, f0=f0, g=g, k=1e-4, g0=g0, surfaceAnomaly="noFreeSurface");
+            basisSet = IMSolverSpectral(nEVP=96).solveSurfaceGeostrophicModes(problem);
 
-            surface = solver.solveSurfaceGeostrophicModes(IMSurfaceGeostrophicModes.surfaceModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k));
-            bottom = solver.solveSurfaceGeostrophicModes(IMSurfaceGeostrophicModes.bottomModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k));
+            etaSurface = f0/g*basisSet.G(zDomain(2));
+            expectedSurface = basisSet.mixingCoefficients(1,:)*g0/(N0*N0);
+            testCase.verifyEqual(etaSurface, expectedSurface, RelTol=1e-8, AbsTol=1e-9)
+        end
 
-            testCase.verifyEqual(f0*surface.psiz(zDomain(2)), ones(1,length(k)), AbsTol=1e-9)
-            testCase.verifyEqual(f0*surface.psiz(zDomain(1)), zeros(1,length(k)), AbsTol=1e-9)
-            testCase.verifyEqual(f0*bottom.psiz(zDomain(2)), zeros(1,length(k)), AbsTol=1e-9)
-            testCase.verifyEqual(f0*bottom.psiz(zDomain(1)), ones(1,length(k)), AbsTol=1e-9)
+        function exponentialSurfaceSolveAvoidsNearlySingularWarning(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            f0 = 1e-4;
+            g0 = -N0*N0*b;
+            zDomain = [-4000 0];
+            L = 1e6;
+            k = 2*pi/L;
+            N2 = @(z) N0*N0*exp(2*z/b);
+            problem = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=k, g0=g0);
+            solver = IMSolverSpectral(nEVP=256);
+
+            warningState = warning("error", "MATLAB:nearlySingularMatrix");
+            cleanup = onCleanup(@() warning(warningState));
+            basisSet = solver.solveSurfaceGeostrophicModes(problem);
+            z = linspace(zDomain(1), zDomain(2), 64).';
+            F = basisSet.F(z);
+
+            testCase.verifyTrue(all(isfinite(F(:))))
+            testCase.verifyTrue(all(isfinite(basisSet.h)))
+        end
+
+        function twoBoundarySolveDiagonalizesBoundaryEnergy(testCase)
+            N0 = 5.2e-3;
+            f0 = 1e-4;
+            g = 9.81;
+            g0 = 0.04;
+            gd = 0.02;
+            zDomain = [-1000 0];
+            N2 = @(z) N0*N0*ones(size(z));
+            problem = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=zDomain, f0=f0, g=g, k=1e-4, g0=g0, gd=gd);
+
+            basisSet = IMSolverSpectral(nEVP=96).solveSurfaceGeostrophicModes(problem);
+            etaSurface = f0/g*(basisSet.G(zDomain(2)) - basisSet.F(zDomain(2)));
+            etaBottom = f0/g*basisSet.G(zDomain(1));
+            expectedSurface = basisSet.mixingCoefficients(1,:)*g0/(N0*N0);
+            expectedBottom = basisSet.mixingCoefficients(2,:)*gd/(N0*N0);
+            energyMatrix = -f0*(basisSet.F(zDomain(2)).'*etaSurface) + f0*(basisSet.F(zDomain(1)).'*etaBottom) + g0*(etaSurface.'*etaSurface) + gd*(etaBottom.'*etaBottom);
+            energyMatrix = 0.5*(energyMatrix + energyMatrix.');
+
+            testCase.verifyEqual(etaSurface, expectedSurface, RelTol=1e-8, AbsTol=1e-9)
+            testCase.verifyEqual(etaBottom, expectedBottom, RelTol=1e-8, AbsTol=1e-9)
+            testCase.verifyEqual(energyMatrix, diag(basisSet.energyEigenvalues), AbsTol=1e-9)
+            testCase.verifyEqual(basisSet.modeNumber, [1 2])
+            testCase.verifyEqual(basisSet.h, 2*basisSet.k.^2.*basisSet.energyEigenvalues, RelTol=1e-12)
         end
 
         function finiteDifferenceSolvesAndValidatesDomain(testCase)
@@ -110,21 +140,26 @@ classdef IMSurfaceGeostrophicModesTests < matlab.unittest.TestCase
             f0 = 1e-4;
             zDomain = [-1000 0];
             N2 = @(z) N0*N0*ones(size(z));
-            problem = IMSurfaceGeostrophicModes.surfaceModesAtWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=1e-4);
+            problem = IMSurfaceGeostrophicModes.atWavenumber(N2=N2, zDomain=zDomain, f0=f0, k=1e-4, gd=0.02);
             solver = IMSolverFiniteDifference(z=linspace(zDomain(1), zDomain(2), 65).');
 
             basisSet = solver.solveSurfaceGeostrophicModes(problem);
 
             testCase.verifyClass(basisSet, "IMSurfaceGeostrophicModesBasis")
-            testCase.verifySize(basisSet.psi(linspace(zDomain(1), zDomain(2), 8).'), [8 1])
+            testCase.verifySize(basisSet.F(linspace(zDomain(1), zDomain(2), 8).'), [8 1])
             mismatchedSolver = IMSolverFiniteDifference(z=linspace(-900, 0, 65).');
             testCase.verifyError(@() mismatchedSolver.solveSurfaceGeostrophicModes(problem), "IMSolverFiniteDifference:DomainMismatch")
         end
+    end
 
-        function zeroCoriolisIsRejected(testCase)
-            N2 = @(z) ones(size(z));
-
-            testCase.verifyError(@() IMSurfaceGeostrophicModes.surfaceModesAtWavenumber(N2=N2, zDomain=[-1 0], f0=0, k=1), "IMSurfaceGeostrophicModes:InvalidCoriolis")
+    methods (Access = private)
+        function didThrow = throwsAny(~, functionHandle)
+            didThrow = false;
+            try
+                functionHandle();
+            catch
+                didThrow = true;
+            end
         end
     end
 end

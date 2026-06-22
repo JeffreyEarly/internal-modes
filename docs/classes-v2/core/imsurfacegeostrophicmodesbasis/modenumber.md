@@ -1,15 +1,15 @@
 ---
 layout: default
-title: problem
+title: modeNumber
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 15
+nav_order: 13
 mathjax: true
 ---
 
-#  problem
+#  modeNumber
 
-Surface-geostrophic problem descriptor.
+Projected mode labels within each wavenumber.
 
 
 ---

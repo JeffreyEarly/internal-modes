@@ -3,15 +3,18 @@ layout: default
 title: k
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 4
+nav_order: 10
 mathjax: true
 ---
 
 #  k
 
-Horizontal wavenumbers.
+Mode-aligned horizontal wavenumbers.
 
 
 ---
 
 ## Discussion
+
+  `k(j)` is the horizontal wavenumber for column `j` of `F(z)`
+  and `G(z)`.

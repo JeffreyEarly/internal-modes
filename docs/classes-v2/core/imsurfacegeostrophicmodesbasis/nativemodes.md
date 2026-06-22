@@ -3,13 +3,13 @@ layout: default
 title: nativeModes
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 6
+nav_order: 14
 mathjax: true
 ---
 
 #  nativeModes
 
-Native mode columns before interpolation.
+Native projected mode columns before interpolation.
 
 
 ---

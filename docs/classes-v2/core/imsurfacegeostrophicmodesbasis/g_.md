@@ -1,15 +1,15 @@
 ---
 layout: default
-title: problem
+title: g
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 15
+nav_order: 6
 mathjax: true
 ---
 
-#  problem
+#  g
 
-Surface-geostrophic problem descriptor.
+Gravitational acceleration.
 
 
 ---

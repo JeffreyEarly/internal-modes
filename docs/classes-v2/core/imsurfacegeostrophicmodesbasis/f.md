@@ -1,30 +1,30 @@
 ---
 layout: default
-title: psiz
+title: F
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 9
+nav_order: 1
 mathjax: true
 ---
 
-#  psiz
+#  F
 
-Evaluate vertical derivatives of SQG streamfunction modes.
+Evaluate projected SQG streamfunction modes.
 
 
 ---
 
 ## Declaration
 ```matlab
- values = psiz(basisSet,z)
+ values = F(basisSet,z)
 ```
 ## Parameters
 + `z`  physical coordinate
 
 ## Returns
-+ `values`  streamfunction derivative values
++ `values`  projected `F` values
 
 ## Discussion
 
   The returned array has one row per `z` value and one column
-  per retained wavenumber in `k`.
+  per projected boundary mode.

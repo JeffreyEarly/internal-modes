@@ -1,15 +1,15 @@
 ---
 layout: default
-title: boundary
+title: g
 parent: IMSurfaceGeostrophicModes
 grand_parent: Core
-nav_order: 4
+nav_order: 5
 mathjax: true
 ---
 
-#  boundary
+#  g
 
-Active SQG boundary, `"surface"` or `"bottom"`.
+Gravitational acceleration.
 
 
 ---

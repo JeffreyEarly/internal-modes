@@ -3,7 +3,7 @@ layout: default
 title: metadata
 parent: IMSurfaceGeostrophicModes
 grand_parent: Core
-nav_order: 7
+nav_order: 9
 mathjax: true
 ---
 

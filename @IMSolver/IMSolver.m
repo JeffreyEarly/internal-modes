@@ -50,11 +50,12 @@ classdef (Abstract) IMSolver
         end
 
         function basisSet = solveSurfaceGeostrophicModes(self, problem)
-            % Solve surface-geostrophic boundary modes.
+            % Solve projected surface-geostrophic boundary modes.
             %
-            % `solveSurfaceGeostrophicModes` solves the boundary-value
-            % problem stored by `IMSurfaceGeostrophicModes` and returns an
-            % `IMSurfaceGeostrophicModesBasis`.
+            % `solveSurfaceGeostrophicModes` solves the raw zero-APV
+            % endpoint modes stored by `IMSurfaceGeostrophicModes`, forms
+            % the boundary-energy projection, and returns an
+            % `IMSurfaceGeostrophicModesBasis` with `F`, `G`, and `h`.
             %
             % - Topic: Solve surface-geostrophic modes
             % - Declaration: basisSet = solveSurfaceGeostrophicModes(solver,problem)
@@ -80,32 +81,103 @@ classdef (Abstract) IMSolver
                 error("IMSurfaceGeostrophicModes:InvalidStratification", "N2 must be finite and positive on the solver grid.");
             end
 
-            N2z = solver.differentiateGridValues(N2Values, 1);
-            baseMatrix = diag(N2Values)*D2 - diag(N2z)*D1;
-            metricMatrix = diag(N2Values.*N2Values)*D0;
+            pValues = problem.f0^2 ./ N2Values;
+            pzValues = solver.differentiateGridValues(pValues, 1);
+            % Assemble raw zero-APV modes in divergence form for conditioning.
+            baseMatrix = diag(pValues)*D2 + diag(pzValues)*D1;
             surfaceIndex = solver.boundaryIndex("surface");
             bottomIndex = solver.boundaryIndex("bottom");
-            activeIndex = surfaceIndex;
-            if problem.boundary == "bottom"
-                activeIndex = bottomIndex;
-            end
 
-            rhs = zeros(n, 1);
-            nativeModes = zeros(n, numel(problem.k));
+            N2Surface = N2Values(surfaceIndex);
+            N2Bottom = N2Values(bottomIndex);
+            surfaceRow = D1(surfaceIndex,:);
+            if problem.surfaceAnomaly == "freeSurface"
+                surfaceRow = surfaceRow + (N2Surface/problem.g)*D0(surfaceIndex,:);
+            end
+            bottomRow = D1(bottomIndex,:);
+
+            includeSurface = isfinite(problem.g0);
+            includeBottom = isfinite(problem.gd);
+            rawRows = [];
+            targetAnomalies = zeros(2,0);
+            scaledBoundaryTargets = zeros(2,0);
+            if includeSurface
+                rawRows(end+1) = 1;
+                targetAnomalies(:,end+1) = [problem.g0/N2Surface; 0];
+                scaledBoundaryTargets(:,end+1) = [-problem.g0/problem.f0; 0];
+            end
+            if includeBottom
+                rawRows(end+1) = 2;
+                targetAnomalies(:,end+1) = [0; problem.gd/N2Bottom];
+                scaledBoundaryTargets(:,end+1) = [0; -problem.gd/problem.f0];
+            end
+            nRawModes = size(targetAnomalies,2);
+            nColumns = nRawModes*numel(problem.k);
+            nativeModes = zeros(n, nColumns);
+            kByMode = zeros(1, nColumns);
+            h = zeros(1, nColumns);
+            modeNumber = zeros(1, nColumns);
+            energyEigenvalues = zeros(1, nColumns);
+            mixingCoefficients = zeros(2, nColumns);
+            columnIndex = 0;
             for iK = 1:numel(problem.k)
-                matrix = baseMatrix - (problem.k(iK)^2/problem.f0^2)*metricMatrix;
-                matrix(surfaceIndex,:) = problem.f0*D1(surfaceIndex,:);
-                matrix(bottomIndex,:) = problem.f0*D1(bottomIndex,:);
-                rhs(:) = 0;
-                rhs(activeIndex) = 1;
-                nativeModes(:,iK) = matrix \ rhs;
+                matrix = baseMatrix - problem.k(iK)^2*D0;
+                matrix(surfaceIndex,:) = surfaceRow;
+                matrix(bottomIndex,:) = bottomRow;
+
+                rawModes = zeros(n, nRawModes);
+                for iRaw = 1:nRawModes
+                    rhs = zeros(n, 1);
+                    rhs(surfaceIndex) = scaledBoundaryTargets(1,iRaw);
+                    rhs(bottomIndex) = scaledBoundaryTargets(2,iRaw);
+                    rawModes(:,iRaw) = matrix \ rhs;
+                end
+
+                rawModeValues = D0*rawModes;
+                surfaceValues = rawModeValues(surfaceIndex,:).';
+                bottomValues = rawModeValues(bottomIndex,:).';
+                etaSurface = targetAnomalies(1,:).';
+                etaBottom = targetAnomalies(2,:).';
+                energyMatrix = -problem.f0*(surfaceValues*etaSurface.') + problem.f0*(bottomValues*etaBottom.');
+                if includeSurface
+                    energyMatrix = energyMatrix + problem.g0*(etaSurface*etaSurface.');
+                end
+                if includeBottom
+                    energyMatrix = energyMatrix + problem.gd*(etaBottom*etaBottom.');
+                end
+                energyMatrix = 0.5*(energyMatrix + energyMatrix.');
+
+                [C, Gamma] = eig(energyMatrix);
+                gamma = real(diag(Gamma));
+                localH = 2*problem.k(iK)^2*gamma;
+                [localH, sortIndex] = sort(localH, "descend");
+                gamma = gamma(sortIndex);
+                C = C(:,sortIndex);
+                projectedModes = rawModes*C;
+                for iMode = 1:nRawModes
+                    projectedValues = D0*projectedModes(:,iMode);
+                    [~, referenceIndex] = max(abs(projectedValues));
+                    if projectedValues(referenceIndex) < 0
+                        projectedModes(:,iMode) = -projectedModes(:,iMode);
+                        C(:,iMode) = -C(:,iMode);
+                    end
+
+                    columnIndex = columnIndex + 1;
+                    nativeModes(:,columnIndex) = projectedModes(:,iMode);
+                    kByMode(columnIndex) = problem.k(iK);
+                    h(columnIndex) = localH(iMode);
+                    modeNumber(columnIndex) = iMode;
+                    energyEigenvalues(columnIndex) = gamma(iMode);
+                    mixingCoefficients(rawRows,columnIndex) = C(:,iMode);
+                end
             end
 
             metadata = problem.metadata;
             metadata.solutionKind = "surfaceGeostrophicModes";
-            metadata.boundary = problem.boundary;
-            metadata.k = problem.k;
-            basisSet = IMSurfaceGeostrophicModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, metadata=metadata);
+            metadata.k = kByMode;
+            metadata.surfaceAnomaly = problem.surfaceAnomaly;
+            metadata.modesPerWavenumber = nRawModes;
+            basisSet = IMSurfaceGeostrophicModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, k=kByMode, h=h, modeNumber=modeNumber, mixingCoefficients=mixingCoefficients, energyEigenvalues=energyEigenvalues, metadata=metadata);
         end
     end
 

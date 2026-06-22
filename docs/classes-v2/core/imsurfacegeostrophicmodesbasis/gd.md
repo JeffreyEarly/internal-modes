@@ -1,15 +1,15 @@
 ---
 layout: default
-title: k
-parent: IMSurfaceGeostrophicModes
+title: gd
+parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
 nav_order: 8
 mathjax: true
 ---
 
-#  k
+#  gd
 
-Horizontal wavenumbers.
+Bottom buoyancy-anomaly weight.
 
 
 ---

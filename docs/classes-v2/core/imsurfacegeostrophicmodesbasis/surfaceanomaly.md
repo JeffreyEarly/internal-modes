@@ -1,15 +1,15 @@
 ---
 layout: default
-title: problem
+title: surfaceAnomaly
 parent: IMSurfaceGeostrophicModesBasis
 grand_parent: Core
-nav_order: 15
+nav_order: 18
 mathjax: true
 ---
 
-#  problem
+#  surfaceAnomaly
 
-Surface-geostrophic problem descriptor.
+Surface anomaly convention.
 
 
 ---

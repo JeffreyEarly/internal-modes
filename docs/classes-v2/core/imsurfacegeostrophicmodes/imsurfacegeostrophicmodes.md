@@ -9,7 +9,7 @@ mathjax: true
 
 #  IMSurfaceGeostrophicModes
 
-Create a surface-geostrophic boundary-mode problem.
+Create a projected surface-geostrophic boundary-mode problem.
 
 
 ---
@@ -22,8 +22,11 @@ Create a surface-geostrophic boundary-mode problem.
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
 + `options.f0`  Coriolis parameter
++ `options.g`  gravitational acceleration
 + `options.k`  horizontal wavenumbers
-+ `options.boundary`  active boundary, `"surface"` or `"bottom"`
++ `options.g0`  surface buoyancy-anomaly weight
++ `options.gd`  bottom buoyancy-anomaly weight
++ `options.surfaceAnomaly`  surface anomaly convention
 + `options.metadata`  additional metadata
 
 ## Returns

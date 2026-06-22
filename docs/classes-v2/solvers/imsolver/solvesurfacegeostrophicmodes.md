@@ -9,7 +9,7 @@ mathjax: true
 
 #  solveSurfaceGeostrophicModes
 
-Solve surface-geostrophic boundary modes.
+Solve projected surface-geostrophic boundary modes.
 
 
 ---
@@ -26,6 +26,7 @@ Solve surface-geostrophic boundary modes.
 
 ## Discussion
 
-  `solveSurfaceGeostrophicModes` solves the boundary-value
-  problem stored by `IMSurfaceGeostrophicModes` and returns an
-  `IMSurfaceGeostrophicModesBasis`.
+  `solveSurfaceGeostrophicModes` solves the raw zero-APV
+  endpoint modes stored by `IMSurfaceGeostrophicModes`, forms
+  the boundary-energy projection, and returns an
+  `IMSurfaceGeostrophicModesBasis` with `F`, `G`, and `h`.
