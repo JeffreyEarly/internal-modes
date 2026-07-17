@@ -534,6 +534,7 @@ classdef IMBasisSet
         end
 
         transform = discreteTransform(self, options)
+        fit = fitQuadrature(self, options)
 
     end
 

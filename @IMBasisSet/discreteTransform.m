@@ -1,5 +1,5 @@
 function transform = discreteTransform(self, options)
-% Build a scalar Galerkin transform on supplied sample points.
+% Build a scalar Galerkin transform on fixed sample points.
 %
 % For retained normalized modes $$u_j$$ sampled at points $$z_i$$, this
 % method forms
@@ -13,8 +13,12 @@ function transform = discreteTransform(self, options)
 % `IMDiscreteTransform`. Eigenvalue-dependent endpoint terms are included
 % when they depend only on a sampled endpoint value. Endpoint derivative
 % traces cannot be inferred from arbitrary point samples and are rejected.
+% When `increments` is omitted, `fitQuadrature` chooses nonnegative
+% increments with exact full-depth coverage by normalized Gram fitting.
+% This fitted path requires `lsqlin` from Optimization Toolbox.
 %
 % ```matlab
+% transform = basisSet.discreteTransform(z=z,nModes=8);
 % transform = basisSet.discreteTransform(z=z,increments=dz,nModes=8);
 % coefficients = transform.project(values);
 % ```
@@ -22,19 +26,25 @@ function transform = discreteTransform(self, options)
 % - Topic: Build discrete transforms
 % - Declaration: transform = discreteTransform(basisSet,options)
 % - Parameter options.z: increasing physical sample points
-% - Parameter options.increments: quadrature increments aligned with `z`
+% - Parameter options.increments: optional quadrature increments aligned with `z`
 % - Parameter options.nModes: number of leading retained modes
 % - Returns transform: scalar discrete Galerkin transform
 arguments
     self IMBasisSet
     options.z (:,1) double {mustBeReal, mustBeFinite}
-    options.increments (:,1) double {mustBeReal, mustBeFinite}
+    options.increments (:,1) double {mustBeReal, mustBeFinite} = zeros(0,1)
     options.nModes (1,1) double {mustBeInteger, mustBePositive} = size(self.nativeModes,2)
 end
 
 z = options.z(:);
 increments = options.increments(:);
 nModes = options.nModes;
+
+if isempty(increments)
+    fit = self.fitQuadrature(z=z, nModes=nModes);
+    transform = fit.fittedTransform;
+    return
+end
 
 if length(z) ~= length(increments)
     error("IMBasisSet:InvalidDiscreteIncrements", "increments must contain one value for each sample point in z.");

@@ -2,6 +2,7 @@
 
 ## Unreleased
 - added v2 scalar discrete Galerkin transforms on caller-supplied points and quadrature increments, including sampled metrics, continuous Gram targets, and transform-quality diagnostics
+- added fixed-point v2 quadrature fitting with normalized Gram objectives, nonnegative full-depth constraints, custom least-squares systems, and fitted-versus-geometric diagnostics
 
 ## [2.0.0] - 2026-05-19
 - added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`

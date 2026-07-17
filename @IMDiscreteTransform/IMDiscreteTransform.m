@@ -13,7 +13,7 @@ classdef IMDiscreteTransform
     % `IMBasisSet.discreteTransform`.
     %
     % ```matlab
-    % transform = basisSet.discreteTransform(z=z,increments=dz,nModes=8);
+    % transform = basisSet.discreteTransform(z=z,nModes=8);
     % coefficients = transform.project(values);
     % valuesFit = transform.reconstruct(coefficients);
     % ```
