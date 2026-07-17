@@ -16,6 +16,9 @@ function fit = fitQuadrature(self, options)
 % also satisfy $$\Delta z_k\geq0$$ and
 % $$\sum_k\Delta z_k=z_\mathrm{surface}-z_\mathrm{bottom}$$. The result
 % compares the fitted transform with geometric control-volume increments.
+% The optimizer solves for dimensionless increments
+% $$x_k=\Delta z_k/D$$, where $$D$$ is the full depth, while custom
+% objectives continue to define $$A\Delta z-b$$ in physical units.
 % This method requires `lsqlin` from Optimization Toolbox.
 %
 % A custom objective is a function handle accepting a context struct and
@@ -148,23 +151,26 @@ else
 end
 if options.constrainDepth
     equalityMatrix = ones(1,nSamples);
-    equalityTarget = depth;
+    equalityTarget = 1;
 else
     equalityMatrix = [];
     equalityTarget = [];
 end
 
+scaledObjectiveMatrix = depth*objectiveMatrix;
+initialScaledIncrements = geometricIncrements/depth;
 solverOptions = optimoptions("lsqlin",Algorithm="active-set",Display="off",ConstraintTolerance=1e-12, ...
     OptimalityTolerance=1e-12,StepTolerance=1e-14,MaxIterations=1000);
 try
-    [fittedIncrements,~,~,exitFlag,solverOutput] = lsqlin(objectiveMatrix, objectiveTarget, [], [], equalityMatrix, equalityTarget, lowerBounds, [], geometricIncrements, solverOptions);
+    [scaledIncrements,~,~,exitFlag,solverOutput] = lsqlin(scaledObjectiveMatrix, objectiveTarget, [], [], equalityMatrix, equalityTarget, lowerBounds, [], initialScaledIncrements, solverOptions);
 catch cause
     exception = MException("IMBasisSet:QuadratureFitFailed", "lsqlin failed while fitting quadrature increments on the supplied points.");
     throw(addCause(exception,cause))
 end
-if isempty(fittedIncrements) || exitFlag <= 0 || any(~isfinite(fittedIncrements))
+if isempty(scaledIncrements) || exitFlag <= 0 || any(~isfinite(scaledIncrements))
     error("IMBasisSet:QuadratureFitFailed", "lsqlin did not converge to a finite quadrature fit (exit flag %d).", exitFlag);
 end
+fittedIncrements = depth*scaledIncrements;
 
 constraintTolerance = 1e-10*max(1,depth);
 if options.nonnegative && any(fittedIncrements < -constraintTolerance)

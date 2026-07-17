@@ -118,6 +118,28 @@ classdef IMQuadratureFitTests < matlab.unittest.TestCase
             testCase.verifyLessThanOrEqual(fit.fittedResidualNorm,fit.geometricResidualNorm + 1e-10)
         end
 
+        function physicalDepthScalingConvergesForHydrostaticModes(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            g = 9.81;
+            zDomain = [-D 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g, ...
+                surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+            solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
+            basisSet = solver.solveEVP(evp,nModes=8);
+            sigma = linspace(0,1,24).';
+            z = zDomain(1) + D*(1 - (1 - sigma).^2);
+            fit = basisSet.fitQuadrature(z=z,nModes=4);
+
+            testCase.verifyGreaterThan(fit.exitFlag,0)
+            testCase.verifyGreaterThanOrEqual(min(fit.fittedIncrements),-1e-10)
+            testCase.verifyEqual(sum(fit.fittedIncrements),D,AbsTol=1e-8)
+            testCase.verifyLessThan(fit.fittedResidualNorm,fit.geometricResidualNorm)
+            testCase.verifyLessThan(fit.fittedTransform.relativeGramError,fit.geometricTransform.relativeGramError)
+        end
+
         function customObjectiveCanReplaceNormalizedGramSystem(testCase)
             basisSet = testCase.regularBasis(3);
             z = [-1; -0.73; -0.44; -0.18; 0];
