@@ -49,6 +49,28 @@ classdef (Abstract) IMSolver
             basisSet = basisSet.orientModeSigns();
         end
 
+        function zRoots = rootsOfNativeMode(self, nativeMode)
+            % Return physical roots of one native mode.
+            %
+            % Concrete solvers may implement this developer hook when their
+            % native representation supports accurate root finding. The base
+            % implementation reports that mode-root grids are unavailable.
+            %
+            % - Topic: Developer topics
+            % - Declaration: zRoots = rootsOfNativeMode(solver,nativeMode)
+            % - Parameter nativeMode: one native mode column
+            % - Returns zRoots: physical roots in the solver domain
+            % - Developer: true
+            arguments
+                self IMSolver
+                nativeMode (:,1) double {mustBeReal, mustBeFinite}
+            end
+
+            zRoots = zeros(0,1); %#ok<NASGU>
+            error("IMSolver:UnsupportedModeRoots", ...
+                "%s does not implement rootsOfNativeMode for %d native values.", class(self), length(nativeMode));
+        end
+
         function basisSet = solveSurfaceGeostrophicModes(self, problem)
             % Solve projected surface-geostrophic boundary modes.
             %

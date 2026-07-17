@@ -27,6 +27,16 @@ solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
 basisSet.normalization = "geostrophic";
 
+%% Generate a canonical mode-root candidate grid
+% For the first `nModes` retained columns, `quadraturePoints` returns both
+% physical endpoints and the interior zeros of the next selected G mode.
+% The generating mode is already present here because the solve retained
+% more than `nModes` columns. If it were absent, the basis set would solve
+% for that one auxiliary mode automatically.
+zModeRoot = basisSet.quadraturePoints(nModes=nModes);
+modeRootFit = basisSet.fitQuadrature(z=zModeRoot,nModes=nModes);
+fprintf("Mode-root grid: %d points; fitted Gram error: %.3e\n",length(zModeRoot),modeRootFit.fittedTransform.relativeGramError);
+
 %% Supply fixed sample points and fit their increments
 % These points include both boundaries and are refined toward the surface.
 % `fitQuadrature` retains the first `nModes` columns and chooses nonnegative

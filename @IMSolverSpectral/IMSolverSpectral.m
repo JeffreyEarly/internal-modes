@@ -318,6 +318,105 @@ classdef IMSolverSpectral < IMSolver
             end
         end
 
+        function zRoots = rootsOfNativeMode(self, nativeMode)
+            % Return physical roots of a native Chebyshev mode.
+            %
+            % The native mode is the Chebyshev series
+            %
+            % $$
+            % u(x)=\sum_{k=0}^{K}c_kT_k(\widehat{x}),
+            % $$
+            %
+            % where $$\widehat{x}\in[-1,1]$$ is the affine image of the
+            % solver coordinate. Roots are eigenvalues of the Chebyshev
+            % colleague matrix, filtered by their series residual, and then
+            % mapped to physical depth by inverting `xOfZ`.
+            %
+            % - Topic: Evaluate native modes
+            % - Declaration: zRoots = rootsOfNativeMode(solver,nativeMode)
+            % - Parameter nativeMode: one native Chebyshev coefficient column
+            % - Returns zRoots: sorted physical roots in the closed domain
+            % - Developer: true
+            arguments
+                self IMSolverSpectral
+                nativeMode (:,1) double {mustBeReal, mustBeFinite}
+            end
+
+            if length(nativeMode) ~= self.nEVP
+                error("IMSolverSpectral:InvalidNativeMode", ...
+                    "nativeMode must contain one coefficient for each of the %d native basis functions.", self.nEVP);
+            end
+            if any(~isfinite(self.zDomain)) || isempty(self.xNative)
+                error("IMSolverSpectral:UnconfiguredSolver", ...
+                    "Configure the spectral solver for an EVP before finding mode roots.");
+            end
+
+            coefficients = nativeMode(:);
+            coefficientScale = norm(coefficients, Inf);
+            if coefficientScale == 0
+                error("IMSolverSpectral:InvalidNativeMode", "The native mode is identically zero.");
+            end
+            coefficients = coefficients/coefficientScale;
+            coefficientTolerance = 100*length(coefficients)*eps;
+            degree = find(abs(coefficients) > coefficientTolerance, 1, "last") - 1;
+            if isempty(degree) || degree == 0
+                zRoots = zeros(0,1);
+                return
+            end
+            coefficients = coefficients(1:(degree+1));
+
+            if degree == 1
+                rootsNormalized = -coefficients(1)/coefficients(2);
+            else
+                colleague = zeros(degree);
+                colleague(1,2) = 1;
+                for iRow = 2:(degree-1)
+                    colleague(iRow,iRow-1) = 0.5;
+                    colleague(iRow,iRow+1) = 0.5;
+                end
+                colleague(end,:) = -coefficients(1:degree).'/(2*coefficients(end));
+                colleague(end,end-1) = colleague(end,end-1) + 0.5;
+                rootsNormalized = eig(colleague);
+            end
+
+            rootTolerance = max(1e-12, 100*degree*degree*eps);
+            isReal = abs(imag(rootsNormalized)) <= rootTolerance.*max(1,abs(real(rootsNormalized)));
+            rootsNormalized = real(rootsNormalized(isReal));
+            rootsNormalized = rootsNormalized(rootsNormalized >= -1-rootTolerance & rootsNormalized <= 1+rootTolerance);
+            rootsNormalized = min(max(rootsNormalized,-1),1);
+            if isempty(rootsNormalized)
+                zRoots = zeros(0,1);
+                return
+            end
+
+            polynomialValues = zeros(size(rootsNormalized));
+            theta = acos(rootsNormalized);
+            for iCoefficient = 0:degree
+                polynomialValues = polynomialValues + coefficients(iCoefficient+1)*cos(iCoefficient*theta);
+            end
+            residualTolerance = max(1e-11, 1000*degree*eps*norm(coefficients,1));
+            rootsNormalized = rootsNormalized(abs(polynomialValues) <= residualTolerance);
+            rootsNormalized = sort(rootsNormalized(:));
+            if isempty(rootsNormalized)
+                zRoots = zeros(0,1);
+                return
+            end
+
+            duplicateTolerance = max(1e-11, 10*rootTolerance);
+            rootsNormalized = rootsNormalized([true; diff(rootsNormalized) > duplicateTolerance]);
+            xMin = min(self.xNative);
+            xMax = max(self.xNative);
+            xRoots = 0.5*(xMax-xMin)*rootsNormalized + 0.5*(xMax+xMin);
+            zRoots = zeros(size(xRoots));
+            for iRoot = 1:length(xRoots)
+                zRoots(iRoot) = fzero(@(z) self.xOfZ(z)-xRoots(iRoot), self.zDomain);
+            end
+            zRoots = sort(zRoots);
+            zTolerance = max(100*eps(max(1,max(abs(self.zDomain)))), 1e-10*max(1,diff(self.zDomain)));
+            zRoots = min(max(zRoots,self.zDomain(1)),self.zDomain(2));
+            zRoots = zRoots([true; diff(zRoots) > zTolerance]);
+        end
+
         function z = innerProductGrid(self, zBounds)
             % Return the native grid used for spectral inner products.
             %
