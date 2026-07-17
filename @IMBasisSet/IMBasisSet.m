@@ -22,6 +22,7 @@ classdef IMBasisSet
     % - Topic: Evaluate modes
     % - Topic: Normalize modes
     % - Topic: Analyze modes
+    % - Topic: Build discrete transforms
     % - Topic: Inspect basis sets
     % - Topic: Developer topics
     % - Declaration: classdef IMBasisSet
@@ -531,6 +532,8 @@ classdef IMBasisSet
             gram = self.gramMatrix();
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
+
+        transform = discreteTransform(self, options)
 
     end
 
