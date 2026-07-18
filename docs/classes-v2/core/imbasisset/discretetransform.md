@@ -32,7 +32,7 @@ For retained normalized modes $$u_j$$ sampled at points $$z_i$$, this
 method forms
 
 $$
-\Phi_{ij}=u_j(z_i),\qquad
+(A_{\mathrm i})_{ij}=\Phi_{ij}=u_j(z_i),\qquad
 W_{\mathrm{int}}=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
 $$
 

@@ -38,12 +38,12 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.increments, dz, AbsTol=0)
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:3), AbsTol=0)
             testCase.verifyEqual(transform.normalization, "unity")
-            testCase.verifyEqual(transform.basisMatrix, expectedBasis, RelTol=1e-13, AbsTol=1e-13)
+            testCase.verifyEqual(transform.inverseMatrix, expectedBasis, RelTol=1e-13, AbsTol=1e-13)
             testCase.verifyEqual(transform.metricMatrix, expectedMetric, AbsTol=0)
             testCase.verifyEqual(transform.gramMatrix, expectedGram, RelTol=1e-13, AbsTol=1e-13)
             testCase.verifyEqual(transform.targetGramMatrix, expectedTarget, RelTol=1e-12, AbsTol=1e-12)
             testCase.verifyEqual(transform.relativeGramError, expectedRelativeError, RelTol=1e-12, AbsTol=1e-14)
-            testCase.verifyEqual(transform.basisConditionNumber, cond(expectedBasis), RelTol=1e-12)
+            testCase.verifyEqual(transform.inverseMatrixConditionNumber, cond(expectedBasis), RelTol=1e-12)
             testCase.verifyEqual(transform.gramConditionNumber, cond(expectedGram), RelTol=1e-12)
             testCase.verifyTrue(transform.targetGramIsPositiveDefinite)
             testCase.verifyFalse(transform.hasNegativeIncrements)
@@ -53,11 +53,18 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             [basisSet, z, dz] = testCase.regularBasis(4);
             transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
             coefficients = [1 -2; 0.5 3; -4 0.25];
-            values = transform.basisMatrix*coefficients;
+            values = transform.inverseMatrix*coefficients;
 
+            testCase.verifyEqual(transform.forwardMatrix*transform.inverseMatrix, eye(3), RelTol=1e-11, AbsTol=1e-12)
             testCase.verifyEqual(transform.project(values), coefficients, RelTol=1e-11, AbsTol=1e-12)
+            testCase.verifyEqual(transform.project(values), transform.forwardMatrix*values, RelTol=1e-13, AbsTol=1e-13)
             testCase.verifyEqual(transform.reconstruct(coefficients), values, RelTol=1e-13, AbsTol=1e-13)
+            testCase.verifyEqual(transform.reconstruct(coefficients), transform.inverseMatrix*coefficients, RelTol=1e-13, AbsTol=1e-13)
+            sampledProjector = transform.inverseMatrix*transform.forwardMatrix;
+            testCase.verifyEqual(sampledProjector*sampledProjector, sampledProjector, RelTol=1e-11, AbsTol=1e-12)
             testCase.verifyLessThan(transform.roundTripError, 1e-11)
+            testCase.verifyFalse(isprop(transform,"basisMatrix"))
+            testCase.verifyFalse(isprop(transform,"basisConditionNumber"))
         end
 
         function galerkinResidualIsOrthogonalInSampleMetric(testCase)
@@ -66,7 +73,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             values = [z.^3 + 0.2*cos(7*z), exp(z) - z];
             coefficients = transform.project(values);
             residual = values - transform.reconstruct(coefficients);
-            normalResidual = transform.basisMatrix.'*transform.metricMatrix*residual;
+            normalResidual = transform.inverseMatrix.'*transform.metricMatrix*residual;
 
             testCase.verifyLessThan(norm(normalResidual,2), 1e-11*max(1,norm(values,2)))
         end
@@ -75,7 +82,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             [basisSet, z, dz] = testCase.regularBasis(4);
             transform = basisSet.discreteTransform(z=z, increments=dz, nModes=2);
 
-            testCase.verifySize(transform.basisMatrix, [length(z) 2])
+            testCase.verifySize(transform.inverseMatrix, [length(z) 2])
             testCase.verifySize(transform.forwardMatrix, [2 length(z)])
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:2), AbsTol=0)
             testCase.verifyError(@() basisSet.discreteTransform(z=z, increments=dz, nModes=5), "IMBasisSet:InvalidDiscreteModeCount")
@@ -96,7 +103,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             expectedMetric(end,end) = expectedMetric(end,end) + endpointWeight.coefficient*endpointWeight.c^2;
 
             testCase.verifyEqual(transform.metricMatrix, expectedMetric, AbsTol=1e-14)
-            testCase.verifyEqual(transform.gramMatrix, transform.basisMatrix.'*expectedMetric*transform.basisMatrix, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(transform.gramMatrix, transform.inverseMatrix.'*expectedMetric*transform.inverseMatrix, RelTol=1e-12, AbsTol=1e-12)
             testCase.verifyError(@() basisSet.discreteTransform(z=z(1:end-1), increments=dz(1:end-1), nModes=2), "IMBasisSet:MissingDiscreteEndpointSample")
         end
 
@@ -124,7 +131,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
         function indefiniteTargetsUseAbsoluteNormScaling(testCase)
             targetGram = diag([-1 2]);
             transform = IMDiscreteTransform(z=[-1; 0], increments=[-1; 1], modeNumber=[-1 1], normalization="unity", ...
-                basisMatrix=eye(2), metricMatrix=diag([-2 3]), targetGramMatrix=targetGram);
+                inverseMatrix=eye(2), metricMatrix=diag([-2 3]), targetGramMatrix=targetGram);
             scale = 1./sqrt(abs(diag(targetGram)));
             expected = norm(scale.*(transform.gramMatrix - targetGram).*scale.',2);
 
@@ -149,10 +156,10 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
         function matrixObjectRejectsSingularAndMalformedOperations(testCase)
             testCase.verifyError(@() IMDiscreteTransform(z=[-1; -0.5; 0], increments=ones(3,1), modeNumber=[1 2], normalization="unity", ...
-                basisMatrix=ones(3,2), metricMatrix=eye(3), targetGramMatrix=eye(2)), "IMDiscreteTransform:SingularGramMatrix")
+                inverseMatrix=ones(3,2), metricMatrix=eye(3), targetGramMatrix=eye(2)), "IMDiscreteTransform:SingularGramMatrix")
 
             transform = IMDiscreteTransform(z=[-1; 0], increments=ones(2,1), modeNumber=[1 2], normalization="unity", ...
-                basisMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));
+                inverseMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));
             testCase.verifyError(@() transform.project(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
             testCase.verifyError(@() transform.reconstruct(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
         end

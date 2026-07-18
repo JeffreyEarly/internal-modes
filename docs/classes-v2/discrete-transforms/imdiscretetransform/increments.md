@@ -3,7 +3,7 @@ layout: default
 title: increments
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 8
+nav_order: 6
 mathjax: true
 ---
 

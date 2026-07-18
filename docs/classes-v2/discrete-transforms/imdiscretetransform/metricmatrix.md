@@ -11,6 +11,8 @@ mathjax: true
 
 Sample-space metric matrix $$W$$.
 
+> Developer documentation: this item describes internal implementation details.
+
 
 ---
 

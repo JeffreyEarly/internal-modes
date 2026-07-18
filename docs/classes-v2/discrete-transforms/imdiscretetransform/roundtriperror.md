@@ -9,7 +9,7 @@ mathjax: true
 
 #  roundTripError
 
-Coefficient round-trip error $$\|A_{\mathrm{gal}}\Phi-I\|_2$$.
+Coefficient round-trip error $$\|A_{\mathrm f}A_{\mathrm i}-I\|_2$$.
 
 
 ---

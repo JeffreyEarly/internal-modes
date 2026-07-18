@@ -9,7 +9,7 @@ mathjax: true
 
 #  project
 
-sampled profiles onto retained modal coefficients.
+Return retained modal coefficients for sampled profiles.
 
 
 ---
@@ -25,3 +25,9 @@ sampled profiles onto retained modal coefficients.
 + `coefficients`  retained modal coefficients
 
 ## Discussion
+
+This method applies `forwardMatrix`:
+
+$$
+\mathbf{a}=A_{\mathrm f}\mathbf{x}.
+$$

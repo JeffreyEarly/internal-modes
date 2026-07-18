@@ -60,12 +60,12 @@ rule = ["fitted"; "geometric"];
 relativeGramError = [transform.relativeGramError; geometricTransform.relativeGramError];
 objectiveResidual = [fit.fittedResidualNorm; fit.geometricResidualNorm];
 roundTripError = [transform.roundTripError; geometricTransform.roundTripError];
-basisConditionNumber = [transform.basisConditionNumber; geometricTransform.basisConditionNumber];
+inverseMatrixConditionNumber = [transform.inverseMatrixConditionNumber; geometricTransform.inverseMatrixConditionNumber];
 gramConditionNumber = [transform.gramConditionNumber; geometricTransform.gramConditionNumber];
 depthSum = [sum(transform.increments); sum(geometricTransform.increments)];
 minimumIncrement = [min(transform.increments); min(geometricTransform.increments)];
 maximumIncrement = [max(transform.increments); max(geometricTransform.increments)];
-diagnostics = table(rule,relativeGramError,objectiveResidual,roundTripError,basisConditionNumber, ...
+diagnostics = table(rule,relativeGramError,objectiveResidual,roundTripError,inverseMatrixConditionNumber, ...
     gramConditionNumber,depthSum,minimumIncrement,maximumIncrement);
 
 fprintf("\nFixed-point scalar transform for exponential hydrostatic G modes\n");
@@ -104,7 +104,7 @@ figure(Name="V2 fixed-point scalar discrete transform",Color="w");
 tiledlayout(2,2,TileSpacing="compact",Padding="compact");
 
 nexttile
-plot(transform.basisMatrix,z,LineWidth=1.1)
+plot(transform.inverseMatrix,z,LineWidth=1.1)
 grid on
 xlabel("G")
 ylabel("z (m)")

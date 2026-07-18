@@ -52,7 +52,7 @@ This method requires `lsqlin` from Optimization Toolbox.
 
 A custom objective is a function handle accepting a context struct and
 returning a scalar struct with fields `A`, `b`, and optional `name`. The
-context contains `z`, `modeNumber`, `normalization`, `basisMatrix`,
+context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
 `interiorWeight`, `targetGramMatrix`, `endpointGramMatrix`,
 `geometricIncrements`, `normalizedGramA`, and `normalizedGramB`.
 

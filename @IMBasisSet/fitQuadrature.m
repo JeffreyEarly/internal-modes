@@ -23,7 +23,7 @@ function fit = fitQuadrature(self, options)
 %
 % A custom objective is a function handle accepting a context struct and
 % returning a scalar struct with fields `A`, `b`, and optional `name`. The
-% context contains `z`, `modeNumber`, `normalization`, `basisMatrix`,
+% context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
 % `interiorWeight`, `targetGramMatrix`, `endpointGramMatrix`,
 % `geometricIncrements`, `normalizedGramA`, and `normalizedGramB`.
 %
@@ -65,11 +65,11 @@ else
     interiorWeight = interiorWeight(:);
 end
 
-basisMatrix = geometricTransform.basisMatrix;
+inverseMatrix = geometricTransform.inverseMatrix;
 targetGramMatrix = geometricTransform.targetGramMatrix;
 interiorMetricMatrix = diag(interiorWeight.*geometricIncrements);
 endpointMetricMatrix = geometricTransform.metricMatrix - interiorMetricMatrix;
-endpointGramMatrix = basisMatrix.'*endpointMetricMatrix*basisMatrix;
+endpointGramMatrix = inverseMatrix.'*endpointMetricMatrix*inverseMatrix;
 endpointGramMatrix = 0.5*(endpointGramMatrix + endpointGramMatrix.');
 targetNorms = diag(targetGramMatrix);
 
@@ -81,7 +81,7 @@ for iMode = 1:nModes
     for jMode = 1:nModes
         iRow = iRow + 1;
         scale = sqrt(abs(targetNorms(iMode)*targetNorms(jMode)));
-        normalizedGramA(iRow,:) = (interiorWeight.*basisMatrix(:,iMode).*basisMatrix(:,jMode)).'/scale;
+        normalizedGramA(iRow,:) = (interiorWeight.*inverseMatrix(:,iMode).*inverseMatrix(:,jMode)).'/scale;
         normalizedGramB(iRow) = (targetGramMatrix(iMode,jMode) - endpointGramMatrix(iMode,jMode))/scale;
     end
 end
@@ -90,7 +90,7 @@ objectiveContext = struct();
 objectiveContext.z = z;
 objectiveContext.modeNumber = geometricTransform.modeNumber;
 objectiveContext.normalization = geometricTransform.normalization;
-objectiveContext.basisMatrix = basisMatrix;
+objectiveContext.inverseMatrix = inverseMatrix;
 objectiveContext.interiorWeight = interiorWeight;
 objectiveContext.targetGramMatrix = targetGramMatrix;
 objectiveContext.endpointGramMatrix = endpointGramMatrix;

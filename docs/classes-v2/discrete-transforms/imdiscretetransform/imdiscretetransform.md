@@ -23,7 +23,7 @@ Create a scalar discrete transform from canonical matrices.
 + `options.increments`  quadrature increments
 + `options.modeNumber`  retained mode labels
 + `options.normalization`  basis normalization name
-+ `options.basisMatrix`  sampled basis matrix
++ `options.inverseMatrix`  inverse transform matrix containing the sampled modes
 + `options.metricMatrix`  sampled metric matrix
 + `options.targetGramMatrix`  continuous diagonal Gram target
 

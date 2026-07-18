@@ -72,7 +72,7 @@ classdef IMQuadratureFitTests < matlab.unittest.TestCase
             z = linspace(-1,0,17).';
             fit = basisSet.fitQuadrature(z=z,nModes=2);
 
-            Phi = fit.geometricTransform.basisMatrix;
+            Phi = fit.geometricTransform.inverseMatrix;
             target = fit.geometricTransform.targetGramMatrix;
             targetNorms = diag(target);
             endpointWeight = evp.innerProduct().surfaceWeights(1);
@@ -144,7 +144,7 @@ classdef IMQuadratureFitTests < matlab.unittest.TestCase
             basisSet = testCase.regularBasis(3);
             z = [-1; -0.73; -0.44; -0.18; 0];
             desiredIncrements = [0.08; 0.17; 0.24; 0.29; 0.22];
-            objective = @(context) struct("A",eye(length(context.z)),"b",desiredIncrements,"name","prescribedIncrements");
+            objective = @(context) struct("A",eye(size(context.inverseMatrix,1)),"b",desiredIncrements,"name","prescribedIncrements");
             fit = basisSet.fitQuadrature(z=z,nModes=2,objective=objective);
 
             testCase.verifyEqual(fit.objectiveName,"prescribedIncrements")

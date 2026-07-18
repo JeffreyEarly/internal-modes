@@ -11,6 +11,8 @@ mathjax: true
 
 Continuous diagonal Gram target $$\Gamma_0$$.
 
+> Developer documentation: this item describes internal implementation details.
+
 
 ---
 

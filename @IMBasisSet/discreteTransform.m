@@ -5,7 +5,7 @@ function transform = discreteTransform(self, options)
 % method forms
 %
 % $$
-% \Phi_{ij}=u_j(z_i),\qquad
+% (A_{\mathrm i})_{ij}=\Phi_{ij}=u_j(z_i),\qquad
 % W_{\mathrm{int}}=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
 % $$
 %
@@ -66,8 +66,8 @@ if ~any(increments ~= 0)
     error("IMBasisSet:InvalidDiscreteIncrements", "increments must contain at least one nonzero value.");
 end
 
-basisMatrix = self.u(z);
-basisMatrix = basisMatrix(:,1:nModes);
+inverseMatrix = self.u(z);
+inverseMatrix = inverseMatrix(:,1:nModes);
 context = self.evp.contextForSolver(self.solver);
 spec = self.evp.innerProduct();
 interiorWeight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
@@ -116,6 +116,6 @@ end
 continuousGramMatrix = self.gramMatrix();
 targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
 transform = IMDiscreteTransform(z=z, increments=increments, modeNumber=self.modeNumber(1:nModes), ...
-    normalization=self.normalizationName(self.normalization), basisMatrix=basisMatrix, ...
+    normalization=self.normalizationName(self.normalization), inverseMatrix=inverseMatrix, ...
     metricMatrix=metricMatrix, targetGramMatrix=targetGramMatrix);
 end

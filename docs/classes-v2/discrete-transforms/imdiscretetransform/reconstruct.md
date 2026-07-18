@@ -9,7 +9,7 @@ mathjax: true
 
 #  reconstruct
 
-sampled profiles from retained coefficients.
+Return sampled profiles reconstructed from retained coefficients.
 
 
 ---
@@ -25,3 +25,9 @@ sampled profiles from retained coefficients.
 + `values`  reconstructed profiles sampled on `z`
 
 ## Discussion
+
+This method applies `inverseMatrix`:
+
+$$
+\widehat{\mathbf{x}}=A_{\mathrm i}\mathbf{a}.
+$$
