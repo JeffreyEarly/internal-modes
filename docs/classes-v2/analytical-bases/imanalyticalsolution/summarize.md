@@ -23,5 +23,5 @@ Print a readable summary of the analytical solution.
 
 ## Discussion
 
-  With an EVP input, the summary also reports internal-mode
-  availability for that problem.
+With an EVP input, the summary also reports internal-mode
+availability for that problem.

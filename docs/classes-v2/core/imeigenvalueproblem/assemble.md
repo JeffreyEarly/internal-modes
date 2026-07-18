@@ -29,15 +29,15 @@ Build the canonical matrix pair on a solver grid.
 
 ## Discussion
 
-  Interior rows discretize
+Interior rows discretize
 
-  $$
-  -\frac{\partial}{\partial z}\left(p(z)\frac{\partial u}{\partial z}\right)
-  +q(z)u(z)=\lambda r(z)u(z).
-  $$
+$$
+-\frac{\partial}{\partial z}\left(p(z)\frac{\partial u}{\partial z}\right)
++q(z)u(z)=\lambda r(z)u(z).
+$$
 
-  The surface and bottom rows are replaced by the endpoint
-  conditions using endpoint values of `p`, producing the matrix
-  pencil $$A q = \lambda B q$$. This method is mainly for solver
-  implementations, diagnostics, and external eigensolver
-  experiments; ordinary workflows call `solver.solveEVP`.
+The surface and bottom rows are replaced by the endpoint
+conditions using endpoint values of `p`, producing the matrix
+pencil $$A q = \lambda B q$$. This method is mainly for solver
+implementations, diagnostics, and external eigensolver
+experiments; ordinary workflows call `solver.solveEVP`.

@@ -22,4 +22,4 @@ Return the active-endpoint numerator matrix.
 ```
 ## Discussion
 
-  The vector is `[u; p*u_z]`.
+The vector is `[u; p*u_z]`.

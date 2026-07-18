@@ -30,4 +30,4 @@ Evaluate the Airy-based WKB decay envelope used for pruning regions.
 
 ## Discussion
 
-                The decay part of the lowest F-mode. xi should be > 0
+The decay part of the lowest F-mode. xi should be > 0

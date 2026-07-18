@@ -16,6 +16,6 @@ Surface anomaly convention.
 
 ## Discussion
 
-  `surfaceAnomaly` is `"freeSurface"` or `"noFreeSurface"`.
-  The default includes the free-surface stretching term
-  $$-f_0F(0)/g$$ in the surface anomaly.
+`surfaceAnomaly` is `"freeSurface"` or `"noFreeSurface"`.
+The default includes the free-surface stretching term
+$$-f_0F(0)/g$$ in the surface anomaly.

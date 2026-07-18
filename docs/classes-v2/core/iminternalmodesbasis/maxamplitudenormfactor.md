@@ -29,6 +29,6 @@ Return the maximum amplitude of `F` or `G`.
 
 ## Discussion
 
-  This is $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$ for the
-  requested variable on the basis-set integration grid. If
-  `variable` is omitted, the solved formulation is used.
+This is $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$ for the
+requested variable on the basis-set integration grid. If
+`variable` is omitted, the solved formulation is used.

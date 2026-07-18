@@ -29,4 +29,4 @@ Differentiate a vector in the coupled Chebyshev basis.
 
 ## Discussion
 
-              differentiate a vector in the compound Chebyshev xi basis
+differentiate a vector in the compound Chebyshev xi basis

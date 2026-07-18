@@ -16,5 +16,5 @@ Surface boundary condition.
 
 ## Discussion
 
-  `surfaceBoundary` stores the scalar boundary condition at
-  `zDomain(2)` in canonical `IMBoundaryCondition` form.
+`surfaceBoundary` stores the scalar boundary condition at
+`zDomain(2)` in canonical `IMBoundaryCondition` form.

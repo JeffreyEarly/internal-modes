@@ -22,6 +22,6 @@ Return the ordinary Robin endpoint quadratic coefficient.
 ```
 ## Discussion
 
-  For inactive boundary conditions, this is
-  `(-1)^(i+1)*a/b` with Yassin's `z_1` bottom and `z_2`
-  surface indexing.
+For inactive boundary conditions, this is
+`(-1)^(i+1)*a/b` with Yassin's `z_1` bottom and `z_2`
+surface indexing.

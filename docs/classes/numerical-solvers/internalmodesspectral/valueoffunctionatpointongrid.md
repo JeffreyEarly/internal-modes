@@ -30,4 +30,4 @@ Evaluate a Chebyshev series at arbitrary points in its physical domain.
 
 ## Discussion
 
-                We have the Chebyshev coefficents of function func_cheb, defined on grid x, return the value at x0;
+We have the Chebyshev coefficents of function func_cheb, defined on grid x, return the value at x0;

@@ -16,5 +16,5 @@ Equivalent boundary depths.
 
 ## Discussion
 
-  `h(j)` is the projected zero-APV boundary depth for column `j`
-  of `F(z)` and `G(z)`.
+`h(j)` is the projected zero-APV boundary depth for column `j`
+of `F(z)` and `G(z)`.

@@ -35,5 +35,5 @@ Initialize the WKB-coordinate spectral solver.
 
 ## Discussion
 
-  This constructor intentionally preserves the public
-  name-value API used by `wave-vortex-model`.
+This constructor intentionally preserves the public
+name-value API used by `wave-vortex-model`.

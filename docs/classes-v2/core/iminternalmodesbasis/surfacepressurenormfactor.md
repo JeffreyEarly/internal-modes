@@ -28,9 +28,9 @@ Return the raw surface `F` value.
 
 ## Discussion
 
-  This developer utility returns the raw surface value
-  $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
-  It gives unit surface `F` value when the raw surface value is
-  finite and nonzero. If that value is unavailable, zero, or
-  nonfinite, it returns `1` so normalization remains well
-  defined.
+This developer utility returns the raw surface value
+$$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
+It gives unit surface `F` value when the raw surface value is
+finite and nonzero. If that value is unavailable, zero, or
+nonfinite, it returns `1` so normalization remains well
+defined.

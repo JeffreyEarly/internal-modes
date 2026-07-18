@@ -28,8 +28,8 @@ Return Parseval weights for modal spectra.
 
 ## Discussion
 
-  For canonical geostrophic F modes this returns
-  $$\gamma_0=D$$ and $$\gamma_j=h_g^j$$. For canonical G modes
-  the current normalization gives a modal spectrum weighted by
-  $$g$$. These Parseval spectrum weights are distinct from the
-  normalization used by canonical forward projections.
+For canonical geostrophic F modes this returns
+$$\gamma_0=D$$ and $$\gamma_j=h_g^j$$. For canonical G modes
+the current normalization gives a modal spectrum weighted by
+$$g$$. These Parseval spectrum weights are distinct from the
+normalization used by canonical forward projections.

@@ -19,5 +19,5 @@ Real valued property with dimension $$observationIndex$$ and units of $$m$$.
 
 ## Discussion
 
-  This is empty when the projection was built from an explicit
-  observation matrix.
+This is empty when the projection was built from an explicit
+observation matrix.

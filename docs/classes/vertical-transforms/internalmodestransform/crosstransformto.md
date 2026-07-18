@@ -29,12 +29,12 @@ Map coefficients from a target transform into this transform.
 
 ## Discussion
 
-  The matrix is
+The matrix is
 
-  $$
-  C = P_{\mathrm{self}}\Phi_{\mathrm{target}},
-  $$
+$$
+C = P_{\mathrm{self}}\Phi_{\mathrm{target}},
+$$
 
-  where `P_self` is this transform's forward matrix and
-  `Phi_target` is the target transform's inverse matrix for the
-  selected component.
+where `P_self` is this transform's forward matrix and
+`Phi_target` is the target transform's inverse matrix for the
+selected component.

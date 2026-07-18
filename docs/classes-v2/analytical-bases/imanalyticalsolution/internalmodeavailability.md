@@ -26,7 +26,7 @@ Report whether exact internal modes are available.
 
 ## Discussion
 
-  Concrete solution families return a struct with
-  `isAvailable`, `reason`, `solutionKind`, `stratification`,
-  `supportedVariables`, `supportedInnerProducts`, and
-  `supportedNormalizations`.
+Concrete solution families return a struct with
+`isAvailable`, `reason`, `solutionKind`, `stratification`,
+`supportedVariables`, `supportedInnerProducts`, and
+`supportedNormalizations`.

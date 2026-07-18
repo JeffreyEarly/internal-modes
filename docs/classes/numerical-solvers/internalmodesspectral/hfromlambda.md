@@ -18,4 +18,4 @@ Set on initialization by the subclass, these transformations are
 
 ## Discussion
 applied after solving the EVP to transform back into z-space.
-  Map generalized-eigenvalues to equivalent depths $$h_j$$.
+Map generalized-eigenvalues to equivalent depths $$h_j$$.

@@ -3,7 +3,7 @@ layout: default
 title: solveSurfaceGeostrophicModes
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 14
+nav_order: 15
 mathjax: true
 ---
 
@@ -26,7 +26,7 @@ Solve projected surface-geostrophic boundary modes.
 
 ## Discussion
 
-  `solveSurfaceGeostrophicModes` solves the raw zero-APV
-  endpoint modes stored by `IMSurfaceGeostrophicModes`, forms
-  the boundary-energy projection, and returns an
-  `IMSurfaceGeostrophicModesBasis` with `F`, `G`, and `h`.
+`solveSurfaceGeostrophicModes` solves the raw zero-APV
+endpoint modes stored by `IMSurfaceGeostrophicModes`, forms
+the boundary-energy projection, and returns an
+`IMSurfaceGeostrophicModesBasis` with `F`, `G`, and `h`.

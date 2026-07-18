@@ -32,6 +32,6 @@ Create a vertical transform from canonical persisted state.
 
 ## Discussion
 
-  This constructor stores already-built operators. Use
-  `InternalModesBasis` factories to solve modes and build new
-  transforms from stratification.
+This constructor stores already-built operators. Use
+`InternalModesBasis` factories to solve modes and build new
+transforms from stratification.

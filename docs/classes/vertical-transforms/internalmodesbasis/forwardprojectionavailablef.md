@@ -19,6 +19,6 @@ Real valued property with no dimensions and no units.
 
 ## Discussion
 
-  For nonzero-$$\kappa$$ IGW bases this is false, because wave F
-  modes are diagnostic/evaluation modes rather than a separate
-  Sturm-Liouville projection basis.
+For nonzero-$$\kappa$$ IGW bases this is false, because wave F
+modes are diagnostic/evaluation modes rather than a separate
+Sturm-Liouville projection basis.

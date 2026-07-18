@@ -28,5 +28,5 @@ Return a solver configured for surface-geostrophic modes.
 
 ## Discussion
 
-  Concrete solvers prepare their native grid, coordinate mapping,
-  and derivative matrices for the supplied SQG problem.
+Concrete solvers prepare their native grid, coordinate mapping,
+and derivative matrices for the supplied SQG problem.

@@ -28,5 +28,5 @@ Return the Lobatto-grid differentiation matrix for interpolation values.
 
 ## Discussion
 
-            Chebyshev Interpolation Derivative
-  taken from Canuto, et al. 2.4.33
+Chebyshev Interpolation Derivative
+taken from Canuto, et al. 2.4.33

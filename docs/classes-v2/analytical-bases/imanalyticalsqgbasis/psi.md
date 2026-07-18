@@ -26,5 +26,5 @@ Evaluate exact SQG streamfunction modes.
 
 ## Discussion
 
-  The returned array has one row per `z` value and one column per
-  retained wavenumber in `k`.
+The returned array has one row per `z` value and one column per
+retained wavenumber in `k`.

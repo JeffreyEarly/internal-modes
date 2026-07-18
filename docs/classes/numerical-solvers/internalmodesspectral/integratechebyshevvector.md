@@ -28,8 +28,8 @@ Integrate a Chebyshev series in coefficient space.
 
 ## Discussion
 
-            Taken from cumsum as part of chebfun.
-  chebfun/@chebtech/cumsum.m
+Taken from cumsum as part of chebfun.
+chebfun/@chebtech/cumsum.m
 
-  Copyright 2017 by The University of Oxford and The Chebfun Developers.
-  See http://www.chebfun.org/ for Chebfun information.
+Copyright 2017 by The University of Oxford and The Chebfun Developers.
+See http://www.chebfun.org/ for Chebfun information.

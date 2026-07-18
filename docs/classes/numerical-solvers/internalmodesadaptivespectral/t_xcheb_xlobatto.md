@@ -29,4 +29,4 @@ Transform coupled Chebyshev coefficients onto the adaptive Lobatto grid.
 
 ## Discussion
 
-              transform from xCheb basis to xLobatto
+transform from xCheb basis to xLobatto

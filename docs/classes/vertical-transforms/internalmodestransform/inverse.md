@@ -27,5 +27,5 @@ Return an inverse vertical reconstruction matrix.
 
 ## Discussion
 
-  The returned matrix maps vertical modal coefficients to field
-  samples on `z`.
+The returned matrix maps vertical modal coefficients to field
+samples on `z`.

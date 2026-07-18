@@ -16,5 +16,5 @@ Mode-aligned horizontal wavenumbers.
 
 ## Discussion
 
-  `k(j)` is the horizontal wavenumber for column `j` of `F(z)`
-  and `G(z)`.
+`k(j)` is the horizontal wavenumber for column `j` of `F(z)`
+and `G(z)`.

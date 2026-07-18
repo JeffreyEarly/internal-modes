@@ -31,13 +31,13 @@ Prepare rank-one endpoint terms for exact Gram matrices.
 
 ## Discussion
 
-  `endpointGramTerms` returns endpoint vectors over all retained
-  analytical modes. Solved-form endpoint weights use
-  $$L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),$$
-  and contribute
-  $$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
-  Catalog endpoint value terms use $$V_j(z_\ell)$$ and
-  contribute
-  $$M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.$$
-  Endpoint terms are omitted when `zBounds` does not include
-  that endpoint.
+`endpointGramTerms` returns endpoint vectors over all retained
+analytical modes. Solved-form endpoint weights use
+$$L_\ell[V_j]=c_\ell V_j(z_\ell)-d_\ell p(z_\ell)\frac{\partial V_j}{\partial z}(z_\ell),$$
+and contribute
+$$M \leftarrow M+\gamma_\ell L_\ell L_\ell^\mathsf{T}.$$
+Catalog endpoint value terms use $$V_j(z_\ell)$$ and
+contribute
+$$M \leftarrow M+\alpha_\ell V_\ell V_\ell^\mathsf{T}.$$
+Endpoint terms are omitted when `zBounds` does not include
+that endpoint.

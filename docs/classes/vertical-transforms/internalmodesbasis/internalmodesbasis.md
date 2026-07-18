@@ -43,7 +43,7 @@ Create a persisted vertical basis from canonical state.
 
 ## Discussion
 
-  This constructor is intentionally a cheap state constructor for
-  annotated persistence. Scientific setup should usually use
-  `fromSolverAtFrequency`, `fromSolverAtWavenumber`, or
-  `fromSolvedModes`.
+This constructor is intentionally a cheap state constructor for
+annotated persistence. Scientific setup should usually use
+`fromSolverAtFrequency`, `fromSolverAtWavenumber`, or
+`fromSolvedModes`.

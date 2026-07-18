@@ -28,4 +28,4 @@ Test whether a grid is a Chebyshev-Lobatto grid up to tolerance.
 
 ## Discussion
 
-            make sure the grid is monotonically decreasing
+make sure the grid is monotonically decreasing

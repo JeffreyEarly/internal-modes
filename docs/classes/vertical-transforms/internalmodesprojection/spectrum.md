@@ -29,6 +29,6 @@ Compute a retained-mode observation spectrum.
 
 ## Discussion
 
-  This method uses the retained rows of the candidate spectral
-  weights. For canonical G modes this is the potential-energy
-  spectrum implied by the basis normalization.
+This method uses the retained rows of the candidate spectral
+weights. For canonical G modes this is the potential-energy
+spectrum implied by the basis normalization.

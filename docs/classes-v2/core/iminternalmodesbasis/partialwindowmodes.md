@@ -27,7 +27,7 @@ Diagonalize a partial-depth Gram matrix for `F` or `G`.
 
 ## Discussion
 
-  This computes the eigendecomposition of the symmetric Gram
-  matrix on `zBounds`. If `variable` is omitted, the solved
-  formulation is used. The requested variable must have a known
-  inner product.
+This computes the eigendecomposition of the symmetric Gram
+matrix on `zBounds`. If `variable` is omitted, the solved
+formulation is used. The requested variable must have a known
+inner product.

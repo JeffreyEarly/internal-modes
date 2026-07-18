@@ -19,5 +19,5 @@ Real valued property with dimensions $$(modeF,zIndex)$$ and no units.
 
 ## Discussion
 
-  The rows are retained F modes and columns are vertical grid
-  samples.
+The rows are retained F modes and columns are vertical grid
+samples.

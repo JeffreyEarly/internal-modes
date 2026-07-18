@@ -27,5 +27,5 @@ Return the surface SQG mode at fixed horizontal wavenumber.
 
 ## Discussion
 
-  Section 5.6 of Early, Lelong, and Smith (2020) discusses the
-  surface-trapped modes computed by this helper.
+Section 5.6 of Early, Lelong, and Smith (2020) discusses the
+surface-trapped modes computed by this helper.

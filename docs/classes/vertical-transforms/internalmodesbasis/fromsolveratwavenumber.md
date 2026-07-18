@@ -31,6 +31,6 @@ Solve modes at fixed horizontal wavenumber.
 
 ## Discussion
 
-  For nonzero $$\kappa$$, the returned basis marks G as the
-  canonical Sturm-Liouville projection component and F as
-  diagnostic/evaluation-only.
+For nonzero $$\kappa$$, the returned basis marks G as the
+canonical Sturm-Liouville projection component and F as
+diagnostic/evaluation-only.

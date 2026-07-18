@@ -16,5 +16,5 @@ Bottom boundary condition.
 
 ## Discussion
 
-  `bottomBoundary` stores the scalar boundary condition at
-  `zDomain(1)` in canonical `IMBoundaryCondition` form.
+`bottomBoundary` stores the scalar boundary condition at
+`zDomain(1)` in canonical `IMBoundaryCondition` form.

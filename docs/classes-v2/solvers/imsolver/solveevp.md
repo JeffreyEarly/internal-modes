@@ -3,7 +3,7 @@ layout: default
 title: solveEVP
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 
@@ -27,5 +27,5 @@ Solve an EVP and return a basis set.
 
 ## Discussion
 
-  If the assembled matrices produce no finite real eigenvalues,
-  `solveEVP` throws a matrix-level diagnostic before returning.
+If the assembled matrices produce no finite real eigenvalues,
+`solveEVP` throws a matrix-level diagnostic before returning.

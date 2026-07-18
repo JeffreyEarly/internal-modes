@@ -3,7 +3,7 @@ layout: default
 title: u
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 23
+nav_order: 26
 mathjax: true
 ---
 
@@ -27,6 +27,6 @@ Evaluate solved scalar modes.
 
 ## Discussion
 
-  Returned columns are normalized as
-  $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
-  where $$s_j$$ comes from `normalizationFactors`.
+Returned columns are normalized as
+$$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+where $$s_j$$ comes from `normalizationFactors`.

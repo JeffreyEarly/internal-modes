@@ -27,6 +27,6 @@ Apply the spectral window to a true candidate-mode spectrum.
 
 ## Discussion
 
-  For uncorrelated modal coefficients, `spectralWindow` maps
-  the candidate spectrum into the expected retained recovered
-  spectrum.
+For uncorrelated modal coefficients, `spectralWindow` maps
+the candidate spectrum into the expected retained recovered
+spectrum.

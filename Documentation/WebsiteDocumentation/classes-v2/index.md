@@ -9,9 +9,9 @@ mathjax: true
 
 # Class Documentation V2
 
-This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and projected surface-geostrophic boundary modes, and evaluating basis sets in `internal-modes`.
+This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and projected surface-geostrophic boundary modes, evaluating basis sets, and constructing discrete modal transforms in `internal-modes`.
 
-The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, and analytical solution families provide exact references for common stratifications.
+The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, discrete transforms project sampled profiles, and analytical solution families provide exact references for common stratifications.
 
 ## Choose a starting point
 
@@ -20,6 +20,7 @@ The pages are organized around the objects that own each part of the calculation
 | [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, internal-mode basis sets, or projected surface-geostrophic boundary modes |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification solution families, internal-mode bases, or SQG boundary modes |
+| [`Discrete transforms`](./discrete-transforms) | you want quadrature points, fitted quadrature increments, Galerkin projection, reconstruction, or Parseval diagnostics |
 | [`Supporting types`](./supporting-types) | you want internal-mode normalization conventions |
 
 ## Shared notation
@@ -47,3 +48,4 @@ The reference pages use the standard vertical-mode variables:
 - [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
 - [`IMSurfaceGeostrophicModes`](./core/imsurfacegeostrophicmodes) describes projected zero-APV SQG boundary modes at fixed horizontal wavenumber, and solvers return [`IMSurfaceGeostrophicModesBasis`](./core/imsurfacegeostrophicmodesbasis) objects.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.
+- [`IMBasisSet`](./core/imbasisset) generates candidate quadrature points and fits quadrature increments; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then projects sampled profiles and reconstructs them from retained coefficients, while [`IMQuadratureFit`](./discrete-transforms/imquadraturefit) compares fitted and geometric quadrature rules.

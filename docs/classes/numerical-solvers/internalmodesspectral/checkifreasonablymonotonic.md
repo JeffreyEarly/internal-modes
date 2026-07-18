@@ -37,10 +37,10 @@ Test whether a gridded density profile is monotonic enough for stretched coordin
 
 ## Discussion
 
-                              We want to know if the density function is decreasing as z
-  increases. If it's not, are the discrepencies small enough
-  that we can just force them?
+We want to know if the density function is decreasing as z
+increases. If it's not, are the discrepencies small enough
+that we can just force them?
 
-  flag is 0 if the function is not reasonably monotonic, 1 if
-  it is, and 2 if we were able to to coerce it to be, without
-  too much change
+flag is 0 if the function is not reasonably monotonic, 1 if
+it is, and 2 if we were able to to coerce it to be, without
+too much change

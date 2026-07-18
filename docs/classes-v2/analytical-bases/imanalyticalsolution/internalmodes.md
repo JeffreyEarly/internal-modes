@@ -29,6 +29,6 @@ Create an exact internal-mode basis when available.
 
 ## Discussion
 
-  Concrete solution families return an
-  `IMAnalyticalInternalModesBasis` for supported EVPs and throw a
-  class-specific unavailable or unsupported error otherwise.
+Concrete solution families return an
+`IMAnalyticalInternalModesBasis` for supported EVPs and throw a
+class-specific unavailable or unsupported error otherwise.

@@ -16,5 +16,5 @@ Boundary-energy eigenvalues.
 
 ## Discussion
 
-  `energyEigenvalues(j)` is the value $$\gamma_a$$ used in
-  $$h_j=2k_j^2\gamma_a$$.
+`energyEigenvalues(j)` is the value $$\gamma_a$$ used in
+$$h_j=2k_j^2\gamma_a$$.

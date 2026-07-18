@@ -19,4 +19,4 @@ Real valued property with no dimensions and units of $$m$$.
 
 ## Discussion
 
-  The barotropic geostrophic F spectral weight is $$\gamma_0=D$$.
+The barotropic geostrophic F spectral weight is $$\gamma_0=D$$.

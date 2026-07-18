@@ -32,6 +32,6 @@ Return resolved modes on mode-adapted quadrature points.
 
 ## Discussion
 
-  This helper chooses quadrature points from the roots of a resolved
-  higher mode, temporarily evaluates the requested modes on those points,
-  and restores the original output grid before returning.
+This helper chooses quadrature points from the roots of a resolved
+higher mode, temporarily evaluates the requested modes on those points,
+and restores the original output grid before returning.

@@ -16,5 +16,5 @@ Bottom buoyancy-anomaly weight.
 
 ## Discussion
 
-  A finite nonzero `gd` includes the bottom endpoint mode. `Inf`
-  means the bottom anomaly is not represented.
+A finite nonzero `gd` includes the bottom endpoint mode. `Inf`
+means the bottom anomaly is not represented.

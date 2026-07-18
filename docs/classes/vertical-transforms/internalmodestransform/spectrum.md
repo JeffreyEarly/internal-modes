@@ -30,4 +30,4 @@ Compute a vertical modal auto-spectrum.
 
 ## Discussion
 
-  This is equivalent to `crossSpectrum(coefficients,coefficients)`.
+This is equivalent to `crossSpectrum(coefficients,coefficients)`.

@@ -16,5 +16,5 @@ Physical vertical domain.
 
 ## Discussion
 
-  `zDomain` is sorted as `[bottom surface]` and defines the
-  interval on which the canonical EVP is posed.
+`zDomain` is sorted as `[bottom surface]` and defines the
+interval on which the canonical EVP is posed.

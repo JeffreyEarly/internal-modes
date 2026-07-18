@@ -19,4 +19,4 @@ Real valued property with dimension $$modeG$$ and no units.
 
 ## Discussion
 
-  For canonical G modes this stores $$g$$ for each retained mode.
+For canonical G modes this stores $$g$$ for each retained mode.

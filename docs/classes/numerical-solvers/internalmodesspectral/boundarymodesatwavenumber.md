@@ -28,9 +28,9 @@ Return either the surface or bottom boundary mode at fixed wavenumber.
 
 ## Discussion
 
-  This helper estimates the boundary-grid resolution needed to
-  resolve the smallest retained boundary mode, then solves the
-  manuscript SQG-style boundary-value problem spectrally.
+This helper estimates the boundary-grid resolution needed to
+resolve the smallest retained boundary mode, then solves the
+manuscript SQG-style boundary-value problem spectrally.
 
-              Estimate the grid resolution necessary to resolve the
-  smallest mode.
+Estimate the grid resolution necessary to resolve the
+smallest mode.

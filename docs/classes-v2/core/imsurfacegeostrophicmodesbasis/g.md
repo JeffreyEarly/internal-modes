@@ -26,5 +26,5 @@ Evaluate diagnostic SQG displacement modes.
 
 ## Discussion
 
-  `G(z)` is recovered from the projected `F` modes using
-  $$G=-gN^{-2}\partial F/\partial z$$.
+`G(z)` is recovered from the projected `F` modes using
+$$G=-gN^{-2}\partial F/\partial z$$.

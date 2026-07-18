@@ -28,7 +28,7 @@ Assemble the fixed-$$K$$ generalized EVP on the spectral grid.
 
 ## Discussion
 
-              The eigenvalue equation is,
-  G_{zz} - K^2 G = \frac{f_0^2 -N^2}{gh_j}G
-  A = \frac{g}{f_0^2 -N^2} \left( \partial_{zz} - K^2*I \right)
-  B = I
+The eigenvalue equation is,
+G_{zz} - K^2 G = \frac{f_0^2 -N^2}{gh_j}G
+A = \frac{g}{f_0^2 -N^2} \left( \partial_{zz} - K^2*I \right)
+B = I

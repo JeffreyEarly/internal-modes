@@ -28,5 +28,5 @@ Create exact SQG boundary modes at fixed wavenumber.
 
 ## Discussion
 
-  Concrete solution families return an `IMAnalyticalSQGBasis`
-  when the requested boundary mode is available.
+Concrete solution families return an `IMAnalyticalSQGBasis`
+when the requested boundary mode is available.

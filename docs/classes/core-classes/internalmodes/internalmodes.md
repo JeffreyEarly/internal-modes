@@ -26,11 +26,11 @@ Initialize the wrapper from a profile or a built-in benchmark case.
 
 ## Discussion
 
-  The main calling patterns are:
+The main calling patterns are:
 
-  - `InternalModes(rho, zIn, zOut, latitude, ...)`
-  - `InternalModes(profileName, methodName, nPoints)`
+- `InternalModes(rho, zIn, zOut, latitude, ...)`
+- `InternalModes(profileName, methodName, nPoints)`
 
-  where additional name-value pairs are split between wrapper
-  options such as `method` and the concrete solver
-  constructor.
+where additional name-value pairs are split between wrapper
+options such as `method` and the concrete solver
+constructor.

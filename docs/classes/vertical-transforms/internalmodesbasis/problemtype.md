@@ -16,5 +16,5 @@ Text label identifying the vertical eigenvalue problem.
 
 ## Discussion
 
-  Common values are `"geostrophic"`, `"igwWavenumber"`, and
-  `"fixedFrequency"`.
+Common values are `"geostrophic"`, `"igwWavenumber"`, and
+`"fixedFrequency"`.

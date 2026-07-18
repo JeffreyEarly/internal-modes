@@ -27,5 +27,5 @@ Compute an internal-mode modal spectrum.
 
 ## Discussion
 
-  If `options.variable` is omitted, the solved formulation is
-  used. The requested variable must have a known inner product.
+If `options.variable` is omitted, the solved formulation is
+used. The requested variable must have a known inner product.

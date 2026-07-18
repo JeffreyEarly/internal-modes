@@ -16,7 +16,7 @@ Native coordinate kind.
 
 ## Discussion
 
-  `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
-  and `"density"` coordinates require an `IMInternalModes` EVP or
-  `IMSurfaceGeostrophicModes` problem because their coordinate maps
-  use the problem-owned `N2` profile.
+`coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
+and `"density"` coordinates require an `IMInternalModes` EVP or
+`IMSurfaceGeostrophicModes` problem because their coordinate maps
+use the problem-owned `N2` profile.

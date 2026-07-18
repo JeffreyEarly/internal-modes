@@ -30,5 +30,5 @@ Distribute collocation points across adaptive regions.
 
 ## Discussion
 
-                This algorithm distributes the points/polynomials amongst the
-  different regions/equations
+This algorithm distributes the points/polynomials amongst the
+different regions/equations

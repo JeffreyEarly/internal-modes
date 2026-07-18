@@ -31,6 +31,6 @@ Merge neighboring adaptive regions by removing one boundary.
 
 ## Discussion
 
-                  Given a list of boundaries (length n), and the signs of the
-  regions created by the boundaries (length n-1), this removes
-  the boundary at some index, and returns the appropriate signs
+Given a list of boundaries (length n), and the signs of the
+regions created by the boundaries (length n-1), this removes
+the boundary at some index, and returns the appropriate signs

@@ -3,7 +3,7 @@ layout: default
 title: normalizationNames
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 16
+nav_order: 18
 mathjax: true
 ---
 
@@ -23,6 +23,6 @@ Return installed normalization rule names.
 
 ## Discussion
 
-  `normalizationNames` reports the rules available to
-  `normalizationFactors` and selectable by
-  `basisSet.normalization`.
+`normalizationNames` reports the rules available to
+`normalizationFactors` and selectable by
+`basisSet.normalization`.
