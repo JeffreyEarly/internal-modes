@@ -41,6 +41,21 @@ classdef IMQuadratureWeightFit
     % \min_w\left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
     % $$
     %
+    % Equivalently, define
+    %
+    % $$
+    % S=\operatorname{diag}\!\left(
+    % \left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+    % \right),
+    % \qquad
+    % E(w)=S\left(\Gamma(w)-\Gamma_0\right)S.
+    % $$
+    %
+    % The default `"normalizedGramFrobenius"` objective minimizes
+    % $$\|E(w)\|_{\mathrm F}$$. This is an aggregate error over the full
+    % retained Gram matrix: diagonal entries measure errors in individual
+    % modal norms, and off-diagonal entries measure lost orthogonality.
+    %
     % By default the fit also requires
     %
     % $$
@@ -79,15 +94,24 @@ classdef IMQuadratureWeightFit
     %
     % `transform` and `weights` are the optimized production result;
     % `geometricTransform` and `geometricWeights` are the unoptimized
-    % comparison. `residualNorm` and `geometricResidualNorm` evaluate the
-    % same fitting objective for those two rules. Their transforms'
-    % `relativeGramError` values measure the resulting Gram mismatch.
+    % comparison. For the built-in objective, `residualNorm` and
+    % `geometricResidualNorm` are the Frobenius norms of $$E$$ for those two
+    % rules. For a custom objective they instead mean the generic residual
+    % norm $$\|Aw-b\|_2$$. Their transforms'
+    % `relativeGramOperatorError` values report $$\|E\|_2$$, the largest
+    % Gram distortion over any normalized combination of retained modes.
+    % `roundTripError` is different again: it measures algebraic recovery
+    % of retained coefficients and can be tiny even when the sampled
+    % quadrature does not accurately reproduce the continuous Gram matrix.
     % Constraint properties record whether nonnegativity and full-depth
     % coverage were imposed, while `depthError` and
     % `transform.hasNegativeWeights` report the corresponding fitted result.
     % A custom objective changes $$A_{\mathrm{LS}}$$ and
     % $$b_{\mathrm{LS}}$$, but the fitted and geometric rules still use the
-    % same points, modes, and normalization.
+    % same points, modes, and normalization. The quadrature-weight
+    % regression sweep supports retaining the unregularized Frobenius
+    % objective as the default; geometric weights remain the optimizer's
+    % initial guess and the unoptimized comparison baseline.
     %
     % Obtain the fitted weights as the primary output and this diagnostic
     % object as the optional second output of
@@ -99,8 +123,9 @@ classdef IMQuadratureWeightFit
     % [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
     % weightFit.residualNorm
     % weightFit.geometricResidualNorm
-    % weightFit.transform.relativeGramError
-    % weightFit.geometricTransform.relativeGramError
+    % weightFit.transform.relativeGramOperatorError
+    % weightFit.geometricTransform.relativeGramOperatorError
+    % weightFit.transform.roundTripError
     % coefficients = weightFit.transform.transformForward(values);
     % ```
     %
@@ -161,14 +186,16 @@ classdef IMQuadratureWeightFit
 
         % Name of the least-squares objective used to fit the weights.
         %
-        % The default value is `"normalizedGram"`. A custom objective may
-        % provide its own name in the returned specification struct.
+        % The default value is `"normalizedGramFrobenius"`, which identifies
+        % the aggregate normalized Gram objective described in the class
+        % overview. A custom objective may provide its own name in the
+        % returned specification struct.
         %
         % - Topic: Assess fit quality
         % - nav_order: 10
         objectiveName
 
-        % Two-norm of the fitted objective residual.
+        % Norm of the fitted objective residual.
         %
         % This is
         %
@@ -176,14 +203,22 @@ classdef IMQuadratureWeightFit
         % \left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
         % $$
         %
-        % Compare it with `geometricResidualNorm` to assess improvement over
-        % the geometric control-volume weights under the same objective.
+        % For `objectiveName="normalizedGramFrobenius"`, the least-squares
+        % residual is the vectorization of the normalized Gram mismatch, so
+        %
+        % $$
+        % \texttt{residualNorm}=\|E(w)\|_{\mathrm F}.
+        % $$
+        %
+        % For a custom objective, this property retains the generic meaning
+        % $$\|Aw-b\|_2$$. Compare it with `geometricResidualNorm` only under
+        % the same objective.
         %
         % - Topic: Assess fit quality
         % - nav_order: 20
         residualNorm
 
-        % Two-norm of the geometric-weight objective residual.
+        % Norm of the geometric-weight objective residual.
         %
         % This is
         %
@@ -191,6 +226,11 @@ classdef IMQuadratureWeightFit
         % \left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}
         % -b_{\mathrm{LS}}\right\|_2.
         % $$
+        %
+        % For the built-in objective this equals
+        % $$\|E(w^{\mathrm{geometric}})\|_{\mathrm F}$$. It is the
+        % unoptimized baseline for `residualNorm`; custom objectives retain
+        % the generic least-squares interpretation.
         %
         % - Topic: Assess fit quality
         % - nav_order: 30

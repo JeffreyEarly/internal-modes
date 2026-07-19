@@ -27,7 +27,7 @@ basisSet.normalization = "geostrophic";
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
-%% Compute the default normalized-Gram fit
+%% Compute the default normalized Gram Frobenius fit
 [~, defaultFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
 
 %% Add relative regularization toward geometric weights
@@ -54,15 +54,15 @@ rule = ["geometric"; "normalized Gram"; "regularized Gram"];
 weights = [defaultFit.geometricWeights defaultFit.weights regularizedFit.weights];
 gramResiduals = defaultFit.objectiveMatrix*weights - defaultFit.objectiveTarget;
 normalizedGramResidual = vecnorm(gramResiduals,2,1).';
-relativeGramError = [defaultFit.geometricTransform.relativeGramError; ...
-    defaultFit.transform.relativeGramError; regularizedFit.transform.relativeGramError];
+relativeGramOperatorError = [defaultFit.geometricTransform.relativeGramOperatorError; ...
+    defaultFit.transform.relativeGramOperatorError; regularizedFit.transform.relativeGramOperatorError];
 relativeWeightDisplacement = vecnorm((weights - defaultFit.geometricWeights)./defaultFit.geometricWeights,2,1).'/sqrt(nPoints);
 roundTripError = [defaultFit.geometricTransform.roundTripError; ...
     defaultFit.transform.roundTripError; regularizedFit.transform.roundTripError];
 depthSum = sum(weights,1).';
 minimumWeight = min(weights,[],1).';
 maximumWeight = max(weights,[],1).';
-diagnostics = table(rule,normalizedGramResidual,relativeGramError,relativeWeightDisplacement, ...
+diagnostics = table(rule,normalizedGramResidual,relativeGramOperatorError,relativeWeightDisplacement, ...
     roundTripError,depthSum,minimumWeight,maximumWeight);
 
 fprintf("\nCustom fixed-point quadrature objective\n");
@@ -87,10 +87,10 @@ title("Quadrature weights")
 legend(rule,Location="best")
 
 nexttile
-bar(relativeGramError)
+bar(relativeGramOperatorError)
 set(gca,YScale="log",XTick=1:3,XTickLabel=plotLabels,XTickLabelRotation=20)
 grid on
-ylabel("relative Gram error")
+ylabel("relative Gram operator error")
 title("Parseval accuracy")
 
 nexttile

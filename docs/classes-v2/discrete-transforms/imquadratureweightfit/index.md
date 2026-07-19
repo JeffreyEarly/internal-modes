@@ -62,6 +62,21 @@ $$
 \min_w\left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
 $$
 
+Equivalently, define
+
+$$
+S=\operatorname{diag}\!\left(
+\left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+\right),
+\qquad
+E(w)=S\left(\Gamma(w)-\Gamma_0\right)S.
+$$
+
+The default `"normalizedGramFrobenius"` objective minimizes
+$$\|E(w)\|_{\mathrm F}$$. This is an aggregate error over the full
+retained Gram matrix: diagonal entries measure errors in individual
+modal norms, and off-diagonal entries measure lost orthogonality.
+
 By default the fit also requires
 
 $$
@@ -100,15 +115,24 @@ geometric-width interpretation when constraints are relaxed.
 
 `transform` and `weights` are the optimized production result;
 `geometricTransform` and `geometricWeights` are the unoptimized
-comparison. `residualNorm` and `geometricResidualNorm` evaluate the
-same fitting objective for those two rules. Their transforms'
-`relativeGramError` values measure the resulting Gram mismatch.
+comparison. For the built-in objective, `residualNorm` and
+`geometricResidualNorm` are the Frobenius norms of $$E$$ for those two
+rules. For a custom objective they instead mean the generic residual
+norm $$\|Aw-b\|_2$$. Their transforms'
+`relativeGramOperatorError` values report $$\|E\|_2$$, the largest
+Gram distortion over any normalized combination of retained modes.
+`roundTripError` is different again: it measures algebraic recovery
+of retained coefficients and can be tiny even when the sampled
+quadrature does not accurately reproduce the continuous Gram matrix.
 Constraint properties record whether nonnegativity and full-depth
 coverage were imposed, while `depthError` and
 `transform.hasNegativeWeights` report the corresponding fitted result.
 A custom objective changes $$A_{\mathrm{LS}}$$ and
 $$b_{\mathrm{LS}}$$, but the fitted and geometric rules still use the
-same points, modes, and normalization.
+same points, modes, and normalization. The quadrature-weight
+regression sweep supports retaining the unregularized Frobenius
+objective as the default; geometric weights remain the optimizer's
+initial guess and the unoptimized comparison baseline.
 
 Obtain the fitted weights as the primary output and this diagnostic
 object as the optional second output of
@@ -120,8 +144,9 @@ vector.
 [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
 weightFit.residualNorm
 weightFit.geometricResidualNorm
-weightFit.transform.relativeGramError
-weightFit.geometricTransform.relativeGramError
+weightFit.transform.relativeGramOperatorError
+weightFit.geometricTransform.relativeGramOperatorError
+weightFit.transform.roundTripError
 coefficients = weightFit.transform.transformForward(values);
 ```
 
@@ -137,8 +162,8 @@ coefficients = weightFit.transform.transformForward(values);
   + [`geometricWeights`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/geometricweights.html) Geometric control-volume weights aligned with the fixed points.
 + Assess fit quality
   + [`objectiveName`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/objectivename.html) Name of the least-squares objective used to fit the weights.
-  + [`residualNorm`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/residualnorm.html) Two-norm of the fitted objective residual.
-  + [`geometricResidualNorm`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/geometricresidualnorm.html) Two-norm of the geometric-weight objective residual.
+  + [`residualNorm`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/residualnorm.html) Norm of the fitted objective residual.
+  + [`geometricResidualNorm`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/geometricresidualnorm.html) Norm of the geometric-weight objective residual.
 + Inspect constraints
   + [`nonnegativeConstraint`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/nonnegativeconstraint.html) Whether the optimization required nonnegative weights.
   + [`depthConstraint`](/internal-modes/classes-v2/discrete-transforms/imquadratureweightfit/depthconstraint.html) Whether the weights were constrained to cover the full depth.

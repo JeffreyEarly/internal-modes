@@ -9,7 +9,7 @@ mathjax: true
 
 #  geometricResidualNorm
 
-Two-norm of the geometric-weight objective residual.
+Norm of the geometric-weight objective residual.
 
 
 ---
@@ -22,3 +22,8 @@ $$
 \left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}
 -b_{\mathrm{LS}}\right\|_2.
 $$
+
+For the built-in objective this equals
+$$\|E(w^{\mathrm{geometric}})\|_{\mathrm F}$$. It is the
+unoptimized baseline for `residualNorm`; custom objectives retain
+the generic least-squares interpretation.

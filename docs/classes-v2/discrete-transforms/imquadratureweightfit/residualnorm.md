@@ -9,7 +9,7 @@ mathjax: true
 
 #  residualNorm
 
-Two-norm of the fitted objective residual.
+Norm of the fitted objective residual.
 
 
 ---
@@ -22,5 +22,13 @@ $$
 \left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
 $$
 
-Compare it with `geometricResidualNorm` to assess improvement over
-the geometric control-volume weights under the same objective.
+For `objectiveName="normalizedGramFrobenius"`, the least-squares
+residual is the vectorization of the normalized Gram mismatch, so
+
+$$
+\texttt{residualNorm}=\|E(w)\|_{\mathrm F}.
+$$
+
+For a custom objective, this property retains the generic meaning
+$$\|Aw-b\|_2$$. Compare it with `geometricResidualNorm` only under
+the same objective.

@@ -29,13 +29,20 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyEqual(weights,fit.weights,AbsTol=0)
             testCase.verifyEqual(transform.weights,fit.weights,AbsTol=1e-12)
             testCase.verifyEqual(transform.forwardMatrix,fit.transform.forwardMatrix,RelTol=1e-12,AbsTol=1e-12)
-            testCase.verifyEqual(fit.objectiveName,"normalizedGram")
+            testCase.verifyEqual(fit.objectiveName,"normalizedGramFrobenius")
             testCase.verifyTrue(fit.nonnegativeConstraint)
             testCase.verifyTrue(fit.depthConstraint)
             testCase.verifyGreaterThan(fit.exitFlag,0)
             testCase.verifyGreaterThanOrEqual(min(fit.weights),-1e-12)
             testCase.verifyEqual(sum(fit.weights),1,AbsTol=1e-10)
             testCase.verifyLessThanOrEqual(fit.residualNorm,fit.geometricResidualNorm + 1e-10)
+            targetNorms = diag(fit.transform.targetGramMatrix);
+            scale = 1./sqrt(abs(targetNorms));
+            fittedGramMismatch = scale.*(fit.transform.gramMatrix-fit.transform.targetGramMatrix).*scale.';
+            geometricGramMismatch = scale.*(fit.geometricTransform.gramMatrix-fit.geometricTransform.targetGramMatrix).*scale.';
+            testCase.verifyEqual(fit.residualNorm,norm(fittedGramMismatch,"fro"),RelTol=1e-12,AbsTol=1e-13)
+            testCase.verifyEqual(fit.geometricResidualNorm,norm(geometricGramMismatch,"fro"),RelTol=1e-12,AbsTol=1e-13)
+            testCase.verifyEqual(fit.transform.relativeGramOperatorError,norm(fittedGramMismatch,2),RelTol=1e-12,AbsTol=1e-13)
             testCase.verifyFalse(ismethod(basisSet,"fitQuadrature"))
             testCase.verifyFalse(isprop(fit,"fittedTransform"))
             testCase.verifyFalse(isprop(fit,"fittedIncrements"))
@@ -119,7 +126,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             z = -1 + linspace(0,1,15).'.^1.7;
             [~, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=5);
 
-            testCase.verifyLessThan(fit.transform.relativeGramError,fit.geometricTransform.relativeGramError)
+            testCase.verifyLessThan(fit.transform.relativeGramOperatorError,fit.geometricTransform.relativeGramOperatorError)
             testCase.verifyLessThanOrEqual(fit.residualNorm,fit.geometricResidualNorm + 1e-10)
         end
 
@@ -142,7 +149,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyGreaterThanOrEqual(min(fit.weights),-1e-10)
             testCase.verifyEqual(sum(fit.weights),D,AbsTol=1e-8)
             testCase.verifyLessThan(fit.residualNorm,fit.geometricResidualNorm)
-            testCase.verifyLessThan(fit.transform.relativeGramError,fit.geometricTransform.relativeGramError)
+            testCase.verifyLessThan(fit.transform.relativeGramOperatorError,fit.geometricTransform.relativeGramOperatorError)
         end
 
         function dimensionNormalizedRegularizedObjectiveMatchesDefinition(testCase)
@@ -171,7 +178,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
             regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
 
-            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramError,1.10*pureFit.transform.relativeGramError + 1e-12)
+            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramOperatorError,1.10*pureFit.transform.relativeGramOperatorError + 1e-12)
             testCase.verifyLessThan(regularizedDisplacement,0.01*pureDisplacement)
             testCase.verifyGreaterThan(min(regularizedFit.weights),0)
         end
@@ -187,7 +194,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
             regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
 
-            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramError,1.10*pureFit.transform.relativeGramError + 1e-12)
+            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramOperatorError,1.10*pureFit.transform.relativeGramOperatorError + 1e-12)
             testCase.verifyLessThan(regularizedDisplacement,pureDisplacement)
             testCase.verifyGreaterThan(min(regularizedFit.weights),0)
         end
@@ -234,6 +241,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyEqual(fit.objectiveMatrix,eye(length(z)),AbsTol=0)
             testCase.verifyEqual(fit.objectiveTarget,desiredWeights,AbsTol=0)
             testCase.verifyEqual(fit.weights,desiredWeights,AbsTol=1e-10)
+            testCase.verifyEqual(fit.residualNorm,norm(fit.objectiveMatrix*fit.weights-fit.objectiveTarget,2),AbsTol=1e-14)
         end
 
         function customObjectiveCanReweightAndAppendRows(testCase)
@@ -282,6 +290,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             failing = @(context) error("Test:ObjectiveFailure","failed for %d points",length(context.z));
 
             testCase.verifyError(@() basisSet.quadratureWeightsForPoints(z=z,nModes=2,objective="notAnObjective"),"IMBasisSet:UnknownQuadratureObjective")
+            testCase.verifyError(@() basisSet.quadratureWeightsForPoints(z=z,nModes=2,objective="normalizedGram"),"IMBasisSet:UnknownQuadratureObjective")
             testCase.verifyError(@() basisSet.quadratureWeightsForPoints(z=z,nModes=2,objective=missingTarget),"IMBasisSet:InvalidQuadratureObjective")
             testCase.verifyError(@() basisSet.quadratureWeightsForPoints(z=z,nModes=2,objective=wrongColumns),"IMBasisSet:InvalidQuadratureObjective")
             testCase.verifyError(@() basisSet.quadratureWeightsForPoints(z=z,nModes=2,objective=nonfinite),"IMBasisSet:InvalidQuadratureObjective")

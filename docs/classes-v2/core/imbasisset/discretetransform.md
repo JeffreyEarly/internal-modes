@@ -41,12 +41,21 @@ then constructs the Galerkin forward matrix stored by
 when they depend only on a sampled endpoint value. Endpoint derivative
 traces cannot be inferred from arbitrary point samples and are rejected.
 When `weights` is omitted, `quadratureWeightsForPoints` chooses
-nonnegative weights with exact full-depth coverage by normalized Gram fitting.
-This fitted path requires `lsqlin` from Optimization Toolbox.
+nonnegative weights with exact full-depth coverage by normalized Gram
+Frobenius fitting. This fitted path requires `lsqlin` from Optimization
+Toolbox.
 
 ```matlab
 transform = basisSet.discreteTransform(z=z,nModes=8);
 transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 coefficients = transform.transformForward(values);
 valuesFit = transform.transformBack(coefficients);
+```
+
+To compare the fitted rule with its geometric starting point:
+
+```matlab
+[weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
+[weightFit.residualNorm weightFit.geometricResidualNorm]
+[weightFit.transform.relativeGramOperatorError weightFit.geometricTransform.relativeGramOperatorError]
 ```

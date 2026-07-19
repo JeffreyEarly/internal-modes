@@ -3,10 +3,23 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 %
 % The points `z` are fixed. This method solves for one weight $$w_k$$ per
 % point so the sampled inner products of the first `nModes` retained modes
-% approximate their continuous Gram matrix. For target modal norms
+% approximate their continuous Gram matrix. Let $$\Gamma(w)$$ be the
+% sampled Gram matrix, let $$\Gamma_0$$ be its continuous target, and define
+%
+% $$
+% S=\operatorname{diag}\!\left(
+% \left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+% \right),
+% \qquad
+% E(w)=S\left(\Gamma(w)-\Gamma_0\right)S.
+% $$
+%
+% The default `"normalizedGramFrobenius"` objective minimizes
+% $$\|E(w)\|_{\mathrm F}$$. It combines the mismatch from every retained
+% mode pair: diagonal entries of $$E$$ measure modal norm errors, while
+% off-diagonal entries measure lost orthogonality. For target modal norms
 % $$C_i=(\Gamma_0)_{ii}$$ and fixed endpoint contribution
-% $$\Gamma_{\mathrm{endpoint}}$$, the default normalized least-squares
-% system is
+% $$\Gamma_{\mathrm{endpoint}}$$, the corresponding least-squares system is
 %
 % $$
 % (A_{\mathrm{LS}})_{(i,j),k}
@@ -39,6 +52,15 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 % depth. Custom objectives continue to define $$Aw-b$$ in physical units.
 % This method requires `lsqlin` from Optimization Toolbox.
 %
+% For the built-in objective, `weightFit.residualNorm` is the aggregate
+% error $$\|E(w)\|_{\mathrm F}$$. The resulting transform separately reports
+% `relativeGramOperatorError` as $$\|E(w)\|_2$$, the largest Gram distortion
+% over any normalized combination of retained modes. `roundTripError`
+% measures algebraic coefficient recovery and can be tiny even when either
+% Gram error is appreciable. The quadrature-weight regression sweep supports
+% retaining the unregularized Frobenius objective; geometric weights remain
+% the initial guess and comparison baseline.
+%
 % A custom objective is a function handle accepting a context struct and
 % returning a scalar struct with fields `A`, `b`, and optional `name`. The
 % context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
@@ -48,13 +70,15 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 % ```matlab
 % [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
 % transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
+% [weightFit.residualNorm weightFit.geometricResidualNorm]
+% [transform.relativeGramOperatorError weightFit.geometricTransform.relativeGramOperatorError]
 % ```
 %
 % - Topic: Build discrete transforms
 % - Declaration: [weights,weightFit] = quadratureWeightsForPoints(basisSet,options)
 % - Parameter options.z: increasing fixed physical sample points
 % - Parameter options.nModes: number of leading retained modes
-% - Parameter options.objective: `"normalizedGram"` or a custom least-squares callback
+% - Parameter options.objective: `"normalizedGramFrobenius"` or a custom least-squares callback
 % - Parameter options.nonnegative: whether fitted weights must be nonnegative
 % - Parameter options.constrainDepth: whether fitted weights must sum to the full depth
 % - Returns weights: fitted quadrature weights aligned with `z`
@@ -63,7 +87,7 @@ arguments
     self IMBasisSet
     options.z (:,1) double {mustBeReal, mustBeFinite}
     options.nModes (1,1) double {mustBeInteger, mustBePositive} = size(self.nativeModes,2)
-    options.objective = "normalizedGram"
+    options.objective = "normalizedGramFrobenius"
     options.nonnegative (1,1) logical = true
     options.constrainDepth (1,1) logical = true
 end
@@ -120,7 +144,7 @@ objectiveContext.normalizedGramB = normalizedGramB;
 objective = options.objective;
 if ischar(objective) || (isstring(objective) && isscalar(objective))
     objectiveName = string(objective);
-    if objectiveName ~= "normalizedGram"
+    if objectiveName ~= "normalizedGramFrobenius"
         error("IMBasisSet:UnknownQuadratureObjective", "Unknown quadrature objective ""%s"".", objectiveName);
     end
     objectiveMatrix = normalizedGramA;
@@ -145,7 +169,7 @@ elseif isa(objective,"function_handle")
         objectiveName = string(specification.name);
     end
 else
-    error("IMBasisSet:InvalidQuadratureObjective", "objective must be ""normalizedGram"" or a function handle returning a least-squares system.");
+    error("IMBasisSet:InvalidQuadratureObjective", "objective must be ""normalizedGramFrobenius"" or a function handle returning a least-squares system.");
 end
 
 if ~isnumeric(objectiveMatrix) || ~ismatrix(objectiveMatrix) || ~isreal(objectiveMatrix) || isempty(objectiveMatrix) ...

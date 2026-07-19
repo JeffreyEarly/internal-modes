@@ -69,6 +69,23 @@ and then forward recovers those coefficients exactly, while a general
 sampled profile is projected rather than necessarily reproduced. When
 $$W$$ is positive definite, $$P_W$$ is the $$W$$-orthogonal projector.
 
+Transform construction and quadrature accuracy are related but
+distinct. If $$\Gamma_0$$ is the continuous target Gram matrix, define
+
+$$
+S=\operatorname{diag}\!\left(
+\left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+\right),
+\qquad
+E=S(\Gamma-\Gamma_0)S.
+$$
+
+`relativeGramOperatorError` is $$\|E\|_2$$: the largest Gram
+distortion over any normalized combination of retained modes. By
+contrast, `roundTripError` measures only how accurately the two
+transform matrices recover retained coefficients. It can be near
+roundoff even when the quadrature reproduces $$\Gamma_0$$ poorly.
+
 Construct transforms from solved scalar modes with
 `IMBasisSet.discreteTransform`.
 
@@ -96,7 +113,7 @@ valuesFit = transform.transformBack(coefficients);
   + [`modeNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/modenumber.html) Physical labels for the retained modal rows and columns.
   + [`normalization`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/normalization.html) Name of the normalization captured by this transform.
 + Assess transform quality
-  + [`relativeGramError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/relativegramerror.html) Measure the sampled Gram matrix against its continuous target.
+  + [`relativeGramOperatorError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/relativegramoperatorerror.html) Measure the worst normalized Gram distortion.
   + [`roundTripError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/roundtriperror.html) Measure recovery of retained modal coefficients.
   + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrixconditionnumber.html) Two-norm condition number of the sampled modal basis.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/gramconditionnumber.html) Two-norm condition number of the sampled Gram matrix.

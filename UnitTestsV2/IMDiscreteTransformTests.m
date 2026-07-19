@@ -42,7 +42,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.metricMatrix, expectedMetric, AbsTol=0)
             testCase.verifyEqual(transform.gramMatrix, expectedGram, RelTol=1e-13, AbsTol=1e-13)
             testCase.verifyEqual(transform.targetGramMatrix, expectedTarget, RelTol=1e-12, AbsTol=1e-12)
-            testCase.verifyEqual(transform.relativeGramError, expectedRelativeError, RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(transform.relativeGramOperatorError, expectedRelativeError, RelTol=1e-12, AbsTol=1e-14)
             testCase.verifyEqual(transform.inverseMatrixConditionNumber, cond(expectedBasis), RelTol=1e-12)
             testCase.verifyEqual(transform.gramConditionNumber, cond(expectedGram), RelTol=1e-12)
             testCase.verifyTrue(transform.targetGramIsPositiveDefinite)
@@ -67,6 +67,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(transform,"basisConditionNumber"))
             testCase.verifyFalse(isprop(transform,"increments"))
             testCase.verifyFalse(isprop(transform,"hasNegativeIncrements"))
+            testCase.verifyFalse(isprop(transform,"relativeGramError"))
             testCase.verifyFalse(ismethod(transform,"project"))
             testCase.verifyFalse(ismethod(transform,"reconstruct"))
         end
@@ -141,7 +142,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(transform.targetGramIsPositiveDefinite)
             testCase.verifyTrue(transform.hasNegativeWeights)
-            testCase.verifyEqual(transform.relativeGramError, expected, AbsTol=1e-14)
+            testCase.verifyEqual(transform.relativeGramOperatorError, expected, AbsTol=1e-14)
         end
 
         function invalidDiscreteInputsThrowStructuredErrors(testCase)

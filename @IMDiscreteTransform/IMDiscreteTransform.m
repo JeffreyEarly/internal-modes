@@ -48,6 +48,23 @@ classdef IMDiscreteTransform
     % sampled profile is projected rather than necessarily reproduced. When
     % $$W$$ is positive definite, $$P_W$$ is the $$W$$-orthogonal projector.
     %
+    % Transform construction and quadrature accuracy are related but
+    % distinct. If $$\Gamma_0$$ is the continuous target Gram matrix, define
+    %
+    % $$
+    % S=\operatorname{diag}\!\left(
+    % \left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+    % \right),
+    % \qquad
+    % E=S(\Gamma-\Gamma_0)S.
+    % $$
+    %
+    % `relativeGramOperatorError` is $$\|E\|_2$$: the largest Gram
+    % distortion over any normalized combination of retained modes. By
+    % contrast, `roundTripError` measures only how accurately the two
+    % transform matrices recover retained coefficients. It can be near
+    % roundoff even when the quadrature reproduces $$\Gamma_0$$ poorly.
+    %
     % Construct transforms from solved scalar modes with
     % `IMBasisSet.discreteTransform`.
     %
@@ -182,7 +199,7 @@ classdef IMDiscreteTransform
         % - nav_order: 40
         normalization
 
-        % Measure the sampled Gram matrix against its continuous target.
+        % Measure the worst normalized Gram distortion.
         %
         % Let $$\Gamma$$ be `gramMatrix`, let $$\Gamma_0$$ be
         % `targetGramMatrix`, and define
@@ -193,21 +210,36 @@ classdef IMDiscreteTransform
         % \right).
         % $$
         %
-        % The reported error is
+        % With
+        %
+        % $$
+        % E=S(\Gamma-\Gamma_0)S,
+        % $$
+        %
+        % the reported error is
         %
         % $$
         % \left\|S(\Gamma-\Gamma_0)S\right\|_2.
         % $$
         %
-        % Zero means the sampled metric reproduces the target modal Gram
-        % matrix exactly. When `targetGramIsPositiveDefinite` is true, this
-        % is the worst-case relative quadratic-form, or Parseval, error over
-        % the retained modal space. For a signed target it remains a useful
-        % magnitude-scaled discrepancy, but not a positive-norm error.
+        % Zero means the sampled metric reproduces every retained modal
+        % inner product exactly. The operator norm asks for the single
+        % normalized combination of retained modes whose Gram value is most
+        % distorted. This differs from the default quadrature-fit
+        % `residualNorm`, which uses the Frobenius norm $$\|E\|_{\mathrm F}$$
+        % and aggregates errors over all individual mode pairs. When
+        % `targetGramIsPositiveDefinite` is true, this is the worst-case
+        % relative quadratic-form, or Parseval, error. For a signed target
+        % it remains a useful magnitude-scaled discrepancy, but not a
+        % positive-norm error.
+        %
+        % ```matlab
+        % operatorError = transform.relativeGramOperatorError;
+        % ```
         %
         % - Topic: Assess transform quality
         % - nav_order: 10
-        relativeGramError
+        relativeGramOperatorError
 
         % Measure recovery of retained modal coefficients.
         %
@@ -218,9 +250,13 @@ classdef IMDiscreteTransform
         % $$
         %
         % A small value means coefficients transformed back to sample space
-        % and then forward are recovered accurately. It does not measure the
-        % reconstruction error of an arbitrary sampled profile; that profile
-        % is generally projected by $$A_{\mathrm i}A_{\mathrm f}$$.
+        % and then forward are recovered accurately. This is an algebraic
+        % consistency check on the transform matrices, not a quadrature
+        % accuracy metric. It can be near roundoff even when
+        % `relativeGramOperatorError` is appreciable. It also does not
+        % measure the reconstruction error of an arbitrary sampled profile;
+        % that profile is generally projected by
+        % $$A_{\mathrm i}A_{\mathrm f}$$.
         %
         % - Topic: Assess transform quality
         % - nav_order: 20
@@ -265,7 +301,7 @@ classdef IMDiscreteTransform
         % $$C_j=(\Gamma_0)_{jj}$$ is positive. A false value does not make
         % the transform invalid: canonical endpoint weights can produce a
         % signed metric. It changes the interpretation of
-        % `relativeGramError` from a relative norm error to a signed,
+        % `relativeGramOperatorError` from a relative norm error to a signed,
         % magnitude-scaled Gram discrepancy.
         %
         % - Topic: Assess transform quality
@@ -324,7 +360,7 @@ classdef IMDiscreteTransform
         % It is an $$n_m\times n_m$$ matrix of sampled inner products among
         % the retained modes. It enters the full definition
         % $$A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W$$ and is compared with
-        % `targetGramMatrix` by `relativeGramError`.
+        % `targetGramMatrix` by `relativeGramOperatorError`.
         %
         % ```matlab
         % gramDifference = transform.gramMatrix-transform.targetGramMatrix;
@@ -461,7 +497,7 @@ classdef IMDiscreteTransform
             self.forwardMatrix = forwardMatrix;
             self.gramMatrix = gramMatrix;
             self.targetGramMatrix = targetGramMatrix;
-            self.relativeGramError = norm(scaledDifference,2);
+            self.relativeGramOperatorError = norm(scaledDifference,2);
             self.roundTripError = norm(forwardMatrix*inverseMatrix - eye(nModes),2);
             self.inverseMatrixConditionNumber = cond(inverseMatrix);
             self.gramConditionNumber = cond(gramMatrix);

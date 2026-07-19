@@ -35,7 +35,7 @@ basisSet.normalization = "geostrophic";
 % for that one auxiliary mode automatically.
 zModeRoot = basisSet.pointsFromModeRoots(nModes=nModes);
 [~, modeRootFit] = basisSet.quadratureWeightsForPoints(z=zModeRoot,nModes=nModes);
-fprintf("Mode-root grid: %d points; fitted Gram error: %.3e\n",length(zModeRoot),modeRootFit.transform.relativeGramError);
+fprintf("Mode-root grid: %d points; fitted Gram operator error: %.3e\n",length(zModeRoot),modeRootFit.transform.relativeGramOperatorError);
 
 %% Supply fixed sample points and fit their weights
 % These points include both boundaries and are refined toward the surface.
@@ -57,7 +57,7 @@ geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights
 
 %% Compare fitted and geometric quadrature
 rule = ["fitted"; "geometric"];
-relativeGramError = [transform.relativeGramError; geometricTransform.relativeGramError];
+relativeGramOperatorError = [transform.relativeGramOperatorError; geometricTransform.relativeGramOperatorError];
 objectiveResidual = [fit.residualNorm; fit.geometricResidualNorm];
 roundTripError = [transform.roundTripError; geometricTransform.roundTripError];
 inverseMatrixConditionNumber = [transform.inverseMatrixConditionNumber; geometricTransform.inverseMatrixConditionNumber];
@@ -65,7 +65,7 @@ gramConditionNumber = [transform.gramConditionNumber; geometricTransform.gramCon
 depthSum = [sum(transform.weights); sum(geometricTransform.weights)];
 minimumWeight = [min(transform.weights); min(geometricTransform.weights)];
 maximumWeight = [max(transform.weights); max(geometricTransform.weights)];
-diagnostics = table(rule,relativeGramError,objectiveResidual,roundTripError,inverseMatrixConditionNumber, ...
+diagnostics = table(rule,relativeGramOperatorError,objectiveResidual,roundTripError,inverseMatrixConditionNumber, ...
     gramConditionNumber,depthSum,minimumWeight,maximumWeight);
 
 fprintf("\nFixed-point scalar transform for exponential hydrostatic G modes\n");

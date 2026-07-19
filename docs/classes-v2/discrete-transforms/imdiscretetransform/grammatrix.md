@@ -28,7 +28,7 @@ $$
 It is an $$n_m\times n_m$$ matrix of sampled inner products among
 the retained modes. It enters the full definition
 $$A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W$$ and is compared with
-`targetGramMatrix` by `relativeGramError`.
+`targetGramMatrix` by `relativeGramOperatorError`.
 
 ```matlab
 gramDifference = transform.gramMatrix-transform.targetGramMatrix;

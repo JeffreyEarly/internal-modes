@@ -21,5 +21,5 @@ true exactly when every target modal norm
 $$C_j=(\Gamma_0)_{jj}$$ is positive. A false value does not make
 the transform invalid: canonical endpoint weights can produce a
 signed metric. It changes the interpretation of
-`relativeGramError` from a relative norm error to a signed,
+`relativeGramOperatorError` from a relative norm error to a signed,
 magnitude-scaled Gram discrepancy.
