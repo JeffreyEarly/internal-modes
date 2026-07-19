@@ -3,7 +3,7 @@ layout: default
 title: metricMatrix
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 9
+nav_order: 8
 mathjax: true
 ---
 
@@ -27,7 +27,7 @@ $$
 For transforms built by `IMBasisSet`, its structure is
 
 $$
-W=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right)
+W=\operatorname{diag}\!\left(r(z_i)w_i\right)
 +W_{\mathrm{endpoint}},
 $$
 

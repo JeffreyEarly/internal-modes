@@ -86,12 +86,13 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
             [solver, evp] = testCase.regularProblem(96);
             basisSet = solver.solveEVP(evp,nModes=4);
             z = basisSet.quadraturePoints();
-            fit = basisSet.fitQuadrature(z=z,nModes=4);
+            [weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=4);
             transform = basisSet.discreteTransform(z=z,nModes=4);
 
             testCase.verifyGreaterThan(fit.exitFlag,0)
-            testCase.verifyGreaterThanOrEqual(min(fit.fittedIncrements),-1e-12)
-            testCase.verifyEqual(sum(fit.fittedIncrements),1,AbsTol=1e-10)
+            testCase.verifyEqual(weights,fit.weights,AbsTol=0)
+            testCase.verifyGreaterThanOrEqual(min(fit.weights),-1e-12)
+            testCase.verifyEqual(sum(fit.weights),1,AbsTol=1e-10)
             testCase.verifyEqual(transform.z,z,AbsTol=0)
             testCase.verifyLessThan(transform.roundTripError,1e-11)
         end

@@ -3,7 +3,7 @@ layout: default
 title: targetGramMatrix
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 15
+nav_order: 14
 mathjax: true
 ---
 

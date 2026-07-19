@@ -20,7 +20,7 @@ Build a scalar Galerkin transform on fixed sample points.
 ```
 ## Parameters
 + `options.z`  increasing physical sample points
-+ `options.increments`  optional quadrature increments aligned with `z`
++ `options.weights`  optional quadrature weights aligned with `z`
 + `options.nModes`  number of leading retained modes
 
 ## Returns
@@ -33,20 +33,20 @@ method forms
 
 $$
 (A_{\mathrm i})_{ij}=\Phi_{ij}=u_j(z_i),\qquad
-W_{\mathrm{int}}=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
+W_{\mathrm{int}}=\operatorname{diag}\!\left(r(z_i)w_i\right),
 $$
 
 then constructs the Galerkin forward matrix stored by
 `IMDiscreteTransform`. Eigenvalue-dependent endpoint terms are included
 when they depend only on a sampled endpoint value. Endpoint derivative
 traces cannot be inferred from arbitrary point samples and are rejected.
-When `increments` is omitted, `fitQuadrature` chooses nonnegative
-increments with exact full-depth coverage by normalized Gram fitting.
+When `weights` is omitted, `quadratureWeightsForPoints` chooses
+nonnegative weights with exact full-depth coverage by normalized Gram fitting.
 This fitted path requires `lsqlin` from Optimization Toolbox.
 
 ```matlab
 transform = basisSet.discreteTransform(z=z,nModes=8);
-transform = basisSet.discreteTransform(z=z,increments=dz,nModes=8);
+transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 coefficients = transform.transformForward(values);
 valuesFit = transform.transformBack(coefficients);
 ```

@@ -13,13 +13,13 @@ function z = quadraturePoints(self, options)
 % `discreteTransform`; it is not interpreted as a physical `modeNumber`.
 % If the generating column was not retained, the stored solver and EVP are
 % used to solve for one additional mode without changing this basis set.
-% The returned grid is a canonical candidate whose quadrature increments
-% and Gram accuracy should still be assessed with `fitQuadrature`.
+% The returned grid is a canonical candidate. Its quadrature weights and
+% Gram accuracy should still be assessed with `quadratureWeightsForPoints`.
 %
 % ```matlab
 % z = basisSet.quadraturePoints(nModes=8);
-% fit = basisSet.fitQuadrature(z=z,nModes=8);
-% transform = fit.fittedTransform;
+% weights = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
+% transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 % ```
 %
 % - Topic: Build discrete transforms

@@ -34,39 +34,39 @@ basisSet.normalization = "geostrophic";
 % more than `nModes` columns. If it were absent, the basis set would solve
 % for that one auxiliary mode automatically.
 zModeRoot = basisSet.quadraturePoints(nModes=nModes);
-modeRootFit = basisSet.fitQuadrature(z=zModeRoot,nModes=nModes);
-fprintf("Mode-root grid: %d points; fitted Gram error: %.3e\n",length(zModeRoot),modeRootFit.fittedTransform.relativeGramError);
+[~, modeRootFit] = basisSet.quadratureWeightsForPoints(z=zModeRoot,nModes=nModes);
+fprintf("Mode-root grid: %d points; fitted Gram error: %.3e\n",length(zModeRoot),modeRootFit.transform.relativeGramError);
 
-%% Supply fixed sample points and fit their increments
+%% Supply fixed sample points and fit their weights
 % These points include both boundaries and are refined toward the surface.
-% `fitQuadrature` retains the first `nModes` columns and chooses nonnegative
-% increments that sum to the full depth.
+% `quadratureWeightsForPoints` retains the first `nModes` columns and chooses nonnegative
+% weights that sum to the full depth.
 nPoints = 24;
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
-fit = basisSet.fitQuadrature(z=z,nModes=nModes);
-transform = fit.fittedTransform;
+[weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+transform = basisSet.discreteTransform(z=z,weights=weights,nModes=nModes);
 
 % The ordinary one-line construction is equivalent:
 % transform = basisSet.discreteTransform(z=z,nModes=nModes);
 %
-% Supplying increments bypasses fitting. For example, this reproduces the
+% Supplying weights bypasses fitting. For example, this reproduces the
 % geometric comparison already stored in `fit`:
-geometricTransform = basisSet.discreteTransform(z=z,increments=fit.geometricIncrements,nModes=nModes);
+geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights,nModes=nModes);
 
 %% Compare fitted and geometric quadrature
 rule = ["fitted"; "geometric"];
 relativeGramError = [transform.relativeGramError; geometricTransform.relativeGramError];
-objectiveResidual = [fit.fittedResidualNorm; fit.geometricResidualNorm];
+objectiveResidual = [fit.residualNorm; fit.geometricResidualNorm];
 roundTripError = [transform.roundTripError; geometricTransform.roundTripError];
 inverseMatrixConditionNumber = [transform.inverseMatrixConditionNumber; geometricTransform.inverseMatrixConditionNumber];
 gramConditionNumber = [transform.gramConditionNumber; geometricTransform.gramConditionNumber];
-depthSum = [sum(transform.increments); sum(geometricTransform.increments)];
-minimumIncrement = [min(transform.increments); min(geometricTransform.increments)];
-maximumIncrement = [max(transform.increments); max(geometricTransform.increments)];
+depthSum = [sum(transform.weights); sum(geometricTransform.weights)];
+minimumWeight = [min(transform.weights); min(geometricTransform.weights)];
+maximumWeight = [max(transform.weights); max(geometricTransform.weights)];
 diagnostics = table(rule,relativeGramError,objectiveResidual,roundTripError,inverseMatrixConditionNumber, ...
-    gramConditionNumber,depthSum,minimumIncrement,maximumIncrement);
+    gramConditionNumber,depthSum,minimumWeight,maximumWeight);
 
 fprintf("\nFixed-point scalar transform for exponential hydrostatic G modes\n");
 fprintf("Retained modes: %d; fixed points: %d; normalization: %s\n\n",nModes,nPoints,transform.normalization);
@@ -93,7 +93,7 @@ profileNorm = sqrt(profile.'*transform.metricMatrix*profile);
 relativeProfileResidual = sqrt(profileResidual.'*transform.metricMatrix*profileResidual)/profileNorm;
 fprintf("Relative sampled-metric residual of the smooth profile: %.3e\n",relativeProfileResidual);
 
-%% Inspect the sampled modes, increments, and Gram errors
+%% Inspect the sampled modes, weights, and Gram errors
 targetNorms = diag(transform.targetGramMatrix);
 gramScale = 1./sqrt(abs(targetNorms));
 fittedGramError = gramScale.*(transform.gramMatrix - transform.targetGramMatrix).*gramScale.';
@@ -111,14 +111,14 @@ ylabel("z (m)")
 title("Retained sampled modes")
 
 nexttile
-plot(fit.fittedIncrements,z,"o-",LineWidth=1.1,MarkerSize=4)
+plot(fit.weights,z,"o-",LineWidth=1.1,MarkerSize=4)
 hold on
-plot(fit.geometricIncrements,z,".-",LineWidth=1.1,MarkerSize=10)
+plot(fit.geometricWeights,z,".-",LineWidth=1.1,MarkerSize=10)
 hold off
 grid on
-xlabel("increment (m)")
+xlabel("weight (m)")
 ylabel("z (m)")
-title("Quadrature increments")
+title("Quadrature weights")
 legend(["fitted" "geometric"],Location="best")
 
 nexttile

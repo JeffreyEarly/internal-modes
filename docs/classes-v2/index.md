@@ -20,7 +20,7 @@ The pages are organized around the objects that own each part of the calculation
 | [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, internal-mode basis sets, or projected surface-geostrophic boundary modes |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification solution families, internal-mode bases, or SQG boundary modes |
-| [`Discrete transforms`](./discrete-transforms) | you want quadrature points, fitted quadrature increments, Galerkin projection, reconstruction, or Parseval diagnostics |
+| [`Discrete transforms`](./discrete-transforms) | you want quadrature points, fitted quadrature weights, forward and back modal transforms, or Parseval diagnostics |
 | [`Supporting types`](./supporting-types) | you want internal-mode normalization conventions |
 
 ## Shared notation
@@ -48,4 +48,4 @@ The reference pages use the standard vertical-mode variables:
 - [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
 - [`IMSurfaceGeostrophicModes`](./core/imsurfacegeostrophicmodes) describes projected zero-APV SQG boundary modes at fixed horizontal wavenumber, and solvers return [`IMSurfaceGeostrophicModesBasis`](./core/imsurfacegeostrophicmodesbasis) objects.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.
-- [`IMBasisSet`](./core/imbasisset) generates candidate quadrature points and fits quadrature increments; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then provides forward and inverse matrices together with `transformForward` and `transformBack`, while [`IMQuadratureFit`](./discrete-transforms/imquadraturefit) compares fitted and geometric quadrature rules.
+- [`IMBasisSet`](./core/imbasisset) generates candidate quadrature points and finds quadrature weights for fixed points; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then provides forward and inverse matrices together with `transformForward` and `transformBack`, while [`IMQuadratureWeightFit`](./discrete-transforms/imquadratureweightfit) compares fitted and geometric weights.

@@ -3,7 +3,7 @@ layout: default
 title: modeNumber
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 10
+nav_order: 9
 mathjax: true
 ---
 

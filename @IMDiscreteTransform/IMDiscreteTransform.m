@@ -139,24 +139,24 @@ classdef IMDiscreteTransform
         % - nav_order: 10
         z
 
-        % Quadrature increments associated with the sample points.
+        % Quadrature weights associated with the sample points.
         %
-        % `increments(i)` is the increment $$\Delta z_i$$ associated with
+        % `weights(i)` is the quadrature weight $$w_i$$ associated with
         % `z(i)`. For transforms built by `IMBasisSet`, the interior part of
         % the sampled metric begins with
         %
         % $$
         % W_{\mathrm{int}}
-        % =\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
+        % =\operatorname{diag}\!\left(r(z_i)w_i\right),
         % $$
         %
-        % before supported endpoint terms are added. Signed increments are
-        % retained so algebraic quadrature rules can be inspected directly;
-        % `hasNegativeIncrements` reports whether any are negative.
+        % before supported endpoint terms are added. The weights may be
+        % geometric control-volume widths or fitted algebraic weights.
+        % `hasNegativeWeights` reports whether any are negative.
         %
         % - Topic: Inspect samples and modes
         % - nav_order: 20
-        increments
+        weights
 
         % Physical labels for the retained modal rows and columns.
         %
@@ -272,17 +272,17 @@ classdef IMDiscreteTransform
         % - nav_order: 50
         targetGramIsPositiveDefinite
 
-        % Whether at least one quadrature increment is negative.
+        % Whether at least one quadrature weight is negative.
         %
-        % This is `true` when any $$\Delta z_i<0$$. A negative increment is
-        % useful to flag because it means the quadrature rule is algebraic
-        % rather than a positive weighted sum, but it does not by itself
-        % invalidate the transform. Inspect `targetGramIsPositiveDefinite`
-        % and the Gram diagnostics to assess the resulting metric.
+        % This is `true` when any $$w_i<0$$. A negative weight means the
+        % quadrature rule is algebraic rather than a positive weighted sum,
+        % but it does not by itself invalidate the transform. Inspect
+        % `targetGramIsPositiveDefinite` and the Gram diagnostics to assess
+        % the resulting metric.
         %
         % - Topic: Assess transform quality
         % - nav_order: 60
-        hasNegativeIncrements
+        hasNegativeWeights
 
         % Sample-space bilinear-form matrix $$W$$.
         %
@@ -295,7 +295,7 @@ classdef IMDiscreteTransform
         % For transforms built by `IMBasisSet`, its structure is
         %
         % $$
-        % W=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right)
+        % W=\operatorname{diag}\!\left(r(z_i)w_i\right)
         % +W_{\mathrm{endpoint}},
         % $$
         %
@@ -364,7 +364,7 @@ classdef IMDiscreteTransform
             %
             % Let $$n_z$$ be the number of samples and $$n_m$$ the number of
             % retained modes. `inverseMatrix` must be $$n_z\times n_m$$;
-            % `z` and `increments` must each contain $$n_z$$ entries;
+            % `z` and `weights` must each contain $$n_z$$ entries;
             % `metricMatrix` must be a symmetric $$n_z\times n_z$$ matrix;
             % and `targetGramMatrix` must be a diagonal $$n_m\times n_m$$
             % matrix with finite, nonzero diagonal entries. `modeNumber`
@@ -378,16 +378,16 @@ classdef IMDiscreteTransform
             %
             % ```matlab
             % z = [-1; -0.5; 0];
-            % increments = [0.25; 0.5; 0.25];
+            % weights = [0.25; 0.5; 0.25];
             % inverseMatrix = [1 0; 1 1; 0 1];
-            % metricMatrix = diag(increments);
-            % transform = IMDiscreteTransform(z=z,increments=increments,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
+            % metricMatrix = diag(weights);
+            % transform = IMDiscreteTransform(z=z,weights=weights,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
             % ```
             %
             % - Topic: Create discrete transforms
             % - Declaration: transform = IMDiscreteTransform(options)
             % - Parameter options.z: physical sample points
-            % - Parameter options.increments: quadrature increments
+            % - Parameter options.weights: quadrature weights
             % - Parameter options.modeNumber: retained mode labels
             % - Parameter options.normalization: basis normalization name
             % - Parameter options.inverseMatrix: inverse transform matrix containing the sampled modes
@@ -396,7 +396,7 @@ classdef IMDiscreteTransform
             % - Returns transform: initialized scalar discrete transform
             arguments
                 options.z (:,1) double {mustBeReal, mustBeFinite}
-                options.increments (:,1) double {mustBeReal, mustBeFinite}
+                options.weights (:,1) double {mustBeReal, mustBeFinite}
                 options.modeNumber (1,:) double {mustBeInteger}
                 options.normalization {mustBeTextScalar}
                 options.inverseMatrix (:,:) double {mustBeReal, mustBeFinite}
@@ -405,15 +405,15 @@ classdef IMDiscreteTransform
             end
 
             z = options.z(:);
-            increments = options.increments(:);
+            weights = options.weights(:);
             inverseMatrix = options.inverseMatrix;
             metricMatrix = options.metricMatrix;
             targetGramMatrix = options.targetGramMatrix;
             nSamples = length(z);
             nModes = size(inverseMatrix,2);
 
-            if length(increments) ~= nSamples || size(inverseMatrix,1) ~= nSamples
-                error("IMDiscreteTransform:InvalidShape", "z, increments, and inverseMatrix rows must describe the same sample count.");
+            if length(weights) ~= nSamples || size(inverseMatrix,1) ~= nSamples
+                error("IMDiscreteTransform:InvalidShape", "z, weights, and inverseMatrix rows must describe the same sample count.");
             end
             if length(options.modeNumber) ~= nModes
                 error("IMDiscreteTransform:InvalidShape", "modeNumber must contain one label for each inverseMatrix column.");
@@ -453,7 +453,7 @@ classdef IMDiscreteTransform
             scaledDifference = scale.*(gramMatrix - targetGramMatrix).*scale.';
 
             self.z = z;
-            self.increments = increments;
+            self.weights = weights;
             self.modeNumber = reshape(options.modeNumber,1,[]);
             self.normalization = string(options.normalization);
             self.inverseMatrix = inverseMatrix;
@@ -466,7 +466,7 @@ classdef IMDiscreteTransform
             self.inverseMatrixConditionNumber = cond(inverseMatrix);
             self.gramConditionNumber = cond(gramMatrix);
             self.targetGramIsPositiveDefinite = all(targetNorms > 0);
-            self.hasNegativeIncrements = any(increments < 0);
+            self.hasNegativeWeights = any(weights < 0);
         end
 
         function coefficients = transformForward(self, values)

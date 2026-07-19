@@ -1,45 +1,64 @@
-function fit = fitQuadrature(self, options)
-% Fit quadrature increments on fixed physical sample points.
+function [weights, weightFit] = quadratureWeightsForPoints(self, options)
+% Find quadrature weights for fixed physical sample points.
 %
-% The default objective fits the normalized scalar Gram matrix. For target
-% norms $$C_i=(\Gamma_0)_{ii}$$ and a fixed endpoint contribution
-% $$\Gamma_{\mathrm{end}}$$, the ordered mode-pair residual system is
+% The points `z` are fixed. This method solves for one weight $$w_k$$ per
+% point so the sampled inner products of the first `nModes` retained modes
+% approximate their continuous Gram matrix. For target modal norms
+% $$C_i=(\Gamma_0)_{ii}$$ and fixed endpoint contribution
+% $$\Gamma_{\mathrm{endpoint}}$$, the default normalized least-squares
+% system is
 %
 % $$
-% A_{(i,j),k}=\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
+% (A_{\mathrm{LS}})_{(i,j),k}
+% =\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
 % \qquad
-% b_{(i,j)}=\frac{(\Gamma_0-\Gamma_{\mathrm{end}})_{ij}}
+% (b_{\mathrm{LS}})_{(i,j)}
+% =\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
 % {\sqrt{|C_iC_j|}}.
 % $$
 %
-% The fitted increments minimize $$\|A\Delta z-b\|_2$$. By default they
-% also satisfy $$\Delta z_k\geq0$$ and
-% $$\sum_k\Delta z_k=z_\mathrm{surface}-z_\mathrm{bottom}$$. The result
-% compares the fitted transform with geometric control-volume increments.
-% The optimizer solves for dimensionless increments
-% $$x_k=\Delta z_k/D$$, where $$D$$ is the full depth, while custom
-% objectives continue to define $$A\Delta z-b$$ in physical units.
+% The fitted weights solve
+%
+% $$
+% \min_w\left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
+% $$
+%
+% By default they also satisfy
+%
+% $$
+% w_k\geq0,
+% \qquad
+% \sum_k w_k=z_\mathrm{surface}-z_\mathrm{bottom}.
+% $$
+%
+% Geometric control-volume weights provide the initial guess and reference
+% comparison. Unlike those geometric widths, fitted weights are algebraic
+% quadrature coefficients and need not remain positive or sum to the full
+% depth when the corresponding constraints are disabled. The optimizer
+% works with dimensionless weights $$x_k=w_k/D$$, where $$D$$ is the full
+% depth. Custom objectives continue to define $$Aw-b$$ in physical units.
 % This method requires `lsqlin` from Optimization Toolbox.
 %
 % A custom objective is a function handle accepting a context struct and
 % returning a scalar struct with fields `A`, `b`, and optional `name`. The
 % context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
 % `interiorWeight`, `targetGramMatrix`, `endpointGramMatrix`,
-% `geometricIncrements`, `normalizedGramA`, and `normalizedGramB`.
+% `geometricWeights`, `normalizedGramA`, and `normalizedGramB`.
 %
 % ```matlab
-% fit = basisSet.fitQuadrature(z=z,nModes=8);
-% transform = fit.fittedTransform;
+% [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
+% transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 % ```
 %
 % - Topic: Build discrete transforms
-% - Declaration: fit = fitQuadrature(basisSet,options)
+% - Declaration: [weights,weightFit] = quadratureWeightsForPoints(basisSet,options)
 % - Parameter options.z: increasing fixed physical sample points
 % - Parameter options.nModes: number of leading retained modes
 % - Parameter options.objective: `"normalizedGram"` or a custom least-squares callback
-% - Parameter options.nonnegative: whether fitted increments must be nonnegative
-% - Parameter options.constrainDepth: whether fitted increments must sum to the full depth
-% - Returns fit: fitted and geometric quadrature comparison
+% - Parameter options.nonnegative: whether fitted weights must be nonnegative
+% - Parameter options.constrainDepth: whether fitted weights must sum to the full depth
+% - Returns weights: fitted quadrature weights aligned with `z`
+% - Returns weightFit: optional fitted-versus-geometric diagnostics
 arguments
     self IMBasisSet
     options.z (:,1) double {mustBeReal, mustBeFinite}
@@ -53,12 +72,12 @@ z = options.z(:);
 nModes = options.nModes;
 depth = diff(self.zDomain);
 edges = [self.zDomain(1); 0.5*(z(1:end-1) + z(2:end)); self.zDomain(2)];
-geometricIncrements = diff(edges);
-geometricTransform = self.discreteTransform(z=z, increments=geometricIncrements, nModes=nModes);
+geometricWeights = diff(edges);
+geometricTransform = self.discreteTransform(z=z,weights=geometricWeights,nModes=nModes);
 
 evpContext = self.evp.contextForSolver(self.solver);
 innerProduct = self.evp.innerProduct();
-interiorWeight = IMEigenvalueProblem.evaluateCoefficient(innerProduct.interiorWeight, z, evpContext);
+interiorWeight = IMEigenvalueProblem.evaluateCoefficient(innerProduct.interiorWeight,z,evpContext);
 if isscalar(interiorWeight)
     interiorWeight = interiorWeight*ones(size(z));
 else
@@ -67,7 +86,7 @@ end
 
 inverseMatrix = geometricTransform.inverseMatrix;
 targetGramMatrix = geometricTransform.targetGramMatrix;
-interiorMetricMatrix = diag(interiorWeight.*geometricIncrements);
+interiorMetricMatrix = diag(interiorWeight.*geometricWeights);
 endpointMetricMatrix = geometricTransform.metricMatrix - interiorMetricMatrix;
 endpointGramMatrix = inverseMatrix.'*endpointMetricMatrix*inverseMatrix;
 endpointGramMatrix = 0.5*(endpointGramMatrix + endpointGramMatrix.');
@@ -94,7 +113,7 @@ objectiveContext.inverseMatrix = inverseMatrix;
 objectiveContext.interiorWeight = interiorWeight;
 objectiveContext.targetGramMatrix = targetGramMatrix;
 objectiveContext.endpointGramMatrix = endpointGramMatrix;
-objectiveContext.geometricIncrements = geometricIncrements;
+objectiveContext.geometricWeights = geometricWeights;
 objectiveContext.normalizedGramA = normalizedGramA;
 objectiveContext.normalizedGramB = normalizedGramB;
 
@@ -141,7 +160,7 @@ objectiveMatrix = double(objectiveMatrix);
 objectiveTarget = double(objectiveTarget(:));
 
 if isempty(which("lsqlin"))
-    error("IMBasisSet:MissingQuadratureOptimizer", "Fitting quadrature increments requires lsqlin from Optimization Toolbox. Supply increments explicitly when Optimization Toolbox is unavailable.");
+    error("IMBasisSet:MissingQuadratureOptimizer", "Fitting quadrature weights requires lsqlin from Optimization Toolbox. Supply weights explicitly when Optimization Toolbox is unavailable.");
 end
 
 if options.nonnegative
@@ -158,31 +177,30 @@ else
 end
 
 scaledObjectiveMatrix = depth*objectiveMatrix;
-initialScaledIncrements = geometricIncrements/depth;
-solverOptions = optimoptions("lsqlin",Algorithm="active-set",Display="off",ConstraintTolerance=1e-12, ...
-    OptimalityTolerance=1e-12,StepTolerance=1e-14,MaxIterations=1000);
+initialScaledWeights = geometricWeights/depth;
+solverOptions = optimoptions("lsqlin",Algorithm="active-set",Display="off",ConstraintTolerance=1e-12,OptimalityTolerance=1e-12,StepTolerance=1e-14,MaxIterations=1000);
 try
-    [scaledIncrements,~,~,exitFlag,solverOutput] = lsqlin(scaledObjectiveMatrix, objectiveTarget, [], [], equalityMatrix, equalityTarget, lowerBounds, [], initialScaledIncrements, solverOptions);
+    [scaledWeights,~,~,exitFlag,solverOutput] = lsqlin(scaledObjectiveMatrix,objectiveTarget,[],[],equalityMatrix,equalityTarget,lowerBounds,[],initialScaledWeights,solverOptions);
 catch cause
-    exception = MException("IMBasisSet:QuadratureFitFailed", "lsqlin failed while fitting quadrature increments on the supplied points.");
+    exception = MException("IMBasisSet:QuadratureWeightFitFailed", "lsqlin failed while fitting quadrature weights on the supplied points.");
     throw(addCause(exception,cause))
 end
-if isempty(scaledIncrements) || exitFlag <= 0 || any(~isfinite(scaledIncrements))
-    error("IMBasisSet:QuadratureFitFailed", "lsqlin did not converge to a finite quadrature fit (exit flag %d).", exitFlag);
+if isempty(scaledWeights) || exitFlag <= 0 || any(~isfinite(scaledWeights))
+    error("IMBasisSet:QuadratureWeightFitFailed", "lsqlin did not converge to finite quadrature weights (exit flag %d).", exitFlag);
 end
-fittedIncrements = depth*scaledIncrements;
+weights = depth*scaledWeights;
 
 constraintTolerance = 1e-10*max(1,depth);
-if options.nonnegative && any(fittedIncrements < -constraintTolerance)
-    error("IMBasisSet:QuadratureFitFailed", "The fitted increments violate the requested nonnegative constraint.");
+if options.nonnegative && any(weights < -constraintTolerance)
+    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested nonnegative constraint.");
 end
-if options.constrainDepth && abs(sum(fittedIncrements) - depth) > constraintTolerance
-    error("IMBasisSet:QuadratureFitFailed", "The fitted increments violate the requested full-depth constraint.");
+if options.constrainDepth && abs(sum(weights) - depth) > constraintTolerance
+    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested full-depth constraint.");
 end
-fittedIncrements(fittedIncrements < 0 & fittedIncrements >= -constraintTolerance) = 0;
+weights(weights < 0 & weights >= -constraintTolerance) = 0;
 
-fittedTransform = self.discreteTransform(z=z, increments=fittedIncrements, nModes=nModes);
-fit = IMQuadratureFit(fittedTransform=fittedTransform, geometricTransform=geometricTransform, objectiveName=objectiveName, ...
-    objectiveMatrix=objectiveMatrix, objectiveTarget=objectiveTarget, nonnegativeConstraint=options.nonnegative, ...
-    depthConstraint=options.constrainDepth, depthTarget=depth, exitFlag=exitFlag, solverOutput=solverOutput);
+if nargout > 1
+    transform = self.discreteTransform(z=z,weights=weights,nModes=nModes);
+    weightFit = IMQuadratureWeightFit(transform=transform,geometricTransform=geometricTransform,objectiveName=objectiveName,objectiveMatrix=objectiveMatrix,objectiveTarget=objectiveTarget,nonnegativeConstraint=options.nonnegative,depthConstraint=options.constrainDepth,depthTarget=depth,exitFlag=exitFlag,solverOutput=solverOutput);
+end
 end

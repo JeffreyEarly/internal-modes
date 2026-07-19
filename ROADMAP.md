@@ -6,8 +6,8 @@ This roadmap covers the discrete-transform work built on numerical `IMBasisSet` 
 
 | Phase | Status | Result |
 | --- | --- | --- |
-| Scalar Galerkin transform | Complete | `IMDiscreteTransform` builds forward and reconstruction matrices from supplied points and increments and reports Gram, round-trip, and conditioning diagnostics. |
-| Fixed-point increment fitting | Complete | `fitQuadrature` fits nonnegative full-depth increments with normalized Gram objectives, supports custom linear objectives, and compares fitted and geometric rules. |
+| Scalar Galerkin transform | Complete | `IMDiscreteTransform` builds forward and inverse matrices from supplied points and weights and reports Gram, round-trip, and conditioning diagnostics. |
+| Fixed-point weight fitting | Complete | `quadratureWeightsForPoints` fits nonnegative full-depth weights with normalized Gram objectives, supports custom linear objectives, and compares fitted and geometric rules. |
 | Mode-root quadrature grids | Complete | `quadraturePoints(nModes=...)` returns endpoints plus roots of the next selected mode, obtains an auxiliary mode automatically, and uses native spectral root finding for physical, WKB, and density coordinates. |
 
 These phases intentionally establish scalar mechanics first. They do not yet provide the final coupled internal-mode transform or the one-call production workflow.
@@ -20,10 +20,10 @@ Generalize the scalar machinery at `IMInternalModesBasis`, where `F`, `G`, and `
 - Use the diagnostic `G` family to generate the canonical root grid even when the EVP was solved in the `F` formulation.
 - Handle the hydrostatic null mode explicitly: `F_0` participates in the `F` transform while its aligned `G` column is bookkeeping only and is excluded from the `G` Gram system.
 - Fit stacked normalized `F` and `G` Gram objectives with configurable block weights while preserving the current custom-objective extension point.
-- Return separate forward transforms and diagnostics for horizontal kinetic energy and potential energy while retaining common mode numbers, points, and increments.
+- Return separate forward transforms and diagnostics for horizontal kinetic energy and potential energy while retaining common mode numbers, points, and weights.
 - Start with rigid-surface/rigid-bottom hydrostatic modes. Add generalized and active endpoint laws only after their coupled discrete metrics are derived.
 
-Acceptance requires the constant-stratification limit to reproduce DCT-I/DST-I behavior and exponential stratification to improve both component Gram errors relative to geometric increments.
+Acceptance requires the constant-stratification limit to reproduce DCT-I/DST-I behavior and exponential stratification to improve both component Gram errors relative to geometric weights.
 
 ## Phase 5: Automatic Transform Construction
 
@@ -33,9 +33,9 @@ Make the common workflow require only a basis set and retained mode count.
 transform = basisSet.discreteTransform(nModes=8);
 ```
 
-- Generate the mode-root grid, fit increments, and construct the transform internally.
-- Preserve the existing explicit paths for caller-supplied points and increments.
-- Preserve fit provenance and diagnostics so the convenient API does not hide the chosen nodes, constraints, optimizer status, or comparison with geometric increments.
+- Generate the mode-root grid, fit weights, and construct the transform internally.
+- Preserve the existing explicit paths for caller-supplied points and weights.
+- Preserve fit provenance and diagnostics so the convenient API does not hide the chosen nodes, constraints, optimizer status, or comparison with geometric weights.
 - Use the scalar workflow for `IMBasisSet` and the coupled workflow for `IMInternalModesBasis`.
 - Never silently reduce the requested mode count. Report inadequate resolution or quality and let the user choose a smaller retained band.
 
@@ -45,17 +45,17 @@ Turn transform assessment into a first-class API rather than a collection of ind
 
 - Compute normalized Gram errors, round-trip errors, condition numbers, increment ranges, and integral diagnostics as functions of retained mode count.
 - For coupled modes, report `F` and `G` errors separately and provide a combined worst-component summary.
-- Distinguish diagnostics for one fixed quadrature rule from diagnostics that refit increments at each retained count.
+- Distinguish diagnostics for one fixed quadrature rule from diagnostics that refit weights at each retained count.
 - Add an optional quality-policy helper that recommends the largest reliable prefix for user-supplied tolerances; do not make automatic truncation the default.
 - Preserve named physical mode numbers in every diagnostic table and curve.
 
 ## Phase 7: Quadrature-Node Optimization
 
-Optimize point locations only after mode-root grids and fitted increments provide a stable reference.
+Optimize point locations only after mode-root grids and fitted weights provide a stable reference.
 
 - Initialize from `quadraturePoints` and keep the physical endpoints fixed.
 - Parameterize interior points so ordering and a configurable minimum spacing are maintained throughout optimization.
-- Refit increments for each candidate grid and optimize retained-band Gram objectives rather than coefficient round-trip error alone.
+- Refit weights for each candidate grid and optimize retained-band Gram objectives rather than coefficient round-trip error alone.
 - Support custom nonlinear objectives in addition to the built-in scalar and coupled Parseval objectives.
 - Compare optimized nodes against mode-root nodes using identical increment constraints and report node displacement, conditioning, positivity, and both fitted and geometric-weight errors.
 - Keep optimization optional; the mode-root grid remains the deterministic default.

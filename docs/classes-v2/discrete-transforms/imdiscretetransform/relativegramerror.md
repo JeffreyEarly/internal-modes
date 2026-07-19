@@ -3,7 +3,7 @@ layout: default
 title: relativeGramError
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 12
+nav_order: 11
 mathjax: true
 ---
 

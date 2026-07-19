@@ -20,7 +20,7 @@ Create a scalar discrete transform from canonical matrices.
 ```
 ## Parameters
 + `options.z`  physical sample points
-+ `options.increments`  quadrature increments
++ `options.weights`  quadrature weights
 + `options.modeNumber`  retained mode labels
 + `options.normalization`  basis normalization name
 + `options.inverseMatrix`  inverse transform matrix containing the sampled modes
@@ -34,7 +34,7 @@ Create a scalar discrete transform from canonical matrices.
 
 Let $$n_z$$ be the number of samples and $$n_m$$ the number of
 retained modes. `inverseMatrix` must be $$n_z\times n_m$$;
-`z` and `increments` must each contain $$n_z$$ entries;
+`z` and `weights` must each contain $$n_z$$ entries;
 `metricMatrix` must be a symmetric $$n_z\times n_z$$ matrix;
 and `targetGramMatrix` must be a diagonal $$n_m\times n_m$$
 matrix with finite, nonzero diagonal entries. `modeNumber`
@@ -48,8 +48,8 @@ for alternative transform builders.
 
 ```matlab
 z = [-1; -0.5; 0];
-increments = [0.25; 0.5; 0.25];
+weights = [0.25; 0.5; 0.25];
 inverseMatrix = [1 0; 1 1; 0 1];
-metricMatrix = diag(increments);
-transform = IMDiscreteTransform(z=z,increments=increments,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
+metricMatrix = diag(weights);
+transform = IMDiscreteTransform(z=z,weights=weights,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
 ```

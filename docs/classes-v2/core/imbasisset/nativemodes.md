@@ -3,7 +3,7 @@ layout: default
 title: nativeModes
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 15
+nav_order: 14
 mathjax: true
 ---
 

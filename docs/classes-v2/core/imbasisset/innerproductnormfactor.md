@@ -3,7 +3,7 @@ layout: default
 title: innerProductNormFactor
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 10
+nav_order: 9
 mathjax: true
 ---
 

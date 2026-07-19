@@ -3,7 +3,7 @@ layout: default
 title: normalization
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 11
+nav_order: 10
 mathjax: true
 ---
 

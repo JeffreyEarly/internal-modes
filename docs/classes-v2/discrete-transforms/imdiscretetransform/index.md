@@ -92,7 +92,7 @@ valuesFit = transform.transformBack(coefficients);
   + [`transformBack`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/transformback.html) Transform modal coefficients back to sampled profiles.
 + Inspect samples and modes
   + [`z`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/z.html) Physical points at which profiles and modes are sampled.
-  + [`increments`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/increments.html) Quadrature increments associated with the sample points.
+  + [`weights`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/weights.html) Quadrature weights associated with the sample points.
   + [`modeNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/modenumber.html) Physical labels for the retained modal rows and columns.
   + [`normalization`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/normalization.html) Name of the normalization captured by this transform.
 + Assess transform quality
@@ -101,7 +101,7 @@ valuesFit = transform.transformBack(coefficients);
   + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrixconditionnumber.html) Two-norm condition number of the sampled modal basis.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/gramconditionnumber.html) Two-norm condition number of the sampled Gram matrix.
   + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgramispositivedefinite.html) Whether the target modal Gram matrix defines a positive norm.
-  + [`hasNegativeIncrements`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/hasnegativeincrements.html) Whether at least one quadrature increment is negative.
+  + [`hasNegativeWeights`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/hasnegativeweights.html) Whether at least one quadrature weight is negative.
 
 
 ## Developer Topics

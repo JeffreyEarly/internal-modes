@@ -21,7 +21,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
     methods (Test)
         function scalarBuilderStoresExpectedGalerkinMatrices(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=3);
 
             expectedBasis = basisSet.u(z);
             expectedBasis = expectedBasis(:,1:3);
@@ -35,7 +35,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
             testCase.verifyClass(transform, "IMDiscreteTransform")
             testCase.verifyEqual(transform.z, z, AbsTol=0)
-            testCase.verifyEqual(transform.increments, dz, AbsTol=0)
+            testCase.verifyEqual(transform.weights, dz, AbsTol=0)
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:3), AbsTol=0)
             testCase.verifyEqual(transform.normalization, "unity")
             testCase.verifyEqual(transform.inverseMatrix, expectedBasis, RelTol=1e-13, AbsTol=1e-13)
@@ -46,12 +46,12 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.inverseMatrixConditionNumber, cond(expectedBasis), RelTol=1e-12)
             testCase.verifyEqual(transform.gramConditionNumber, cond(expectedGram), RelTol=1e-12)
             testCase.verifyTrue(transform.targetGramIsPositiveDefinite)
-            testCase.verifyFalse(transform.hasNegativeIncrements)
+            testCase.verifyFalse(transform.hasNegativeWeights)
         end
 
         function forwardAndBackTransformsRoundTripRetainedCoefficients(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=3);
             coefficients = [1 -2; 0.5 3; -4 0.25];
             values = transform.inverseMatrix*coefficients;
 
@@ -65,13 +65,15 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyLessThan(transform.roundTripError, 1e-11)
             testCase.verifyFalse(isprop(transform,"basisMatrix"))
             testCase.verifyFalse(isprop(transform,"basisConditionNumber"))
+            testCase.verifyFalse(isprop(transform,"increments"))
+            testCase.verifyFalse(isprop(transform,"hasNegativeIncrements"))
             testCase.verifyFalse(ismethod(transform,"project"))
             testCase.verifyFalse(ismethod(transform,"reconstruct"))
         end
 
         function galerkinResidualIsOrthogonalInSampleMetric(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=3);
             values = [z.^3 + 0.2*cos(7*z), exp(z) - z];
             coefficients = transform.transformForward(values);
             residual = values - transform.transformBack(coefficients);
@@ -82,13 +84,13 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
         function scalarBuilderSelectsLeadingModePrefix(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=2);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2);
 
             testCase.verifySize(transform.inverseMatrix, [length(z) 2])
             testCase.verifySize(transform.forwardMatrix, [2 length(z)])
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:2), AbsTol=0)
-            testCase.verifyError(@() basisSet.discreteTransform(z=z, increments=dz, nModes=5), "IMBasisSet:InvalidDiscreteModeCount")
-            testCase.verifyError(@() basisSet.discreteTransform(z=z(1:2), increments=dz(1:2), nModes=3), "IMBasisSet:InsufficientDiscreteSamples")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z, weights=dz, nModes=5), "IMBasisSet:InvalidDiscreteModeCount")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z(1:2), weights=dz(1:2), nModes=3), "IMBasisSet:InsufficientDiscreteSamples")
         end
 
         function valueEndpointTermEntersSampleMetric(testCase)
@@ -99,14 +101,14 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1),zDomain(2),65).';
             dz = testCase.trapezoidalIncrements(z);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=2);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2);
             endpointWeight = evp.innerProduct().surfaceWeights(1);
             expectedMetric = diag(dz);
             expectedMetric(end,end) = expectedMetric(end,end) + endpointWeight.coefficient*endpointWeight.c^2;
 
             testCase.verifyEqual(transform.metricMatrix, expectedMetric, AbsTol=1e-14)
             testCase.verifyEqual(transform.gramMatrix, transform.inverseMatrix.'*expectedMetric*transform.inverseMatrix, RelTol=1e-12, AbsTol=1e-12)
-            testCase.verifyError(@() basisSet.discreteTransform(z=z(1:end-1), increments=dz(1:end-1), nModes=2), "IMBasisSet:MissingDiscreteEndpointSample")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z(1:end-1), weights=dz(1:end-1), nModes=2), "IMBasisSet:MissingDiscreteEndpointSample")
         end
 
         function derivativeEndpointTermIsRejected(testCase)
@@ -118,27 +120,27 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             z = linspace(zDomain(1),zDomain(2),65).';
             dz = testCase.trapezoidalIncrements(z);
 
-            testCase.verifyError(@() basisSet.discreteTransform(z=z, increments=dz), "IMBasisSet:UnsupportedDiscreteEndpointMetric")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z, weights=dz), "IMBasisSet:UnsupportedDiscreteEndpointMetric")
         end
 
-        function signedIncrementsAreRetainedAndFlagged(testCase)
+        function signedWeightsAreRetainedAndFlagged(testCase)
             [basisSet, z, dz] = testCase.regularBasis(3);
             dz(2) = -dz(2);
-            transform = basisSet.discreteTransform(z=z, increments=dz, nModes=2);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2);
 
-            testCase.verifyEqual(transform.increments, dz, AbsTol=0)
-            testCase.verifyTrue(transform.hasNegativeIncrements)
+            testCase.verifyEqual(transform.weights, dz, AbsTol=0)
+            testCase.verifyTrue(transform.hasNegativeWeights)
         end
 
         function indefiniteTargetsUseAbsoluteNormScaling(testCase)
             targetGram = diag([-1 2]);
-            transform = IMDiscreteTransform(z=[-1; 0], increments=[-1; 1], modeNumber=[-1 1], normalization="unity", ...
+            transform = IMDiscreteTransform(z=[-1; 0], weights=[-1; 1], modeNumber=[-1 1], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=diag([-2 3]), targetGramMatrix=targetGram);
             scale = 1./sqrt(abs(diag(targetGram)));
             expected = norm(scale.*(transform.gramMatrix - targetGram).*scale.',2);
 
             testCase.verifyFalse(transform.targetGramIsPositiveDefinite)
-            testCase.verifyTrue(transform.hasNegativeIncrements)
+            testCase.verifyTrue(transform.hasNegativeWeights)
             testCase.verifyEqual(transform.relativeGramError, expected, AbsTol=1e-14)
         end
 
@@ -149,18 +151,18 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             duplicate = z;
             duplicate(2) = duplicate(1);
 
-            testCase.verifyError(@() basisSet.discreteTransform(z=flipud(z), increments=dz), "IMBasisSet:InvalidDiscreteGrid")
-            testCase.verifyError(@() basisSet.discreteTransform(z=duplicate, increments=dz), "IMBasisSet:InvalidDiscreteGrid")
-            testCase.verifyError(@() basisSet.discreteTransform(z=outside, increments=dz), "IMBasisSet:InvalidDiscreteGrid")
-            testCase.verifyError(@() basisSet.discreteTransform(z=z, increments=dz(1:end-1)), "IMBasisSet:InvalidDiscreteIncrements")
-            testCase.verifyError(@() basisSet.discreteTransform(z=z, increments=zeros(size(dz))), "IMBasisSet:InvalidDiscreteIncrements")
+            testCase.verifyError(@() basisSet.discreteTransform(z=flipud(z), weights=dz), "IMBasisSet:InvalidDiscreteGrid")
+            testCase.verifyError(@() basisSet.discreteTransform(z=duplicate, weights=dz), "IMBasisSet:InvalidDiscreteGrid")
+            testCase.verifyError(@() basisSet.discreteTransform(z=outside, weights=dz), "IMBasisSet:InvalidDiscreteGrid")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z, weights=dz(1:end-1)), "IMBasisSet:InvalidDiscreteWeights")
+            testCase.verifyError(@() basisSet.discreteTransform(z=z, weights=zeros(size(dz))), "IMBasisSet:InvalidDiscreteWeights")
         end
 
         function matrixObjectRejectsSingularAndMalformedOperations(testCase)
-            testCase.verifyError(@() IMDiscreteTransform(z=[-1; -0.5; 0], increments=ones(3,1), modeNumber=[1 2], normalization="unity", ...
+            testCase.verifyError(@() IMDiscreteTransform(z=[-1; -0.5; 0], weights=ones(3,1), modeNumber=[1 2], normalization="unity", ...
                 inverseMatrix=ones(3,2), metricMatrix=eye(3), targetGramMatrix=eye(2)), "IMDiscreteTransform:SingularGramMatrix")
 
-            transform = IMDiscreteTransform(z=[-1; 0], increments=ones(2,1), modeNumber=[1 2], normalization="unity", ...
+            transform = IMDiscreteTransform(z=[-1; 0], weights=ones(2,1), modeNumber=[1 2], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));
             testCase.verifyError(@() transform.transformForward(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
             testCase.verifyError(@() transform.transformBack(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
