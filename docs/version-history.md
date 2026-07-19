@@ -7,10 +7,11 @@ nav_order: 100
 # Version History
 
 ## Unreleased
-- added v2 scalar discrete Galerkin transforms on caller-supplied points and quadrature increments, including sampled metrics, continuous Gram targets, and transform-quality diagnostics
+- added v2 scalar discrete Galerkin transforms on caller-supplied points and quadrature weights, including forward and inverse matrices, forward and back transform methods, sampled metrics, continuous Gram targets, and transform-quality diagnostics
 - added fixed-point v2 quadrature fitting with normalized Gram objectives, nonnegative full-depth constraints, custom least-squares systems, and fitted-versus-geometric diagnostics
 - made fixed-point fitting depth-scale robust and added v2 walkthroughs for default and custom scalar discrete-transform workflows
 - added v2 `pointsFromModeRoots` grids with automatic auxiliary-mode solves and native Chebyshev root finding for all spectral coordinate choices
+- compressed the normalized Gram Frobenius fit to independent symmetric mode pairs and made `discreteTransform` optionally return the associated quadrature-fit provenance when it chooses weights
 
 ## [2.0.0] - 2026-05-19
 - added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`
