@@ -9,12 +9,22 @@ mathjax: true
 
 #  increments
 
-Quadrature increments aligned with `z`.
+Quadrature increments associated with the sample points.
 
 
 ---
 
 ## Discussion
 
-Signed increments are retained so algebraic quadrature rules can
-be inspected explicitly.
+`increments(i)` is the increment $$\Delta z_i$$ associated with
+`z(i)`. For transforms built by `IMBasisSet`, the interior part of
+the sampled metric begins with
+
+$$
+W_{\mathrm{int}}
+=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
+$$
+
+before supported endpoint terms are added. Signed increments are
+retained so algebraic quadrature rules can be inspected directly;
+`hasNegativeIncrements` reports whether any are negative.

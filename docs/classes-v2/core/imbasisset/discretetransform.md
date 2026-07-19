@@ -47,5 +47,6 @@ This fitted path requires `lsqlin` from Optimization Toolbox.
 ```matlab
 transform = basisSet.discreteTransform(z=z,nModes=8);
 transform = basisSet.discreteTransform(z=z,increments=dz,nModes=8);
-coefficients = transform.project(values);
+coefficients = transform.transformForward(values);
+valuesFit = transform.transformBack(coefficients);
 ```

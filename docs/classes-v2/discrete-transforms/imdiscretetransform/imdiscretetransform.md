@@ -32,7 +32,24 @@ Create a scalar discrete transform from canonical matrices.
 
 ## Discussion
 
-Ordinary users construct this object with
-`IMBasisSet.discreteTransform`. This constructor is the
-canonical matrix-level initialization path for later discrete
-transform builders.
+Let $$n_z$$ be the number of samples and $$n_m$$ the number of
+retained modes. `inverseMatrix` must be $$n_z\times n_m$$;
+`z` and `increments` must each contain $$n_z$$ entries;
+`metricMatrix` must be a symmetric $$n_z\times n_z$$ matrix;
+and `targetGramMatrix` must be a diagonal $$n_m\times n_m$$
+matrix with finite, nonzero diagonal entries. `modeNumber`
+supplies one label for each retained mode column.
+
+The constructor derives `gramMatrix`, `forwardMatrix`, and all
+quality diagnostics from these inputs. Most users should build
+this object from a solved basis with
+`IMBasisSet.discreteTransform`; direct construction is useful
+for alternative transform builders.
+
+```matlab
+z = [-1; -0.5; 0];
+increments = [0.25; 0.5; 0.25];
+inverseMatrix = [1 0; 1 1; 0 1];
+metricMatrix = diag(increments);
+transform = IMDiscreteTransform(z=z,increments=increments,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
+```

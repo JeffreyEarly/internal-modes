@@ -49,30 +49,32 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyFalse(transform.hasNegativeIncrements)
         end
 
-        function projectAndReconstructRoundTripRetainedCoefficients(testCase)
+        function forwardAndBackTransformsRoundTripRetainedCoefficients(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
             transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
             coefficients = [1 -2; 0.5 3; -4 0.25];
             values = transform.inverseMatrix*coefficients;
 
             testCase.verifyEqual(transform.forwardMatrix*transform.inverseMatrix, eye(3), RelTol=1e-11, AbsTol=1e-12)
-            testCase.verifyEqual(transform.project(values), coefficients, RelTol=1e-11, AbsTol=1e-12)
-            testCase.verifyEqual(transform.project(values), transform.forwardMatrix*values, RelTol=1e-13, AbsTol=1e-13)
-            testCase.verifyEqual(transform.reconstruct(coefficients), values, RelTol=1e-13, AbsTol=1e-13)
-            testCase.verifyEqual(transform.reconstruct(coefficients), transform.inverseMatrix*coefficients, RelTol=1e-13, AbsTol=1e-13)
+            testCase.verifyEqual(transform.transformForward(values), coefficients, RelTol=1e-11, AbsTol=1e-12)
+            testCase.verifyEqual(transform.transformForward(values), transform.forwardMatrix*values, RelTol=1e-13, AbsTol=1e-13)
+            testCase.verifyEqual(transform.transformBack(coefficients), values, RelTol=1e-13, AbsTol=1e-13)
+            testCase.verifyEqual(transform.transformBack(coefficients), transform.inverseMatrix*coefficients, RelTol=1e-13, AbsTol=1e-13)
             sampledProjector = transform.inverseMatrix*transform.forwardMatrix;
             testCase.verifyEqual(sampledProjector*sampledProjector, sampledProjector, RelTol=1e-11, AbsTol=1e-12)
             testCase.verifyLessThan(transform.roundTripError, 1e-11)
             testCase.verifyFalse(isprop(transform,"basisMatrix"))
             testCase.verifyFalse(isprop(transform,"basisConditionNumber"))
+            testCase.verifyFalse(ismethod(transform,"project"))
+            testCase.verifyFalse(ismethod(transform,"reconstruct"))
         end
 
         function galerkinResidualIsOrthogonalInSampleMetric(testCase)
             [basisSet, z, dz] = testCase.regularBasis(4);
             transform = basisSet.discreteTransform(z=z, increments=dz, nModes=3);
             values = [z.^3 + 0.2*cos(7*z), exp(z) - z];
-            coefficients = transform.project(values);
-            residual = values - transform.reconstruct(coefficients);
+            coefficients = transform.transformForward(values);
+            residual = values - transform.transformBack(coefficients);
             normalResidual = transform.inverseMatrix.'*transform.metricMatrix*residual;
 
             testCase.verifyLessThan(norm(normalResidual,2), 1e-11*max(1,norm(values,2)))
@@ -160,8 +162,8 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
             transform = IMDiscreteTransform(z=[-1; 0], increments=ones(2,1), modeNumber=[1 2], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));
-            testCase.verifyError(@() transform.project(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
-            testCase.verifyError(@() transform.reconstruct(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
+            testCase.verifyError(@() transform.transformForward(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
+            testCase.verifyError(@() transform.transformBack(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
         end
     end
 

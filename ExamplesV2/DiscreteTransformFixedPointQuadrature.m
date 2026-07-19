@@ -72,22 +72,22 @@ fprintf("\nFixed-point scalar transform for exponential hydrostatic G modes\n");
 fprintf("Retained modes: %d; fixed points: %d; normalization: %s\n\n",nModes,nPoints,transform.normalization);
 disp(diagnostics)
 
-%% Recover known modal coefficients
-% `reconstruct` and `project` accept multiple profile columns. A field made
+%% Transform known modal coefficients forward and back
+% `transformBack` and `transformForward` accept multiple profile columns. A field made
 % entirely from retained modes should round-trip to numerical precision.
 mode = (1:nModes).';
 coefficientsTrue = [1./mode (-1).^(mode - 1)./mode.^2];
-valuesFromModes = transform.reconstruct(coefficientsTrue);
-coefficientsRecovered = transform.project(valuesFromModes);
+valuesFromModes = transform.transformBack(coefficientsTrue);
+coefficientsRecovered = transform.transformForward(valuesFromModes);
 coefficientRoundTripError = norm(coefficientsRecovered - coefficientsTrue,2)/norm(coefficientsTrue,2);
 fprintf("Relative coefficient round-trip error: %.3e\n",coefficientRoundTripError);
 
-%% Project a smooth sampled profile
+%% Transform a smooth sampled profile
 % Galerkin projection finds the retained modal field whose residual is
 % orthogonal to the retained basis in the sampled metric W.
 profile = sin(pi*(z - zDomain(1))/D).*exp(z/900).*(1 + 0.2*cos(2*pi*(z - zDomain(1))/D));
-profileCoefficients = transform.project(profile);
-profileReconstruction = transform.reconstruct(profileCoefficients);
+profileCoefficients = transform.transformForward(profile);
+profileReconstruction = transform.transformBack(profileCoefficients);
 profileResidual = profile - profileReconstruction;
 profileNorm = sqrt(profile.'*transform.metricMatrix*profile);
 relativeProfileResidual = sqrt(profileResidual.'*transform.metricMatrix*profileResidual)/profileNorm;

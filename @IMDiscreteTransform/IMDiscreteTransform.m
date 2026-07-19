@@ -1,24 +1,40 @@
 classdef IMDiscreteTransform
     % Store forward and inverse matrices for a scalar modal transform.
     %
-    % For sampled values $$\mathbf{x}$$ and retained modal coefficients
-    % $$\mathbf{a}$$, the transform matrices satisfy
+    % Let $$n_z$$ be the number of sample points, $$n_m$$ the number of
+    % retained modes, and $$n_p$$ the number of sampled profiles. The
+    % sampled modal basis is
     %
     % $$
-    % \mathbf{a}=A_{\mathrm f}\mathbf{x},
+    % A_{\mathrm i}=\Phi\in\mathbb{R}^{n_z\times n_m},
     % \qquad
-    % \widehat{\mathbf{x}}=A_{\mathrm i}\mathbf{a},
+    % \Phi_{ij}=u_j(z_i),
     % $$
     %
-    % where `forwardMatrix` is $$A_{\mathrm f}$$ and `inverseMatrix` is
-    % $$A_{\mathrm i}=\Phi$$, the sampled modal basis. The Galerkin forward
-    % matrix is
+    % where the columns contain the retained, normalized modes. For the
+    % sample-space metric $$W$$, the sampled Gram matrix and Galerkin
+    % forward matrix are
     %
     % $$
-    % A_{\mathrm f}=(\Phi^\mathsf{T}W\Phi)^{-1}\Phi^\mathsf{T}W.
+    % \Gamma=\Phi^\mathsf{T}W\Phi,
+    % \qquad
+    % A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W
+    % =\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
+    % A_{\mathrm i}^\mathsf{T}W.
     % $$
     %
-    % The matrices may be rectangular. They obey
+    % For sampled profiles $$X\in\mathbb{R}^{n_z\times n_p}$$ and modal
+    % coefficients $$A\in\mathbb{R}^{n_m\times n_p}$$, the forward and
+    % back transforms are
+    %
+    % $$
+    % A=A_{\mathrm f}X,
+    % \qquad
+    % \widehat{X}=A_{\mathrm i}A.
+    % $$
+    %
+    % The matrices are generally rectangular. For a full-rank retained
+    % basis they obey
     %
     % $$
     % A_{\mathrm f}A_{\mathrm i}=I,
@@ -26,17 +42,19 @@ classdef IMDiscreteTransform
     % A_{\mathrm i}A_{\mathrm f}=P_W,
     % $$
     %
-    % where $$P_W$$ is the $$W$$-Galerkin projector onto the retained
-    % sampled modal subspace. When $$W$$ is positive definite, this is the
-    % $$W$$-orthogonal projector.
+    % where $$P_W$$ is the sampled-space Galerkin projector onto the
+    % retained modal subspace. Thus transforming retained coefficients back
+    % and then forward recovers those coefficients exactly, while a general
+    % sampled profile is projected rather than necessarily reproduced. When
+    % $$W$$ is positive definite, $$P_W$$ is the $$W$$-orthogonal projector.
     %
     % Construct transforms from solved scalar modes with
     % `IMBasisSet.discreteTransform`.
     %
     % ```matlab
     % transform = basisSet.discreteTransform(z=z,nModes=8);
-    % coefficients = transform.project(values);
-    % valuesFit = transform.reconstruct(coefficients);
+    % coefficients = transform.transformForward(values);
+    % valuesFit = transform.transformBack(coefficients);
     % ```
     %
     % - Topic: Create discrete transforms
@@ -48,71 +66,180 @@ classdef IMDiscreteTransform
     % - Declaration: classdef IMDiscreteTransform
 
     properties (SetAccess = private)
-        % Forward transform matrix $$A_{\mathrm f}$$.
+        % Map sampled profiles to retained modal coefficients.
         %
-        % Multiplying sampled profiles by `forwardMatrix` returns retained
-        % modal coefficients. This is the matrix applied by `project`.
+        % The `forwardMatrix` is the $$n_m\times n_z$$ Galerkin matrix
+        %
+        % $$
+        % A_{\mathrm f}
+        % =\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
+        % A_{\mathrm i}^\mathsf{T}W
+        % =\Gamma^{-1}\Phi^\mathsf{T}W,
+        % $$
+        %
+        % where $$A_{\mathrm i}=\Phi$$ is `inverseMatrix`, $$W$$ is
+        % `metricMatrix`, and $$\Gamma=\Phi^\mathsf{T}W\Phi$$ is
+        % `gramMatrix`. For sampled profiles $$X$$, the coefficients
+        % $$A=A_{\mathrm f}X$$ satisfy the Galerkin normal equations
+        %
+        % $$
+        % \Phi^\mathsf{T}W\left(X-\Phi A\right)=0.
+        % $$
+        %
+        % Direct multiplication and `transformForward` are equivalent:
+        %
+        % ```matlab
+        % coefficientsByMatrix = transform.forwardMatrix*values;
+        % coefficients = transform.transformForward(values);
+        % ```
         %
         % - Topic: Use transform matrices
         % - nav_order: 10
         forwardMatrix
 
-        % Inverse transform matrix $$A_{\mathrm i}=\Phi$$.
+        % Map retained modal coefficients back to sampled profiles.
         %
-        % Multiplying modal coefficients by `inverseMatrix` reconstructs
-        % profiles on `z`. The matrix is the sampled modal basis and may be
-        % rectangular. This is the matrix applied by `reconstruct`.
+        % The `inverseMatrix` is the $$n_z\times n_m$$ sampled modal basis
+        %
+        % $$
+        % A_{\mathrm i}=\Phi,
+        % \qquad
+        % (A_{\mathrm i})_{ij}=\Phi_{ij}=u_j(z_i).
+        % $$
+        %
+        % Row $$i$$ corresponds to `z(i)`, and column $$j$$ corresponds to
+        % `modeNumber(j)`. The sampled modes use the normalization recorded
+        % by `normalization`. Direct multiplication and `transformBack` are
+        % equivalent:
+        %
+        % ```matlab
+        % valuesByMatrix = transform.inverseMatrix*coefficients;
+        % values = transform.transformBack(coefficients);
+        % ```
         %
         % - Topic: Use transform matrices
         % - nav_order: 20
         inverseMatrix
 
-        % Physical sample points.
+        % Physical points at which profiles and modes are sampled.
+        %
+        % `z` is an $$n_z\times1$$ column vector. Its entries define the row
+        % ordering of `inverseMatrix`, the column ordering of
+        % `forwardMatrix`, and the expected row ordering of values passed to
+        % `transformForward`. Coordinates use the same units as the source
+        % basis set, normally meters for vertical-mode problems.
+        %
+        % ```matlab
+        % z = transform.z;
+        % values = profile(z);
+        % coefficients = transform.transformForward(values);
+        % ```
         %
         % - Topic: Inspect samples and modes
         % - nav_order: 10
         z
 
-        % Quadrature increments aligned with `z`.
+        % Quadrature increments associated with the sample points.
         %
-        % Signed increments are retained so algebraic quadrature rules can
-        % be inspected explicitly.
+        % `increments(i)` is the increment $$\Delta z_i$$ associated with
+        % `z(i)`. For transforms built by `IMBasisSet`, the interior part of
+        % the sampled metric begins with
+        %
+        % $$
+        % W_{\mathrm{int}}
+        % =\operatorname{diag}\!\left(r(z_i)\Delta z_i\right),
+        % $$
+        %
+        % before supported endpoint terms are added. Signed increments are
+        % retained so algebraic quadrature rules can be inspected directly;
+        % `hasNegativeIncrements` reports whether any are negative.
         %
         % - Topic: Inspect samples and modes
         % - nav_order: 20
         increments
 
-        % Retained physical mode labels.
+        % Physical labels for the retained modal rows and columns.
+        %
+        % `modeNumber` is a $$1\times n_m$$ row vector. Entry $$j$$ labels
+        % column $$j$$ of `inverseMatrix`, row $$j$$ of `forwardMatrix`, and
+        % row $$j$$ of arrays returned by `transformForward`. These are mode
+        % labels, not MATLAB array indices, and may include negative or zero
+        % values when the source basis contains such modes.
         %
         % - Topic: Inspect samples and modes
         % - nav_order: 30
         modeNumber
 
-        % Basis-set normalization used to sample the modes.
+        % Name of the normalization captured by this transform.
+        %
+        % The columns of `inverseMatrix` were sampled using this basis-set
+        % normalization, so modal coefficients are defined relative to the
+        % same scaling. The value is a snapshot taken when the transform was
+        % built; subsequently changing the source basis normalization does
+        % not modify an existing transform.
         %
         % - Topic: Inspect samples and modes
         % - nav_order: 40
         normalization
 
-        % Signed-norm-scaled relative Gram error.
+        % Measure the sampled Gram matrix against its continuous target.
         %
-        % With
-        % $$S=\operatorname{diag}(|\operatorname{diag}\Gamma_0|^{-1/2})$$,
-        % this is
-        % $$\|S(\Gamma-\Gamma_0)S\|_2$$. When $$\Gamma_0$$ is positive
-        % definite, this is the worst-case relative Parseval error.
+        % Let $$\Gamma$$ be `gramMatrix`, let $$\Gamma_0$$ be
+        % `targetGramMatrix`, and define
+        %
+        % $$
+        % S=\operatorname{diag}\!\left(
+        % \left|\operatorname{diag}\Gamma_0\right|^{-1/2}
+        % \right).
+        % $$
+        %
+        % The reported error is
+        %
+        % $$
+        % \left\|S(\Gamma-\Gamma_0)S\right\|_2.
+        % $$
+        %
+        % Zero means the sampled metric reproduces the target modal Gram
+        % matrix exactly. When `targetGramIsPositiveDefinite` is true, this
+        % is the worst-case relative quadratic-form, or Parseval, error over
+        % the retained modal space. For a signed target it remains a useful
+        % magnitude-scaled discrepancy, but not a positive-norm error.
         %
         % - Topic: Assess transform quality
         % - nav_order: 10
         relativeGramError
 
-        % Coefficient round-trip error $$\|A_{\mathrm f}A_{\mathrm i}-I\|_2$$.
+        % Measure recovery of retained modal coefficients.
+        %
+        % The reported value is
+        %
+        % $$
+        % \left\|A_{\mathrm f}A_{\mathrm i}-I_{n_m}\right\|_2.
+        % $$
+        %
+        % A small value means coefficients transformed back to sample space
+        % and then forward are recovered accurately. It does not measure the
+        % reconstruction error of an arbitrary sampled profile; that profile
+        % is generally projected by $$A_{\mathrm i}A_{\mathrm f}$$.
         %
         % - Topic: Assess transform quality
         % - nav_order: 20
         roundTripError
 
-        % Two-norm condition number of `inverseMatrix`.
+        % Two-norm condition number of the sampled modal basis.
+        %
+        % This is
+        %
+        % $$
+        % \kappa_2(A_{\mathrm i})
+        % =\frac{\sigma_{\max}(A_{\mathrm i})}
+        % {\sigma_{\min}(A_{\mathrm i})}.
+        % $$
+        %
+        % Large values indicate that retained mode columns are nearly
+        % linearly dependent on the selected sample points. The definition
+        % applies to rectangular `inverseMatrix` matrices through their
+        % singular values.
         %
         % - Topic: Assess transform quality
         % - nav_order: 30
@@ -120,37 +247,110 @@ classdef IMDiscreteTransform
 
         % Two-norm condition number of the sampled Gram matrix.
         %
+        % This is $$\kappa_2(\Gamma)$$ for
+        % $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$. Large values
+        % indicate that the Galerkin normal equations used to construct
+        % `forwardMatrix` are sensitive to perturbations. This diagnostic
+        % depends on both the sampled modes and the metric, unlike
+        % `inverseMatrixConditionNumber`.
+        %
         % - Topic: Assess transform quality
         % - nav_order: 40
         gramConditionNumber
 
-        % Whether every diagonal entry of $$\Gamma_0$$ is positive.
+        % Whether the target modal Gram matrix defines a positive norm.
+        %
+        % `targetGramMatrix` is required to be diagonal, so this property is
+        % true exactly when every target modal norm
+        % $$C_j=(\Gamma_0)_{jj}$$ is positive. A false value does not make
+        % the transform invalid: canonical endpoint weights can produce a
+        % signed metric. It changes the interpretation of
+        % `relativeGramError` from a relative norm error to a signed,
+        % magnitude-scaled Gram discrepancy.
         %
         % - Topic: Assess transform quality
         % - nav_order: 50
         targetGramIsPositiveDefinite
 
-        % Whether at least one supplied quadrature increment is negative.
+        % Whether at least one quadrature increment is negative.
+        %
+        % This is `true` when any $$\Delta z_i<0$$. A negative increment is
+        % useful to flag because it means the quadrature rule is algebraic
+        % rather than a positive weighted sum, but it does not by itself
+        % invalidate the transform. Inspect `targetGramIsPositiveDefinite`
+        % and the Gram diagnostics to assess the resulting metric.
         %
         % - Topic: Assess transform quality
         % - nav_order: 60
         hasNegativeIncrements
 
-        % Sample-space metric matrix $$W$$.
+        % Sample-space bilinear-form matrix $$W$$.
+        %
+        % The metric defines the sampled bilinear form
+        %
+        % $$
+        % \langle x,y\rangle_W=x^\mathsf{T}Wy.
+        % $$
+        %
+        % For transforms built by `IMBasisSet`, its structure is
+        %
+        % $$
+        % W=\operatorname{diag}\!\left(r(z_i)\Delta z_i\right)
+        % +W_{\mathrm{endpoint}},
+        % $$
+        %
+        % where supported value-only endpoint terms are represented in
+        % $$W_{\mathrm{endpoint}}$$. The matrix is $$n_z\times n_z$$,
+        % symmetric, and may be indefinite.
+        %
+        % ```matlab
+        % metricSymmetryError = norm(transform.metricMatrix-transform.metricMatrix.',2);
+        % ```
         %
         % - Topic: Developer topics — Inspect metric construction
         % - nav_order: 10
         % - Developer: true
         metricMatrix
 
-        % Sampled Gram matrix $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$.
+        % Sampled modal Gram matrix $$\Gamma$$.
+        %
+        % The transform computes
+        %
+        % $$
+        % \Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}
+        % =\Phi^\mathsf{T}W\Phi.
+        % $$
+        %
+        % It is an $$n_m\times n_m$$ matrix of sampled inner products among
+        % the retained modes. It enters the full definition
+        % $$A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W$$ and is compared with
+        % `targetGramMatrix` by `relativeGramError`.
+        %
+        % ```matlab
+        % gramDifference = transform.gramMatrix-transform.targetGramMatrix;
+        % ```
         %
         % - Topic: Developer topics — Inspect metric construction
         % - nav_order: 20
         % - Developer: true
         gramMatrix
 
-        % Continuous diagonal Gram target $$\Gamma_0$$.
+        % Continuous diagonal Gram matrix targeted by the quadrature rule.
+        %
+        % The matrix
+        %
+        % $$
+        % \Gamma_0=\operatorname{diag}(C_1,\ldots,C_{n_m})
+        % $$
+        %
+        % contains the continuous full-domain inner products of the retained
+        % normalized modes. A fitted quadrature rule seeks to make
+        % `gramMatrix` reproduce this target. The entries $$C_j$$ are finite
+        % and nonzero, but may be negative for a signed canonical metric.
+        %
+        % ```matlab
+        % targetNorms = diag(transform.targetGramMatrix);
+        % ```
         %
         % - Topic: Developer topics — Inspect metric construction
         % - nav_order: 30
@@ -162,10 +362,27 @@ classdef IMDiscreteTransform
         function self = IMDiscreteTransform(options)
             % Create a scalar discrete transform from canonical matrices.
             %
-            % Ordinary users construct this object with
-            % `IMBasisSet.discreteTransform`. This constructor is the
-            % canonical matrix-level initialization path for later discrete
-            % transform builders.
+            % Let $$n_z$$ be the number of samples and $$n_m$$ the number of
+            % retained modes. `inverseMatrix` must be $$n_z\times n_m$$;
+            % `z` and `increments` must each contain $$n_z$$ entries;
+            % `metricMatrix` must be a symmetric $$n_z\times n_z$$ matrix;
+            % and `targetGramMatrix` must be a diagonal $$n_m\times n_m$$
+            % matrix with finite, nonzero diagonal entries. `modeNumber`
+            % supplies one label for each retained mode column.
+            %
+            % The constructor derives `gramMatrix`, `forwardMatrix`, and all
+            % quality diagnostics from these inputs. Most users should build
+            % this object from a solved basis with
+            % `IMBasisSet.discreteTransform`; direct construction is useful
+            % for alternative transform builders.
+            %
+            % ```matlab
+            % z = [-1; -0.5; 0];
+            % increments = [0.25; 0.5; 0.25];
+            % inverseMatrix = [1 0; 1 1; 0 1];
+            % metricMatrix = diag(increments);
+            % transform = IMDiscreteTransform(z=z,increments=increments,modeNumber=[1 2],normalization="unity",inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=eye(2));
+            % ```
             %
             % - Topic: Create discrete transforms
             % - Declaration: transform = IMDiscreteTransform(options)
@@ -252,20 +469,38 @@ classdef IMDiscreteTransform
             self.hasNegativeIncrements = any(increments < 0);
         end
 
-        function coefficients = project(self, values)
-            % Return retained modal coefficients for sampled profiles.
+        function coefficients = transformForward(self, values)
+            % Transform sampled profiles forward to modal coefficients.
             %
-            % This method applies `forwardMatrix`:
+            % For $$n_p$$ profiles arranged as
+            % $$X\in\mathbb{R}^{n_z\times n_p}$$, this method returns
+            % $$A\in\mathbb{R}^{n_m\times n_p}$$ using
             %
             % $$
-            % \mathbf{a}=A_{\mathrm f}\mathbf{x}.
+            % A=A_{\mathrm f}X
+            % =\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
+            % A_{\mathrm i}^\mathsf{T}WX.
             % $$
+            %
+            % Each input column is transformed independently. The resulting
+            % coefficients minimize the sampled quadratic residual when
+            % $$W$$ is positive definite and, more generally, satisfy
+            %
+            % $$
+            % A_{\mathrm i}^\mathsf{T}W
+            % \left(X-A_{\mathrm i}A\right)=0.
+            % $$
+            %
+            % ```matlab
+            % coefficients = transform.transformForward(values);
+            % coefficientsByMatrix = transform.forwardMatrix*values;
+            % ```
             %
             % - Topic: Apply discrete transforms
             % - nav_order: 10
-            % - Declaration: coefficients = project(transform,values)
-            % - Parameter values: sampled profiles with rows aligned to `z`
-            % - Returns coefficients: retained modal coefficients
+            % - Declaration: coefficients = transformForward(transform,values)
+            % - Parameter values: `nSamples`-by-`nProfiles` sampled profile array with rows aligned to `z`
+            % - Returns coefficients: `nModes`-by-`nProfiles` retained modal coefficient array
             arguments
                 self IMDiscreteTransform
                 values double {mustBeFinite}
@@ -277,20 +512,33 @@ classdef IMDiscreteTransform
             coefficients = self.forwardMatrix*values;
         end
 
-        function values = reconstruct(self, coefficients)
-            % Return sampled profiles reconstructed from retained coefficients.
+        function values = transformBack(self, coefficients)
+            % Transform modal coefficients back to sampled profiles.
             %
-            % This method applies `inverseMatrix`:
+            % For $$n_p$$ coefficient sets arranged as
+            % $$A\in\mathbb{R}^{n_m\times n_p}$$, this method returns
+            % $$\widehat{X}\in\mathbb{R}^{n_z\times n_p}$$ using
             %
             % $$
-            % \widehat{\mathbf{x}}=A_{\mathrm i}\mathbf{a}.
+            % \widehat{X}=A_{\mathrm i}A=\Phi A.
             % $$
+            %
+            % Each coefficient column is transformed independently. For
+            % coefficients obtained from `transformForward`, the result is
+            % the sampled-space projection
+            % $$\widehat{X}=A_{\mathrm i}A_{\mathrm f}X$$, not generally the
+            % original profile unless it lies in the retained modal subspace.
+            %
+            % ```matlab
+            % values = transform.transformBack(coefficients);
+            % valuesByMatrix = transform.inverseMatrix*coefficients;
+            % ```
             %
             % - Topic: Apply discrete transforms
             % - nav_order: 20
-            % - Declaration: values = reconstruct(transform,coefficients)
-            % - Parameter coefficients: coefficient arrays with rows aligned to `modeNumber`
-            % - Returns values: reconstructed profiles sampled on `z`
+            % - Declaration: values = transformBack(transform,coefficients)
+            % - Parameter coefficients: `nModes`-by-`nProfiles` coefficient array with rows aligned to `modeNumber`
+            % - Returns values: `nSamples`-by-`nProfiles` reconstructed profile array sampled on `z`
             arguments
                 self IMDiscreteTransform
                 coefficients double {mustBeFinite}

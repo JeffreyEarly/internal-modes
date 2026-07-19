@@ -9,7 +9,7 @@ mathjax: true
 
 #  gramMatrix
 
-Sampled Gram matrix $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$.
+Sampled modal Gram matrix $$\Gamma$$.
 
 > Developer documentation: this item describes internal implementation details.
 
@@ -17,3 +17,19 @@ Sampled Gram matrix $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$.
 ---
 
 ## Discussion
+
+The transform computes
+
+$$
+\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}
+=\Phi^\mathsf{T}W\Phi.
+$$
+
+It is an $$n_m\times n_m$$ matrix of sampled inner products among
+the retained modes. It enters the full definition
+$$A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W$$ and is compared with
+`targetGramMatrix` by `relativeGramError`.
+
+```matlab
+gramDifference = transform.gramMatrix-transform.targetGramMatrix;
+```

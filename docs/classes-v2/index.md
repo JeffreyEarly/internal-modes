@@ -11,7 +11,7 @@ mathjax: true
 
 This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and projected surface-geostrophic boundary modes, evaluating basis sets, and constructing discrete modal transforms in `internal-modes`.
 
-The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, discrete transforms project sampled profiles, and analytical solution families provide exact references for common stratifications.
+The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, discrete transforms map between sampled profiles and retained modal coefficients, and analytical solution families provide exact references for common stratifications.
 
 ## Choose a starting point
 
@@ -48,4 +48,4 @@ The reference pages use the standard vertical-mode variables:
 - [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
 - [`IMSurfaceGeostrophicModes`](./core/imsurfacegeostrophicmodes) describes projected zero-APV SQG boundary modes at fixed horizontal wavenumber, and solvers return [`IMSurfaceGeostrophicModesBasis`](./core/imsurfacegeostrophicmodesbasis) objects.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.
-- [`IMBasisSet`](./core/imbasisset) generates candidate quadrature points and fits quadrature increments; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then projects sampled profiles and reconstructs them from retained coefficients, while [`IMQuadratureFit`](./discrete-transforms/imquadraturefit) compares fitted and geometric quadrature rules.
+- [`IMBasisSet`](./core/imbasisset) generates candidate quadrature points and fits quadrature increments; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then provides forward and inverse matrices together with `transformForward` and `transformBack`, while [`IMQuadratureFit`](./discrete-transforms/imquadraturefit) compares fitted and geometric quadrature rules.

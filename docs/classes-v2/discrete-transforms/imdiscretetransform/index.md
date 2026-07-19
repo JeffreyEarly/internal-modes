@@ -22,24 +22,40 @@ Store forward and inverse matrices for a scalar modal transform.
 
 ## Overview
 
-For sampled values $$\mathbf{x}$$ and retained modal coefficients
-$$\mathbf{a}$$, the transform matrices satisfy
+Let $$n_z$$ be the number of sample points, $$n_m$$ the number of
+retained modes, and $$n_p$$ the number of sampled profiles. The
+sampled modal basis is
 
 $$
-\mathbf{a}=A_{\mathrm f}\mathbf{x},
+A_{\mathrm i}=\Phi\in\mathbb{R}^{n_z\times n_m},
 \qquad
-\widehat{\mathbf{x}}=A_{\mathrm i}\mathbf{a},
+\Phi_{ij}=u_j(z_i),
 $$
 
-where `forwardMatrix` is $$A_{\mathrm f}$$ and `inverseMatrix` is
-$$A_{\mathrm i}=\Phi$$, the sampled modal basis. The Galerkin forward
-matrix is
+where the columns contain the retained, normalized modes. For the
+sample-space metric $$W$$, the sampled Gram matrix and Galerkin
+forward matrix are
 
 $$
-A_{\mathrm f}=(\Phi^\mathsf{T}W\Phi)^{-1}\Phi^\mathsf{T}W.
+\Gamma=\Phi^\mathsf{T}W\Phi,
+\qquad
+A_{\mathrm f}=\Gamma^{-1}\Phi^\mathsf{T}W
+=\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
+A_{\mathrm i}^\mathsf{T}W.
 $$
 
-The matrices may be rectangular. They obey
+For sampled profiles $$X\in\mathbb{R}^{n_z\times n_p}$$ and modal
+coefficients $$A\in\mathbb{R}^{n_m\times n_p}$$, the forward and
+back transforms are
+
+$$
+A=A_{\mathrm f}X,
+\qquad
+\widehat{X}=A_{\mathrm i}A.
+$$
+
+The matrices are generally rectangular. For a full-rank retained
+basis they obey
 
 $$
 A_{\mathrm f}A_{\mathrm i}=I,
@@ -47,17 +63,19 @@ A_{\mathrm f}A_{\mathrm i}=I,
 A_{\mathrm i}A_{\mathrm f}=P_W,
 $$
 
-where $$P_W$$ is the $$W$$-Galerkin projector onto the retained
-sampled modal subspace. When $$W$$ is positive definite, this is the
-$$W$$-orthogonal projector.
+where $$P_W$$ is the sampled-space Galerkin projector onto the
+retained modal subspace. Thus transforming retained coefficients back
+and then forward recovers those coefficients exactly, while a general
+sampled profile is projected rather than necessarily reproduced. When
+$$W$$ is positive definite, $$P_W$$ is the $$W$$-orthogonal projector.
 
 Construct transforms from solved scalar modes with
 `IMBasisSet.discreteTransform`.
 
 ```matlab
 transform = basisSet.discreteTransform(z=z,nModes=8);
-coefficients = transform.project(values);
-valuesFit = transform.reconstruct(coefficients);
+coefficients = transform.transformForward(values);
+valuesFit = transform.transformBack(coefficients);
 ```
 
 
@@ -67,32 +85,32 @@ valuesFit = transform.reconstruct(coefficients);
 + Create discrete transforms
   + [`IMDiscreteTransform`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/imdiscretetransform.html) Create a scalar discrete transform from canonical matrices.
 + Use transform matrices
-  + [`forwardMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/forwardmatrix.html) Forward transform matrix $$A_{\mathrm f}$$.
-  + [`inverseMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrix.html) Inverse transform matrix $$A_{\mathrm i}=\Phi$$.
+  + [`forwardMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/forwardmatrix.html) Map sampled profiles to retained modal coefficients.
+  + [`inverseMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrix.html) Map retained modal coefficients back to sampled profiles.
 + Apply discrete transforms
-  + [`project`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/project.html) Return retained modal coefficients for sampled profiles.
-  + [`reconstruct`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/reconstruct.html) Return sampled profiles reconstructed from retained coefficients.
+  + [`transformForward`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/transformforward.html) Transform sampled profiles forward to modal coefficients.
+  + [`transformBack`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/transformback.html) Transform modal coefficients back to sampled profiles.
 + Inspect samples and modes
-  + [`z`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/z.html) Physical sample points.
-  + [`increments`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/increments.html) Quadrature increments aligned with `z`.
-  + [`modeNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/modenumber.html) Retained physical mode labels.
-  + [`normalization`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/normalization.html) Basis-set normalization used to sample the modes.
+  + [`z`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/z.html) Physical points at which profiles and modes are sampled.
+  + [`increments`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/increments.html) Quadrature increments associated with the sample points.
+  + [`modeNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/modenumber.html) Physical labels for the retained modal rows and columns.
+  + [`normalization`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/normalization.html) Name of the normalization captured by this transform.
 + Assess transform quality
-  + [`relativeGramError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/relativegramerror.html) Signed-norm-scaled relative Gram error.
-  + [`roundTripError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/roundtriperror.html) Coefficient round-trip error $$\|A_{\mathrm f}A_{\mathrm i}-I\|_2$$.
-  + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrixconditionnumber.html) Two-norm condition number of `inverseMatrix`.
+  + [`relativeGramError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/relativegramerror.html) Measure the sampled Gram matrix against its continuous target.
+  + [`roundTripError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/roundtriperror.html) Measure recovery of retained modal coefficients.
+  + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrixconditionnumber.html) Two-norm condition number of the sampled modal basis.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/gramconditionnumber.html) Two-norm condition number of the sampled Gram matrix.
-  + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgramispositivedefinite.html) Whether every diagonal entry of $$\Gamma_0$$ is positive.
-  + [`hasNegativeIncrements`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/hasnegativeincrements.html) Whether at least one supplied quadrature increment is negative.
+  + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgramispositivedefinite.html) Whether the target modal Gram matrix defines a positive norm.
+  + [`hasNegativeIncrements`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/hasnegativeincrements.html) Whether at least one quadrature increment is negative.
 
 
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
   + Inspect metric construction
-    + [`metricMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/metricmatrix.html) Sample-space metric matrix $$W$$.
-    + [`gramMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/grammatrix.html) Sampled Gram matrix $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$.
-    + [`targetGramMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgrammatrix.html) Continuous diagonal Gram target $$\Gamma_0$$.
+    + [`metricMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/metricmatrix.html) Sample-space bilinear-form matrix $$W$$.
+    + [`gramMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/grammatrix.html) Sampled modal Gram matrix $$\Gamma$$.
+    + [`targetGramMatrix`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgrammatrix.html) Continuous diagonal Gram matrix targeted by the quadrature rule.
 
 
 ---

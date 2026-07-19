@@ -9,13 +9,27 @@ mathjax: true
 
 #  inverseMatrix
 
-Inverse transform matrix $$A_{\mathrm i}=\Phi$$.
+Map retained modal coefficients back to sampled profiles.
 
 
 ---
 
 ## Discussion
 
-Multiplying modal coefficients by `inverseMatrix` reconstructs
-profiles on `z`. The matrix is the sampled modal basis and may be
-rectangular. This is the matrix applied by `reconstruct`.
+The `inverseMatrix` is the $$n_z\times n_m$$ sampled modal basis
+
+$$
+A_{\mathrm i}=\Phi,
+\qquad
+(A_{\mathrm i})_{ij}=\Phi_{ij}=u_j(z_i).
+$$
+
+Row $$i$$ corresponds to `z(i)`, and column $$j$$ corresponds to
+`modeNumber(j)`. The sampled modes use the normalization recorded
+by `normalization`. Direct multiplication and `transformBack` are
+equivalent:
+
+```matlab
+valuesByMatrix = transform.inverseMatrix*coefficients;
+values = transform.transformBack(coefficients);
+```

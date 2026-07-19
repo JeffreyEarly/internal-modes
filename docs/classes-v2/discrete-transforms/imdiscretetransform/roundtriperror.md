@@ -3,15 +3,26 @@ layout: default
 title: roundTripError
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 15
+nav_order: 13
 mathjax: true
 ---
 
 #  roundTripError
 
-Coefficient round-trip error $$\|A_{\mathrm f}A_{\mathrm i}-I\|_2$$.
+Measure recovery of retained modal coefficients.
 
 
 ---
 
 ## Discussion
+
+The reported value is
+
+$$
+\left\|A_{\mathrm f}A_{\mathrm i}-I_{n_m}\right\|_2.
+$$
+
+A small value means coefficients transformed back to sample space
+and then forward are recovered accurately. It does not measure the
+reconstruction error of an arbitrary sampled profile; that profile
+is generally projected by $$A_{\mathrm i}A_{\mathrm f}$$.
