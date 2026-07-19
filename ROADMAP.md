@@ -8,7 +8,7 @@ This roadmap covers the discrete-transform work built on numerical `IMBasisSet` 
 | --- | --- | --- |
 | Scalar Galerkin transform | Complete | `IMDiscreteTransform` builds forward and inverse matrices from supplied points and weights and reports Gram, round-trip, and conditioning diagnostics. |
 | Fixed-point weight fitting | Complete | `quadratureWeightsForPoints` fits nonnegative full-depth weights with normalized Gram objectives, supports custom linear objectives, and compares fitted and geometric rules. |
-| Mode-root quadrature grids | Complete | `quadraturePoints(nModes=...)` returns endpoints plus roots of the next selected mode, obtains an auxiliary mode automatically, and uses native spectral root finding for physical, WKB, and density coordinates. |
+| Mode-root quadrature grids | Complete | `pointsFromModeRoots(nModes=...)` returns endpoints plus roots of selected column `nModes+1`, obtains an auxiliary mode automatically, and uses native spectral root finding for physical, WKB, and density coordinates. |
 
 These phases intentionally establish scalar mechanics first. They do not yet provide the final coupled internal-mode transform or the one-call production workflow.
 
@@ -53,7 +53,7 @@ Turn transform assessment into a first-class API rather than a collection of ind
 
 Optimize point locations only after mode-root grids and fitted weights provide a stable reference.
 
-- Initialize from `quadraturePoints` and keep the physical endpoints fixed.
+- Initialize from `pointsFromModeRoots` and keep the physical endpoints fixed.
 - Parameterize interior points so ordering and a configurable minimum spacing are maintained throughout optimization.
 - Refit weights for each candidate grid and optimize retained-band Gram objectives rather than coefficient round-trip error alone.
 - Support custom nonlinear objectives in addition to the built-in scalar and coupled Parseval objectives.

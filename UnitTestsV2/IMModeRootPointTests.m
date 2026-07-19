@@ -1,4 +1,4 @@
-classdef IMQuadraturePointTests < matlab.unittest.TestCase
+classdef IMModeRootPointTests < matlab.unittest.TestCase
 
     properties (Access = private)
         originalPath
@@ -24,8 +24,8 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
             basisWithoutAuxiliary = solver.solveEVP(evp,nModes=4);
             basisWithAuxiliary = solver.solveEVP(evp,nModes=5);
 
-            zAutomatic = basisWithoutAuxiliary.quadraturePoints();
-            zRetained = basisWithAuxiliary.quadraturePoints(nModes=4);
+            zAutomatic = basisWithoutAuxiliary.pointsFromModeRoots();
+            zRetained = basisWithAuxiliary.pointsFromModeRoots(nModes=4);
             expected = linspace(-1,0,6).';
 
             testCase.verifyEqual(zAutomatic,expected,AbsTol=1e-10)
@@ -34,15 +34,16 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
             testCase.verifyEqual(zAutomatic(end),0,AbsTol=0)
         end
 
-        function retainedPrefixIncludesNullMode(testCase)
+        function selectedColumnDefinesRootsWhenLabelsIncludeNullMode(testCase)
             solver = IMSolverSpectral(nEVP=96);
             N2 = @(z) ones(size(z));
             evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1 0]);
             basisSet = solver.solveEVP(evp,nModes=5);
-            z = basisSet.quadraturePoints(nModes=4);
+            z = basisSet.pointsFromModeRoots(nModes=4);
             F = basisSet.F(z(2:end-1));
 
             testCase.verifyEqual(basisSet.modeNumber,0:4,AbsTol=0)
+            testCase.verifyEqual(basisSet.modeNumber(5),4,AbsTol=0)
             testCase.verifyEqual(length(z),6)
             testCase.verifyLessThan(max(abs(F(:,5))),1e-11)
         end
@@ -53,7 +54,7 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1, ...
                 surfaceBoundary=surfaceBoundary,bottomBoundary=IMBoundaryCondition.dirichlet());
             basisSet = solver.solveEVP(evp,nModes=5);
-            z = basisSet.quadraturePoints(nModes=4);
+            z = basisSet.pointsFromModeRoots(nModes=4);
             values = basisSet.u(z);
 
             testCase.verifyEqual(z(1),-1,AbsTol=0)
@@ -73,7 +74,7 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
                 solver = IMSolverSpectral(nEVP=128,coordinateKind=coordinateKinds(iKind));
                 evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain);
                 basisSet = solver.solveEVP(evp,nModes=5);
-                grids(:,iKind) = basisSet.quadraturePoints(nModes=4);
+                grids(:,iKind) = basisSet.pointsFromModeRoots(nModes=4);
                 G = basisSet.G(grids(2:end-1,iKind));
                 testCase.verifyLessThan(max(abs(G(:,5))),1e-8)
             end
@@ -85,7 +86,7 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
         function generatedGridBuildsFittedTransform(testCase)
             [solver, evp] = testCase.regularProblem(96);
             basisSet = solver.solveEVP(evp,nModes=4);
-            z = basisSet.quadraturePoints();
+            z = basisSet.pointsFromModeRoots();
             [weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=4);
             transform = basisSet.discreteTransform(z=z,nModes=4);
 
@@ -100,19 +101,19 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
         function unsupportedAndInvalidRequestsThrowStructuredErrors(testCase)
             [solver, evp] = testCase.regularProblem(96);
             basisSet = solver.solveEVP(evp,nModes=4);
-            testCase.verifyError(@() basisSet.quadraturePoints(nModes=5),"IMBasisSet:InvalidQuadratureModeCount")
+            testCase.verifyError(@() basisSet.pointsFromModeRoots(nModes=5),"IMBasisSet:InvalidQuadratureModeCount")
 
             lowResolutionSolver = IMSolverSpectral(nEVP=4);
             lowResolutionBasis = lowResolutionSolver.solveEVP(evp,nModes=2);
-            testCase.verifyError(@() lowResolutionBasis.quadraturePoints(),"IMBasisSet:AuxiliaryModeUnavailable")
+            testCase.verifyError(@() lowResolutionBasis.pointsFromModeRoots(),"IMBasisSet:AuxiliaryModeUnavailable")
 
             inconsistentBasis = IMBasisSet(solver=basisSet.solver,evp=evp,nativeModes=basisSet.nativeModes, ...
                 eigenvalues=basisSet.eigenvalues+1,modeNumber=basisSet.modeNumber);
-            testCase.verifyError(@() inconsistentBasis.quadraturePoints(),"IMBasisSet:AuxiliaryModeMismatch")
+            testCase.verifyError(@() inconsistentBasis.pointsFromModeRoots(),"IMBasisSet:AuxiliaryModeMismatch")
 
             finiteDifferenceSolver = IMSolverFiniteDifference(z=linspace(-1,0,65).');
             finiteDifferenceBasis = finiteDifferenceSolver.solveEVP(evp,nModes=3);
-            testCase.verifyError(@() finiteDifferenceBasis.quadraturePoints(nModes=2),"IMSolver:UnsupportedModeRoots")
+            testCase.verifyError(@() finiteDifferenceBasis.pointsFromModeRoots(nModes=2),"IMSolver:UnsupportedModeRoots")
         end
 
         function deficientRootSetIsRejected(testCase)
@@ -123,7 +124,15 @@ classdef IMQuadraturePointTests < matlab.unittest.TestCase
             basisSet = IMBasisSet(solver=solver,evp=evp,nativeModes=nativeModes, ...
                 eigenvalues=1:4,modeNumber=1:4);
 
-            testCase.verifyError(@() basisSet.quadraturePoints(nModes=3),"IMBasisSet:InsufficientQuadraturePoints")
+            testCase.verifyError(@() basisSet.pointsFromModeRoots(nModes=3),"IMBasisSet:InsufficientQuadraturePoints")
+        end
+
+        function oldMethodNameIsAbsent(testCase)
+            [solver, evp] = testCase.regularProblem(32);
+            basisSet = solver.solveEVP(evp,nModes=2);
+
+            testCase.verifyTrue(ismethod(basisSet,"pointsFromModeRoots"))
+            testCase.verifyFalse(ismethod(basisSet,"quadraturePoints"))
         end
     end
 

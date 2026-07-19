@@ -535,7 +535,7 @@ classdef IMBasisSet
 
         transform = discreteTransform(self, options)
         [weights, weightFit] = quadratureWeightsForPoints(self, options)
-        z = quadraturePoints(self, options)
+        z = pointsFromModeRoots(self, options)
 
     end
 
