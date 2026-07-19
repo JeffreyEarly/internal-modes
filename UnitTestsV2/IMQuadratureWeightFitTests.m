@@ -145,6 +145,84 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyLessThan(fit.transform.relativeGramError,fit.geometricTransform.relativeGramError)
         end
 
+        function dimensionNormalizedRegularizedObjectiveMatchesDefinition(testCase)
+            basisSet = testCase.regularBasis(4);
+            z = -1 + linspace(0,1,13).'.^1.3;
+            nModes = 3;
+            lambda = 1e-2;
+            [~, baseline] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+            objective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,nModes);
+            [~, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+            expectedA = [baseline.objectiveMatrix/nModes; sqrt(lambda/length(z))*diag(1./baseline.geometricWeights)];
+            expectedB = [baseline.objectiveTarget/nModes; sqrt(lambda/length(z))*ones(length(z),1)];
+
+            testCase.verifyEqual(fit.objectiveName,"dimensionNormalizedRegularizedGram")
+            testCase.verifyEqual(fit.objectiveMatrix,expectedA,RelTol=1e-13,AbsTol=1e-13)
+            testCase.verifyEqual(fit.objectiveTarget,expectedB,RelTol=1e-13,AbsTol=1e-13)
+        end
+
+        function regularizationPreservesAccuracyOnClusteredExponentialGrid(testCase)
+            [basisSet,z] = testCase.exponentialBasisAndClusteredGrid();
+            nModes = 8;
+            lambda = 1e-6;
+            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+            objective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,nModes);
+            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+            pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
+            regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
+
+            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramError,1.10*pureFit.transform.relativeGramError + 1e-12)
+            testCase.verifyLessThan(regularizedDisplacement,0.01*pureDisplacement)
+            testCase.verifyGreaterThan(min(regularizedFit.weights),0)
+        end
+
+        function regularizationPreservesAccuracyOnModeRootGrid(testCase)
+            [basisSet,~] = testCase.exponentialBasisAndClusteredGrid();
+            nModes = 8;
+            lambda = 1e-6;
+            z = basisSet.pointsFromModeRoots(nModes=nModes);
+            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+            objective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,nModes);
+            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+            pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
+            regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
+
+            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramError,1.10*pureFit.transform.relativeGramError + 1e-12)
+            testCase.verifyLessThan(regularizedDisplacement,pureDisplacement)
+            testCase.verifyGreaterThan(min(regularizedFit.weights),0)
+        end
+
+        function regularizationPreservesEndpointAndZeroModeConstraints(testCase)
+            lambda = 1e-6;
+            endpointSolver = IMSolverSpectral(nEVP=96);
+            endpointEVP = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0),bottomBoundary=IMBoundaryCondition.dirichlet());
+            endpointBasis = endpointSolver.solveEVP(endpointEVP,nModes=4);
+            endpointZ = linspace(-1,0,17).';
+            endpointObjective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,3);
+            [endpointWeights,endpointFit] = endpointBasis.quadratureWeightsForPoints(z=endpointZ,nModes=3,objective=endpointObjective);
+
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            g = 9.81;
+            zDomain = [-D 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            fSolver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
+            fBasis = fSolver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain,g=g),nModes=6);
+            sigma = linspace(0,1,18).';
+            fZ = zDomain(1) + D*(1-(1-sigma).^2);
+            fObjective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,4);
+            [fWeights,fFit] = fBasis.quadratureWeightsForPoints(z=fZ,nModes=4,objective=fObjective);
+
+            testCase.verifyGreaterThanOrEqual(min(endpointWeights),-1e-12)
+            testCase.verifyEqual(sum(endpointWeights),1,AbsTol=1e-10)
+            testCase.verifyTrue(endpointFit.transform.targetGramIsPositiveDefinite)
+            testCase.verifyEqual(fBasis.modeNumber(1),0)
+            testCase.verifyGreaterThanOrEqual(min(fWeights),-1e-10)
+            testCase.verifyEqual(sum(fWeights),D,AbsTol=1e-8)
+            testCase.verifyTrue(fFit.transform.targetGramIsPositiveDefinite)
+        end
+
         function customObjectiveCanReplaceNormalizedGramSystem(testCase)
             basisSet = testCase.regularBasis(3);
             z = [-1; -0.73; -0.44; -0.18; 0];
@@ -221,6 +299,32 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
         function dz = geometricWeights(~,z,zDomain)
             edges = [zDomain(1); 0.5*(z(1:end-1) + z(2:end)); zDomain(2)];
             dz = diff(edges);
+        end
+
+        function specification = dimensionNormalizedRegularizedObjective(~,context,lambda,nModes)
+            nSamples = length(context.z);
+            regularizationMatrix = sqrt(lambda/nSamples)*diag(1./context.geometricWeights);
+            regularizationTarget = sqrt(lambda/nSamples)*ones(nSamples,1);
+            specification = struct("A",[context.normalizedGramA/nModes; regularizationMatrix],"b",[context.normalizedGramB/nModes; regularizationTarget],"name","dimensionNormalizedRegularizedGram");
+        end
+
+        function [basisSet,z] = exponentialBasisAndClusteredGrid(~)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            g = 9.81;
+            zDomain = [-D 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+            solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
+            basisSet = solver.solveEVP(evp,nModes=12);
+            basisSet.normalization = "geostrophic";
+            sigma = linspace(0,1,24).';
+            z = zDomain(1) + D*(1-(1-sigma).^2);
+        end
+
+        function displacement = relativeWeightDisplacement(~,weights,geometricWeights)
+            displacement = norm((weights-geometricWeights)./geometricWeights)/sqrt(length(weights));
         end
     end
 end
