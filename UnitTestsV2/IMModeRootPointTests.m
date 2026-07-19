@@ -83,6 +83,76 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             testCase.verifyEqual(grids(:,3),grids(:,1),AbsTol=1e-3)
         end
 
+        function highOrderExponentialRootsRemainUniqueAcrossCoordinates(testCase)
+            [evp,zDomain] = testCase.exponentialProblem();
+            coordinateKinds = ["z" "wkb" "density"];
+            nModes = 120;
+            nEVP = 384;
+            grids = zeros(nModes+2,length(coordinateKinds));
+            zReference = linspace(zDomain(1),zDomain(2),4001).';
+            minimumSeparation = 1e-6*diff(zDomain);
+
+            for iKind = 1:length(coordinateKinds)
+                solver = IMSolverSpectral(nEVP=nEVP,coordinateKind=coordinateKinds(iKind));
+                basisSet = solver.solveEVP(evp,nModes=nModes+1);
+                z = basisSet.pointsFromModeRoots(nModes=nModes);
+                grids(:,iKind) = z;
+
+                testCase.verifyEqual(length(z),nModes+2)
+                testCase.verifyEqual(z(1),zDomain(1),AbsTol=0)
+                testCase.verifyEqual(z(end),zDomain(2),AbsTol=0)
+                testCase.verifyEqual(length(unique(z)),length(z))
+                testCase.verifyGreaterThan(min(diff(z)),minimumSeparation)
+
+                generatingMode = basisSet.nativeModes(:,nModes+1);
+                rootValues = basisSet.solver.evaluatePhysicalDerivative(generatingMode,z(2:end-1),0);
+                referenceValues = basisSet.solver.evaluatePhysicalDerivative(generatingMode,zReference,0);
+                modeScale = max(abs(referenceValues));
+                testCase.verifyGreaterThan(modeScale,0)
+                testCase.verifyLessThan(max(abs(rootValues))/modeScale,1e-8)
+            end
+
+            testCase.verifyEqual(grids(:,2),grids(:,1),AbsTol=1e-3)
+            testCase.verifyEqual(grids(:,3),grids(:,1),AbsTol=1e-3)
+        end
+
+        function highOrderAuxiliarySolveMatchesRetainedGeneratingMode(testCase)
+            [evp,zDomain] = testCase.exponentialProblem();
+            nModes = 120;
+            solver = IMSolverSpectral(nEVP=384,coordinateKind="wkb");
+            basisWithoutGeneratingMode = solver.solveEVP(evp,nModes=nModes);
+            basisWithGeneratingMode = solver.solveEVP(evp,nModes=nModes+1);
+
+            zAuxiliary = basisWithoutGeneratingMode.pointsFromModeRoots();
+            zRetained = basisWithGeneratingMode.pointsFromModeRoots(nModes=nModes);
+
+            testCase.verifyEqual(length(zAuxiliary),nModes+2)
+            testCase.verifyEqual(length(unique(zAuxiliary)),length(zAuxiliary))
+            testCase.verifyGreaterThan(min(diff(zAuxiliary)),1e-6*diff(zDomain))
+            testCase.verifyEqual(zAuxiliary,zRetained,AbsTol=1e-6)
+        end
+
+        function highOrderWKBRootsConvergeWithResolution(testCase)
+            [evp,zDomain] = testCase.exponentialProblem();
+            nModes = 120;
+            resolutions = [256 384];
+            grids = zeros(nModes+2,length(resolutions));
+            minimumSeparation = 1e-6*diff(zDomain);
+
+            for iResolution = 1:length(resolutions)
+                solver = IMSolverSpectral(nEVP=resolutions(iResolution),coordinateKind="wkb");
+                basisSet = solver.solveEVP(evp,nModes=nModes+1);
+                z = basisSet.pointsFromModeRoots(nModes=nModes);
+                grids(:,iResolution) = z;
+
+                testCase.verifyEqual(length(z),nModes+2)
+                testCase.verifyEqual(length(unique(z)),length(z))
+                testCase.verifyGreaterThan(min(diff(z)),minimumSeparation)
+            end
+
+            testCase.verifyEqual(grids(:,1),grids(:,2),AbsTol=1e-3)
+        end
+
         function generatedGridBuildsFittedTransform(testCase)
             [solver, evp] = testCase.regularProblem(96);
             basisSet = solver.solveEVP(evp,nModes=4);
@@ -141,6 +211,14 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             solver = IMSolverSpectral(nEVP=nEVP);
             evp = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1, ...
                 surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+        end
+
+        function [evp,zDomain] = exponentialProblem(~)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-4000 0];
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain);
         end
     end
 end
