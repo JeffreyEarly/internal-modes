@@ -23,12 +23,33 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 %
 % $$
 % (A_{\mathrm{LS}})_{(i,j),k}
-% =\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
+% =\rho_{ij}\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
 % \qquad
 % (b_{\mathrm{LS}})_{(i,j)}
-% =\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
+% =\rho_{ij}\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
 % {\sqrt{|C_iC_j|}}.
 % $$
+%
+% Only pairs with $$1\leq i\leq j\leq n_m$$ are stored, in row order
+% $$(1,1),(1,2),\ldots,(1,n_m),(2,2),\ldots,(n_m,n_m)$$, with
+%
+% $$
+% \rho_{ij}=
+% \begin{cases}
+% 1, & i=j,\\
+% \sqrt{2}, & i<j.
+% \end{cases}
+% $$
+%
+% Because the normalized Gram mismatch $$E(w)$$ is symmetric,
+%
+% $$
+% \|E(w)\|_{\mathrm F}^2
+% =\sum_i E_{ii}(w)^2+2\sum_{i<j}E_{ij}(w)^2.
+% $$
+%
+% The upper-triangle system therefore gives exactly the full Frobenius
+% objective with $$n_m(n_m+1)/2$$ rows instead of $$n_m^2$$ rows.
 %
 % The fitted weights solve
 %
@@ -65,7 +86,11 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 % returning a scalar struct with fields `A`, `b`, and optional `name`. The
 % context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
 % `interiorWeight`, `targetGramMatrix`, `endpointGramMatrix`,
-% `geometricWeights`, `normalizedGramA`, and `normalizedGramB`.
+% `geometricWeights`, `normalizedGramA`, `normalizedGramB`, and
+% `normalizedGramModePairs`. Row `q` of `normalizedGramModePairs` contains
+% the retained basis-column indices `[iMode jMode]` represented by row `q`
+% of the normalized Gram system. The diagonal or $$\sqrt{2}$$ row factor is
+% already included in `normalizedGramA` and `normalizedGramB`.
 %
 % ```matlab
 % [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
@@ -117,15 +142,22 @@ endpointGramMatrix = 0.5*(endpointGramMatrix + endpointGramMatrix.');
 targetNorms = diag(targetGramMatrix);
 
 nSamples = length(z);
-normalizedGramA = zeros(nModes*nModes,nSamples);
-normalizedGramB = zeros(nModes*nModes,1);
+nGramRows = nModes*(nModes + 1)/2;
+normalizedGramA = zeros(nGramRows,nSamples);
+normalizedGramB = zeros(nGramRows,1);
+normalizedGramModePairs = zeros(nGramRows,2);
 iRow = 0;
 for iMode = 1:nModes
-    for jMode = 1:nModes
+    for jMode = iMode:nModes
         iRow = iRow + 1;
+        rowFactor = 1;
+        if iMode ~= jMode
+            rowFactor = sqrt(2);
+        end
         scale = sqrt(abs(targetNorms(iMode)*targetNorms(jMode)));
-        normalizedGramA(iRow,:) = (interiorWeight.*inverseMatrix(:,iMode).*inverseMatrix(:,jMode)).'/scale;
-        normalizedGramB(iRow) = (targetGramMatrix(iMode,jMode) - endpointGramMatrix(iMode,jMode))/scale;
+        normalizedGramA(iRow,:) = rowFactor*(interiorWeight.*inverseMatrix(:,iMode).*inverseMatrix(:,jMode)).'/scale;
+        normalizedGramB(iRow) = rowFactor*(targetGramMatrix(iMode,jMode) - endpointGramMatrix(iMode,jMode))/scale;
+        normalizedGramModePairs(iRow,:) = [iMode jMode];
     end
 end
 
@@ -140,6 +172,7 @@ objectiveContext.endpointGramMatrix = endpointGramMatrix;
 objectiveContext.geometricWeights = geometricWeights;
 objectiveContext.normalizedGramA = normalizedGramA;
 objectiveContext.normalizedGramB = normalizedGramB;
+objectiveContext.normalizedGramModePairs = normalizedGramModePairs;
 
 objective = options.objective;
 if ischar(objective) || (isstring(objective) && isscalar(objective))

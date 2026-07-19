@@ -16,7 +16,7 @@ Build a scalar Galerkin transform on fixed sample points.
 
 ## Declaration
 ```matlab
- transform = discreteTransform(basisSet,options)
+ [transform,weightFit] = discreteTransform(basisSet,options)
 ```
 ## Parameters
 + `options.z`  increasing physical sample points
@@ -25,6 +25,7 @@ Build a scalar Galerkin transform on fixed sample points.
 
 ## Returns
 + `transform`  scalar discrete Galerkin transform
++ `weightFit`  quadrature-fit diagnostics, or empty when weights are supplied
 
 ## Discussion
 
@@ -46,16 +47,20 @@ Frobenius fitting. This fitted path requires `lsqlin` from Optimization
 Toolbox.
 
 ```matlab
-transform = basisSet.discreteTransform(z=z,nModes=8);
+[transform,weightFit] = basisSet.discreteTransform(z=z,nModes=8);
 transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 coefficients = transform.transformForward(values);
 valuesFit = transform.transformBack(coefficients);
 ```
 
-To compare the fitted rule with its geometric starting point:
+When `weights` is omitted, the optional second output preserves the fit
+diagnostics and geometric comparison used to build the transform:
 
 ```matlab
-[weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
 [weightFit.residualNorm weightFit.geometricResidualNorm]
 [weightFit.transform.relativeGramOperatorError weightFit.geometricTransform.relativeGramOperatorError]
 ```
+
+In this case `transform` is the same fitted transform stored in
+`weightFit.transform`. Supplying `weights` bypasses fitting, so the
+optional `weightFit` output is empty.

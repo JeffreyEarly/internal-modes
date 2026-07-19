@@ -49,14 +49,24 @@ $$C_i=(\Gamma_0)_{ii}$$, its least-squares system is
 
 $$
 (A_{\mathrm{LS}})_{(i,j),k}
-=\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
+=\rho_{ij}\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
 \qquad
 (b_{\mathrm{LS}})_{(i,j)}
-=\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
+=\rho_{ij}\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
 {\sqrt{|C_iC_j|}},
 $$
 
-and the fitted weights solve
+for $$1\leq i\leq j\leq n_m$$, where
+
+$$
+\rho_{ij}=
+\begin{cases}
+1, & i=j,\\
+\sqrt{2}, & i<j.
+\end{cases}
+$$
+
+The fitted weights solve
 
 $$
 \min_w\left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
@@ -75,7 +85,14 @@ $$
 The default `"normalizedGramFrobenius"` objective minimizes
 $$\|E(w)\|_{\mathrm F}$$. This is an aggregate error over the full
 retained Gram matrix: diagonal entries measure errors in individual
-modal norms, and off-diagonal entries measure lost orthogonality.
+modal norms, and off-diagonal entries measure lost orthogonality. The
+least-squares system stores only the upper triangle. Its $$\sqrt{2}$$
+off-diagonal factor preserves the exact identity
+
+$$
+\|E(w)\|_{\mathrm F}^2
+=\sum_i E_{ii}(w)^2+2\sum_{i<j}E_{ij}(w)^2.
+$$
 
 By default the fit also requires
 

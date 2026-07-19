@@ -53,12 +53,33 @@ $$\Gamma_{\mathrm{endpoint}}$$, the corresponding least-squares system is
 
 $$
 (A_{\mathrm{LS}})_{(i,j),k}
-=\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
+=\rho_{ij}\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
 \qquad
 (b_{\mathrm{LS}})_{(i,j)}
-=\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
+=\rho_{ij}\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
 {\sqrt{|C_iC_j|}}.
 $$
+
+Only pairs with $$1\leq i\leq j\leq n_m$$ are stored, in row order
+$$(1,1),(1,2),\ldots,(1,n_m),(2,2),\ldots,(n_m,n_m)$$, with
+
+$$
+\rho_{ij}=
+\begin{cases}
+1, & i=j,\\
+\sqrt{2}, & i<j.
+\end{cases}
+$$
+
+Because the normalized Gram mismatch $$E(w)$$ is symmetric,
+
+$$
+\|E(w)\|_{\mathrm F}^2
+=\sum_i E_{ii}(w)^2+2\sum_{i<j}E_{ij}(w)^2.
+$$
+
+The upper-triangle system therefore gives exactly the full Frobenius
+objective with $$n_m(n_m+1)/2$$ rows instead of $$n_m^2$$ rows.
 
 The fitted weights solve
 
@@ -95,7 +116,11 @@ A custom objective is a function handle accepting a context struct and
 returning a scalar struct with fields `A`, `b`, and optional `name`. The
 context contains `z`, `modeNumber`, `normalization`, `inverseMatrix`,
 `interiorWeight`, `targetGramMatrix`, `endpointGramMatrix`,
-`geometricWeights`, `normalizedGramA`, and `normalizedGramB`.
+`geometricWeights`, `normalizedGramA`, `normalizedGramB`, and
+`normalizedGramModePairs`. Row `q` of `normalizedGramModePairs` contains
+the retained basis-column indices `[iMode jMode]` represented by row `q`
+of the normalized Gram system. The diagonal or $$\sqrt{2}$$ row factor is
+already included in `normalizedGramA` and `normalizedGramB`.
 
 ```matlab
 [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);

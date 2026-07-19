@@ -23,10 +23,14 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             basisSet = testCase.regularBasis(4);
             z = -1 + linspace(0,1,17).'.^1.4;
             [weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=3);
-            transform = basisSet.discreteTransform(z=z,nModes=3);
+            [transform, builderFit] = basisSet.discreteTransform(z=z,nModes=3);
 
             testCase.verifyClass(fit,"IMQuadratureWeightFit")
+            testCase.verifyClass(builderFit,"IMQuadratureWeightFit")
             testCase.verifyEqual(weights,fit.weights,AbsTol=0)
+            testCase.verifyEqual(transform.weights,builderFit.weights,AbsTol=0)
+            testCase.verifyEqual(transform.forwardMatrix,builderFit.transform.forwardMatrix,AbsTol=0)
+            testCase.verifyEqual(transform.inverseMatrix,builderFit.transform.inverseMatrix,AbsTol=0)
             testCase.verifyEqual(transform.weights,fit.weights,AbsTol=1e-12)
             testCase.verifyEqual(transform.forwardMatrix,fit.transform.forwardMatrix,RelTol=1e-12,AbsTol=1e-12)
             testCase.verifyEqual(fit.objectiveName,"normalizedGramFrobenius")
@@ -49,14 +53,15 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyEmpty(meta.class.fromName("IMQuadratureFit"))
         end
 
-        function suppliedWeightsPreservePhaseOnePath(testCase)
+        function suppliedWeightsBypassFitting(testCase)
             basisSet = testCase.regularBasis(3);
             z = linspace(-1,0,21).';
             dz = testCase.geometricWeights(z,[-1 0]);
-            transform = basisSet.discreteTransform(z=z,weights=dz,nModes=2);
+            [transform, weightFit] = basisSet.discreteTransform(z=z,weights=dz,nModes=2);
 
             testCase.verifyEqual(transform.weights,dz,AbsTol=0)
             testCase.verifyEqual(transform.metricMatrix,diag(dz),AbsTol=0)
+            testCase.verifyEmpty(weightFit)
         end
 
         function geometricWeightsUseFullDomainControlVolumes(testCase)
@@ -89,18 +94,24 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             targetNorms = diag(target);
             endpointWeight = evp.innerProduct().surfaceWeights(1);
             endpointGram = endpointWeight.coefficient*endpointWeight.c^2*(Phi(end,:).'*Phi(end,:));
-            expectedA = zeros(4,length(z));
-            expectedB = zeros(4,1);
+            expectedPairs = [1 1; 1 2; 2 2];
+            expectedA = zeros(3,length(z));
+            expectedB = zeros(3,1);
             iRow = 0;
             for iMode = 1:2
-                for jMode = 1:2
+                for jMode = iMode:2
                     iRow = iRow + 1;
+                    rowFactor = 1;
+                    if iMode ~= jMode
+                        rowFactor = sqrt(2);
+                    end
                     scale = sqrt(abs(targetNorms(iMode)*targetNorms(jMode)));
-                    expectedA(iRow,:) = (Phi(:,iMode).*Phi(:,jMode)).'/scale;
-                    expectedB(iRow) = (target(iMode,jMode) - endpointGram(iMode,jMode))/scale;
+                    expectedA(iRow,:) = rowFactor*(Phi(:,iMode).*Phi(:,jMode)).'/scale;
+                    expectedB(iRow) = rowFactor*(target(iMode,jMode) - endpointGram(iMode,jMode))/scale;
                 end
             end
 
+            testCase.verifySize(fit.objectiveMatrix,[size(expectedPairs,1) length(z)])
             testCase.verifyEqual(fit.objectiveMatrix,expectedA,RelTol=1e-12,AbsTol=1e-12)
             testCase.verifyEqual(fit.objectiveTarget,expectedB,RelTol=1e-12,AbsTol=1e-12)
             testCase.verifyEqual(fit.residual,expectedA*fit.weights - expectedB,AbsTol=1e-13)
@@ -259,6 +270,18 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyEqual(fit.objectiveTarget,expectedB,RelTol=1e-13,AbsTol=1e-13)
         end
 
+        function customObjectiveReceivesNormalizedGramModePairs(testCase)
+            basisSet = testCase.regularBasis(4);
+            z = -1 + linspace(0,1,11).'.^1.2;
+            expectedPairs = [1 1; 1 2; 1 3; 2 2; 2 3; 3 3];
+            objective = @(context) testCase.modePairAwareObjective(context,expectedPairs);
+            [~, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=3,objective=objective);
+
+            testCase.verifyEqual(fit.objectiveName,"modePairAwareNormalizedGram")
+            testCase.verifySize(fit.objectiveMatrix,[size(expectedPairs,1) length(z)])
+            testCase.verifyEqual(fit.residual,fit.objectiveMatrix*fit.weights-fit.objectiveTarget,AbsTol=1e-13)
+        end
+
         function constraintsCanBeDisabledIndependently(testCase)
             basisSet = testCase.regularBasis(3);
             z = [-1; -0.75; -0.5; -0.25; 0];
@@ -315,6 +338,13 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             regularizationMatrix = sqrt(lambda/nSamples)*diag(1./context.geometricWeights);
             regularizationTarget = sqrt(lambda/nSamples)*ones(nSamples,1);
             specification = struct("A",[context.normalizedGramA/nModes; regularizationMatrix],"b",[context.normalizedGramB/nModes; regularizationTarget],"name","dimensionNormalizedRegularizedGram");
+        end
+
+        function specification = modePairAwareObjective(~,context,expectedPairs)
+            if ~isequal(context.normalizedGramModePairs,expectedPairs)
+                error("Test:UnexpectedNormalizedGramModePairs","The normalized Gram rows do not use the expected upper-triangle mode-pair ordering.");
+            end
+            specification = struct("A",context.normalizedGramA,"b",context.normalizedGramB,"name","modePairAwareNormalizedGram");
         end
 
         function [basisSet,z] = exponentialBasisAndClusteredGrid(~)

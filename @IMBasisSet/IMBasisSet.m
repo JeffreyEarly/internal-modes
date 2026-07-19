@@ -533,7 +533,7 @@ classdef IMBasisSet
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
 
-        transform = discreteTransform(self, options)
+        [transform, weightFit] = discreteTransform(self, options)
         [weights, weightFit] = quadratureWeightsForPoints(self, options)
         z = pointsFromModeRoots(self, options)
 

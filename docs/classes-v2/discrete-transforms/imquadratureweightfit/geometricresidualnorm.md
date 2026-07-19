@@ -19,8 +19,7 @@ Norm of the geometric-weight objective residual.
 This is
 
 $$
-\left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}
--b_{\mathrm{LS}}\right\|_2.
+\left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}-b_{\mathrm{LS}}\right\|_2.
 $$
 
 For the built-in objective this equals

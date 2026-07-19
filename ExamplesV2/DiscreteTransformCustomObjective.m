@@ -32,9 +32,13 @@ z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
 %% Add relative regularization toward geometric weights
 % A custom callback receives the default normalized Gram system in
-% `context.normalizedGramA` and `context.normalizedGramB`. Returning a new
-% A and b replaces that objective, so callers may reweight existing rows or
-% append new residuals. Here the additional rows penalize
+% `context.normalizedGramA` and `context.normalizedGramB`. The system stores
+% upper-triangle mode pairs; `context.normalizedGramModePairs(q,:)` gives the
+% retained basis-column indices `[iMode jMode]` for row `q`. Off-diagonal
+% rows already contain the sqrt(2) factor that preserves the full Frobenius
+% objective. Returning a new A and b replaces that objective, so callers may
+% reweight existing rows or append new residuals. Here the additional rows
+% penalize
 %
 %   sqrt(lambda) * (w_i/wGeometric_i - 1).
 lambda = 1e-6;

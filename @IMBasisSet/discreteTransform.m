@@ -1,4 +1,4 @@
-function transform = discreteTransform(self, options)
+function [transform, weightFit] = discreteTransform(self, options)
 % Build a scalar Galerkin transform on fixed sample points.
 %
 % For retained normalized modes $$u_j$$ sampled at points $$z_i$$, this
@@ -19,26 +19,31 @@ function transform = discreteTransform(self, options)
 % Toolbox.
 %
 % ```matlab
-% transform = basisSet.discreteTransform(z=z,nModes=8);
+% [transform,weightFit] = basisSet.discreteTransform(z=z,nModes=8);
 % transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 % coefficients = transform.transformForward(values);
 % valuesFit = transform.transformBack(coefficients);
 % ```
 %
-% To compare the fitted rule with its geometric starting point:
+% When `weights` is omitted, the optional second output preserves the fit
+% diagnostics and geometric comparison used to build the transform:
 %
 % ```matlab
-% [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
 % [weightFit.residualNorm weightFit.geometricResidualNorm]
 % [weightFit.transform.relativeGramOperatorError weightFit.geometricTransform.relativeGramOperatorError]
 % ```
 %
+% In this case `transform` is the same fitted transform stored in
+% `weightFit.transform`. Supplying `weights` bypasses fitting, so the
+% optional `weightFit` output is empty.
+%
 % - Topic: Build discrete transforms
-% - Declaration: transform = discreteTransform(basisSet,options)
+% - Declaration: [transform,weightFit] = discreteTransform(basisSet,options)
 % - Parameter options.z: increasing physical sample points
 % - Parameter options.weights: optional quadrature weights aligned with `z`
 % - Parameter options.nModes: number of leading retained modes
 % - Returns transform: scalar discrete Galerkin transform
+% - Returns weightFit: quadrature-fit diagnostics, or empty when weights are supplied
 arguments
     self IMBasisSet
     options.z (:,1) double {mustBeReal, mustBeFinite}
@@ -51,10 +56,11 @@ weights = options.weights(:);
 nModes = options.nModes;
 
 if isempty(weights)
-    weights = self.quadratureWeightsForPoints(z=z,nModes=nModes);
-    transform = self.discreteTransform(z=z,weights=weights,nModes=nModes);
+    [~, weightFit] = self.quadratureWeightsForPoints(z=z,nModes=nModes);
+    transform = weightFit.transform;
     return
 end
+weightFit = [];
 
 if length(z) ~= length(weights)
     error("IMBasisSet:InvalidDiscreteWeights", "weights must contain one value for each sample point in z.");
@@ -100,8 +106,7 @@ endpointWeights = [spec.surfaceWeights; spec.bottomWeights];
 for iWeight = 1:numel(endpointWeights)
     endpointWeight = endpointWeights(iWeight);
     if endpointWeight.d ~= 0
-        error("IMBasisSet:UnsupportedDiscreteEndpointMetric", ...
-            "Endpoint derivative traces cannot be determined from arbitrary point samples. Phase 1 supports value-only endpoint terms.");
+        error("IMBasisSet:UnsupportedDiscreteEndpointMetric", "Endpoint derivative traces cannot be determined from arbitrary point samples; scalar discrete transforms require endpoint terms that depend only on sampled values.");
     end
     if endpointWeight.c == 0
         continue;
@@ -113,8 +118,7 @@ for iWeight = 1:numel(endpointWeights)
     end
     endpointIndex = find(abs(z - zEndpoint) <= domainTolerance, 1);
     if isempty(endpointIndex)
-        error("IMBasisSet:MissingDiscreteEndpointSample", ...
-            "The %s endpoint must be included in z to represent its value-only inner-product term.", string(endpointWeight.location));
+        error("IMBasisSet:MissingDiscreteEndpointSample", "The %s endpoint must be included in z to represent its value-only inner-product term.", string(endpointWeight.location));
     end
     if ~isfinite(endpointWeight.coefficient)
         error("IMBasisSet:UnsupportedDiscreteEndpointMetric", "The %s endpoint inner-product coefficient is not finite.", string(endpointWeight.location));
@@ -125,7 +129,5 @@ end
 
 continuousGramMatrix = self.gramMatrix();
 targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
-transform = IMDiscreteTransform(z=z, weights=weights, modeNumber=self.modeNumber(1:nModes), ...
-    normalization=self.normalizationName(self.normalization), inverseMatrix=inverseMatrix, ...
-    metricMatrix=metricMatrix, targetGramMatrix=targetGramMatrix);
+transform = IMDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization),inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=targetGramMatrix);
 end

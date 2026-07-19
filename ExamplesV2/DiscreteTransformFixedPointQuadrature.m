@@ -34,7 +34,7 @@ basisSet.normalization = "geostrophic";
 % more than `nModes` columns. If it were absent, the basis set would solve
 % for that one auxiliary mode automatically.
 zModeRoot = basisSet.pointsFromModeRoots(nModes=nModes);
-[~, modeRootFit] = basisSet.quadratureWeightsForPoints(z=zModeRoot,nModes=nModes);
+[~, modeRootFit] = basisSet.discreteTransform(z=zModeRoot,nModes=nModes);
 fprintf("Mode-root grid: %d points; fitted Gram operator error: %.3e\n",length(zModeRoot),modeRootFit.transform.relativeGramOperatorError);
 
 %% Supply fixed sample points and fit their weights
@@ -45,12 +45,8 @@ nPoints = 24;
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
-[weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
-transform = basisSet.discreteTransform(z=z,weights=weights,nModes=nModes);
+[transform, fit] = basisSet.discreteTransform(z=z,nModes=nModes);
 
-% The ordinary one-line construction is equivalent:
-% transform = basisSet.discreteTransform(z=z,nModes=nModes);
-%
 % Supplying weights bypasses fitting. For example, this reproduces the
 % geometric comparison already stored in `fit`:
 geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights,nModes=nModes);

@@ -28,14 +28,24 @@ classdef IMQuadratureWeightFit
     %
     % $$
     % (A_{\mathrm{LS}})_{(i,j),k}
-    % =\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
+    % =\rho_{ij}\frac{r(z_k)\Phi_{ki}\Phi_{kj}}{\sqrt{|C_iC_j|}},
     % \qquad
     % (b_{\mathrm{LS}})_{(i,j)}
-    % =\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
+    % =\rho_{ij}\frac{(\Gamma_0-\Gamma_{\mathrm{endpoint}})_{ij}}
     % {\sqrt{|C_iC_j|}},
     % $$
     %
-    % and the fitted weights solve
+    % for $$1\leq i\leq j\leq n_m$$, where
+    %
+    % $$
+    % \rho_{ij}=
+    % \begin{cases}
+    % 1, & i=j,\\
+    % \sqrt{2}, & i<j.
+    % \end{cases}
+    % $$
+    %
+    % The fitted weights solve
     %
     % $$
     % \min_w\left\|A_{\mathrm{LS}}w-b_{\mathrm{LS}}\right\|_2.
@@ -54,7 +64,14 @@ classdef IMQuadratureWeightFit
     % The default `"normalizedGramFrobenius"` objective minimizes
     % $$\|E(w)\|_{\mathrm F}$$. This is an aggregate error over the full
     % retained Gram matrix: diagonal entries measure errors in individual
-    % modal norms, and off-diagonal entries measure lost orthogonality.
+    % modal norms, and off-diagonal entries measure lost orthogonality. The
+    % least-squares system stores only the upper triangle. Its $$\sqrt{2}$$
+    % off-diagonal factor preserves the exact identity
+    %
+    % $$
+    % \|E(w)\|_{\mathrm F}^2
+    % =\sum_i E_{ii}(w)^2+2\sum_{i<j}E_{ij}(w)^2.
+    % $$
     %
     % By default the fit also requires
     %
@@ -223,8 +240,7 @@ classdef IMQuadratureWeightFit
         % This is
         %
         % $$
-        % \left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}
-        % -b_{\mathrm{LS}}\right\|_2.
+        % \left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}-b_{\mathrm{LS}}\right\|_2.
         % $$
         %
         % For the built-in objective this equals
@@ -293,7 +309,13 @@ classdef IMQuadratureWeightFit
         %
         % It has one column per fixed point. Multiplying this matrix by a
         % physical quadrature-weight vector produces the modeled objective
-        % quantities before subtracting `objectiveTarget`.
+        % quantities before subtracting `objectiveTarget`. For the default
+        % normalized Gram objective with $$n_m$$ retained modes, it has
+        % $$n_m(n_m+1)/2$$ rows ordered as
+        % $$(1,1),(1,2),\ldots,(1,n_m),(2,2),\ldots,(n_m,n_m)$$. Its
+        % off-diagonal rows already include the $$\sqrt{2}$$ factor needed
+        % for the residual norm to equal the full normalized Gram Frobenius
+        % norm. Custom objectives may use any finite row count.
         %
         % - Topic: Developer topics — Inspect least-squares system
         % - nav_order: 10
