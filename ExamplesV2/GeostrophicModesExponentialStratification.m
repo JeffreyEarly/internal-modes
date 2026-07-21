@@ -7,8 +7,11 @@ D = 4000;
 N0 = 5.2e-3;
 b = 1300;
 g = 9.81;
-g0 = -N0*N0*b;
-gd = -N0*N0*b; % exp(-2*D/b)
+S = N0*N0*b/2*(1-exp(-2*D/b));
+g0=1/(-3/S - 1/g);
+gd=-S/3;
+% g0 = -N0*N0*b;
+% gd = -N0*N0*b; % exp(-2*D/b)
 zDomain = [-D 0];
 
 N2 = @(z) N0*N0*exp(2*z/b);
@@ -28,11 +31,11 @@ if true
     % surfaceBoundary = IMBoundaryCondition(a=-1/g, b=1);
     % bottomBoundary = IMBoundaryCondition.neumann;
 
-    surfaceBoundary = IMBoundaryCondition(a=-1/g0, b=1);
+    surfaceBoundary = IMBoundaryCondition(a=-(0/g + 1/g0), b=1);
     bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
 
-    law = IMHydrostaticBoundaryCondition(a=1/g0,b=1);
-    surfaceBoundary = law.canonicalBoundary(formulation="F",g=g);
+    % law = IMHydrostaticBoundaryCondition(a=1/g0,b=1);
+    % surfaceBoundary = law.canonicalBoundary(formulation="F",g=g);
 
     evp = IMInternalModes(name="unforced-APV-modes", formulation="F", modeFamily="hydrostatic", ...
         N2=N2, zDomain=zDomain, p=p, q=q, r=r, g=g, ...
