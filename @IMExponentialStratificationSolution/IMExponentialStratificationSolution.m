@@ -4,7 +4,17 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
     % `IMExponentialStratificationSolution` owns the closed-form formulas for
     % $$N^2(z)=N_0^2\exp(2z/b)$$ on domains with the surface at $$z=0$$. It
     % can create exact internal-mode bases for supported rigid-bottom
-    % internal-mode EVPs and exact surface or bottom SQG boundary modes.
+    % internal-mode EVPs, generalized-energy geostrophic APV EVPs, and
+    % exact surface or bottom SQG boundary modes.
+    %
+    % The generalized-energy APV branch recognizes a hydrostatic `F` EVP
+    % named `"geostrophicAPVModes"` with canonical coefficients
+    % $$p=1/N^2$$, $$q=0$$, and $$r=1/g$$. Its parameter struct must contain
+    % the signed endpoint accelerations `g0` and `gd`, together with
+    % `surfaceBoundary="freeSurface"` or `"rigidLid"`. Finite, zero, and
+    % positive-infinite endpoint values are supported. The returned exact
+    % basis is ordered by $$1/h$$ and may contain negative modes, an exact
+    % zero-eigenvalue mode represented by `h=Inf`, and positive modes.
     %
     % ```matlab
     % solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);
@@ -76,6 +86,11 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
         function availability = internalModeAvailability(self, evp)
             % Report whether exact internal modes are available.
             %
+            % For a `"geostrophicAPVModes"` EVP, availability additionally
+            % verifies exponential stratification, the canonical APV
+            % coefficients, both endpoint conditions, and the `g0`, `gd`,
+            % and `surfaceBoundary` parameters.
+            %
             % - Topic: Compute internal modes
             % - Declaration: availability = internalModeAvailability(solution,evp)
             % - Parameter evp: internal-mode EVP
@@ -87,7 +102,12 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
 
             try
                 evp = self.resolveEVP(evp);
-                IMExponentialStratificationSolution.validateEVP(evp);
+                if IMExponentialGeostrophicAPVCatalog.isTargetEVP(evp)
+                    IMExponentialGeostrophicAPVCatalog.validateEVP( ...
+                        evp, self.N0, self.b, self.zDomain);
+                else
+                    IMExponentialStratificationSolution.validateEVP(evp);
+                end
                 availability = self.availabilityStruct(true, "internalModes", "exponentialStratification", "Exponential-stratification formulas are available for this EVP.");
                 availability.supportedNormalizations = IMExponentialStratificationSolution.supportedNormalizations(evp);
             catch exception
@@ -98,6 +118,14 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
 
         function basisSet = internalModes(self, evp, options)
             % Create an exact internal-mode basis.
+            %
+            % Generalized-energy APV modes use ordinary Bessel functions on
+            % positive-$$h$$ branches, modified Bessel functions on
+            % negative-$$h$$ branches, and the exact integrated solution on
+            % a zero branch. Endpoint inertia determines whether zero, one,
+            % or two negative modes precede the zero and positive modes.
+            % The `geostrophic` normalization remains real and positive for
+            % every retained branch.
             %
             % - Topic: Compute internal modes
             % - Declaration: basisSet = internalModes(solution,evp,options)
@@ -115,6 +143,31 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             end
 
             evp = self.resolveEVP(evp);
+            if IMExponentialGeostrophicAPVCatalog.isTargetEVP(evp)
+                [modeData, h, modeNumber, analyticalMetadata, diagnostics] = ...
+                    IMExponentialGeostrophicAPVCatalog.solve( ...
+                    evp, self.N0, self.b, self.zDomain, options.nModes);
+                metadata = options.metadata;
+                metadataFields = fieldnames(analyticalMetadata);
+                for iField = 1:length(metadataFields)
+                    fieldName = metadataFields{iField};
+                    metadata.(fieldName) = analyticalMetadata.(fieldName);
+                end
+                metadata.analyticalSolution = "exponentialStratification";
+                metadata.analyticalFamily = "generalizedEnergyAPV";
+                basisSet = IMAnalyticalInternalModesBasis( ...
+                    solution=self, ...
+                    evp=evp, ...
+                    h=h, ...
+                    modeNumber=modeNumber, ...
+                    N2=@(z) self.N2(z), ...
+                    rawVariableFunction=@(~,variable,z) IMExponentialGeostrophicAPVCatalog.rawVariable(modeData, self.N0, self.b, evp.g, variable, z), ...
+                    rawUzFunction=@(~,z) IMExponentialGeostrophicAPVCatalog.rawFz(modeData, self.N0, self.b, evp.g, z), ...
+                    normalization=options.normalization, ...
+                    metadata=metadata, ...
+                    modeSelectionDiagnostics=diagnostics);
+                return;
+            end
             [f0, gValue] = IMExponentialStratificationSolution.physicalConstants(evp);
             [h, roots, frequencies, modeNumber, modeKinds] = IMExponentialStratificationSolution.solveSpectrum(evp, self.N0, self.b, self.zDomain, options.nModes, f0, gValue);
             phaseSpeeds = sqrt(gValue*h);

@@ -1,6 +1,7 @@
 # Version History
 
 ## Unreleased
+- added exact exponential-stratification generalized-energy geostrophic APV modes, including positive, zero, and negative equivalent-depth branches, free-surface and rigid-lid conventions, all finite/zero/infinite endpoint limits, signed-spectrum diagnostics, and analytical-versus-numerical regression coverage
 - added v2 scalar discrete Galerkin transforms on caller-supplied points and quadrature weights, including forward and inverse matrices, forward and back transform methods, sampled metrics, continuous Gram targets, and transform-quality diagnostics
 - added fixed-point v2 quadrature fitting with normalized Gram objectives, nonnegative full-depth constraints, custom least-squares systems, and fitted-versus-geometric diagnostics
 - made fixed-point fitting depth-scale robust and added v2 walkthroughs for default and custom scalar discrete-transform workflows

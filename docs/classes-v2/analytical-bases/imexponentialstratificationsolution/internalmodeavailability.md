@@ -25,3 +25,8 @@ Report whether exact internal modes are available.
 + `availability`  availability report struct
 
 ## Discussion
+
+For a `"geostrophicAPVModes"` EVP, availability additionally
+verifies exponential stratification, the canonical APV
+coefficients, both endpoint conditions, and the `g0`, `gd`,
+and `surfaceBoundary` parameters.

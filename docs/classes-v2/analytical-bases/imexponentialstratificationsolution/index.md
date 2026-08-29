@@ -25,7 +25,17 @@ Analytical solution family for exponential stratification.
 `IMExponentialStratificationSolution` owns the closed-form formulas for
 $$N^2(z)=N_0^2\exp(2z/b)$$ on domains with the surface at $$z=0$$. It
 can create exact internal-mode bases for supported rigid-bottom
-internal-mode EVPs and exact surface or bottom SQG boundary modes.
+internal-mode EVPs, generalized-energy geostrophic APV EVPs, and
+exact surface or bottom SQG boundary modes.
+
+The generalized-energy APV branch recognizes a hydrostatic `F` EVP
+named `"geostrophicAPVModes"` with canonical coefficients
+$$p=1/N^2$$, $$q=0$$, and $$r=1/g$$. Its parameter struct must contain
+the signed endpoint accelerations `g0` and `gd`, together with
+`surfaceBoundary="freeSurface"` or `"rigidLid"`. Finite, zero, and
+positive-infinite endpoint values are supported. The returned exact
+basis is ordered by $$1/h$$ and may contain negative modes, an exact
+zero-eigenvalue mode represented by `h=Inf`, and positive modes.
 
 ```matlab
 solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);

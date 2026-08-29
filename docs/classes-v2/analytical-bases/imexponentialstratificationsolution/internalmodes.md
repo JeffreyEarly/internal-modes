@@ -28,3 +28,11 @@ Create an exact internal-mode basis.
 + `basisSet`  exact analytical internal-mode basis
 
 ## Discussion
+
+Generalized-energy APV modes use ordinary Bessel functions on
+positive-$$h$$ branches, modified Bessel functions on
+negative-$$h$$ branches, and the exact integrated solution on
+a zero branch. Endpoint inertia determines whether zero, one,
+or two negative modes precede the zero and positive modes.
+The `geostrophic` normalization remains real and positive for
+every retained branch.
