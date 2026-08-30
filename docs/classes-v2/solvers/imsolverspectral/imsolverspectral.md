@@ -30,4 +30,4 @@ Create a coordinate-aware spectral solver.
 The `"z"` coordinate works for any canonical EVP. The `"wkb"`
 and `"density"` coordinates use the problem stratification
 `N2`, so they can only be configured with `IMInternalModes`
-EVPs or `IMSurfaceGeostrophicModes` problems.
+EVPs or `IMGeostrophicZeroAPVModes` problems.

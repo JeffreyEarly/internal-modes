@@ -13,7 +13,7 @@ classdef IMSolverFiniteDifference < IMSolver
     % - Topic: Create solvers
     % - Topic: Inspect solvers
     % - Topic: Solve EVPs
-    % - Topic: Solve surface-geostrophic modes
+    % - Topic: Solve geostrophic zero-APV modes
     % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
     % - Topic: Developer topics
@@ -103,18 +103,18 @@ classdef IMSolverFiniteDifference < IMSolver
             end
         end
 
-        function solver = configuredForSurfaceGeostrophicModes(self, problem)
-            % Return a finite-difference solver configured for SQG modes.
+        function solver = configuredForGeostrophicZeroAPVModes(self, problem)
+            % Return a finite-difference solver configured for zero-APV modes.
             %
-            % - Topic: Solve surface-geostrophic modes
+            % - Topic: Solve geostrophic zero-APV modes
             % - Topic: Developer topics
-            % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
-            % - Parameter problem: surface-geostrophic boundary-mode problem
+            % - Declaration: solver = configuredForGeostrophicZeroAPVModes(solver,problem)
+            % - Parameter problem: geostrophic zero-APV problem
             % - Returns solver: validated solver
             % - Developer: true
             arguments
                 self IMSolverFiniteDifference
-                problem IMSurfaceGeostrophicModes
+                problem IMGeostrophicZeroAPVModes
             end
 
             solver = self;

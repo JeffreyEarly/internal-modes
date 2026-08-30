@@ -6,7 +6,7 @@ classdef (Abstract) IMSolver
     % base class owns the common generalized-eigenvalue workflow.
     %
     % - Topic: Solve EVPs
-    % - Topic: Solve surface-geostrophic modes
+    % - Topic: Solve geostrophic zero-APV modes
     % - Topic: Developer topics
     % - Declaration: classdef (Abstract) IMSolver
 
@@ -72,24 +72,24 @@ classdef (Abstract) IMSolver
                 "%s does not implement rootsOfNativeMode for %d native values.", class(self), length(nativeMode));
         end
 
-        function basisSet = solveSurfaceGeostrophicModes(self, problem)
-            % Solve projected surface-geostrophic boundary modes.
+        function basisSet = solveGeostrophicZeroAPVModes(self, problem)
+            % Solve canonical geostrophic zero-APV boundary modes.
             %
-            % `solveSurfaceGeostrophicModes` solves the raw zero-APV
-            % endpoint modes stored by `IMSurfaceGeostrophicModes`, forms
-            % the boundary-energy projection, and returns an
-            % `IMSurfaceGeostrophicModesBasis` with `F`, `G`, and `h`.
+            % The operator is factored once for each distinct requested
+            % horizontal wavenumber. Every requested unit endpoint response is solved
+            % in the same multiple-right-hand-side operation. No
+            % generalized-energy coefficient or rotation enters this solve.
             %
-            % - Topic: Solve surface-geostrophic modes
-            % - Declaration: basisSet = solveSurfaceGeostrophicModes(solver,problem)
-            % - Parameter problem: surface-geostrophic boundary-mode problem
-            % - Returns basisSet: solved surface-geostrophic basis
+            % - Topic: Solve geostrophic zero-APV modes
+            % - Declaration: basisSet = solveGeostrophicZeroAPVModes(solver,problem)
+            % - Parameter problem: geostrophic zero-APV problem
+            % - Returns basisSet: canonical boundary-normalized basis
             arguments
                 self IMSolver
-                problem IMSurfaceGeostrophicModes
+                problem IMGeostrophicZeroAPVModes
             end
 
-            solver = self.configuredForSurfaceGeostrophicModes(problem);
+            solver = self.configuredForGeostrophicZeroAPVModes(problem);
             z = solver.zNative;
             n = length(z);
             D0 = solver.physicalDerivativeMatrix(0);
@@ -98,109 +98,72 @@ classdef (Abstract) IMSolver
             N2Values = problem.N2(z);
             N2Values = N2Values(:);
             if length(N2Values) ~= n
-                error("IMSurfaceGeostrophicModes:InvalidStratification", "N2 must return one value for each solver grid point.");
+                error("IMGeostrophicZeroAPVModes:InvalidStratification", "N2 must return one value for each solver grid point.");
             end
             if any(~isfinite(N2Values)) || any(N2Values <= 0)
-                error("IMSurfaceGeostrophicModes:InvalidStratification", "N2 must be finite and positive on the solver grid.");
+                error("IMGeostrophicZeroAPVModes:InvalidStratification", "N2 must be finite and positive on the solver grid.");
             end
 
             pValues = problem.f0^2 ./ N2Values;
             pzValues = solver.differentiateGridValues(pValues, 1);
-            % Assemble raw zero-APV modes in divergence form for conditioning.
             baseMatrix = diag(pValues)*D2 + diag(pzValues)*D1;
             surfaceIndex = solver.boundaryIndex("surface");
             bottomIndex = solver.boundaryIndex("bottom");
-
             N2Surface = N2Values(surfaceIndex);
             N2Bottom = N2Values(bottomIndex);
+
             surfaceRow = D1(surfaceIndex,:);
-            if problem.surfaceAnomaly == "freeSurface"
+            if problem.surfaceBoundary == "freeSurface"
                 surfaceRow = surfaceRow + (N2Surface/problem.g)*D0(surfaceIndex,:);
             end
             bottomRow = D1(bottomIndex,:);
 
-            includeSurface = isfinite(problem.g0);
-            includeBottom = isfinite(problem.gd);
-            rawRows = [];
-            targetAnomalies = zeros(2,0);
-            scaledBoundaryTargets = zeros(2,0);
-            if includeSurface
-                rawRows(end+1) = 1;
-                targetAnomalies(:,end+1) = [problem.g0/N2Surface; 0];
-                scaledBoundaryTargets(:,end+1) = [-problem.g0/problem.f0; 0];
+            nEndpoints = numel(problem.endpoints);
+            rightHandSides = zeros(n,nEndpoints);
+            for iEndpoint = 1:nEndpoints
+                switch problem.endpoints(iEndpoint)
+                    case "surface"
+                        rightHandSides(surfaceIndex,iEndpoint) = -N2Surface/problem.g;
+                    case "bottom"
+                        rightHandSides(bottomIndex,iEndpoint) = -N2Bottom/problem.g;
+                end
             end
-            if includeBottom
-                rawRows(end+1) = 2;
-                targetAnomalies(:,end+1) = [0; problem.gd/N2Bottom];
-                scaledBoundaryTargets(:,end+1) = [0; -problem.gd/problem.f0];
-            end
-            nRawModes = size(targetAnomalies,2);
-            nColumns = nRawModes*numel(problem.k);
-            nativeModes = zeros(n, nColumns);
-            kByMode = zeros(1, nColumns);
-            h = zeros(1, nColumns);
-            modeNumber = zeros(1, nColumns);
-            energyEigenvalues = zeros(1, nColumns);
-            mixingCoefficients = zeros(2, nColumns);
-            columnIndex = 0;
-            for iK = 1:numel(problem.k)
-                matrix = baseMatrix - problem.k(iK)^2*D0;
-                matrix(surfaceIndex,:) = surfaceRow;
-                matrix(bottomIndex,:) = bottomRow;
 
-                rawModes = zeros(n, nRawModes);
-                for iRaw = 1:nRawModes
-                    rhs = zeros(n, 1);
-                    rhs(surfaceIndex) = scaledBoundaryTargets(1,iRaw);
-                    rhs(bottomIndex) = scaledBoundaryTargets(2,iRaw);
-                    rawModes(:,iRaw) = matrix \ rhs;
+            nK = numel(problem.k);
+            nativeModes = zeros(n,nEndpoints,nK);
+            solvedWavenumbers = zeros(1,nK);
+            solvedModes = cell(1,nK);
+            nSolved = 0;
+            for iK = 1:nK
+                solvedIndex = find(solvedWavenumbers(1:nSolved) == problem.k(iK),1);
+                if isempty(solvedIndex)
+                    matrix = baseMatrix - problem.k(iK)^2*D0;
+                    matrix(surfaceIndex,:) = surfaceRow;
+                    matrix(bottomIndex,:) = bottomRow;
+                    nSolved = nSolved + 1;
+                    solvedWavenumbers(nSolved) = problem.k(iK);
+                    solvedModes{nSolved} = solver.solveBoundaryValueSystems(matrix,rightHandSides);
+                    solvedIndex = nSolved;
                 end
-
-                rawModeValues = D0*rawModes;
-                surfaceValues = rawModeValues(surfaceIndex,:).';
-                bottomValues = rawModeValues(bottomIndex,:).';
-                etaSurface = targetAnomalies(1,:).';
-                etaBottom = targetAnomalies(2,:).';
-                energyMatrix = -problem.f0*(surfaceValues*etaSurface.') + problem.f0*(bottomValues*etaBottom.');
-                if includeSurface
-                    energyMatrix = energyMatrix + problem.g0*(etaSurface*etaSurface.');
-                end
-                if includeBottom
-                    energyMatrix = energyMatrix + problem.gd*(etaBottom*etaBottom.');
-                end
-                energyMatrix = 0.5*(energyMatrix + energyMatrix.');
-
-                [C, Gamma] = eig(energyMatrix);
-                gamma = real(diag(Gamma));
-                localH = 2*problem.k(iK)^2*gamma;
-                [localH, sortIndex] = sort(localH, "descend");
-                gamma = gamma(sortIndex);
-                C = C(:,sortIndex);
-                projectedModes = rawModes*C;
-                for iMode = 1:nRawModes
-                    projectedValues = D0*projectedModes(:,iMode);
-                    [~, referenceIndex] = max(abs(projectedValues));
-                    if projectedValues(referenceIndex) < 0
-                        projectedModes(:,iMode) = -projectedModes(:,iMode);
-                        C(:,iMode) = -C(:,iMode);
-                    end
-
-                    columnIndex = columnIndex + 1;
-                    nativeModes(:,columnIndex) = projectedModes(:,iMode);
-                    kByMode(columnIndex) = problem.k(iK);
-                    h(columnIndex) = localH(iMode);
-                    modeNumber(columnIndex) = iMode;
-                    energyEigenvalues(columnIndex) = gamma(iMode);
-                    mixingCoefficients(rawRows,columnIndex) = C(:,iMode);
-                end
+                nativeModes(:,:,iK) = solvedModes{solvedIndex};
             end
 
             metadata = problem.metadata;
-            metadata.solutionKind = "surfaceGeostrophicModes";
-            metadata.k = kByMode;
-            metadata.surfaceAnomaly = problem.surfaceAnomaly;
-            metadata.modesPerWavenumber = nRawModes;
-            basisSet = IMSurfaceGeostrophicModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, k=kByMode, h=h, modeNumber=modeNumber, mixingCoefficients=mixingCoefficients, energyEigenvalues=energyEigenvalues, metadata=metadata);
+            metadata.solutionKind = "geostrophicZeroAPVModes";
+            metadata.k = problem.k;
+            metadata.endpoints = problem.endpoints;
+            metadata.surfaceBoundary = problem.surfaceBoundary;
+            metadata.modesPerWavenumber = nEndpoints;
+            metadata.factorizations = nSolved;
+            basisSet = IMGeostrophicZeroAPVModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, metadata=metadata);
+        end
+    end
+
+    methods (Access = protected)
+        function values = solveBoundaryValueSystems(~, matrix, rightHandSides)
+            % Solve one boundary-value matrix for multiple response columns.
+            matrixFactorization = decomposition(matrix);
+            values = matrixFactorization \ rightHandSides;
         end
     end
 
@@ -224,18 +187,18 @@ classdef (Abstract) IMSolver
     methods (Abstract)
         solver = configuredForEVP(self, evp)
 
-        % Return a solver configured for surface-geostrophic modes.
+        % Return a solver configured for geostrophic zero-APV modes.
         %
         % Concrete solvers prepare their native grid, coordinate mapping,
-        % and derivative matrices for the supplied SQG problem.
+        % and derivative matrices for the supplied zero-APV problem.
         %
-        % - Topic: Solve surface-geostrophic modes
+        % - Topic: Solve geostrophic zero-APV modes
         % - Topic: Developer topics
-        % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
-        % - Parameter problem: surface-geostrophic boundary-mode problem
+        % - Declaration: solver = configuredForGeostrophicZeroAPVModes(solver,problem)
+        % - Parameter problem: geostrophic zero-APV problem
         % - Returns solver: configured solver
         % - Developer: true
-        solver = configuredForSurfaceGeostrophicModes(self, problem)
+        solver = configuredForGeostrophicZeroAPVModes(self, problem)
 
         context = context(self)
         values = N2(self, z)

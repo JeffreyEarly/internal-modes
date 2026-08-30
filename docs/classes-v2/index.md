@@ -9,7 +9,7 @@ mathjax: true
 
 # Class Documentation V2
 
-This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and projected surface-geostrophic boundary modes, evaluating basis sets, and constructing discrete modal transforms in `internal-modes`.
+This section is the API reference for building canonical eigenvalue problems, applying endpoint conditions, solving vertical modes and geostrophic zero-APV boundary modes, evaluating basis sets, and constructing discrete modal transforms in `internal-modes`.
 
 The pages are organized around the objects that own each part of the calculation. Eigenvalue problems define the equations, solvers assemble and solve them, basis sets evaluate normalized modal variables, discrete transforms map between sampled profiles and retained modal coefficients, and analytical solution families provide exact references for common stratifications.
 
@@ -17,7 +17,7 @@ The pages are organized around the objects that own each part of the calculation
 
 | Class group | Use it when |
 | --- | --- |
-| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, internal-mode basis sets, or projected surface-geostrophic boundary modes |
+| [`Core`](./core) | you want canonical eigenvalue-problem descriptors, canonical or hydrostatic endpoint conditions, scalar basis sets, internal-mode basis sets, or geostrophic zero-APV boundary modes |
 | [`Solvers`](./solvers) | you want numerical solvers for physical, WKB-stretched, density-stretched, or finite-difference coordinates |
 | [`Analytical bases`](./analytical-bases) | you want exact constant- or exponential-stratification solution families, internal-mode bases, or SQG boundary modes |
 | [`Discrete transforms`](./discrete-transforms) | you want mode-root point grids, fitted quadrature weights, forward and back modal transforms, or Parseval diagnostics |
@@ -46,6 +46,6 @@ The reference pages use the standard vertical-mode variables:
 - [`IMSolver`](./solvers/imsolver) is the abstract solver contract; concrete solvers such as [`IMSolverSpectral`](./solvers/imsolverspectral) and [`IMSolverFiniteDifference`](./solvers/imsolverfinitedifference) produce [`IMBasisSet`](./core/imbasisset) or [`IMInternalModesBasis`](./core/iminternalmodesbasis) objects.
 - [`IMBoundaryCondition`](./core/imboundarycondition) stores scalar endpoint coefficients for the canonical boundary equation.
 - [`IMHydrostaticBoundaryCondition`](./core/imhydrostaticboundarycondition) converts hydrostatic `F`/`G` endpoint laws into canonical boundary coefficients.
-- [`IMSurfaceGeostrophicModes`](./core/imsurfacegeostrophicmodes) describes projected zero-APV SQG boundary modes at fixed horizontal wavenumber, and solvers return [`IMSurfaceGeostrophicModesBasis`](./core/imsurfacegeostrophicmodesbasis) objects.
+- [`IMGeostrophicZeroAPVModes`](./core/imgeostrophiczeroapvmodes) describes canonical zero-APV boundary-response problems at fixed horizontal wavenumber, and solvers return [`IMGeostrophicZeroAPVModesBasis`](./core/imgeostrophiczeroapvmodesbasis) objects with explicit quadratic forms and rotations.
 - [`IMConstantStratificationSolution`](./analytical-bases/imconstantstratificationsolution) and [`IMExponentialStratificationSolution`](./analytical-bases/imexponentialstratificationsolution) provide exact solution families for common stratification profiles.
 - [`IMBasisSet`](./core/imbasisset) generates mode-root candidate points and finds quadrature weights for fixed points; [`IMDiscreteTransform`](./discrete-transforms/imdiscretetransform) then provides forward and inverse matrices together with `transformForward` and `transformBack`, while [`IMQuadratureWeightFit`](./discrete-transforms/imquadratureweightfit) preserves the fitted result and its geometric comparison.

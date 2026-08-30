@@ -3,7 +3,7 @@ classdef IMSolverSpectral < IMSolver
     %
     % `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
     % resolution, derivative matrices, and physical-coordinate pullback
-    % rules. It is configured against an EVP or surface-geostrophic problem
+    % rules. It is configured against an EVP or geostrophic zero-APV problem
     % before solving.
     %
     % ```matlab
@@ -15,7 +15,7 @@ classdef IMSolverSpectral < IMSolver
     % - Topic: Create solvers
     % - Topic: Inspect solvers
     % - Topic: Solve EVPs
-    % - Topic: Solve surface-geostrophic modes
+    % - Topic: Solve geostrophic zero-APV modes
     % - Topic: Assemble EVPs
     % - Topic: Evaluate native modes
     % - Topic: Developer topics
@@ -36,7 +36,7 @@ classdef IMSolverSpectral < IMSolver
         %
         % `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
         % and `"density"` coordinates require an `IMInternalModes` EVP or
-        % `IMSurfaceGeostrophicModes` problem because their coordinate maps
+        % `IMGeostrophicZeroAPVModes` problem because their coordinate maps
         % use the problem-owned `N2` profile.
         %
         % - Topic: Inspect solvers
@@ -112,7 +112,7 @@ classdef IMSolverSpectral < IMSolver
             % The `"z"` coordinate works for any canonical EVP. The `"wkb"`
             % and `"density"` coordinates use the problem stratification
             % `N2`, so they can only be configured with `IMInternalModes`
-            % EVPs or `IMSurfaceGeostrophicModes` problems.
+            % EVPs or `IMGeostrophicZeroAPVModes` problems.
             %
             % - Topic: Create solvers
             % - Declaration: solver = IMSolverSpectral(options)
@@ -156,18 +156,18 @@ classdef IMSolverSpectral < IMSolver
             solver = solver.setupNativeGrid();
         end
 
-        function solver = configuredForSurfaceGeostrophicModes(self, problem)
-            % Return a spectral solver configured for SQG modes.
+        function solver = configuredForGeostrophicZeroAPVModes(self, problem)
+            % Return a spectral solver configured for zero-APV modes.
             %
-            % - Topic: Solve surface-geostrophic modes
+            % - Topic: Solve geostrophic zero-APV modes
             % - Topic: Developer topics
-            % - Declaration: solver = configuredForSurfaceGeostrophicModes(solver,problem)
-            % - Parameter problem: surface-geostrophic boundary-mode problem
-            % - Returns solver: solver with SQG grid and coordinate matrices initialized
+            % - Declaration: solver = configuredForGeostrophicZeroAPVModes(solver,problem)
+            % - Parameter problem: geostrophic zero-APV problem
+            % - Returns solver: solver with zero-APV grid and coordinate matrices initialized
             % - Developer: true
             arguments
                 self IMSolverSpectral
-                problem IMSurfaceGeostrophicModes
+                problem IMGeostrophicZeroAPVModes
             end
 
             solver = self;
