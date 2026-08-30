@@ -3,7 +3,7 @@ layout: default
 title: surfacePressureNormFactor
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 16
+nav_order: 17
 mathjax: true
 ---
 

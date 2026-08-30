@@ -3,7 +3,7 @@ layout: default
 title: solution
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 22
+nav_order: 23
 mathjax: true
 ---
 

@@ -36,6 +36,10 @@ the signed endpoint accelerations `g0` and `gd`, together with
 positive-infinite endpoint values are supported. The returned exact
 basis is ordered by $$1/h$$ and may contain negative modes, an exact
 zero-eigenvalue mode represented by `h=Inf`, and positive modes.
+The public factory supplies the endpoint descriptor and direct APV
+metadata. Exact APV bases use the volume-only `depth` normalization
+by default; the Bessel formulas and endpoint inner products remain
+available under every other supported normalization.
 
 ```matlab
 solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);

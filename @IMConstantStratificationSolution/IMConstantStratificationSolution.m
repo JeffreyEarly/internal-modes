@@ -6,6 +6,17 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     % supported canonical internal-mode EVPs and exact surface or bottom SQG
     % boundary modes.
     %
+    % The public `IMInternalModes.geostrophicAPVModes` descriptor selects
+    % an exact generalized-energy APV catalog. Positive eigendepths use
+    % trigonometric modes, a zero eigenvalue uses the affine solution, and
+    % negative eigendepths use hyperbolic modes. Endpoint inertia determines
+    % whether zero, one, or two negative modes precede the optional exact
+    % zero mode and positive branch. All finite, zero, and positive-infinite
+    % `g0` and `gd` limits are supported under both surface conventions.
+    % APV bases use the volume-only `depth` normalization by default and
+    % expose roots, residuals, branch labels, endpoint inertia, `g0`, `gd`,
+    % and `surfaceBoundary` in their metadata.
+    %
     % ```matlab
     % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
     % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
@@ -66,6 +77,12 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
         function availability = internalModeAvailability(self, evp)
             % Report whether exact internal modes are available.
             %
+            % For a `"geostrophicAPVModes"` descriptor, availability also
+            % verifies constant stratification, the canonical APV
+            % coefficients, both endpoint conditions, and the direct APV
+            % metadata contract. Qualifying hydrostatic families report
+            % the volume-only `depth` normalization.
+            %
             % - Topic: Compute internal modes
             % - Declaration: availability = internalModeAvailability(solution,evp)
             % - Parameter evp: internal-mode EVP
@@ -77,7 +94,11 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
 
             try
                 evp = self.resolveEVP(evp);
-                IMConstantStratificationSolution.validateEVP(evp);
+                if IMConstantGeostrophicAPVCatalog.isTargetEVP(evp)
+                    IMConstantGeostrophicAPVCatalog.validateEVP(evp, self.N0, self.zDomain);
+                else
+                    IMConstantStratificationSolution.validateEVP(evp);
+                end
                 availability = self.availabilityStruct(true, "internalModes", "constantStratification", "Constant-stratification formulas are available for this EVP.");
                 availability.supportedNormalizations = IMConstantStratificationSolution.supportedNormalizations(evp);
             catch exception
@@ -88,6 +109,12 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
 
         function basisSet = internalModes(self, evp, options)
             % Create an exact internal-mode basis.
+            %
+            % Generalized-energy APV modes are returned in ascending
+            % eigenvalue order $$1/h$$. Hyperbolic negative branches come
+            % first, followed by an optional affine zero branch with
+            % `h=Inf`, then trigonometric positive branches. The same
+            % positive depth-normalization factor scales exact `F` and `G`.
             %
             % - Topic: Compute internal modes
             % - Declaration: basisSet = internalModes(solution,evp,options)
@@ -105,6 +132,19 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             end
 
             evp = self.resolveEVP(evp);
+            if IMConstantGeostrophicAPVCatalog.isTargetEVP(evp)
+                [modeData, h, modeNumber, analyticalMetadata, diagnostics] = IMConstantGeostrophicAPVCatalog.solve(evp, self.N0, self.zDomain, options.nModes);
+                metadata = options.metadata;
+                metadataFields = fieldnames(analyticalMetadata);
+                for iField = 1:length(metadataFields)
+                    fieldName = metadataFields{iField};
+                    metadata.(fieldName) = analyticalMetadata.(fieldName);
+                end
+                metadata.analyticalSolution = "constantStratification";
+                metadata.analyticalFamily = "generalizedEnergyAPV";
+                basisSet = IMAnalyticalInternalModesBasis(solution=self, evp=evp, h=h, modeNumber=modeNumber, N2=@(z) self.N2(z), rawVariableFunction=@(~,variable,z) IMConstantGeostrophicAPVCatalog.rawVariable(modeData, self.N0, evp.g, variable, z), rawUzFunction=@(~,z) IMConstantGeostrophicAPVCatalog.rawFz(modeData, self.N0, evp.g, z), normalization=options.normalization, metadata=metadata, modeSelectionDiagnostics=diagnostics);
+                return;
+            end
             [f0, gValue] = IMConstantStratificationSolution.physicalConstants(evp);
             [h, verticalWavenumbers, solutionTypes, isBoundaryMode, baroclinicNumbers, modeNumber] = IMConstantStratificationSolution.solveSpectrum(evp, self.N0, self.zDomain, options.nModes, f0, gValue);
             modeData = struct();
@@ -352,6 +392,10 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             normalizations = ["unity", "uMax", "wMax", "surfacePressure"];
             if evp.modeFamily == "hydrostatic"
                 normalizations(end+1) = "geostrophic";
+                FSpec = evp.innerProduct("F");
+                if FSpec.hasInnerProduct
+                    normalizations(end+1) = "depth";
+                end
             end
             if string(evp.name) == "waveModesAtWavenumber"
                 normalizations(end+1) = "kConstant";

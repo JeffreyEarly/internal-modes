@@ -66,6 +66,7 @@ G = basisSet.G(linspace(-5000,0,128).');
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
+  + [`depthNormFactor`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/depthnormfactor.html) Return the volume-only depth normalization factor.
   + [`endpointGramTerms`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/endpointgramterms.html) Prepare rank-one endpoint terms for exact Gram matrices.
   + [`geostrophicNormFactor`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/geostrophicnormfactor.html) Return the geostrophic normalization factor.
   + [`innerProductNormFactor`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/innerproductnormfactor.html) Return the raw inner-product norm factor.

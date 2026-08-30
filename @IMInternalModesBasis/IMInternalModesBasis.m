@@ -84,12 +84,18 @@ classdef IMInternalModesBasis < IMBasisSet
             self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
             if self.evp.modeFamily == "hydrostatic"
                 self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
+                FSpec = self.evp.innerProduct("F");
+                if FSpec.hasInnerProduct
+                    self = self.addNormalization("depth", @(basisSet,iMode) basisSet.depthNormFactor(iMode));
+                end
             end
             if string(self.evp.name) == "waveModesAtWavenumber"
                 self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
             end
             if isempty(options.normalization)
-                if self.evp.modeFamily == "hydrostatic"
+                if string(self.evp.name) == "geostrophicAPVModes"
+                    self.normalization = "depth";
+                elseif self.evp.modeFamily == "hydrostatic"
                     self.normalization = "geostrophic";
                 elseif string(self.evp.name) == "waveModesAtWavenumber"
                     self.normalization = "kConstant";
@@ -471,6 +477,29 @@ classdef IMInternalModesBasis < IMBasisSet
                 return;
             end
             factor = self.innerProductNormFactor(iMode, variable="G");
+        end
+
+        function factor = depthNormFactor(self, iMode)
+            % Return the volume-only depth normalization factor.
+            %
+            % This developer utility evaluates the positive factor
+            % $$s_j=\sqrt{D^{-1}\int_{z_b}^{z_s}(F_j^{\mathrm{raw}})^2\,dz}$$
+            % without endpoint terms. The same factor scales `F` and `G`.
+            %
+            % - Topic: Developer topics — Normalization rules
+            % - Declaration: factor = depthNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: positive volume root-mean-square `F` factor
+            % - Developer: true
+            arguments
+                self IMInternalModesBasis
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+            end
+
+            z = self.solver.innerProductGrid(self.zDomain);
+            F = self.rawVariable("F", z);
+            integral = self.solver.integrateInnerProduct(z, F(:,iMode).*F(:,iMode), self.zDomain);
+            factor = sqrt(max(0, real(integral)/diff(self.zDomain)));
         end
 
         function factor = maxAmplitudeNormFactor(self, iMode, options)

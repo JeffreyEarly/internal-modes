@@ -63,13 +63,14 @@ G = basisSet.G(z);
 ## Developer Topics
 These items document internal implementation details and are not part of the primary public API.
 + Developer topics
-  + Gram-matrix assembly
-    + [`endpointGramTerms`](/internal-modes/classes-v2/core/iminternalmodesbasis/endpointgramterms.html) Prepare rank-one endpoint terms for `F` or `G` Gram matrices.
   + Normalization rules
+    + [`depthNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/depthnormfactor.html) Return the volume-only depth normalization factor.
     + [`geostrophicNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/geostrophicnormfactor.html) Return the hydrostatic geostrophic normalization factor.
     + [`innerProductNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/innerproductnormfactor.html) Return the `F` or `G` inner-product norm factor.
     + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/maxamplitudenormfactor.html) Return the maximum amplitude of `F` or `G`.
     + [`surfacePressureNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/surfacepressurenormfactor.html) Return the raw surface `F` value.
+  + Gram-matrix assembly
+    + [`endpointGramTerms`](/internal-modes/classes-v2/core/iminternalmodesbasis/endpointgramterms.html) Prepare rank-one endpoint terms for `F` or `G` Gram matrices.
   + Diagnostic variables
     + [`orientModeSigns`](/internal-modes/classes-v2/core/iminternalmodesbasis/orientmodesigns.html) Orient modes so the surface `F` value is positive when possible.
     + [`rawVariable`](/internal-modes/classes-v2/core/iminternalmodesbasis/rawvariable.html) Evaluate raw physical `F` or `G` modes.

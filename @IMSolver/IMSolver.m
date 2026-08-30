@@ -43,6 +43,7 @@ classdef (Abstract) IMSolver
             eigenvalues = real(eigenvalues(valid));
             selection = evp.selectModes(eigenvalues(:), options.nModes, solver, A);
             eigenvalues = eigenvalues(selection.sortIndex);
+            eigenvalues(selection.modeNumber == 0) = 0;
             V = V(:,selection.sortIndex);
             basisSet = evp.makeBasisSet(solver, V, eigenvalues(:).', ...
                 selection.modeNumber, selection.modeSelectionDiagnostics);

@@ -27,6 +27,17 @@ $$N^2(z)=N_0^2$$. It can create exact internal-mode bases for the
 supported canonical internal-mode EVPs and exact surface or bottom SQG
 boundary modes.
 
+The public `IMInternalModes.geostrophicAPVModes` descriptor selects
+an exact generalized-energy APV catalog. Positive eigendepths use
+trigonometric modes, a zero eigenvalue uses the affine solution, and
+negative eigendepths use hyperbolic modes. Endpoint inertia determines
+whether zero, one, or two negative modes precede the optional exact
+zero mode and positive branch. All finite, zero, and positive-infinite
+`g0` and `gd` limits are supported under both surface conventions.
+APV bases use the volume-only `depth` normalization by default and
+expose roots, residuals, branch labels, endpoint inertia, `g0`, `gd`,
+and `surfaceBoundary` in their metadata.
+
 ```matlab
 solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
 evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);

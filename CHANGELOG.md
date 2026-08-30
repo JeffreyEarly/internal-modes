@@ -1,6 +1,7 @@
 # Version History
 
 ## Unreleased
+- added the public v2 `IMInternalModes.geostrophicAPVModes` generalized-energy APV factory, signed endpoint-limit mappings and metadata, exact numerical zero retention, volume-only `depth` normalization, and exact constant-stratification trigonometric/affine/hyperbolic branches with independent factory, endpoint, normalization, analytical-root, and refined-spectral regression coverage
 - added exact exponential-stratification generalized-energy geostrophic APV modes, including positive, zero, and negative equivalent-depth branches, free-surface and rigid-lid conventions, all finite/zero/infinite endpoint limits, signed-spectrum diagnostics, and analytical-versus-numerical regression coverage
 - added v2 scalar discrete Galerkin transforms on caller-supplied points and quadrature weights, including forward and inverse matrices, forward and back transform methods, sampled metrics, continuous Gram targets, and transform-quality diagnostics
 - added fixed-point v2 quadrature fitting with normalized Gram objectives, nonnegative full-depth constraints, custom least-squares systems, and fitted-versus-geometric diagnostics

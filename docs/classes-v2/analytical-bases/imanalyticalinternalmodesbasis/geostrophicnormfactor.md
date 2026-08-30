@@ -3,7 +3,7 @@ layout: default
 title: geostrophicNormFactor
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 10
+nav_order: 11
 mathjax: true
 ---
 

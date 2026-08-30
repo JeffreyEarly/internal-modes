@@ -15,6 +15,10 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
     % positive-infinite endpoint values are supported. The returned exact
     % basis is ordered by $$1/h$$ and may contain negative modes, an exact
     % zero-eigenvalue mode represented by `h=Inf`, and positive modes.
+    % The public factory supplies the endpoint descriptor and direct APV
+    % metadata. Exact APV bases use the volume-only `depth` normalization
+    % by default; the Bessel formulas and endpoint inner products remain
+    % available under every other supported normalization.
     %
     % ```matlab
     % solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);
@@ -124,8 +128,9 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             % negative-$$h$$ branches, and the exact integrated solution on
             % a zero branch. Endpoint inertia determines whether zero, one,
             % or two negative modes precede the zero and positive modes.
-            % The `geostrophic` normalization remains real and positive for
-            % every retained branch.
+            % Both `geostrophic` and volume-only `depth` normalization
+            % factors remain real and positive for every retained branch;
+            % `depth` is the APV default.
             %
             % - Topic: Compute internal modes
             % - Declaration: basisSet = internalModes(solution,evp,options)
@@ -365,6 +370,10 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             normalizations = ["unity", "uMax", "wMax", "surfacePressure"];
             if evp.modeFamily == "hydrostatic"
                 normalizations(end+1) = "geostrophic";
+                FSpec = evp.innerProduct("F");
+                if FSpec.hasInnerProduct
+                    normalizations(end+1) = "depth";
+                end
             end
             if string(evp.name) == "waveModesAtWavenumber"
                 normalizations(end+1) = "kConstant";

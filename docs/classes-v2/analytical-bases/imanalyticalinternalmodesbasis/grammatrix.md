@@ -3,7 +3,7 @@ layout: default
 title: gramMatrix
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 11
+nav_order: 12
 mathjax: true
 ---
 

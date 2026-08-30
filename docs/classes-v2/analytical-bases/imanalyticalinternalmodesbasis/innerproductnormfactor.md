@@ -3,7 +3,7 @@ layout: default
 title: innerProductNormFactor
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 

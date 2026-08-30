@@ -3,7 +3,7 @@ layout: default
 title: endpointGramTerms
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 8
+nav_order: 9
 mathjax: true
 ---
 

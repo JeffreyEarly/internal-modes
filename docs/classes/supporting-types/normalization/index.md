@@ -40,6 +40,7 @@ The internal-mode values are:
 - `Normalization.wMax`: scale by $$\max_z |G_j(z)|$$
 - `Normalization.surfacePressure`: scale by the raw surface value of $$F$$
 - `Normalization.geostrophic`: hydrostatic geostrophic normalization
+- `Normalization.depth`: volume-only unit depth-mean-square `F` normalization, $$s_j=\sqrt{D^{-1}\int F_j^2\,dz}$$, with the same positive factor applied to `F` and `G` and no endpoint terms
 
 ```matlab
 evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
