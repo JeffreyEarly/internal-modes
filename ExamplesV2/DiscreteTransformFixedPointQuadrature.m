@@ -1,14 +1,13 @@
-%% Scalar discrete transforms on fixed physical points
-% This walkthrough constructs a Galerkin transform for hydrostatic G modes
-% sampled on points chosen by the caller. The current discrete-transform API
-% is scalar: because the EVP below uses the G formulation, the sampled scalar
-% variable u and the transform basis Phi are G. Coupled F/G transforms are a
-% later extension.
+%% Fit a scalar discrete transform on caller-chosen physical points
+% Suppose measurements already exist on a fixed vertical grid. This
+% walkthrough fits quadrature weights on those points, builds a Galerkin
+% transform for hydrostatic G modes, and separates the diagnostics that
+% describe quadrature accuracy from those that describe linear algebra.
 
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
 
-%% Solve a well-resolved exponential-stratification basis
+%% Solve exponential-stratification G modes
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
@@ -19,30 +18,16 @@ N2 = @(z) N0*N0*exp(2*z/b);
 nAvailableModes = 12;
 nModes = 8;
 nEVP = 160;
-surfaceBoundary = IMBoundaryCondition.dirichlet();
-bottomBoundary = IMBoundaryCondition.dirichlet();
 evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g, ...
-    surfaceBoundary=surfaceBoundary,bottomBoundary=bottomBoundary);
+    surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
 solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
 basisSet.normalization = "geostrophic";
 
-%% Construct an exact point-limited mode-root transform
-% `nPoints` is exact. The builder searches the available mode-root grids,
-% selects the largest candidate band producing exactly that many physical
-% points, fits one weight vector for the full candidate band, and assesses
-% every leading prefix without refitting those weights.
-[modeRootTransform, modeRootAssessment] = basisSet.discreteTransform(nPoints=nModes+2);
-zModeRoot = modeRootTransform.z;
-modeRootFit = modeRootAssessment.weightFit;
-fprintf("Mode-root grid: %d points; candidate modes: %d; retained modes: %d; fitted Gram operator error: %.3e\n", ...
-    length(zModeRoot),modeRootAssessment.candidateModeCount,modeRootAssessment.retainedModeCount,modeRootTransform.relativeGramOperatorError);
-disp(modeRootAssessment.prefixDiagnostics)
-
-%% Supply fixed sample points and fit their weights
-% These points include both boundaries and are refined toward the surface.
-% `quadratureWeightsForPoints` retains the first `nModes` columns and chooses nonnegative
-% weights that sum to the full depth.
+%% Choose a surface-refined grid and fit its quadrature weights
+% The points include both boundaries and become more closely spaced toward
+% the surface. Supplying `z` and `nModes` makes the requested eight-mode
+% band strict: every requested mode must pass the enabled policies.
 nPoints = 24;
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
@@ -50,36 +35,44 @@ z = zDomain(1) + D*(1 - (1 - sigma).^2);
 [transform, assessment] = basisSet.discreteTransform(z=z,nModes=nModes);
 fit = assessment.weightFit;
 
-% Supplying weights bypasses fitting. For example, this reproduces the
-% geometric comparison already stored in `fit`:
+% Supplying weights bypasses fitting. Use the geometric control-volume
+% weights stored by the fit to build a comparison on exactly the same grid.
 geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights,nModes=nModes);
 
-% Positive tolerances enable optional norm-based policies. Omit `nModes`
-% when the workflow should return the largest jointly accepted prefix.
-[~, policyAssessment] = basisSet.discreteTransform(nPoints=nModes+2, ...
-    leakageTolerance=2,quadraticAliasingTolerance=2);
-disp(policyAssessment.prefixDiagnostics)
-
-%% Compare fitted and geometric quadrature
+%% Separate fit, transform, and conditioning diagnostics
+% The fitted objective is the Frobenius norm of the normalized Gram error;
+% it aggregates errors over all mode pairs. `relativeGramOperatorError` is
+% the worst error over normalized modal combinations. `roundTripError`
+% measures algebraic coefficient recovery and may remain tiny even when the
+% quadrature rule has visible Gram error.
 rule = ["fitted"; "geometric"];
+frobeniusResidual = [fit.residualNorm; fit.geometricResidualNorm];
 relativeGramOperatorError = [transform.relativeGramOperatorError; geometricTransform.relativeGramOperatorError];
-objectiveResidual = [fit.residualNorm; fit.geometricResidualNorm];
 roundTripError = [transform.roundTripError; geometricTransform.roundTripError];
+forwardMatrixConditionNumber = [cond(transform.forwardMatrix); cond(geometricTransform.forwardMatrix)];
 inverseMatrixConditionNumber = [transform.inverseMatrixConditionNumber; geometricTransform.inverseMatrixConditionNumber];
 gramConditionNumber = [transform.gramConditionNumber; geometricTransform.gramConditionNumber];
 depthSum = [sum(transform.weights); sum(geometricTransform.weights)];
 minimumWeight = [min(transform.weights); min(geometricTransform.weights)];
 maximumWeight = [max(transform.weights); max(geometricTransform.weights)];
-diagnostics = table(rule,relativeGramOperatorError,objectiveResidual,roundTripError,inverseMatrixConditionNumber, ...
-    gramConditionNumber,depthSum,minimumWeight,maximumWeight);
+diagnostics = table(rule,frobeniusResidual,relativeGramOperatorError,roundTripError, ...
+    forwardMatrixConditionNumber,inverseMatrixConditionNumber,gramConditionNumber, ...
+    depthSum,minimumWeight,maximumWeight);
 
-fprintf("\nFixed-point scalar transform for exponential hydrostatic G modes\n");
-fprintf("Retained modes: %d; fixed points: %d; normalization: %s\n\n",nModes,nPoints,transform.normalization);
+fprintf("\nFixed-point transform for exponential hydrostatic G modes\n");
+fprintf("Requested modes: %d; fixed points: %d; normalization: %s\n\n",nModes,nPoints,transform.normalization);
 disp(diagnostics)
 
-%% Transform known modal coefficients forward and back
-% `transformBack` and `transformForward` accept multiple profile columns. A field made
-% entirely from retained modes should round-trip to numerical precision.
+% Prefix diagnostics show how the same fitted rule behaves as modes are
+% added. The Gram policy is the acceptance test; the other columns diagnose
+% algebraic consistency and sensitivity.
+prefixDiagnostics = assessment.prefixDiagnostics(:,["modeCount" "lastModeNumber" "gramError" ...
+    "roundTripError" "inverseMatrixConditionNumber" "gramConditionNumber" "gramAccepted"]);
+disp(prefixDiagnostics)
+
+%% Recover known modal coefficients
+% A field made entirely from retained modes should round-trip to numerical
+% precision. Both transform directions accept multiple profile columns.
 mode = (1:nModes).';
 coefficientsTrue = [1./mode (-1).^(mode - 1)./mode.^2];
 valuesFromModes = transform.transformBack(coefficientsTrue);
@@ -87,9 +80,10 @@ coefficientsRecovered = transform.transformForward(valuesFromModes);
 coefficientRoundTripError = norm(coefficientsRecovered - coefficientsTrue,2)/norm(coefficientsTrue,2);
 fprintf("Relative coefficient round-trip error: %.3e\n",coefficientRoundTripError);
 
-%% Transform a smooth sampled profile
-% Galerkin projection finds the retained modal field whose residual is
-% orthogonal to the retained basis in the sampled metric W.
+%% Project a smooth sampled profile
+% Galerkin projection returns the retained modal field whose residual is
+% orthogonal to the retained basis in the sampled metric W. An arbitrary
+% profile is therefore projected, not expected to round-trip exactly.
 profile = sin(pi*(z - zDomain(1))/D).*exp(z/900).*(1 + 0.2*cos(2*pi*(z - zDomain(1))/D));
 profileCoefficients = transform.transformForward(profile);
 profileReconstruction = transform.transformBack(profileCoefficients);
@@ -144,7 +138,7 @@ xlabel("mode number")
 ylabel("mode number")
 title("Fitted normalized Gram error")
 
-figure(Name="V2 scalar discrete-transform profile projection",Color="w");
+figure(Name="V2 fixed-point profile projection",Color="w");
 plot(profile,z,"k-",LineWidth=1.5)
 hold on
 plot(profileReconstruction,z,"--",LineWidth=1.5)
