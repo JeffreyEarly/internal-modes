@@ -15,6 +15,6 @@ Equivalent depths for retained G modes.
 ---
 
 ## Description
-Real valued property with dimension $$modeG$$ and units of $$m$$.
+Real valued property with dimension $$modeG$$ and units of $$\mathrm{m}$$.
 
 ## Discussion

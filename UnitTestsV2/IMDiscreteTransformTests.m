@@ -102,7 +102,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1),zDomain(2),65).';
             dz = testCase.trapezoidalIncrements(z);
-            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2, gramTolerance=1e6);
             endpointWeight = evp.innerProduct().surfaceWeights(1);
             expectedMetric = diag(dz);
             expectedMetric(end,end) = expectedMetric(end,end) + endpointWeight.coefficient*endpointWeight.c^2;
@@ -127,7 +127,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
         function signedWeightsAreRetainedAndFlagged(testCase)
             [basisSet, z, dz] = testCase.regularBasis(3);
             dz(2) = -dz(2);
-            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2);
+            transform = basisSet.discreteTransform(z=z, weights=dz, nModes=2, gramTolerance=1e6);
 
             testCase.verifyEqual(transform.weights, dz, AbsTol=0)
             testCase.verifyTrue(transform.hasNegativeWeights)

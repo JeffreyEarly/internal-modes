@@ -15,6 +15,6 @@ Equivalent depths for retained F modes.
 ---
 
 ## Description
-Real valued property with dimension $$modeF$$ and units of $$m$$.
+Real valued property with dimension $$modeF$$ and units of $$\mathrm{m}$$.
 
 ## Discussion

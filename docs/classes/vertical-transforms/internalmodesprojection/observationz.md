@@ -15,7 +15,7 @@ Observation depths for point-sampled projections.
 ---
 
 ## Description
-Real valued property with dimension $$observationIndex$$ and units of $$m$$.
+Real valued property with dimension $$observationIndex$$ and units of $$\mathrm{m}$$.
 
 ## Discussion
 

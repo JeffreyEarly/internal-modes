@@ -15,7 +15,7 @@ Depth grid where the inverse modes are sampled.
 ---
 
 ## Description
-Real valued property with dimension $$zIndex$$ and units of $$m$$.
+Real valued property with dimension $$zIndex$$ and units of $$\mathrm{m}$$.
 
 ## Discussion
 

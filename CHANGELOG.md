@@ -8,7 +8,8 @@
 - added fixed-point v2 quadrature fitting with normalized Gram objectives, nonnegative full-depth constraints, custom least-squares systems, and fitted-versus-geometric diagnostics
 - made fixed-point fitting depth-scale robust and added v2 walkthroughs for default and custom scalar discrete-transform workflows
 - added v2 `pointsFromModeRoots` grids with automatic auxiliary-mode solves and native Chebyshev root finding for all spectral coordinate choices
-- compressed the normalized Gram Frobenius fit to independent symmetric mode pairs and made `discreteTransform` optionally return the associated quadrature-fit provenance when it chooses weights
+- compressed the normalized Gram Frobenius fit to independent symmetric mode pairs
+- added exact point-limited scalar transform construction and `IMDiscreteTransformAssessment`, including one-rule retained-prefix Gram diagnostics, optional rejected-mode leakage and scalar quadratic-aliasing policies, strict explicit-band failures, and constant/exponential/DCT-I regression coverage
 
 ## [2.0.0] - 2026-05-19
 - added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`

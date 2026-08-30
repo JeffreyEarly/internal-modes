@@ -15,6 +15,6 @@ Frequency associated with the solve.
 ---
 
 ## Description
-Real valued property with no dimensions and units of $$s^-1$$.
+Real valued property with no dimensions and units of $$\mathrm{s^{-1}}$$.
 
 ## Discussion

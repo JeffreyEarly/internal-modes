@@ -15,6 +15,6 @@ Equivalent depths associated with the stored mode columns.
 ---
 
 ## Description
-Real valued property with dimension $$modeG$$ and units of $$m$$.
+Real valued property with dimension $$modeG$$ and units of $$\mathrm{m}$$.
 
 ## Discussion

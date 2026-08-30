@@ -59,7 +59,7 @@ factors = basisSet.normalizationFactors("unity");
   + [`partialWindowModes`](/internal-modes/classes-v2/core/imbasisset/partialwindowmodes.html) Diagonalize a partial scalar Gram matrix.
   + [`spectrum`](/internal-modes/classes-v2/core/imbasisset/spectrum.html) Compute a scalar modal spectrum.
 + Build discrete transforms
-  + [`discreteTransform`](/internal-modes/classes-v2/core/imbasisset/discretetransform.html) Build a scalar Galerkin transform on fixed sample points.
+  + [`discreteTransform`](/internal-modes/classes-v2/core/imbasisset/discretetransform.html) Build and assess a scalar Galerkin transform on a fixed quadrature rule.
   + [`pointsFromModeRoots`](/internal-modes/classes-v2/core/imbasisset/pointsfrommoderoots.html) Return physical endpoints and roots of the next selected mode.
   + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/imbasisset/quadratureweightsforpoints.html) Find quadrature weights for fixed physical sample points.
 + Inspect basis sets

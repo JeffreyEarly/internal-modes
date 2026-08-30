@@ -9,30 +9,33 @@ This roadmap covers discrete-transform work built on numerical `IMBasisSet` obje
 | Scalar Galerkin transforms | `IMDiscreteTransform` | Stores `forwardMatrix` and `inverseMatrix`, applies `transformForward` and `transformBack`, and reports Gram, round-trip, and conditioning diagnostics. |
 | Fixed-point weight fitting | `quadratureWeightsForPoints` | Fits nonnegative full-depth weights with the normalized Gram Frobenius objective, supports custom linear objectives, and compares fitted and geometric rules. |
 | Mode-root point grids | `pointsFromModeRoots` | Returns both endpoints plus roots of selected column `nModes+1`, obtains an auxiliary mode when necessary, and uses solver-native spectral roots in physical, WKB, and density coordinates. |
-| Fitted transform construction | `discreteTransform(z=...,nModes=...)` | Fits weights when they are omitted, returns the resulting transform, and optionally returns the associated `IMQuadratureWeightFit` provenance. |
+| Point-limited transform construction | `discreteTransform(nPoints=...)` | Selects an exact mode-root point count, fits one full-candidate weight rule, and returns the largest policy-accepted prefix with `IMDiscreteTransformAssessment`. |
+| Fixed-rule retained-band policies | `IMDiscreteTransformAssessment` | Reports every leading prefix under the default Gram policy and optional rejected-mode leakage and scalar quadratic-aliasing policies while preserving physical mode labels. |
 
 The built-in weight objective stores only the independent upper-triangle Gram rows and applies the required `sqrt(2)` factor to off-diagonal rows, preserving the full normalized Gram Frobenius objective while reducing the least-squares system size.
 
 ### Current Scalar Workflow
 
 ```matlab
-z = basisSet.pointsFromModeRoots(nModes=8);
-[transform,weightFit] = basisSet.discreteTransform(z=z,nModes=8);
+[transform,assessment] = basisSet.discreteTransform(nPoints=10);
+assessment.prefixDiagnostics
 ```
 
-Callers can instead obtain or customize the fitted weights explicitly:
+The exact point-count workflow searches the available mode-root constructions and does not silently substitute a nearby count. One weight vector is fitted against the full candidate band and then held fixed across all assessed prefixes. The default normalized-Gram operator tolerance is `1e-2`; positive `leakageTolerance` and `quadraticAliasingTolerance` values enable the optional norm-based policies.
+
+Callers can instead supply points, obtain or customize fitted weights explicitly, and request a strict modal band:
 
 ```matlab
 [weights,weightFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=8);
-transform = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
+[transform,assessment] = basisSet.discreteTransform(z=z,weights=weights,nModes=8);
 ```
 
 ### Current Limitations
 
 - `IMBasisSet.discreteTransform` transforms the solved scalar variable rather than a coupled internal-mode `F/G` family.
-- Callers must still supply the physical sample points `z`.
 - Scalar transform builders support endpoint inner-product terms only when they can be evaluated from sampled endpoint values; derivative traces are not inferred from arbitrary samples.
 - `pointsFromModeRoots` currently requires solver-native spectral root support and is unavailable for finite-difference solvers.
+- Leakage and scalar quadratic-aliasing policies require a positive-definite target metric; signed targets retain the Gram policy and diagnostics.
 
 ## Next: Coupled Hydrostatic Transforms
 
@@ -47,29 +50,7 @@ Generalize the scalar machinery at `IMInternalModesBasis`, where `F`, `G`, and `
 
 Acceptance requires the constant-stratification limit to reproduce DCT-I/DST-I behavior and exponential stratification to improve both component Gram errors relative to geometric weights.
 
-## Then: Automatic Point Selection
-
-Complete the one-call workflow by allowing the point grid to be omitted:
-
-```matlab
-[transform,weightFit] = basisSet.discreteTransform(nModes=8);
-```
-
-- Generate the mode-root grid, fit weights, and construct the transform internally.
-- Preserve explicit paths for caller-supplied points and weights.
-- Continue returning fit provenance so the convenient API exposes the selected points, constraints, optimizer result, fitted weights, and geometric comparison.
-- Use the scalar workflow for `IMBasisSet` and the coupled workflow for `IMInternalModesBasis`.
-- Never silently reduce the requested mode count. Report inadequate resolution or quality and let the user choose a smaller retained band.
-
 ## Later Milestones
-
-### Retained-Band Diagnostics
-
-- Compute normalized Gram errors, round-trip errors, condition numbers, weight ranges, and integral diagnostics as functions of retained mode count.
-- For coupled modes, report `F` and `G` errors separately and provide a combined worst-component summary.
-- Distinguish diagnostics for one fixed quadrature rule from diagnostics that refit weights at each retained count.
-- Add an optional quality-policy helper that recommends the largest reliable prefix for user-supplied tolerances; do not make automatic truncation the default.
-- Preserve named physical mode numbers in every diagnostic table and curve.
 
 ### Optional Mode-Root Point Optimization
 

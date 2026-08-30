@@ -15,6 +15,6 @@ Gravitational acceleration used by the mode solve.
 ---
 
 ## Description
-Real valued property with no dimensions and units of $$m s^-2$$.
+Real valued property with no dimensions and units of $$\mathrm{m\,s^{-2}}$$.
 
 ## Discussion

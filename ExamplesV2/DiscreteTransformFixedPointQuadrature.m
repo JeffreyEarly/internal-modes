@@ -27,15 +27,17 @@ solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
 basisSet.normalization = "geostrophic";
 
-%% Generate a deterministic mode-root candidate grid
-% For the first `nModes` selected columns, `pointsFromModeRoots` returns both
-% physical endpoints and the interior zeros of selected column `nModes+1`.
-% The generating mode is already present here because the solve retained
-% more than `nModes` columns. If it were absent, the basis set would solve
-% for that one auxiliary mode automatically.
-zModeRoot = basisSet.pointsFromModeRoots(nModes=nModes);
-[~, modeRootFit] = basisSet.discreteTransform(z=zModeRoot,nModes=nModes);
-fprintf("Mode-root grid: %d points; fitted Gram operator error: %.3e\n",length(zModeRoot),modeRootFit.transform.relativeGramOperatorError);
+%% Construct an exact point-limited mode-root transform
+% `nPoints` is exact. The builder searches the available mode-root grids,
+% selects the largest candidate band producing exactly that many physical
+% points, fits one weight vector for the full candidate band, and assesses
+% every leading prefix without refitting those weights.
+[modeRootTransform, modeRootAssessment] = basisSet.discreteTransform(nPoints=nModes+2);
+zModeRoot = modeRootTransform.z;
+modeRootFit = modeRootAssessment.weightFit;
+fprintf("Mode-root grid: %d points; candidate modes: %d; retained modes: %d; fitted Gram operator error: %.3e\n", ...
+    length(zModeRoot),modeRootAssessment.candidateModeCount,modeRootAssessment.retainedModeCount,modeRootTransform.relativeGramOperatorError);
+disp(modeRootAssessment.prefixDiagnostics)
 
 %% Supply fixed sample points and fit their weights
 % These points include both boundaries and are refined toward the surface.
@@ -45,11 +47,18 @@ nPoints = 24;
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
-[transform, fit] = basisSet.discreteTransform(z=z,nModes=nModes);
+[transform, assessment] = basisSet.discreteTransform(z=z,nModes=nModes);
+fit = assessment.weightFit;
 
 % Supplying weights bypasses fitting. For example, this reproduces the
 % geometric comparison already stored in `fit`:
 geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights,nModes=nModes);
+
+% Positive tolerances enable optional norm-based policies. Omit `nModes`
+% when the workflow should return the largest jointly accepted prefix.
+[~, policyAssessment] = basisSet.discreteTransform(nPoints=nModes+2, ...
+    leakageTolerance=2,quadraticAliasingTolerance=2);
+disp(policyAssessment.prefixDiagnostics)
 
 %% Compare fitted and geometric quadrature
 rule = ["fitted"; "geometric"];

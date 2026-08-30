@@ -122,7 +122,7 @@ nModes = options.nModes;
 depth = diff(self.zDomain);
 edges = [self.zDomain(1); 0.5*(z(1:end-1) + z(2:end)); self.zDomain(2)];
 geometricWeights = diff(edges);
-geometricTransform = self.discreteTransform(z=z,weights=geometricWeights,nModes=nModes);
+geometricTransform = self.buildDiscreteTransform(z,geometricWeights,nModes);
 
 evpContext = self.evp.contextForSolver(self.solver);
 innerProduct = self.evp.innerProduct();
@@ -257,7 +257,7 @@ end
 weights(weights < 0 & weights >= -constraintTolerance) = 0;
 
 if nargout > 1
-    transform = self.discreteTransform(z=z,weights=weights,nModes=nModes);
+    transform = self.buildDiscreteTransform(z,weights,nModes);
     weightFit = IMQuadratureWeightFit(transform=transform,geometricTransform=geometricTransform,objectiveName=objectiveName,objectiveMatrix=objectiveMatrix,objectiveTarget=objectiveTarget,nonnegativeConstraint=options.nonnegative,depthConstraint=options.constrainDepth,depthTarget=depth,exitFlag=exitFlag,solverOutput=solverOutput);
 end
 end

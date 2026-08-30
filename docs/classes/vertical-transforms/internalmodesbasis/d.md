@@ -15,7 +15,7 @@ Water-column depth $$D=z_{\max}-z_{\min}$$.
 ---
 
 ## Description
-Real valued property with no dimensions and units of $$m$$.
+Real valued property with no dimensions and units of $$\mathrm{m}$$.
 
 ## Discussion
 

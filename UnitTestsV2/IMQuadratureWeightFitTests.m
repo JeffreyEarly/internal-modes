@@ -23,7 +23,8 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             basisSet = testCase.regularBasis(4);
             z = -1 + linspace(0,1,17).'.^1.4;
             [weights, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=3);
-            [transform, builderFit] = basisSet.discreteTransform(z=z,nModes=3);
+            [transform, assessment] = basisSet.discreteTransform(z=z,nModes=3);
+            builderFit = assessment.weightFit;
 
             testCase.verifyClass(fit,"IMQuadratureWeightFit")
             testCase.verifyClass(builderFit,"IMQuadratureWeightFit")
@@ -57,11 +58,12 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             basisSet = testCase.regularBasis(3);
             z = linspace(-1,0,21).';
             dz = testCase.geometricWeights(z,[-1 0]);
-            [transform, weightFit] = basisSet.discreteTransform(z=z,weights=dz,nModes=2);
+            [transform, assessment] = basisSet.discreteTransform(z=z,weights=dz,nModes=2);
 
             testCase.verifyEqual(transform.weights,dz,AbsTol=0)
             testCase.verifyEqual(transform.metricMatrix,diag(dz),AbsTol=0)
-            testCase.verifyEmpty(weightFit)
+            testCase.verifyClass(assessment,"IMDiscreteTransformAssessment")
+            testCase.verifyEmpty(assessment.weightFit)
         end
 
         function geometricWeightsUseFullDomainControlVolumes(testCase)

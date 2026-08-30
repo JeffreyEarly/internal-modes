@@ -15,6 +15,6 @@ Water-column depth used by the barotropic F spectral weight.
 ---
 
 ## Description
-Real valued property with no dimensions and units of $$m$$.
+Real valued property with no dimensions and units of $$\mathrm{m}$$.
 
 ## Discussion

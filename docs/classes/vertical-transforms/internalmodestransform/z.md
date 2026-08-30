@@ -15,6 +15,6 @@ Depth grid for vertical fields acted on by this transform.
 ---
 
 ## Description
-Real valued property with dimension $$zIndex$$ and units of $$m$$.
+Real valued property with dimension $$zIndex$$ and units of $$\mathrm{m}$$.
 
 ## Discussion

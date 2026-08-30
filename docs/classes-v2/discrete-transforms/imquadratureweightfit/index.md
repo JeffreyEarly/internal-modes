@@ -6,7 +6,7 @@ has_toc: false
 mathjax: true
 parent: Discrete transforms
 grand_parent: Class documentation V2
-nav_order: 2
+nav_order: 3
 ---
 
 #  IMQuadratureWeightFit

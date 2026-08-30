@@ -15,6 +15,6 @@ Horizontal wavenumber metadata.
 ---
 
 ## Description
-Real valued property with no dimensions and units of $$rad m^-1$$.
+Real valued property with no dimensions and units of $$\mathrm{rad\,m^{-1}}$$.
 
 ## Discussion
