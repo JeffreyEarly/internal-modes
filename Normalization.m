@@ -13,7 +13,7 @@ classdef Normalization
     %
     % The internal-mode values are:
     %
-    % - `Normalization.unity`: unit norm under the active internal-mode inner product
+    % - `Normalization.unity`: unit norm magnitude under the active internal-mode inner product; signed families retain a diagonal signature of `-1` or `+1`
     % - `Normalization.kConstant`: unit `G` inner-product norm for fixed-$$K$$ wave modes
     % - `Normalization.uMax`: scale by $$\max_z |F_j(z)|$$
     % - `Normalization.wMax`: scale by $$\max_z |G_j(z)|$$

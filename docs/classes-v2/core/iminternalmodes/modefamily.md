@@ -3,7 +3,7 @@ layout: default
 title: modeFamily
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 15
+nav_order: 16
 mathjax: true
 ---
 
@@ -22,3 +22,5 @@ EVP. The default `"none"` installs only generic internal-mode
 behavior. The `"hydrostatic"` family declares the hydrostatic
 `F`/`G` family, enabling the generalized boundary-condition
 catalog and the coupled `geostrophic` normalization convention.
+The `"meanDensityAnomaly"` family solves generalized-energy
+`G` modes and carries a surface-referenced diagnostic `F`.

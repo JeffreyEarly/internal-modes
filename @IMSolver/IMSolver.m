@@ -16,6 +16,8 @@ classdef (Abstract) IMSolver
             %
             % If the assembled matrices produce no finite real eigenvalues,
             % `solveEVP` throws a matrix-level diagnostic before returning.
+            % Before selection, the EVP may reject family-specific
+            % numerical representations that are not finite physical modes.
             %
             % - Topic: Solve EVPs
             % - Declaration: basisSet = solveEVP(solver,evp,options)
@@ -41,6 +43,13 @@ classdef (Abstract) IMSolver
 
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
+            familyValid = evp.finiteGeneralizedEigenpairMask(V,B);
+            V = V(:,familyValid);
+            eigenvalues = eigenvalues(familyValid);
+            if isempty(eigenvalues)
+                error("IMSolver:NoValidEigenvalues", ...
+                    "EVP ""%s"" produced no finite real eigenmode with nonzero metric action; every candidate lies in the numerical null space of B.",evp.name);
+            end
             selection = evp.selectModes(eigenvalues(:), options.nModes, solver, A);
             eigenvalues = eigenvalues(selection.sortIndex);
             eigenvalues(selection.modeNumber == 0) = 0;
@@ -232,6 +241,7 @@ classdef (Abstract) IMSolver
         index = boundaryIndex(self, location)
         values = evaluateNativeModes(self, nativeModes, z)
         values = evaluatePhysicalDerivative(self, nativeModes, z, derivativeOrder)
+        nativeIntegral = integrateGridValuesFromSurface(self, gridValues)
         z = innerProductGrid(self, zBounds)
         value = integrateInnerProduct(self, z, integrand, zBounds)
     end

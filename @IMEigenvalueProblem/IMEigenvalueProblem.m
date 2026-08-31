@@ -621,6 +621,25 @@ classdef IMEigenvalueProblem
         end
     end
 
+    methods (Hidden)
+        function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,~)
+            % Return family-specific finite generalized eigenpair candidates.
+            %
+            % The default preserves every finite-real candidate selected by
+            % `IMSolver`. Specialized EVP families may reject numerical
+            % representations of infinite pencil modes before physical mode
+            % ordering is applied.
+            %
+            % - Topic: Developer topics
+            % - Declaration: mask = finiteGeneralizedEigenpairMask(evp,eigenvectors,metricMatrix)
+            % - Parameter eigenvectors: finite-real generalized eigenvectors
+            % - Parameter metricMatrix: assembled generalized metric matrix
+            % - Returns mask: logical row mask of family-valid candidates
+            % - Developer: true
+            mask = true(1,size(eigenvectors,2));
+        end
+    end
+
     methods (Access = protected)
         function [pValues, qValues, rValues] = coefficientValues(self, z, context)
             arguments

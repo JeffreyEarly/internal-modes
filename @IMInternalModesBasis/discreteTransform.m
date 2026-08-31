@@ -44,6 +44,11 @@ validateOptionalPositiveInteger(options.nCheckModes,"nCheckModes");
 validateOptionalPositiveTolerance(options.leakageTolerance,"leakageTolerance");
 validateOptionalPositiveTolerance(options.quadraticAliasingTolerance,"quadraticAliasingTolerance");
 
+if self.evp.modeFamily == "meanDensityAnomaly" && ~isempty(options.quadraticAliasingTolerance)
+    error("IMMeanDensityAnomalyModesBasis:UnavailableQuadraticAliasingPolicy", ...
+        "Coupled quadratic aliasing is not defined for mean-density-anomaly modes. Build a Gram-only transform, or use G leakage only when the retained target Gram matrix is positive definite.");
+end
+
 hasPointCount = ~isempty(options.nPoints);
 hasExplicitPoints = ~isempty(options.z);
 hasExplicitWeights = ~isempty(options.weights);

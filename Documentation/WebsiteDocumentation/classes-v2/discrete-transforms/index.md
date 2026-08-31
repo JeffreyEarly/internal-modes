@@ -98,6 +98,24 @@ Products involving an identically zero source column are skipped. Continuous pro
 
 These diagnostics assess the sampled transform rule. Continuous EVP residuals, coefficient tails, boundary residuals, and refinement remain part of the separate solver-quality workflow.
 
+## Mean-density-anomaly transforms
+
+`IMMeanDensityAnomalyModesBasis` uses the same aligned transform object with a deliberately asymmetric channel contract. The solved displacement channel `G` has the signed generalized-energy metric and is the only direct projection channel selected when `variables` is omitted. The mean-pressure channel
+
+$$
+F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz'
+$$
+
+remains aligned and fully available through `inverseMatrix(variable="F")`, `endpointValues(variable="F")`, and `transformBack(...,variable="F")`, but it has no independent forward metric. For a sampled displacement,
+
+```matlab
+[transform,assessment] = basisSet.discreteTransform(nPoints=32);
+A = transform.transformForward(displacement,variable="G");
+meanPressure = transform.transformBack(A,variable="F");
+```
+
+With the default signed-unit normalization, `basisSet.signatures` gives the continuous diagonal `G` Gram entries. The projection functional returns signed generalized-energy pairings, while `transformForward` applies the sampled Gram solve to recover coefficients. Leakage is available only when the active `G` target is positive definite. Coupled `F/G` quadratic-product assessment is intentionally unavailable for this family until an MDA product contract is defined.
+
 ## Geostrophic APV and boundary composition
 
 `IMGeostrophicTransform` consumes a generalized-energy APV `IMInternalModesDiscreteTransform` and a canonical `IMGeostrophicZeroAPVModesBasis`. Finite endpoint accelerations, including zero, select the active zero-APV coordinates; `Inf` omits that endpoint. The inputs must agree on stratification, domain, gravity, endpoint parameters, and free-surface or rigid-lid convention.

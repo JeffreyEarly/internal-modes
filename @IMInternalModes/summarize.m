@@ -57,6 +57,9 @@ function summarize(self, solver)
 %     reason: The diagnostic inner product is available only for modeFamily="hydrostatic" EVPs in the value-only catalog.
 % ```
 %
+% Mean-density-anomaly summaries instead report the surface-referenced
+% `N2*G` integral for `F` and the signed generalized-energy normalization.
+%
 % - Topic: Summarize internal-mode EVPs
 % - Declaration: summarize(evp,solver)
 % - Parameter solver: optional solver for grid-level coefficient and mode-selection assessment
@@ -110,7 +113,9 @@ end
 end
 
 function text = diagnosticRelationText(evp)
-if evp.formulation == "G"
+if evp.modeFamily == "meanDensityAnomaly"
+    text = "F_j(z) = (1/g) integral_z^surface N^2(z') G_j(z') dz'";
+elseif evp.formulation == "G"
     text = "F_j(z) = h_j dG_j/dz(z)";
 elseif evp.modeFamily == "hydrostatic"
     text = "G_j(z) = -g/N^2(z) dF_j/dz(z)";
@@ -125,6 +130,10 @@ if evp.modeFamily == "hydrostatic"
     fprintf('    shared scale: one factor per coupled (F,G) mode\n');
     fprintf('    convention: <G_j,G_j>_G = 1\n');
     fprintf('    implied: <F_j,F_j>_F = h_j\n');
+elseif evp.modeFamily == "meanDensityAnomaly"
+    fprintf('  signed generalized-energy normalization: available\n');
+    fprintf('    shared scale: one positive factor per aligned (F,G) mode\n');
+    fprintf('    convention: <G_j,G_j>_G = epsilon_j, epsilon_j in {-1,+1}\n');
 else
     fprintf('  geostrophic normalization: unavailable for this mode family\n');
 end

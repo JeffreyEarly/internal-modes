@@ -44,6 +44,8 @@ classdef IMInternalModes < IMEigenvalueProblem
         % behavior. The `"hydrostatic"` family declares the hydrostatic
         % `F`/`G` family, enabling the generalized boundary-condition
         % catalog and the coupled `geostrophic` normalization convention.
+        % The `"meanDensityAnomaly"` family solves generalized-energy
+        % `G` modes and carries a surface-referenced diagnostic `F`.
         %
         % - Topic: Inspect internal-mode configuration
         modeFamily = "none"
@@ -120,7 +122,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.formulation: solved variable, `"F"` or `"G"`
-            % - Parameter options.modeFamily: physical family, `"none"` or `"hydrostatic"`
+            % - Parameter options.modeFamily: physical family, `"none"`, `"hydrostatic"`, or `"meanDensityAnomaly"`
             % - Parameter options.p: canonical derivative-flux coefficient
             % - Parameter options.q: canonical left-side value coefficient
             % - Parameter options.r: canonical metric coefficient
@@ -138,7 +140,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.N2 function_handle
                 options.formulation {mustBeTextScalar, mustBeMember(options.formulation, ["F", "G"])} = "G"
-                options.modeFamily {mustBeTextScalar, mustBeMember(options.modeFamily, ["none", "hydrostatic"])} = "none"
+                options.modeFamily {mustBeTextScalar, mustBeMember(options.modeFamily, ["none", "hydrostatic", "meanDensityAnomaly"])} = "none"
                 options.p = @(z,~) ones(size(z))
                 options.q = @(z,~) zeros(size(z))
                 options.r = @(z,~) ones(size(z))
@@ -577,6 +579,81 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             parameters = struct("g0", options.g0, "gd", options.gd, "surfaceBoundary", surfaceConvention);
             evp = IMInternalModes(name="geostrophicAPVModes", formulation="F", modeFamily="hydrostatic", N2=options.N2, zDomain=options.zDomain, p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, surfaceBoundary=surfaceCondition, bottomBoundary=bottomCondition, parameters=parameters);
+        end
+
+        function evp = meanDensityAnomalyModes(options)
+            % Create generalized-energy mean-density-anomaly modes.
+            %
+            % This factory creates the `G`-form problem
+            %
+            % $$
+            % -G_j''(z)=\frac{N^2(z)}{g h_j}G_j(z)
+            % $$
+            %
+            % with endpoint conditions
+            %
+            % $$
+            % g h_jG_j'(z_s)=g_0G_j(z_s),\qquad
+            % g h_jG_j'(z_b)=-g_dG_j(z_b).
+            % $$
+            %
+            % `g0` and `gd` are required. A finite value, including zero,
+            % keeps that endpoint active; zero is the Neumann limit.
+            % Positive infinity imposes Dirichlet data and omits the
+            % corresponding generalized-energy endpoint term. `NaN` and
+            % negative infinity are rejected.
+            %
+            % Solved modes use the signed generalized-energy normalization
+            %
+            % $$
+            % \frac{1}{g}\int_{z_b}^{z_s}N^2G_iG_j\,dz
+            % +\frac{g_0}{g}G_i(z_s)G_j(z_s)
+            % +\frac{g_d}{g}G_i(z_b)G_j(z_b)
+            % =\epsilon_j\delta_{ij},
+            % $$
+            %
+            % with inactive terms omitted. The basis exposes
+            % `basisSet.signatures` as $$\epsilon_j\in\{-1,+1\}$$.
+            % For the continuous projection functional
+            % $$\mathcal G_j[X]=\langle G_j,X\rangle_G$$, normalized
+            % coefficients obey $$A_j=\epsilon_j\mathcal G_j[X]$$.
+            % Its aligned diagnostic pressure modes are computed by
+            % surface-referenced integration,
+            %
+            % $$
+            % F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz',
+            % \qquad F_j(z_s)=0.
+            % $$
+            %
+            % Discrete transforms directly project the `G` channel and
+            % synthesize both `G` and `F`. The diagnostic `F` channel does
+            % not define an independent coefficient projection metric.
+            %
+            % ```matlab
+            % evp = IMInternalModes.meanDensityAnomalyModes( ...
+            %     N2=N2,zDomain=[-4000 0],g0=0.02,gd=Inf);
+            % basisSet = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=8);
+            % F = basisSet.F(z);
+            % G = basisSet.G(z);
+            % ```
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.meanDensityAnomalyModes(options)
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.g0: signed finite surface acceleration, zero, or positive infinity
+            % - Parameter options.gd: signed finite bottom acceleration, zero, or positive infinity
+            % - Returns evp: generalized-energy mean-density-anomaly EVP
+            arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
+                options.g0 (1,1) double {mustBeReal}
+                options.gd (1,1) double {mustBeReal}
+            end
+
+            evp = IMMeanDensityAnomalyModes(N2=options.N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd);
         end
 
         function evp = waveModesAtWavenumber(options)

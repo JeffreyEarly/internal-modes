@@ -44,6 +44,7 @@ base class owns the common generalized-eigenvalue workflow.
   + [`evaluateNativeModes`](/internal-modes/classes-v2/solvers/imsolver/evaluatenativemodes.html)
   + [`evaluatePhysicalDerivative`](/internal-modes/classes-v2/solvers/imsolver/evaluatephysicalderivative.html)
   + [`innerProductGrid`](/internal-modes/classes-v2/solvers/imsolver/innerproductgrid.html)
+  + [`integrateGridValuesFromSurface`](/internal-modes/classes-v2/solvers/imsolver/integrategridvaluesfromsurface.html)
   + [`integrateInnerProduct`](/internal-modes/classes-v2/solvers/imsolver/integrateinnerproduct.html)
   + [`physicalDerivativeMatrix`](/internal-modes/classes-v2/solvers/imsolver/physicalderivativematrix.html)
 

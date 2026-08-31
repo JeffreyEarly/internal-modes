@@ -276,11 +276,12 @@ classdef IMSolverSpectral < IMSolver
             % - Parameter z: physical evaluation points
             % - Returns values: mode values at `z`
             z = z(:);
-            if self.isNativePhysicalGrid(z)
+            nPolynomials = size(nativeModes,1);
+            if nPolynomials == self.nEVP && self.isNativePhysicalGrid(z)
                 TOut = self.T;
             else
                 x = self.clampNativeCoordinate(self.xOfZ(z));
-                TOut = self.chebyshevPolynomialsAtNativePoints(x);
+                TOut = self.chebyshevPolynomialsAtNativePoints(x,nPolynomials);
             end
             values = TOut*nativeModes;
         end
@@ -295,13 +296,14 @@ classdef IMSolverSpectral < IMSolver
             % - Parameter derivativeOrder: physical derivative order
             % - Returns values: derivative values at `z`
             z = z(:);
-            if self.isNativePhysicalGrid(z)
+            nPolynomials = size(nativeModes,1);
+            if nPolynomials == self.nEVP && self.isNativePhysicalGrid(z)
                 TOut = self.T;
                 TxOut = self.Tx;
                 TxxOut = self.Txx;
             else
                 x = self.clampNativeCoordinate(self.xOfZ(z));
-                [TOut, TxOut, TxxOut] = self.chebyshevPolynomialsAtNativePoints(x);
+                [TOut, TxOut, TxxOut] = self.chebyshevPolynomialsAtNativePoints(x,nPolynomials);
             end
             q = self.qAtZ(z);
             qz = self.qzAtZ(z);
@@ -315,6 +317,50 @@ classdef IMSolverSpectral < IMSolver
                 otherwise
                     error("IMSolverSpectral:UnsupportedDerivativeOrder", ...
                         "Derivative order %d is not supported.", derivativeOrder);
+            end
+        end
+
+        function nativeIntegral = integrateGridValuesFromSurface(self, gridValues)
+            % Integrate physical grid values downward from the surface.
+            %
+            % For physical integrands $$f(z)$$ sampled on `zNative`, this
+            % method returns native Chebyshev coefficient columns for
+            %
+            % $$
+            % I(z)=\int_z^{z_s}f(z')\,dz',
+            % \qquad I(z_s)=0.
+            % $$
+            %
+            % The Chebyshev series is integrated in the active native
+            % coordinate $$x$$ after applying the Jacobian
+            % $$dz/dx=1/q$$, where $$q=dx/dz$$. The degree-increasing final
+            % coefficient is retained, and `evaluateNativeModes` evaluates
+            % the resulting representation at its exact degree.
+            %
+            % - Topic: Developer topics
+            % - Declaration: nativeIntegral = integrateGridValuesFromSurface(solver,gridValues)
+            % - Parameter gridValues: physical integrand columns sampled on `zNative`
+            % - Returns nativeIntegral: native Chebyshev coefficient columns for the surface-referenced integrals
+            % - Developer: true
+            arguments
+                self IMSolverSpectral
+                gridValues (:,:) double {mustBeReal, mustBeFinite}
+            end
+
+            if size(gridValues,1) ~= self.nEVP
+                error("IMSolverSpectral:InvalidGridValues", "Grid values must have one row per native grid point.");
+            end
+
+            q = self.qAtZ(self.zNative);
+            integrandCoefficients = self.T \ (gridValues./q(:));
+            nativeIntegral = zeros(size(integrandCoefficients,1)+1,size(integrandCoefficients,2));
+            coordinateScale = (max(self.xNative)-min(self.xNative))/2;
+            for iColumn = 1:size(integrandCoefficients,2)
+                primitive = coordinateScale*InternalModesSpectral.IntegrateChebyshevVector(integrandCoefficients(:,iColumn));
+                surfaceValue = sum(primitive);
+                primitive = -primitive;
+                primitive(1) = primitive(1)+surfaceValue;
+                nativeIntegral(:,iColumn) = primitive;
             end
         end
 
@@ -585,8 +631,11 @@ classdef IMSolverSpectral < IMSolver
             value = length(z) == self.nEVP && max(abs(z(:) - self.zNative(:))) <= self.gridTolerance();
         end
 
-        function [T, Tx, Txx] = chebyshevPolynomialsAtNativePoints(self, x)
+        function [T, Tx, Txx] = chebyshevPolynomialsAtNativePoints(self, x, nPolynomials)
             x = x(:);
+            if nargin < 3
+                nPolynomials = self.nEVP;
+            end
             xMin = min(self.xNative);
             xMax = max(self.xNative);
             L = xMax - xMin;
@@ -594,8 +643,8 @@ classdef IMSolverSpectral < IMSolver
             xNorm = min(max(xNorm, -1), 1);
             theta = acos(xNorm);
 
-            T = zeros(length(x), self.nEVP);
-            for iPoly = 0:(self.nEVP-1)
+            T = zeros(length(x),nPolynomials);
+            for iPoly = 0:(nPolynomials-1)
                 T(:,iPoly+1) = cos(iPoly*theta);
             end
 

@@ -230,6 +230,34 @@ classdef IMSolverFiniteDifference < IMSolver
             values = interp1(flip(self.zNative), flip(derivativeValues,1), z(:), "pchip");
         end
 
+        function nativeIntegral = integrateGridValuesFromSurface(self, gridValues)
+            % Integrate physical grid values downward from the surface.
+            %
+            % For physical integrands $$f(z)$$ sampled on the descending
+            % finite-difference grid, the returned native value columns are
+            %
+            % $$
+            % I(z)=\int_z^{z_s}f(z')\,dz',
+            % \qquad I(z_s)=0.
+            % $$
+            %
+            % - Topic: Developer topics
+            % - Declaration: nativeIntegral = integrateGridValuesFromSurface(solver,gridValues)
+            % - Parameter gridValues: physical integrand columns sampled on `zNative`
+            % - Returns nativeIntegral: native finite-difference values for the surface-referenced integrals
+            % - Developer: true
+            arguments
+                self IMSolverFiniteDifference
+                gridValues (:,:) double {mustBeReal, mustBeFinite}
+            end
+
+            if size(gridValues,1) ~= self.nEVP
+                error("IMSolverFiniteDifference:InvalidGridValues", "Grid values must have one row per native grid point.");
+            end
+            nativeIntegral = -cumtrapz(self.zNative,gridValues,1);
+            nativeIntegral(1,:) = 0;
+        end
+
         function z = innerProductGrid(self, zBounds)
             % Return a bounded physical grid for finite-difference inner products.
             %

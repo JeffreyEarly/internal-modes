@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 16
+nav_order: 17
 mathjax: true
 ---
 
@@ -18,6 +18,7 @@ Print a readable internal-mode EVP summary.
 ```matlab
  summarize(evp,solver)
 ```
+
 ## Parameters
 + `solver`  optional solver for grid-level coefficient and mode-selection assessment
 
@@ -78,3 +79,6 @@ Internal-mode inner products
     inner product: unavailable
     reason: The diagnostic inner product is available only for modeFamily="hydrostatic" EVPs in the value-only catalog.
 ```
+
+Mean-density-anomaly summaries instead report the surface-referenced
+`N2*G` integral for `F` and the signed generalized-energy normalization.
