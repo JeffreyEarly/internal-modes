@@ -445,6 +445,23 @@ classdef IMGeostrophicZeroAPVModesBasis
         end
     end
 
+    methods (Hidden)
+        function tf = sharesCanonicalBasisWith(self, other)
+            arguments
+                self IMGeostrophicZeroAPVModesBasis
+                other IMGeostrophicZeroAPVModesBasis
+            end
+
+            tf = isequal(self.canonicalNativeModes,other.canonicalNativeModes) ...
+                && isequal(self.k,other.k) ...
+                && isequal(self.endpoints,other.endpoints) ...
+                && isequal(self.zDomain,other.zDomain) ...
+                && isequal(self.f0,other.f0) ...
+                && isequal(self.g,other.g) ...
+                && isequal(self.surfaceBoundary,other.surfaceBoundary);
+        end
+    end
+
     methods (Access = private)
         function [responseMetric,physicalEnergy,surfaceBuoyancy,bottomBuoyancy] = formCanonicalQuadraticMatrices(self)
             nEndpoints = numel(self.endpoints);

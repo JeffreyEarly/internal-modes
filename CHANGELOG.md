@@ -11,6 +11,7 @@
 - compressed the normalized Gram Frobenius fit to independent symmetric mode pairs
 - added exact point-limited scalar transform construction and `IMDiscreteTransformAssessment`, including one-rule retained-prefix Gram diagnostics, optional rejected-mode leakage and scalar quadratic-aliasing policies, strict explicit-band failures, and constant/exponential/DCT-I regression coverage
 - added aligned internal-mode `F/G` discrete transforms with one shared point-and-weight rule, variable-qualified synthesis and projection matrices, zero-column active projectors, endpoint and physical metadata snapshots, stacked shared-weight fitting, worst-channel Gram and leakage policies, and coupled `FF->F`, `FG->G`, and `GG->F` quadratic-aliasing assessment
+- added `IMGeostrophicTransform` to compose generalized-energy APV transforms with boundary-normalized or rotated geostrophic zero-APV coordinates, including admissible-state inversion, generic volume-plus-endpoint source projection, explicit wavenumber pages, singularity diagnostics, and arbitrary trailing field dimensions
 
 ## [2.0.0] - 2026-05-19
 - added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`

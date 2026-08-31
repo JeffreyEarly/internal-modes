@@ -97,3 +97,68 @@ Products involving an identically zero source column are skipped. Continuous pro
 `IMInternalModesDiscreteTransformAssessment.prefixDiagnostics` records the worst variable or product channel at every prefix. `variablePrefixDiagnostics(variable=...)` exposes active counts, Gram and round-trip errors, rank, conditioning, and target definiteness for one channel. Supplying explicit `nModes` remains strict: a failing requested family band throws instead of silently shortening it.
 
 These diagnostics assess the sampled transform rule. Continuous EVP residuals, coefficient tails, boundary residuals, and refinement remain part of the separate solver-quality workflow.
+
+## Geostrophic APV and boundary composition
+
+`IMGeostrophicTransform` consumes a generalized-energy APV `IMInternalModesDiscreteTransform` and a canonical `IMGeostrophicZeroAPVModesBasis`. Finite endpoint accelerations, including zero, select the active zero-APV coordinates; `Inf` omits that endpoint. The inputs must agree on stratification, domain, gravity, endpoint parameters, and free-surface or rigid-lid convention.
+
+For APV eigendepth $$h_j$$ and positive horizontal wavenumber $$\kappa$$,
+
+$$
+\mu_\kappa^j=\kappa^2+\frac{f_0^2}{g h_j}.
+$$
+
+The transform rejects a retained mode when the relative separation of $$\mu_\kappa^j$$ from zero is at or below `muTolerance`. Its public `apvEndpointResponse` has dimensions `nEndpoints x nAPVModes x nK` and is assembled from the normalized APV endpoint traces:
+
+$$
+\mathbf r_q^{\kappa j}=-\frac{f_0}{g\mu_\kappa^j}
+\begin{bmatrix}B_{\mathrm s}^j\\G_j(z_b)\end{bmatrix},
+\qquad
+B_{\mathrm s}^j=
+\begin{cases}
+G_j(0)-F_j(0), & \text{free surface},\\
+G_j(0), & \text{rigid lid}.
+\end{cases}
+$$
+
+Admissible-state arrays preserve explicit wavenumber pages and arbitrary trailing field dimensions:
+
+| Quantity | Leading dimensions |
+| --- | --- |
+| sampled APV or sampled source | `nZ x nK x ...` |
+| endpoint anomalies | `nEndpoints x nK x ...` |
+| APV coefficients | `nAPVModes x nK x ...` |
+| zero-APV coefficients | `nEndpoints x nK x ...` |
+
+The state transform first projects APV through the `F` forward channel, then obtains boundary-normalized coefficients from
+
+$$
+\mathbf A_0^\kappa=-\frac{g\kappa^2}{f_0}
+\left(\mathbf b^\kappa-\mathsf R_q^\kappa\mathbf A_q^\kappa\right).
+$$
+
+Its inverse reconstructs
+
+$$
+q=A_{\mathrm i}^{F}\mathbf A_q,
+\qquad
+\mathbf b^\kappa=\mathsf R_q^\kappa\mathbf A_q^\kappa
+-\frac{f_0}{g\kappa^2}\mathbf A_0^\kappa.
+$$
+
+Generic source projection is deliberately separate. It uses `modeProjectionFunctional`, not `transformForward`, because the source equations require raw mode pairings before the APV Gram solve:
+
+$$
+S_q^j=\frac{1}{D}\int F_jS_\omega\,dz
+-\frac{f_0}{D}\mathcal G_q^j[S_\eta].
+$$
+
+The canonical zero-APV source coefficients solve
+
+$$
+\widehat{\mathsf H}_g^\kappa\mathbf S_0^\kappa=\mathbf p_0^\kappa,
+\qquad
+\widehat{\mathsf H}_g^\kappa=\frac{2\kappa^2}{D}\mathsf H_g^\kappa,
+$$
+
+using the APV transform's points and weights together with the required endpoint source terms. Passing a rotated basis through `zeroAPVCoordinates` applies the inverse coordinate map on forward operations and the forward map on reconstruction, leaving the physical state and source projection unchanged.
