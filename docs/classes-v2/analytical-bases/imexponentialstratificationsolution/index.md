@@ -26,7 +26,7 @@ Analytical solution family for exponential stratification.
 $$N^2(z)=N_0^2\exp(2z/b)$$ on domains with the surface at $$z=0$$. It
 can create exact internal-mode bases for supported rigid-bottom
 internal-mode EVPs, generalized-energy geostrophic APV EVPs, and
-exact surface or bottom SQG boundary modes.
+exact geostrophic zero-APV boundary-response modes.
 
 The generalized-energy APV branch recognizes a hydrostatic `F` EVP
 named `"geostrophicAPVModes"` with canonical coefficients
@@ -41,10 +41,18 @@ metadata. Exact APV bases use the volume-only `depth` normalization
 by default; the Bessel formulas and endpoint inner products remain
 available under every other supported normalization.
 
+Exact geostrophic zero-APV modes use scaled modified-Bessel functions
+and exact derivatives. A two-column response solve supplies unit
+surface and bottom coordinates for free-surface and rigid-lid models.
+The older one-boundary profile formula used unit `f0*Fz` at its active
+boundary; the public exact basis uses the canonical response
+normalization shared with the numerical zero-APV basis.
+
 ```matlab
 solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);
 evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
 basisSet = solution.internalModes(evp,nModes=4);
+exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
 ```
 
 
@@ -54,11 +62,9 @@ basisSet = solution.internalModes(evp,nModes=4);
 + Create analytical solutions
   + [`IMExponentialStratificationSolution`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/imexponentialstratificationsolution.html) Create an exponential-stratification analytical solution family.
 + Compute internal modes
-  + [`internalModeAvailability`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/internalmodeavailability.html) Report whether exact internal modes are available.
   + [`internalModes`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/internalmodes.html) Create an exact internal-mode basis.
-+ Compute SQG modes
-  + [`sqgAvailability`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/sqgavailability.html) Report whether exact SQG modes are available.
-  + [`sqgModesAtWavenumber`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/sqgmodesatwavenumber.html) Create exact SQG boundary modes at fixed wavenumber.
++ Compute geostrophic zero-APV modes
+  + [`geostrophicZeroAPVModesAtWavenumber`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/geostrophiczeroapvmodesatwavenumber.html) Create exact canonical geostrophic zero-APV modes.
 + Inspect analytical solutions
   + [`N0`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/n0.html) Surface buoyancy frequency $$N_0$$ in radians per second.
   + [`N2`](/internal-modes/classes-v2/analytical-bases/imexponentialstratificationsolution/n2.html) Evaluate $$N^2(z)=N_0^2\exp(2z/b)$$.

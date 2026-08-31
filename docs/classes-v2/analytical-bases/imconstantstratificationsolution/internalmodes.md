@@ -29,8 +29,8 @@ Create an exact internal-mode basis.
 
 ## Discussion
 
-Generalized-energy APV modes are returned in ascending
-eigenvalue order $$1/h$$. Hyperbolic negative branches come
-first, followed by an optional affine zero branch with
-`h=Inf`, then trigonometric positive branches. The same
-positive depth-normalization factor scales exact `F` and `G`.
+  Generalized-energy APV modes are returned in ascending
+  eigenvalue order $$1/h$$. Hyperbolic negative branches come
+  first, followed by an optional affine zero branch with
+  `h=Inf`, then trigonometric positive branches. The same
+  positive depth-normalization factor scales exact `F` and `G`.

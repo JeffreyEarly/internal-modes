@@ -3,8 +3,8 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     %
     % `IMConstantStratificationSolution` owns the closed-form formulas for
     % $$N^2(z)=N_0^2$$. It can create exact internal-mode bases for the
-    % supported canonical internal-mode EVPs and exact surface or bottom SQG
-    % boundary modes.
+    % supported canonical internal-mode EVPs and exact geostrophic zero-APV
+    % boundary-response modes.
     %
     % The public `IMInternalModes.geostrophicAPVModes` descriptor selects
     % an exact generalized-energy APV catalog. Positive eigendepths use
@@ -17,15 +17,24 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     % expose roots, residuals, branch labels, endpoint inertia, `g0`, `gd`,
     % and `surfaceBoundary` in their metadata.
     %
+    % Exact geostrophic zero-APV modes use scaled hyperbolic functions with
+    % $$m=kN_0/|f_0|$$. A two-column response solve produces unit surface
+    % and bottom coordinates under either the free-surface response `G-F`
+    % or the rigid-lid response `G`. The older one-boundary profile formula
+    % used unit `f0*Fz` at its active boundary; the public exact basis instead
+    % uses the canonical response normalization shared with the numerical
+    % zero-APV basis.
+    %
     % ```matlab
     % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
     % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
     % basisSet = solution.internalModes(evp,nModes=4);
+    % exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
     % ```
     %
     % - Topic: Create analytical solutions
     % - Topic: Compute internal modes
-    % - Topic: Compute SQG modes
+    % - Topic: Compute geostrophic zero-APV modes
     % - Topic: Inspect analytical solutions
     % - Topic: Developer topics
     % - Declaration: classdef IMConstantStratificationSolution < IMAnalyticalSolution
@@ -72,39 +81,6 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             end
 
             values = self.N0*self.N0*ones(size(z));
-        end
-
-        function availability = internalModeAvailability(self, evp)
-            % Report whether exact internal modes are available.
-            %
-            % For a `"geostrophicAPVModes"` descriptor, availability also
-            % verifies constant stratification, the canonical APV
-            % coefficients, both endpoint conditions, and the direct APV
-            % metadata contract. Qualifying hydrostatic families report
-            % the volume-only `depth` normalization.
-            %
-            % - Topic: Compute internal modes
-            % - Declaration: availability = internalModeAvailability(solution,evp)
-            % - Parameter evp: internal-mode EVP
-            % - Returns availability: availability report struct
-            arguments
-                self IMConstantStratificationSolution
-                evp = []
-            end
-
-            try
-                evp = self.resolveEVP(evp);
-                if IMConstantGeostrophicAPVCatalog.isTargetEVP(evp)
-                    IMConstantGeostrophicAPVCatalog.validateEVP(evp, self.N0, self.zDomain);
-                else
-                    IMConstantStratificationSolution.validateEVP(evp);
-                end
-                availability = self.availabilityStruct(true, "internalModes", "constantStratification", "Constant-stratification formulas are available for this EVP.");
-                availability.supportedNormalizations = IMConstantStratificationSolution.supportedNormalizations(evp);
-            catch exception
-                availability = self.availabilityStruct(false, "internalModes", "constantStratification", exception.message);
-                availability.supportedNormalizations = string.empty(1,0);
-            end
         end
 
         function basisSet = internalModes(self, evp, options)
@@ -164,68 +140,59 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             basisSet = IMAnalyticalInternalModesBasis(solution=self, evp=evp, h=h, modeNumber=modeNumber, N2=@(z) self.N2(z), rawVariableFunction=@(basisSet,variable,z) self.rawVariable(modeData, evp, variable, z), rawUzFunction=@(basisSet,z) self.rawUz(modeData, evp, z), normalization=options.normalization, metadata=metadata);
         end
 
-        function availability = sqgAvailability(self, options)
-            % Report whether exact SQG modes are available.
+        function basisSet = geostrophicZeroAPVModesAtWavenumber(self,k,options)
+            % Create exact canonical geostrophic zero-APV modes.
             %
-            % - Topic: Compute SQG modes
-            % - Declaration: availability = sqgAvailability(solution,options)
-            % - Parameter options.boundary: `"surface"` or `"bottom"`
-            % - Returns availability: availability report struct
-            arguments
-                self IMConstantStratificationSolution
-                options.boundary {mustBeTextScalar, mustBeMember(options.boundary, ["surface", "bottom"])} = "surface"
-            end
-
-            if abs(self.f0) <= eps(max(1,abs(self.f0)))
-                availability = self.availabilityStruct(false, "sqgModes", "constantStratification", "SQG modes require nonzero f0.");
-                return;
-            end
-            availability = self.availabilityStruct(true, "sqgModes", "constantStratification", "Constant-stratification SQG formulas are available.");
-            availability.boundary = string(options.boundary);
-            availability.supportedVariables = "psi";
-            availability.supportedInnerProducts = string.empty(1,0);
-            availability.supportedNormalizations = string.empty(1,0);
-        end
-
-        function basisSet = sqgModesAtWavenumber(self, k, options)
-            % Create exact SQG boundary modes at fixed wavenumber.
+            % The exact columns solve
             %
-            % - Topic: Compute SQG modes
-            % - Declaration: sqg = sqgModesAtWavenumber(solution,k,options)
-            % - Parameter k: horizontal wavenumbers
-            % - Parameter options.boundary: `"surface"` or `"bottom"`
+            % $$
+            % \frac{f_0^2}{N_0^2}F_{zz}-k^2F=0,
+            % \qquad G=-\frac{g}{N_0^2}F_z,
+            % $$
+            %
+            % and have unit response at each requested endpoint and zero
+            % response at the other endpoint.
+            %
+            % - Topic: Compute geostrophic zero-APV modes
+            % - Declaration: exactModes = geostrophicZeroAPVModesAtWavenumber(solution,k,options)
+            % - Parameter k: positive horizontal wavenumbers
+            % - Parameter options.endpoints: requested surface and bottom coordinates
+            % - Parameter options.surfaceBoundary: `"freeSurface"` or `"rigidLid"`
             % - Parameter options.metadata: additional metadata
-            % - Returns sqg: exact SQG basis
+            % - Returns exactModes: exact boundary-normalized basis
             arguments
                 self IMConstantStratificationSolution
                 k double {mustBeReal, mustBeFinite, mustBePositive}
-                options.boundary {mustBeTextScalar, mustBeMember(options.boundary, ["surface", "bottom"])} = "surface"
+                options.endpoints {mustBeText} = ["surface", "bottom"]
+                options.surfaceBoundary {mustBeTextScalar} = "freeSurface"
                 options.metadata struct = struct()
             end
 
-            availability = self.sqgAvailability(boundary=options.boundary);
-            if ~availability.isAvailable
-                error("IMConstantStratificationSolution:UnavailableSQG", "%s", availability.reason);
-            end
+            [endpoints,surfaceBoundary] = self.validateZeroAPVRequest(options.endpoints,options.surfaceBoundary);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) self.N2(z),zDomain=self.zDomain,f0=self.f0,g=self.g,k=k,endpoints=endpoints,surfaceBoundary=surfaceBoundary,metadata=options.metadata);
+            modeData = self.zeroAPVModeData(problem);
             metadata = options.metadata;
             metadata.analyticalSolution = "constantStratification";
-            metadata.boundary = string(options.boundary);
-            basisSet = IMAnalyticalSQGBasis(solution=self, k=k, boundary=options.boundary, N2=@(z) self.N2(z), psiFunction=@(z) self.sqgPsi(k, options.boundary, z), metadata=metadata);
+            metadata.analyticalFamily = "geostrophicZeroAPV";
+            metadata.endpoints = problem.endpoints;
+            metadata.surfaceBoundary = problem.surfaceBoundary;
+            metadata.responseReciprocalCondition = modeData.responseReciprocalCondition;
+            metadata.formulaFamily = "scaledHyperbolic";
+            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self,problem=problem,FFunction=@(z) self.zeroAPVVariable(modeData,problem,"F",z),GFunction=@(z) self.zeroAPVVariable(modeData,problem,"G",z),metadata=metadata);
         end
 
-        function summarize(self, evp)
+        function summarize(self)
             % Print a readable solution-family summary.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: summarize(solution,evp)
-            % - Parameter evp: optional internal-mode EVP
+            % - Declaration: summarize(solution)
             arguments
                 self IMConstantStratificationSolution
-                evp = []
             end
 
-            summarize@IMAnalyticalSolution(self, evp);
+            summarize@IMAnalyticalSolution(self);
             fprintf("  N0: %g\n", self.N0);
+            fprintf("  exact operations: internalModes, geostrophicZeroAPVModesAtWavenumber\n");
         end
     end
 
@@ -353,19 +320,85 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             end
         end
 
-        function values = sqgPsi(self, k, boundary, z)
-            k = reshape(k,1,[]);
-            z = z(:) - self.zDomain(2);
-            depth = diff(self.zDomain);
-            lambda = k*(self.N0/self.f0);
-            denominator = k.*(1 - exp(-2*lambda*depth));
-            if string(boundary) == "surface"
-                numerator = exp(z.*lambda) + exp(-(z + 2*depth).*lambda);
-                values = (1/self.N0)*numerator./denominator;
-            else
-                numerator = exp((z - depth).*lambda) + exp(-(z + depth).*lambda);
-                values = -(1/self.N0)*numerator./denominator;
+        function [endpoints,surfaceBoundary] = validateZeroAPVRequest(self,endpoints,surfaceBoundary)
+            if self.f0 == 0
+                error("IMConstantStratificationSolution:InvalidCoriolis", "Exact geostrophic zero-APV modes require nonzero f0.");
             end
+            endpoints = reshape(string(endpoints),1,[]);
+            canonicalEndpoints = ["surface", "bottom"];
+            if isempty(endpoints)
+                error("IMConstantStratificationSolution:NoEndpoint", "endpoints must request at least one of ""surface"" or ""bottom"".");
+            end
+            if any(~ismember(endpoints,canonicalEndpoints))
+                error("IMConstantStratificationSolution:InvalidEndpoint", "endpoints must contain only ""surface"" and ""bottom"".");
+            end
+            if numel(unique(endpoints)) ~= numel(endpoints)
+                error("IMConstantStratificationSolution:DuplicateEndpoint", "endpoints must not contain duplicate values.");
+            end
+            endpoints = canonicalEndpoints(ismember(canonicalEndpoints,endpoints));
+            surfaceBoundary = string(surfaceBoundary);
+            if ~ismember(surfaceBoundary,["freeSurface", "rigidLid"])
+                error("IMConstantStratificationSolution:UnsupportedSurfaceBoundary", "surfaceBoundary must be ""freeSurface"" or ""rigidLid"".");
+            end
+        end
+
+        function modeData = zeroAPVModeData(self,problem)
+            nEndpoints = numel(problem.endpoints);
+            nK = numel(problem.k);
+            coefficients = zeros(2,nEndpoints,nK);
+            m = problem.k*self.N0/abs(self.f0);
+            responseReciprocalCondition = zeros(1,nK);
+            for iK = 1:nK
+                [FSurface,FzSurface] = self.zeroAPVFundamental(m(iK),problem.zDomain(2));
+                [~,FzBottom] = self.zeroAPVFundamental(m(iK),problem.zDomain(1));
+                GSurface = -(self.g/(self.N0*self.N0))*FzSurface;
+                GBottom = -(self.g/(self.N0*self.N0))*FzBottom;
+                surfaceResponse = GSurface;
+                if problem.surfaceBoundary == "freeSurface"
+                    surfaceResponse = surfaceResponse-FSurface;
+                end
+                responseMatrix = [surfaceResponse; GBottom];
+                responseReciprocalCondition(iK) = rcond(responseMatrix);
+                if responseReciprocalCondition(iK) <= 100*eps
+                    error("IMConstantStratificationSolution:DegenerateEndpointResponse", "The exact endpoint-response matrix is numerically singular at k=%g.",problem.k(iK));
+                end
+                canonicalCoefficients = responseMatrix\eye(2);
+                columnIndices = 1 + (problem.endpoints == "bottom");
+                coefficients(:,:,iK) = canonicalCoefficients(:,columnIndices);
+            end
+            modeData = struct(m=m,coefficients=coefficients,responseReciprocalCondition=responseReciprocalCondition);
+        end
+
+        function values = zeroAPVVariable(self,modeData,problem,variable,z)
+            z = z(:);
+            values = zeros(numel(z),numel(problem.endpoints),numel(problem.k));
+            for iK = 1:numel(problem.k)
+                [fundamental,FzFundamental] = self.zeroAPVFundamental(modeData.m(iK),z);
+                if string(variable) == "F"
+                    raw = fundamental;
+                else
+                    raw = -(self.g/(self.N0*self.N0))*FzFundamental;
+                end
+                values(:,:,iK) = raw*modeData.coefficients(:,:,iK);
+            end
+        end
+
+        function [F,Fz] = zeroAPVFundamental(self,m,z)
+            midpoint = mean(self.zDomain);
+            halfDepth = diff(self.zDomain)/2;
+            y = z(:)-midpoint;
+            if m*halfDepth < 50
+                scale = exp(-m*halfDepth);
+                first = scale*cosh(m*y);
+                second = scale*sinh(m*y)/m;
+            else
+                upperExponential = exp(m*(y-halfDepth));
+                lowerExponential = exp(-m*(y+halfDepth));
+                first = 0.5*(upperExponential+lowerExponential);
+                second = 0.5*(upperExponential-lowerExponential)/m;
+            end
+            F = [first second];
+            Fz = [m*m*second first];
         end
     end
 

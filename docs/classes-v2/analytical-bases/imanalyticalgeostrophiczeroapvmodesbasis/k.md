@@ -1,15 +1,15 @@
 ---
 layout: default
 title: k
-parent: IMAnalyticalSQGBasis
+parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 4
+nav_order: 13
 mathjax: true
 ---
 
 #  k
 
-Horizontal wavenumbers.
+Horizontal-wavenumber pages.
 
 
 ---

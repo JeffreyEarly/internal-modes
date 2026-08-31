@@ -24,8 +24,8 @@ Analytical solution family for constant stratification.
 
 `IMConstantStratificationSolution` owns the closed-form formulas for
 $$N^2(z)=N_0^2$$. It can create exact internal-mode bases for the
-supported canonical internal-mode EVPs and exact surface or bottom SQG
-boundary modes.
+supported canonical internal-mode EVPs and exact geostrophic zero-APV
+boundary-response modes.
 
 The public `IMInternalModes.geostrophicAPVModes` descriptor selects
 an exact generalized-energy APV catalog. Positive eigendepths use
@@ -38,10 +38,19 @@ APV bases use the volume-only `depth` normalization by default and
 expose roots, residuals, branch labels, endpoint inertia, `g0`, `gd`,
 and `surfaceBoundary` in their metadata.
 
+Exact geostrophic zero-APV modes use scaled hyperbolic functions with
+$$m=kN_0/|f_0|$$. A two-column response solve produces unit surface
+and bottom coordinates under either the free-surface response `G-F`
+or the rigid-lid response `G`. The older one-boundary profile formula
+used unit `f0*Fz` at its active boundary; the public exact basis instead
+uses the canonical response normalization shared with the numerical
+zero-APV basis.
+
 ```matlab
 solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
 evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
 basisSet = solution.internalModes(evp,nModes=4);
+exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
 ```
 
 
@@ -51,11 +60,9 @@ basisSet = solution.internalModes(evp,nModes=4);
 + Create analytical solutions
   + [`IMConstantStratificationSolution`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/imconstantstratificationsolution.html) Create a constant-stratification analytical solution family.
 + Compute internal modes
-  + [`internalModeAvailability`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/internalmodeavailability.html) Report whether exact internal modes are available.
   + [`internalModes`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/internalmodes.html) Create an exact internal-mode basis.
-+ Compute SQG modes
-  + [`sqgAvailability`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/sqgavailability.html) Report whether exact SQG modes are available.
-  + [`sqgModesAtWavenumber`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/sqgmodesatwavenumber.html) Create exact SQG boundary modes at fixed wavenumber.
++ Compute geostrophic zero-APV modes
+  + [`geostrophicZeroAPVModesAtWavenumber`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/geostrophiczeroapvmodesatwavenumber.html) Create exact canonical geostrophic zero-APV modes.
 + Inspect analytical solutions
   + [`N0`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/n0.html) Constant buoyancy frequency $$N_0$$ in radians per second.
   + [`N2`](/internal-modes/classes-v2/analytical-bases/imconstantstratificationsolution/n2.html) Evaluate $$N^2(z)=N_0^2$$.

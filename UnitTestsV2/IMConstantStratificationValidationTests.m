@@ -165,7 +165,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             end
         end
 
-        function constantSQGModesMatchReferenceFormulas(testCase)
+        function constantZeroAPVModesUseCanonicalVariables(testCase)
             N0 = 5.2e-3;
             f0 = 1e-4;
             zDomain = [-5000 0];
@@ -173,19 +173,12 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             z = linspace(zDomain(1), zDomain(2), 9).';
             solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, f0=f0);
 
-            surface = solution.sqgModesAtWavenumber(k, boundary="surface");
-            bottom = solution.sqgModesAtWavenumber(k, boundary="bottom");
+            exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary="rigidLid");
 
-            depth = diff(zDomain);
-            zRel = z - zDomain(2);
-            lambda = k*(N0/f0);
-            denominator = k.*(1 - exp(-2*lambda*depth));
-            expectedSurface = (1/N0)*(exp(zRel.*lambda) + exp(-(zRel + 2*depth).*lambda))./denominator;
-            expectedBottom = -(1/N0)*(exp((zRel - depth).*lambda) + exp(-(zRel + depth).*lambda))./denominator;
-
-            testCase.verifyClass(surface, "IMAnalyticalSQGBasis")
-            testCase.verifyEqual(surface.psi(z), expectedSurface, RelTol=1e-12)
-            testCase.verifyEqual(bottom.psi(z), expectedBottom, RelTol=1e-12)
+            testCase.verifyClass(exactModes,"IMAnalyticalGeostrophicZeroAPVModesBasis")
+            testCase.verifySize(exactModes.F(z),[9 2 2])
+            testCase.verifySize(exactModes.G(z),[9 2 2])
+            testCase.verifyEqual(exactModes.endpointResponseMetric,repmat(eye(2),1,1,2),AbsTol=2e-13)
         end
     end
 end

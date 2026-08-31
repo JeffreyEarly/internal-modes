@@ -1,15 +1,15 @@
 ---
 layout: default
 title: solution
-parent: IMAnalyticalSQGBasis
+parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 7
+nav_order: 25
 mathjax: true
 ---
 
 #  solution
 
-Analytical solution family that created this SQG basis.
+Analytical solution family that created this basis.
 
 
 ---

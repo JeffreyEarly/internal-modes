@@ -4,14 +4,15 @@ This note summarizes the V2 analytical-solution validation tests in
 `UnitTestsV2`. The tests now exercise the canonical EVP stack:
 `IMEigenvalueProblem`, `IMBoundaryCondition`, `IMInternalModes`,
 `IMAnalyticalSolution`, `IMAnalyticalInternalModesBasis`, and
-`IMAnalyticalSQGBasis`.
+`IMAnalyticalGeostrophicZeroAPVModesBasis`.
 
 ## Current Coverage
 
 | Test suite | Analytical solution family | Main purpose |
 | --- | --- | --- |
-| `IMConstantStratificationValidationTests.m` | `IMConstantStratificationSolution` | Constant-stratification spectra, free-surface branch construction, hydrostatic `F` zero mode, SQG boundary modes, and spectral coordinate smoke checks. |
-| `IMExponentialStratificationValidationTests.m` | `IMExponentialStratificationSolution` | Exponential Bessel-branch construction, free-surface branch construction, hydrostatic `F` null branch, SQG boundary modes, and unsupported-boundary rejection. |
+| `IMConstantStratificationValidationTests.m` | `IMConstantStratificationSolution` | Constant-stratification spectra, free-surface branch construction, hydrostatic `F` zero mode, exact zero-APV construction, and spectral coordinate smoke checks. |
+| `IMExponentialStratificationValidationTests.m` | `IMExponentialStratificationSolution` | Exponential Bessel-branch construction, free-surface branch construction, hydrostatic `F` null branch, exact zero-APV construction, and unsupported-boundary rejection. |
+| `IMAnalyticalGeostrophicZeroAPVModesTests.m` | both concrete families | Independent constant and exponential formulas, canonical endpoint responses, continuous quadratic forms, rotations, and numerical convergence. |
 
 ## Solver Validation
 

@@ -9,7 +9,7 @@ mathjax: true
 
 #  IMAnalyticalSolution
 
-Create an analytical solution family.
+Initialize common analytical-stratification state.
 
 
 ---

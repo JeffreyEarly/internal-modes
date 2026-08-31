@@ -151,15 +151,13 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             testCase.verifyLessThan(subspaceError, 2e-6)
         end
 
-        function availabilityAndMetadataAdvertisePublicAPVContract(testCase)
+        function metadataAdvertisesPublicAPVContract(testCase)
             [N0, zDomain, g, N2] = testCase.profile();
             evp = IMInternalModes.geostrophicAPVModes(N2=N2, zDomain=zDomain, g=g, g0=-0.02, gd=Inf, surfaceBoundary="freeSurface");
             solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
-            availability = solution.internalModeAvailability(evp);
             basisSet = solution.internalModes(evp, nModes=3);
 
-            testCase.verifyTrue(availability.isAvailable)
-            testCase.verifyTrue(ismember("depth", availability.supportedNormalizations))
+            testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
             testCase.verifyEqual(basisSet.metadata.analyticalFamily, "generalizedEnergyAPV")
             testCase.verifyEqual(basisSet.metadata.g0, evp.parameters.g0, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.gd, evp.parameters.gd, AbsTol=0)

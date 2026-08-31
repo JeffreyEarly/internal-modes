@@ -3,25 +3,22 @@ layout: default
 title: summarize
 parent: IMAnalyticalSolution
 grand_parent: Analytical bases
-nav_order: 9
+nav_order: 5
 mathjax: true
 ---
 
 #  summarize
 
-Print a readable summary of the analytical solution.
+Print common analytical-stratification state.
 
 
 ---
 
 ## Declaration
 ```matlab
- summarize(solution,evp)
+ summarize(solution)
 ```
-## Parameters
-+ `evp`  optional internal-mode EVP
-
 ## Discussion
 
-With an EVP input, the summary also reports internal-mode
-availability for that problem.
+  Concrete families extend this summary with their parameters and
+  exact construction methods.

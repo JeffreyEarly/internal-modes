@@ -29,11 +29,11 @@ Create an exact internal-mode basis.
 
 ## Discussion
 
-Generalized-energy APV modes use ordinary Bessel functions on
-positive-$$h$$ branches, modified Bessel functions on
-negative-$$h$$ branches, and the exact integrated solution on
-a zero branch. Endpoint inertia determines whether zero, one,
-or two negative modes precede the zero and positive modes.
-Both `geostrophic` and volume-only `depth` normalization
-factors remain real and positive for every retained branch;
-`depth` is the APV default.
+  Generalized-energy APV modes use ordinary Bessel functions on
+  positive-$$h$$ branches, modified Bessel functions on
+  negative-$$h$$ branches, and the exact integrated solution on
+  a zero branch. Endpoint inertia determines whether zero, one,
+  or two negative modes precede the zero and positive modes.
+  Both `geostrophic` and volume-only `depth` normalization
+  factors remain real and positive for every retained branch;
+  `depth` is the APV default.

@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMConstantStratificationSolution
 grand_parent: Analytical bases
-nav_order: 8
+nav_order: 6
 mathjax: true
 ---
 
@@ -16,9 +16,6 @@ Print a readable solution-family summary.
 
 ## Declaration
 ```matlab
- summarize(solution,evp)
+ summarize(solution)
 ```
-## Parameters
-+ `evp`  optional internal-mode EVP
-
 ## Discussion

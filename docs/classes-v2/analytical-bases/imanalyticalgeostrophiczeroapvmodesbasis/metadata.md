@@ -1,15 +1,15 @@
 ---
 layout: default
 title: metadata
-parent: IMAnalyticalSQGBasis
+parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 5
+nav_order: 14
 mathjax: true
 ---
 
 #  metadata
 
-Additional creation metadata.
+Additional creation and rotation metadata.
 
 
 ---

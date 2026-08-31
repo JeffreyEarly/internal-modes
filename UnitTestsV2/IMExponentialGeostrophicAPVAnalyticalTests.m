@@ -29,12 +29,10 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             solution = IMExponentialStratificationSolution( ...
                 N0=N0, b=b, zDomain=zDomain, g=g);
 
-            availability = solution.internalModeAvailability(evp);
             basisSet = solution.internalModes(evp, nModes=4);
             expectedH = testCase.canonicalEigendepths(N0, b, zDomain, g, g0);
 
-            testCase.verifyTrue(availability.isAvailable)
-            testCase.verifyTrue(ismember("depth", availability.supportedNormalizations))
+            testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
             testCase.verifyEqual(basisSet.h, expectedH, RelTol=5e-11)
             testCase.verifyEqual(basisSet.modeNumber, [-1 1 2 3])
             testCase.verifyEqual(string(basisSet.normalization), "depth")
@@ -235,10 +233,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             solution = IMExponentialStratificationSolution( ...
                 N0=N0, b=b, zDomain=zDomain, g=g);
 
-            availability = solution.internalModeAvailability(evp);
-
-            testCase.verifyFalse(availability.isAvailable)
-            testCase.verifyMatches(availability.reason, "does not match")
+            testCase.verifyError(@() solution.internalModes(evp,nModes=4),"IMExponentialStratificationSolution:UnsupportedStratification")
         end
     end
 

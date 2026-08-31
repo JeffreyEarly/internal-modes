@@ -1,9 +1,9 @@
 ---
 layout: default
 title: zDomain
-parent: IMAnalyticalSolution
+parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 6
+nav_order: 29
 mathjax: true
 ---
 

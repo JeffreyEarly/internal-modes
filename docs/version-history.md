@@ -7,6 +7,7 @@ nav_order: 100
 # Version History
 
 ## Unreleased
+- replaced the V2 analytical SQG-profile and availability-report APIs with concrete constant- and exponential-stratification `geostrophicZeroAPVModesAtWavenumber` constructors, exact canonical `F/G` endpoint responses, and an `IMAnalyticalGeostrophicZeroAPVModesBasis` supporting the numerical quadratic-form and rotation contracts
 - replaced the projected surface-geostrophic API with coefficient-independent `IMGeostrophicZeroAPVModes` boundary-response problems, page-shaped canonical `F/G` bases, explicit physical-energy and endpoint-buoyancy forms, and boundary-depth, surface-buoyancy, and custom symmetric-pencil rotations
 - added the public v2 `IMInternalModes.geostrophicAPVModes` generalized-energy APV factory, signed endpoint-limit mappings and metadata, exact numerical zero retention, volume-only `depth` normalization, and exact constant-stratification trigonometric/affine/hyperbolic branches with independent factory, endpoint, normalization, analytical-root, and refined-spectral regression coverage
 - added exact exponential-stratification generalized-energy geostrophic APV modes, including positive, zero, and negative equivalent-depth branches, free-surface and rigid-lid conventions, all finite/zero/infinite endpoint limits, signed-spectrum diagnostics, and analytical-versus-numerical regression coverage

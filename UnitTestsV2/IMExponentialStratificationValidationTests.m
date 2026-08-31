@@ -143,7 +143,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyError(@() solution.internalModes(evp, nModes=2), "IMExponentialStratificationSolution:UnsupportedBoundary")
         end
 
-        function exponentialSQGModesMatchReferenceFormulas(testCase)
+        function exponentialZeroAPVModesUseCanonicalVariables(testCase)
             N0 = 5.2e-3;
             b = 1300;
             f0 = 1e-4;
@@ -152,25 +152,12 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             z = linspace(zDomain(1), zDomain(2), 9).';
             solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain, f0=f0);
 
-            surface = solution.sqgModesAtWavenumber(k, boundary="surface");
-            bottom = solution.sqgModesAtWavenumber(k, boundary="bottom");
+            exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary="rigidLid");
 
-            alpha = 2/b;
-            eta = N0*k/(alpha*f0);
-            depth = diff(zDomain);
-            zRel = z - zDomain(2);
-            argument = 2*exp(alpha*zRel/2).*eta;
-            bottomFactor = exp(-alpha*depth/2);
-            surfaceNumerator = besselk(0,2*eta*bottomFactor).*besseli(1,argument) + besseli(0,2*eta*bottomFactor).*besselk(1,argument);
-            surfaceDenominator = besseli(0,2*eta).*besselk(0,2*eta*bottomFactor) - besselk(0,2*eta).*besseli(0,2*eta*bottomFactor);
-            expectedSurface = (1./(eta*alpha*f0)).*exp(alpha*zRel/2).*surfaceNumerator./surfaceDenominator;
-            bottomNumerator = besselk(0,2*eta).*besseli(1,argument) + besseli(0,2*eta).*besselk(1,argument);
-            bottomDenominator = besselk(0,2*eta).*besseli(0,2*eta*bottomFactor) - besseli(0,2*eta).*besselk(0,2*eta*bottomFactor);
-            expectedBottom = (1./(eta*alpha*f0)).*exp(alpha*(zRel + 2*depth)/2).*bottomNumerator./bottomDenominator;
-
-            testCase.verifyClass(surface, "IMAnalyticalSQGBasis")
-            testCase.verifyEqual(surface.psi(z), expectedSurface, RelTol=1e-12)
-            testCase.verifyEqual(bottom.psi(z), expectedBottom, RelTol=1e-12)
+            testCase.verifyClass(exactModes,"IMAnalyticalGeostrophicZeroAPVModesBasis")
+            testCase.verifySize(exactModes.F(z),[9 2 2])
+            testCase.verifySize(exactModes.G(z),[9 2 2])
+            testCase.verifyEqual(exactModes.endpointResponseMetric,repmat(eye(2),1,1,2),AbsTol=2e-13)
         end
     end
 end
