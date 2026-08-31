@@ -7,7 +7,7 @@
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
 
-%% Build the scalar hydrostatic G-mode basis
+%% Build the aligned hydrostatic F/G mode basis
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
@@ -28,22 +28,23 @@ sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
 %% Compute the default normalized Gram Frobenius fit
-[~, defaultFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+variables = ["F","G"];
+[~, defaultFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables=variables);
 
 %% Add relative regularization toward geometric weights
 % A custom callback receives the default normalized Gram system in
-% `context.normalizedGramA` and `context.normalizedGramB`. The system stores
-% upper-triangle mode pairs; `context.normalizedGramModePairs(q,:)` gives the
-% retained basis-column indices `[iMode jMode]` for row `q`. Off-diagonal
-% rows already contain the sqrt(2) factor that preserves the full Frobenius
-% objective. Returning a new A and b replaces that objective, so callers may
-% reweight existing rows or append new residuals. Here the additional rows
-% penalize
+% `context.normalizedGramA` and `context.normalizedGramB`. This is the
+% stacked F/G system; `context.normalizedGramVariables(q)` and
+% `context.normalizedGramModePairs(q,:)` identify the channel and retained
+% pair for row `q`. Scalar-style channel contexts are also available as
+% `context.variableContexts.F` and `.G`. Returning A and b replaces the
+% objective, so callers may reweight rows or append residuals. Here the
+% additional rows penalize
 %
 %   sqrt(lambda) * (w_i/wGeometric_i - 1).
 lambda = 1e-6;
 objective = @(context) regularizedGramObjective(context,lambda);
-[~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+[~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables=variables,objective=objective);
 
 % Both fits retain the physical defaults `nonnegative=true` and
 % `constrainDepth=true`. Algebraic investigations may disable them explicitly:
@@ -58,11 +59,11 @@ rule = ["geometric"; "normalized Gram"; "regularized Gram"];
 weights = [defaultFit.geometricWeights defaultFit.weights regularizedFit.weights];
 gramResiduals = defaultFit.objectiveMatrix*weights - defaultFit.objectiveTarget;
 normalizedGramResidual = vecnorm(gramResiduals,2,1).';
-relativeGramOperatorError = [defaultFit.geometricTransform.relativeGramOperatorError; ...
-    defaultFit.transform.relativeGramOperatorError; regularizedFit.transform.relativeGramOperatorError];
+relativeGramOperatorError = [worstGramError(defaultFit.geometricTransform,variables); ...
+    worstGramError(defaultFit.transform,variables);worstGramError(regularizedFit.transform,variables)];
 relativeWeightDisplacement = vecnorm((weights - defaultFit.geometricWeights)./defaultFit.geometricWeights,2,1).'/sqrt(nPoints);
-roundTripError = [defaultFit.geometricTransform.roundTripError; ...
-    defaultFit.transform.roundTripError; regularizedFit.transform.roundTripError];
+roundTripError = [worstRoundTripError(defaultFit.geometricTransform,variables); ...
+    worstRoundTripError(defaultFit.transform,variables);worstRoundTripError(regularizedFit.transform,variables)];
 depthSum = sum(weights,1).';
 minimumWeight = min(weights,[],1).';
 maximumWeight = max(weights,[],1).';
@@ -112,4 +113,12 @@ regularizationTarget = sqrt(lambda)*ones(length(context.z),1);
 specification = struct("A",[context.normalizedGramA; regularizationMatrix], ...
     "b",[context.normalizedGramB; regularizationTarget], ...
     "name","normalizedGramWithGeometricRegularization");
+end
+
+function value = worstGramError(transform,variables)
+value = max(arrayfun(@(variable) transform.relativeGramOperatorError(variable=variable),variables));
+end
+
+function value = worstRoundTripError(transform,variables)
+value = max(arrayfun(@(variable) transform.roundTripError(variable=variable),variables));
 end

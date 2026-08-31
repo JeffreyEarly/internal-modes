@@ -79,18 +79,18 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMInternalModesBasis:InvalidEquivalentDepthCount", "hFromEigenvalue must return one equivalent depth for each native mode column.");
             end
 
-            self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
-            self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
-            self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
+            self = self.addVectorNormalization("uMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="F"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="F"));
+            self = self.addVectorNormalization("wMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="G"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="G"));
+            self = self.addVectorNormalization("surfacePressure",@(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode),@(basisSet) basisSet.surfacePressureNormFactors());
             if self.evp.modeFamily == "hydrostatic"
-                self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
+                self = self.addVectorNormalization("geostrophic",@(basisSet,iMode) basisSet.geostrophicNormFactor(iMode),@(basisSet) basisSet.geostrophicNormFactors());
                 FSpec = self.evp.innerProduct("F");
                 if FSpec.hasInnerProduct
-                    self = self.addNormalization("depth", @(basisSet,iMode) basisSet.depthNormFactor(iMode));
+                    self = self.addVectorNormalization("depth",@(basisSet,iMode) basisSet.depthNormFactor(iMode),@(basisSet) basisSet.depthNormFactors());
                 end
             end
             if string(self.evp.name) == "waveModesAtWavenumber"
-                self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
+                self = self.addVectorNormalization("kConstant",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode,variable="G"),@(basisSet) basisSet.innerProductNormFactors(variable="G"));
             end
             if isempty(options.normalization)
                 if string(self.evp.name) == "geostrophicAPVModes"
@@ -269,7 +269,7 @@ classdef IMInternalModesBasis < IMBasisSet
                     end
                     values = values ./ normalizationFactors;
                 end
-                terms(end+1) = struct("location", string(endpointTerm.location), "coefficient", endpointTerm.coefficient, "values", values, "kind", "endpointInnerProductTerm");
+                terms(end+1) = struct("location", string(endpointTerm.location), "coefficient", endpointTerm.coefficient, "values", values, "kind", "endpointInnerProductTerm"); %#ok<AGROW>
             end
         end
 
@@ -350,6 +350,9 @@ classdef IMInternalModesBasis < IMBasisSet
             gram = self.gramMatrix(variable=options.variable);
             spectrum = diag(gram).*real(coefficientsA(:).*conj(coefficientsB(:)));
         end
+
+        [transform, assessment] = discreteTransform(self, options)
+        [weights, weightFit] = quadratureWeightsForPoints(self, options)
     end
 
     methods
@@ -447,8 +450,26 @@ classdef IMInternalModesBasis < IMBasisSet
             end
 
             variable = string(options.variable);
-            gram = self.variableGramMatrix(variable, self.zDomain, false);
-            factor = sqrt(abs(gram(iMode,iMode)));
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct(variable);
+            if ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define a normalization factor. %s",variable,string(spec.reason));
+            end
+            values = self.rawVariable(variable,z);
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            value = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
+            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                value = value+endpointTerms(iTerm).coefficient*endpointValues(iMode)^2;
+            end
+            factor = sqrt(abs(value));
         end
 
         function factor = geostrophicNormFactor(self, iMode)
@@ -472,8 +493,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Returns factor: raw geostrophic scale factor
             % - Developer: true
             if self.modeNumber(iMode) == 0
-                gram = self.variableGramMatrix("F", self.zDomain, false);
-                factor = sqrt(abs(gram(iMode,iMode)))/sqrt(diff(self.zDomain));
+                factor = self.innerProductNormFactor(iMode,variable="F")/sqrt(diff(self.zDomain));
                 return;
             end
             factor = self.innerProductNormFactor(iMode, variable="G");
@@ -600,7 +620,303 @@ classdef IMInternalModesBasis < IMBasisSet
         end
     end
 
+    methods (Hidden)
+        function factors = innerProductNormFactors(self, options)
+            % Return raw variable inner-product factors for the whole family.
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.evp.formulation
+            end
+            variable = string(options.variable);
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct(variable);
+            if ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define normalization factors. %s",variable,string(spec.reason));
+            end
+            values = self.rawVariable(variable,z);
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
+            normSquared = sum((integrationWeights.*weight).*values.*values,1);
+            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            end
+            factors = sqrt(abs(normSquared));
+        end
+
+        function factors = geostrophicNormFactors(self)
+            % Return hydrostatic geostrophic factors for the whole family.
+            factors = self.innerProductNormFactors(variable="G");
+            zeroModes = self.modeNumber == 0;
+            if any(zeroModes)
+                FFactors = self.innerProductNormFactors(variable="F");
+                factors(zeroModes) = FFactors(zeroModes)/sqrt(diff(self.zDomain));
+            end
+        end
+
+        function factors = depthNormFactors(self)
+            % Return volume-only F depth factors for the whole family.
+            z = self.solver.innerProductGrid(self.zDomain);
+            F = self.rawVariable("F",z);
+            integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
+            normSquared = sum(integrationWeights.*F.*F,1)/diff(self.zDomain);
+            factors = sqrt(max(0,real(normSquared)));
+        end
+
+        function factors = maxAmplitudeNormFactors(self, options)
+            % Return raw maximum-amplitude factors for the whole family.
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.evp.formulation
+            end
+            z = self.solver.innerProductGrid(self.zDomain);
+            values = self.rawVariable(string(options.variable),z);
+            factors = max(abs(values),[],1);
+        end
+
+        function factors = surfacePressureNormFactors(self)
+            % Return raw surface-F factors for the whole family.
+            factors = self.rawVariable("F",self.zDomain(2));
+            invalid = ~isfinite(factors) | abs(factors) <= 1e-12;
+            factors(invalid) = 1;
+        end
+    end
+
     methods (Access = protected)
+        function transform = buildInternalModesDiscreteTransform(self, z, weights, nModes, variables)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal, mustBeFinite}
+                weights (:,1) double {mustBeReal, mustBeFinite}
+                nModes (1,1) double {mustBeInteger, mustBePositive}
+                variables (1,:) string
+            end
+
+            z = z(:);
+            weights = weights(:);
+            if length(z) ~= length(weights)
+                error("IMBasisSet:InvalidDiscreteWeights", "weights must contain one value for each sample point in z.");
+            end
+            if nModes > size(self.nativeModes,2)
+                error("IMBasisSet:InvalidDiscreteModeCount", "The basis set contains %d modes, but nModes=%d was requested.", size(self.nativeModes,2), nModes);
+            end
+            if length(z) < nModes
+                error("IMBasisSet:InsufficientDiscreteSamples", "At least %d sample points are required for %d retained modes.", nModes, nModes);
+            end
+            if length(z) < 2 || any(diff(z) <= 0)
+                error("IMBasisSet:InvalidDiscreteGrid", "z must contain at least two strictly increasing, unique sample points.");
+            end
+            domainTolerance = 100*eps(max(1,max(abs(self.zDomain))));
+            if any(z < self.zDomain(1)-domainTolerance) || any(z > self.zDomain(2)+domainTolerance)
+                error("IMBasisSet:InvalidDiscreteGrid", "All sample points must lie inside the basis-set zDomain.");
+            end
+            if ~any(weights ~= 0)
+                error("IMBasisSet:InvalidDiscreteWeights", "weights must contain at least one nonzero value.");
+            end
+
+            variables = self.canonicalDiscreteVariables(variables);
+            metricPreparation = struct();
+            for variable = ["F","G"]
+                [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = self.sampledInternalModesMetric(variable,z,weights);
+                metricPreparation.(char(variable)) = struct(available=available,reason=reason,metricMatrix=metricMatrix, ...
+                    interiorWeight=interiorWeight,endpointMetricMatrix=endpointMetricMatrix);
+                if ismember(variable,variables) && ~available
+                    error("IMInternalModesBasis:UnavailableDiscreteTransformVariable", "The %s channel cannot provide a direct forward transform. %s", variable, reason);
+                end
+            end
+
+            normalizationFactors = self.normalizationFactors(self.normalization);
+            normalizationFactors = normalizationFactors(1:nModes);
+            inverseF = self.rawVariable("F",z);
+            inverseG = self.rawVariable("G",z);
+            inverseF = inverseF(:,1:nModes)./normalizationFactors;
+            inverseG = inverseG(:,1:nModes)./normalizationFactors;
+            endpointZ = [self.zDomain(2);self.zDomain(1)];
+            endpointF = self.rawVariable("F",endpointZ);
+            endpointG = self.rawVariable("G",endpointZ);
+            endpointF = endpointF(:,1:nModes)./normalizationFactors;
+            endpointG = endpointG(:,1:nModes)./normalizationFactors;
+
+            channelData = struct();
+            for variable = ["F","G"]
+                preparation = metricPreparation.(char(variable));
+                requested = ismember(variable,variables);
+                if requested
+                    rawGram = self.variableGramMatrix(variable,self.zDomain,false);
+                    targetGramMatrix = rawGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
+                    targetGramMatrix = 0.5*(targetGramMatrix+targetGramMatrix.');
+                    if variable == "F"
+                        sampled = inverseF;
+                    else
+                        sampled = inverseG;
+                    end
+                    activeMask = self.internalModesTransformActiveMask(variable,sampled,targetGramMatrix);
+                    channelData.(char(variable)) = struct(available=true,reason="",activeModeMask=activeMask,metricMatrix=preparation.metricMatrix, ...
+                        targetGramMatrix=targetGramMatrix,interiorWeight=preparation.interiorWeight,endpointMetricMatrix=preparation.endpointMetricMatrix);
+                else
+                    reason = preparation.reason;
+                    if preparation.available
+                        reason = "The " + variable + " channel was not requested when this transform was built.";
+                    end
+                    metricMatrix = zeros(0,0);
+                    targetGramMatrix = zeros(0,0);
+                    activeMask = false(1,nModes);
+                    channelData.(char(variable)) = struct(available=false,reason=string(reason),activeModeMask=activeMask,metricMatrix=metricMatrix,targetGramMatrix=targetGramMatrix);
+                end
+            end
+
+            metadata = self.metadata;
+            transform = IMInternalModesDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
+                normalization=self.normalizationName(self.normalization),inverseF=inverseF,inverseG=inverseG,endpointF=endpointF,endpointG=endpointG, ...
+                channelData=channelData,zDomain=self.zDomain,g=self.evp.g,modeFamily=self.evp.modeFamily,N2Values=self.N2(z),problemMetadata=metadata);
+        end
+
+        function variables = directlyRepresentableDiscreteVariables(self, z)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal, mustBeFinite}
+            end
+            variables = strings(1,0);
+            placeholderWeights = ones(size(z));
+            for variable = ["F","G"]
+                [available,~] = self.sampledInternalModesMetric(variable,z,placeholderWeights);
+                if available
+                    variables(end+1) = variable; %#ok<AGROW>
+                end
+            end
+        end
+
+        function variables = canonicalDiscreteVariables(~, variables)
+            variables = string(variables(:).');
+            if any(~ismember(variables,["F","G"]))
+                invalid = variables(find(~ismember(variables,["F","G"]),1));
+                error("IMInternalModesBasis:InvalidDiscreteTransformVariable", "Unknown internal-mode transform variable ""%s"". Choose F or G.", invalid);
+            end
+            canonical = ["F","G"];
+            variables = canonical(ismember(canonical,variables));
+        end
+
+        function [available,reason,metricMatrix,targetGramMatrix,activeMask,interiorWeight,endpointMetricMatrix] = prepareInternalModesTransformChannel(self, variable, z, weights, nModes)
+            [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = self.sampledInternalModesMetric(variable,z,weights);
+            targetGramMatrix = zeros(0,0);
+            activeMask = false(1,nModes);
+            if ~available
+                return;
+            end
+            normalizationFactors = self.normalizationFactors(self.normalization);
+            normalizationFactors = normalizationFactors(1:nModes);
+            rawGram = self.variableGramMatrix(string(variable),self.zDomain,false);
+            targetGramMatrix = rawGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
+            targetGramMatrix = 0.5*(targetGramMatrix+targetGramMatrix.');
+            sampled = self.rawVariable(string(variable),z);
+            sampled = sampled(:,1:nModes)./normalizationFactors;
+            activeMask = self.internalModesTransformActiveMask(string(variable),sampled,targetGramMatrix);
+        end
+
+        function [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = sampledInternalModesMetric(self, variable, z, weights)
+            variable = string(variable);
+            z = z(:);
+            weights = weights(:);
+            metricMatrix = zeros(0,0);
+            interiorWeight = zeros(size(z));
+            endpointMetricMatrix = zeros(length(z));
+            spec = self.evp.innerProduct(variable);
+            if ~spec.hasInnerProduct
+                available = false;
+                reason = "Its continuous inner product is unavailable. " + string(spec.reason);
+                return;
+            end
+
+            context = self.evp.contextForSolver(self.solver);
+            interiorWeight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(interiorWeight)
+                interiorWeight = interiorWeight*ones(size(z));
+            else
+                interiorWeight = interiorWeight(:);
+            end
+            if numel(interiorWeight) ~= length(z) || ~isreal(interiorWeight) || any(~isfinite(interiorWeight))
+                error("IMBasisSet:InvalidDiscreteMetricWeight", "The %s interior weight must return one finite real value for each sample point.", variable);
+            end
+            metricMatrix = diag(interiorWeight.*weights);
+            domainTolerance = 100*eps(max(1,max(abs(self.zDomain))));
+
+            endpointWeights = [spec.surfaceWeights;spec.bottomWeights];
+            for iWeight = 1:numel(endpointWeights)
+                endpointWeight = endpointWeights(iWeight);
+                if endpointWeight.d ~= 0
+                    available = false;
+                    reason = "Its " + string(endpointWeight.location) + " endpoint functional contains a derivative trace; direct transforms require value-only sampled endpoint terms.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                if endpointWeight.c == 0
+                    continue;
+                end
+                [endpointIndex,zEndpoint] = endpointSampleIndex(z,self.zDomain,string(endpointWeight.location),domainTolerance);
+                if isempty(endpointIndex)
+                    available = false;
+                    reason = "The " + string(endpointWeight.location) + " endpoint at z=" + string(zEndpoint) + " must be included in z to represent its value-only metric term.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                if ~isfinite(endpointWeight.coefficient)
+                    available = false;
+                    reason = "Its " + string(endpointWeight.location) + " endpoint metric coefficient is not finite.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                endpointMetricMatrix(endpointIndex,endpointIndex) = endpointMetricMatrix(endpointIndex,endpointIndex) + endpointWeight.coefficient*endpointWeight.c*endpointWeight.c;
+            end
+            for iTerm = 1:numel(spec.endpointInnerProductTerms)
+                term = spec.endpointInnerProductTerms(iTerm);
+                if string(term.variable) ~= variable
+                    available = false;
+                    reason = "Its " + string(term.location) + " endpoint inner product uses companion-variable " + string(term.variable) + " values; paired admissible-state projection is not yet supported.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                [endpointIndex,zEndpoint] = endpointSampleIndex(z,self.zDomain,string(term.location),domainTolerance);
+                if isempty(endpointIndex)
+                    available = false;
+                    reason = "The " + string(term.location) + " endpoint at z=" + string(zEndpoint) + " must be included in z to represent its value-only metric term.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                if ~isfinite(term.coefficient)
+                    available = false;
+                    reason = "Its " + string(term.location) + " endpoint metric coefficient is not finite.";
+                    metricMatrix = zeros(0,0);
+                    return;
+                end
+                endpointMetricMatrix(endpointIndex,endpointIndex) = endpointMetricMatrix(endpointIndex,endpointIndex) + term.coefficient;
+            end
+            metricMatrix = metricMatrix + endpointMetricMatrix;
+            available = true;
+            reason = "";
+        end
+
+        function activeMask = internalModesTransformActiveMask(self, variable, sampled, targetGramMatrix)
+            targetNorms = diag(targetGramMatrix);
+            targetTolerance = 1e3*eps(max(1,max(abs(targetNorms))));
+            columnTolerance = 1e3*eps(max(1,norm(sampled,"fro")));
+            zeroTarget = abs(targetNorms) <= targetTolerance;
+            zeroSample = vecnorm(sampled,2,1) <= columnTolerance;
+            unsupportedZeroNorm = zeroTarget(:).' & ~zeroSample;
+            if any(unsupportedZeroNorm)
+                labels = self.modeNumber(1:length(unsupportedZeroNorm));
+                labels = labels(unsupportedZeroNorm);
+                error("IMInternalModesBasis:UnsupportedZeroNormMode", "The %s channel has nonzero sampled columns with zero continuous norm for mode label(s) %s.", variable, join(string(labels),", "));
+            end
+            activeMask = ~(zeroTarget(:).' & zeroSample);
+        end
+
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
             z = self.solver.innerProductGrid(zBounds);
             context = self.evp.contextForSolver(self.solver);
@@ -608,7 +924,6 @@ classdef IMInternalModesBasis < IMBasisSet
             if ~isfield(spec, "hasInnerProduct") || ~spec.hasInnerProduct
                 error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
             end
-            normalizationFactors = [];
             if useNormalized
                 normalizationFactors = self.normalizationFactors(self.normalization);
                 values = self.rawVariable(variable, z) ./ normalizationFactors;
@@ -619,15 +934,9 @@ classdef IMInternalModesBasis < IMBasisSet
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.solver.integrateInnerProduct(z, integrand, zBounds);
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
-            end
+            integrationWeights = self.solver.innerProductWeights(z,zBounds);
+            gram = values.'*((integrationWeights.*weight(:)).*values);
+            gram = 0.5*(gram+gram.');
 
             endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
             for iTerm = 1:numel(endpointTerms)
@@ -637,4 +946,13 @@ classdef IMInternalModesBasis < IMBasisSet
         end
     end
 
+end
+
+function [index,zEndpoint] = endpointSampleIndex(z,zDomain,location,tolerance)
+if location == "surface"
+    zEndpoint = zDomain(2);
+else
+    zEndpoint = zDomain(1);
+end
+index = find(abs(z-zEndpoint) <= tolerance,1);
 end

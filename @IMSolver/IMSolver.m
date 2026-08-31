@@ -159,6 +159,31 @@ classdef (Abstract) IMSolver
         end
     end
 
+    methods (Hidden)
+        function weights = innerProductWeights(self, z, zBounds)
+            % Return the linear weights used by integrateInnerProduct.
+            %
+            % This generic implementation obtains the exact weights of the
+            % configured solver's integration operator.  It lets callers
+            % integrate many columns with one matrix multiplication while
+            % preserving each concrete solver's existing quadrature rule.
+            arguments
+                self IMSolver
+                z (:,1) double
+                zBounds (1,2) double
+            end
+
+            nGrid = length(z);
+            weights = zeros(nGrid,1);
+            impulse = zeros(nGrid,1);
+            for iGrid = 1:nGrid
+                impulse(iGrid) = 1;
+                weights(iGrid) = self.integrateInnerProduct(z,impulse,zBounds);
+                impulse(iGrid) = 0;
+            end
+        end
+    end
+
     methods (Access = protected)
         function values = solveBoundaryValueSystems(~, matrix, rightHandSides)
             % Solve one boundary-value matrix for multiple response columns.

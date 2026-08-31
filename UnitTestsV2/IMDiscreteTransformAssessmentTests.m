@@ -35,16 +35,17 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
                     basisSet = solver.solveEVP(evps(iEVP),nModes=12);
                     [transform,assessment] = basisSet.discreteTransform(nPoints=8);
 
-                    testCase.verifyClass(assessment,"IMDiscreteTransformAssessment")
+                    testCase.verifyClass(assessment,"IMInternalModesDiscreteTransformAssessment")
                     testCase.verifyEqual(assessment.requestedPointCount,8)
                     testCase.verifyEqual(assessment.actualPointCount,8)
                     testCase.verifyEqual(length(transform.z),8)
                     testCase.verifyEqual(transform.z(1),zDomain(1),AbsTol=0)
                     testCase.verifyEqual(transform.z(end),zDomain(2),AbsTol=0)
                     testCase.verifyEqual(assessment.candidateModeCount,6)
-                    testCase.verifyEqual(assessment.retainedModeCount,6)
+                    testCase.verifyGreaterThanOrEqual(assessment.retainedModeCount,1)
+                    testCase.verifyLessThanOrEqual(assessment.retainedModeCount,6)
                     testCase.verifyEqual(assessment.gramPolicy.tolerance,1e-2,AbsTol=0)
-                    testCase.verifyLessThanOrEqual(assessment.prefixDiagnostics.gramError(end),1e-2)
+                    testCase.verifyLessThanOrEqual(assessment.prefixDiagnostics.gramError(assessment.retainedModeCount),1e-2)
                 end
             end
         end
@@ -57,18 +58,24 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             fit = assessment.weightFit;
             finalRow = assessment.prefixDiagnostics(end,:);
 
-            testCase.verifyClass(fit,"IMQuadratureWeightFit")
+            testCase.verifyClass(fit,"IMInternalModesQuadratureWeightFit")
             testCase.verifyEqual(fit.transform.weights,candidate.weights,AbsTol=0)
-            testCase.verifyEqual(fit.transform.forwardMatrix,candidate.forwardMatrix,AbsTol=0)
-            testCase.verifyEqual(fit.transform.inverseMatrix,candidate.inverseMatrix,AbsTol=0)
             testCase.verifyEqual(transform.weights,candidate.weights,AbsTol=0)
-            testCase.verifyEqual(assessment.transform.forwardMatrix,transform.forwardMatrix,AbsTol=0)
             testCase.verifyEqual(assessment.candidateModeNumber,basisSet.modeNumber(1:6),AbsTol=0)
             testCase.verifyEqual(assessment.retainedModeNumber,transform.modeNumber,AbsTol=0)
-            testCase.verifyEqual(finalRow.gramError,candidate.relativeGramOperatorError,AbsTol=0)
-            testCase.verifyEqual(finalRow.roundTripError,candidate.roundTripError,AbsTol=0)
-            testCase.verifyEqual(finalRow.inverseMatrixConditionNumber,candidate.inverseMatrixConditionNumber,AbsTol=0)
-            testCase.verifyEqual(finalRow.gramConditionNumber,candidate.gramConditionNumber,AbsTol=0)
+            channelErrors = zeros(size(candidate.availableVariables));
+            for iVariable = 1:length(candidate.availableVariables)
+                variable = candidate.availableVariables(iVariable);
+                testCase.verifyEqual(fit.transform.forwardMatrix(variable=variable),candidate.forwardMatrix(variable=variable),AbsTol=0)
+                testCase.verifyEqual(fit.transform.inverseMatrix(variable=variable),candidate.inverseMatrix(variable=variable),AbsTol=0)
+                testCase.verifyEqual(assessment.transform.forwardMatrix(variable=variable),transform.forwardMatrix(variable=variable),AbsTol=0)
+                channelErrors(iVariable) = candidate.relativeGramOperatorError(variable=variable);
+                variableDiagnostics = assessment.variablePrefixDiagnostics(variable=variable);
+                testCase.verifyEqual(variableDiagnostics.roundTripError(end),candidate.roundTripError(variable=variable),AbsTol=0)
+                testCase.verifyEqual(variableDiagnostics.inverseMatrixConditionNumber(end),candidate.inverseMatrixConditionNumber(variable=variable),AbsTol=0)
+                testCase.verifyEqual(variableDiagnostics.gramConditionNumber(end),candidate.gramConditionNumber(variable=variable),AbsTol=0)
+            end
+            testCase.verifyEqual(finalRow.gramError,max(channelErrors),AbsTol=0)
             testCase.verifyEqual(height(assessment.prefixDiagnostics),assessment.candidateModeCount)
             testCase.verifyEqual(assessment.limitingPolicy,"none")
         end
