@@ -22,49 +22,49 @@ Describe a canonical scalar eigenvalue problem.
 
 ## Overview
 
-igenvalueProblem` describes the canonical Sturm-Liouville EVP
+`IMEigenvalueProblem` describes the canonical Sturm-Liouville EVP
 
 $$
-ac{\partial}{\partial z}
-t(p(z)\frac{\partial u}{\partial z}\right)
-)u(z)=\lambda r(z)u(z).
+-\frac{\partial}{\partial z}
+\left(p(z)\frac{\partial u}{\partial z}\right)
++q(z)u(z)=\lambda r(z)u(z).
 $$
 
-dary conditions are written in the same eigenvalue-dependent
-nical form:
+Boundary conditions are written in the same eigenvalue-dependent
+canonical form:
 
 $$
-ft[a_i u(z_i)
- p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
-mbda\left[c_i u(z_i)
- p(z_i)\frac{\partial u}{\partial z}(z_i)\right],
-ad i\in\{\mathrm{bottom},\mathrm{surface}\}.
+-\left[a_i u(z_i)
+-b_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right]
+=\lambda\left[c_i u(z_i)
+-d_i p(z_i)\frac{\partial u}{\partial z}(z_i)\right],
+\qquad i\in\{\mathrm{bottom},\mathrm{surface}\}.
 $$
 
-igenvalueProblem` stores this continuous scalar problem; solvers
-retize it and return an `IMBasisSet` of retained modes.
+`IMEigenvalueProblem` stores this continuous scalar problem; solvers
+discretize it and return an `IMBasisSet` of retained modes.
 
-example, the Dirichlet problem
+For example, the Dirichlet problem
 
 $$
-ac{\partial^2 u}{\partial z^2}=\lambda u,\qquad u(-1)=u(0)=0
+-\frac{\partial^2 u}{\partial z^2}=\lambda u,\qquad u(-1)=u(0)=0
 $$
 
-reated with:
+is created with:
 
-atlab
-= IMEigenvalueProblem(zDomain=[-1 0], ...
-p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
-r=@(z,~) ones(size(z)), ...
-surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
-bottomBoundary=IMBoundaryCondition.dirichlet());
+```matlab
+evp = IMEigenvalueProblem(zDomain=[-1 0], ...
+    p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
+    r=@(z,~) ones(size(z)), ...
+    surfaceBoundary=IMBoundaryCondition.dirichlet(), ...
+    bottomBoundary=IMBoundaryCondition.dirichlet());
 ```
 
-lver discretizes this EVP and returns the retained basis set:
+A solver discretizes this EVP and returns the retained basis set:
 
-atlab
-er = IMSolverSpectral(nEVP=64);
-sSet = solver.solveEVP(evp,nModes=4);
+```matlab
+solver = IMSolverSpectral(nEVP=64);
+basisSet = solver.solveEVP(evp,nModes=4);
 ```
 
 

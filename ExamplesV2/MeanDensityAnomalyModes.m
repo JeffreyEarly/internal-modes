@@ -67,10 +67,8 @@ legend("j="+string(basisSet.modeNumber(1:nPlotModes)),Location="best")
 % modes this is G. F remains available for synthesis from the same aligned
 % coefficient vector, but it does not define a separate projection metric.
 z = linspace(zDomain(1),zDomain(2),97).';
-weights = [0.5;ones(length(z)-2,1);0.5]*(D/(length(z)-1));
 nTransformModes = 18;
-[transform,assessment] = basisSet.discreteTransform( ...
-    z=z,weights=weights,nModes=nTransformModes,gramTolerance=0.05);
+[transform,assessment] = basisSet.discreteTransform(z=z,nModes=nTransformModes);
 
 fprintf("The transform uses %d points and retains %d of %d candidate modes.\n", ...
     length(transform.z),assessment.retainedModeCount,assessment.candidateModeCount);

@@ -159,9 +159,12 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyError(@() basisSet.discreteTransform(z=z, weights=zeros(size(dz))), "IMBasisSet:InvalidDiscreteWeights")
         end
 
-        function matrixObjectRejectsSingularAndMalformedOperations(testCase)
-            testCase.verifyError(@() IMDiscreteTransform(z=[-1; -0.5; 0], weights=ones(3,1), modeNumber=[1 2], normalization="unity", ...
-                inverseMatrix=ones(3,2), metricMatrix=eye(3), targetGramMatrix=eye(2)), "IMDiscreteTransform:SingularGramMatrix")
+        function matrixObjectDiagnosesSingularAndRejectsMalformedOperations(testCase)
+            singular = IMDiscreteTransform(z=[-1; -0.5; 0],weights=ones(3,1),modeNumber=[1 2],normalization="unity", ...
+                inverseMatrix=ones(3,2),metricMatrix=eye(3),targetGramMatrix=eye(2));
+            testCase.verifyEqual(singular.sampledGramRank,1)
+            testCase.verifyEqual(singular.relativeGramOperatorError,Inf)
+            testCase.verifyGreaterThan(singular.roundTripError,0.9)
 
             transform = IMDiscreteTransform(z=[-1; 0], weights=ones(2,1), modeNumber=[1 2], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));

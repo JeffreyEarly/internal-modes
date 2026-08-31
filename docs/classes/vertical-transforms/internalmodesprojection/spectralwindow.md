@@ -19,5 +19,5 @@ Real valued property with dimensions $$(retainedModeIndex,candidateModeIndex)$$ 
 
 ## Discussion
 
-For uncorrelated modal coefficients, this matrix maps a true
-modal spectrum to the expected recovered retained-mode spectrum.
+  For uncorrelated modal coefficients, this matrix maps a true
+  modal spectrum to the expected recovered retained-mode spectrum.

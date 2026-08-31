@@ -16,4 +16,4 @@ Short EVP name.
 
 ## Discussion
 
-`name` appears in solver diagnostics and generated error messages.
+  `name` appears in solver diagnostics and generated error messages.

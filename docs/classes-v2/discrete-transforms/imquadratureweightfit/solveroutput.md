@@ -18,5 +18,5 @@ Solver diagnostics returned by `lsqlin`.
 
 ## Discussion
 
-The struct contains the optimizer iteration count, termination
-message, and other release-dependent `lsqlin` diagnostics.
+  The struct contains the optimizer iteration count, termination
+  message, and other release-dependent `lsqlin` diagnostics.

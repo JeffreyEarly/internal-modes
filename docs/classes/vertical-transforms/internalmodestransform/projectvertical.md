@@ -29,5 +29,5 @@ Project vertical samples onto modal coefficients.
 
 ## Discussion
 
-If `field` has multiple columns, each column is projected
-independently with the same vertical operator.
+  If `field` has multiple columns, each column is projected
+  independently with the same vertical operator.

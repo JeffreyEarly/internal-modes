@@ -27,6 +27,6 @@ Return the analytical bottom SQG mode for exponential stratification.
 
 ## Discussion
 
-Not done in LaCasce 2012, but the calculation is almost
-identical.
-size(psi) = [size(k); length(z)]
+            Not done in LaCasce 2012, but the calculation is almost
+  identical.
+  size(psi) = [size(k); length(z)]

@@ -16,5 +16,5 @@ Mode-selection diagnostics.
 
 ## Discussion
 
-Analytical bases do not run a discrete mode-selection pass, so this
-is usually empty.
+  Analytical bases do not run a discrete mode-selection pass, so this
+  is usually empty.

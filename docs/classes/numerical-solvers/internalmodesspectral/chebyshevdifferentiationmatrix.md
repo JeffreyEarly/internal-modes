@@ -28,5 +28,5 @@ Return the matrix that differentiates Chebyshev coefficients.
 
 ## Discussion
 
-Chebyshev Differentiation Matrix
-This matrix differentiates the first `n` Chebyshev polynomials.
+            Chebyshev Differentiation Matrix
+  This matrix differentiates the first `n` Chebyshev polynomials.

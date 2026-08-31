@@ -32,9 +32,9 @@ Invert a monotonic function by vectorized bisection.
 
 ## Discussion
 
-         FINVERSEBISECTION(F, X)   Compute F^{-1}(X) using Bisection.
- Taken from cumsum as part of chebfun.
- chebfun/inv.m
+                   FINVERSEBISECTION(F, X)   Compute F^{-1}(X) using Bisection.
+  Taken from cumsum as part of chebfun.
+  chebfun/inv.m
 
- Copyright 2017 by The University of Oxford and The Chebfun Developers.
- See http://www.chebfun.org/ for Chebfun information.
+  Copyright 2017 by The University of Oxford and The Chebfun Developers.
+  See http://www.chebfun.org/ for Chebfun information.

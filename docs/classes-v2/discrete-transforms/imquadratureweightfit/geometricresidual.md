@@ -18,4 +18,4 @@ Objective residual vector at the geometric weights.
 
 ## Discussion
 
-This is `objectiveMatrix*geometricWeights-objectiveTarget`.
+  This is `objectiveMatrix*geometricWeights-objectiveTarget`.

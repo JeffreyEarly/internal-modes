@@ -18,5 +18,5 @@ The 'x' refers to the stretched coordinate being used.
 
 ## Discussion
 Once x_function has been set, all the properties listed below are
-automatically created.
-Lobatto grid in the active spectral coordinate.
+  automatically created.
+  Lobatto grid in the active spectral coordinate.

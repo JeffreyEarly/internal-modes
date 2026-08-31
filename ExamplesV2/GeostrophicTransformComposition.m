@@ -26,8 +26,7 @@ evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,
 basisSet = solver.solveEVP(evp,nModes=nModes+3);
 
 z = linspace(zDomain(1),zDomain(2),97).';
-weights = [0.5;ones(length(z)-2,1);0.5]*(D/(length(z)-1));
-apvTransform = basisSet.discreteTransform(z=z,weights=weights,nModes=nModes,variables=["F","G"],gramTolerance=0.2);
+apvTransform = basisSet.discreteTransform(z=z,nModes=nModes,variables=["F","G"]);
 
 %% Solve the canonical boundary modes on each wavenumber page
 % Finite g0 and gd activate both endpoints. The zero-APV basis therefore

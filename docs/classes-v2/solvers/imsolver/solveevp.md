@@ -27,7 +27,7 @@ Solve an EVP and return a basis set.
 
 ## Discussion
 
-If the assembled matrices produce no finite real eigenvalues,
-`solveEVP` throws a matrix-level diagnostic before returning.
-Before selection, the EVP may reject family-specific numerical
-representations that are not finite physical modes.
+  If the assembled matrices produce no finite real eigenvalues,
+  `solveEVP` throws a matrix-level diagnostic before returning.
+  Before selection, the EVP may reject family-specific
+  numerical representations that are not finite physical modes.

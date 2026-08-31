@@ -26,8 +26,8 @@ Count negative endpoint metric weights.
 
 ## Discussion
 
-`negativeEndpointWeightCount` is the number of active
-endpoint metric weights with negative coefficient, after the
-supplied sign tolerance. The canonical scalar EVP has two
-endpoints with at most one active metric weight per endpoint,
-so this value is always `0`, `1`, or `2`.
+  `negativeEndpointWeightCount` is the number of active
+  endpoint metric weights with negative coefficient, after the
+  supplied sign tolerance. The canonical scalar EVP has two
+  endpoints with at most one active metric weight per endpoint,
+  so this value is always `0`, `1`, or `2`.

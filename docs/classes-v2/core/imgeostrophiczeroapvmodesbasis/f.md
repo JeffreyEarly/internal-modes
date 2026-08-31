@@ -26,4 +26,4 @@ Evaluate streamfunction structures $$F(z)$$.
 
 ## Discussion
 
-The result has dimensions `nZ x nEndpoints x nK`.
+  The result has dimensions `nZ x nEndpoints x nK`.

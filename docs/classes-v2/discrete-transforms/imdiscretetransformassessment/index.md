@@ -81,6 +81,7 @@ targets retain Gram diagnostics but cannot enable those policies.
 - `roundTripError`: $$\lVert A_\mathrm fA_\mathrm i-I\rVert_2$$.
 - `inverseMatrixConditionNumber`: $$\kappa_2(A_\mathrm i)$$.
 - `gramConditionNumber`: $$\kappa_2(\Gamma_N)$$.
+- `sampledGramRank`: numerical rank of $$\Gamma_N$$.
 - `leakageError`: $$\ell_N$$, or `NaN` when disabled.
 - `leakageLimitingModeNumber`: rejected physical mode label attaining $$\ell_N$$.
 - `quadraticAliasingError`: $$q_N$$, or `NaN` when disabled.

@@ -29,4 +29,4 @@ Transform coupled Chebyshev coefficients onto the public output grid.
 
 ## Discussion
 
-transform from xCheb basis to zOut
+              transform from xCheb basis to zOut

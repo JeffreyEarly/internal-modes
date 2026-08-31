@@ -29,8 +29,8 @@ Choose a truncation index for a Chebyshev coefficient sequence.
 
 ## Discussion
 
-Copyright 2017 by The University of Oxford and The Chebfun Developers.
-See http://www.chebfun.org/ for Chebfun information.
+              Copyright 2017 by The University of Oxford and The Chebfun Developers.
+  See http://www.chebfun.org/ for Chebfun information.
 
-This is taken, without comments and safe checks, from the
-above developers. They get sole credit. Jared Aurentz and Nick Trefethen, July 2015.
+  This is taken, without comments and safe checks, from the
+  above developers. They get sole credit. Jared Aurentz and Nick Trefethen, July 2015.

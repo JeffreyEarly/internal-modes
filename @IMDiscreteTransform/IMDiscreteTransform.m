@@ -281,6 +281,20 @@ classdef IMDiscreteTransform
         % - nav_order: 30
         inverseMatrixConditionNumber
 
+        % Numerical rank of the sampled modal Gram matrix.
+        %
+        % `sampledGramRank` is the number of singular values of
+        % $$\Gamma=A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}$$ above the
+        % scale-aware numerical rank tolerance. A value smaller than the
+        % number of retained modes means the sampled rule cannot distinguish
+        % the complete modal family. In that case `forwardMatrix` is formed
+        % with a pseudoinverse and `relativeGramOperatorError` is `Inf` so an
+        % automatic retained-band policy can reject the deficient prefix.
+        %
+        % - Topic: Assess transform quality
+        % - nav_order: 35
+        sampledGramRank
+
         % Two-norm condition number of the sampled Gram matrix.
         %
         % This is $$\kappa_2(\Gamma)$$ for
@@ -479,14 +493,21 @@ classdef IMDiscreteTransform
             gramMatrix = inverseMatrix.'*metricMatrix*inverseMatrix;
             gramMatrix = 0.5*(gramMatrix + gramMatrix.');
             singularValues = svd(gramMatrix);
-            rankTolerance = max(size(gramMatrix))*eps(norm(gramMatrix,2));
-            if sum(singularValues > rankTolerance) < nModes
-                error("IMDiscreteTransform:SingularGramMatrix", "The sampled Gram matrix is numerically rank deficient for the requested modes.");
+            rankTolerance = max(size(gramMatrix))*eps(max(1,norm(gramMatrix,2)));
+            sampledGramRank = sum(singularValues > rankTolerance);
+            pairingMatrix = inverseMatrix.'*metricMatrix;
+            if sampledGramRank < nModes
+                forwardMatrix = pinv(gramMatrix,rankTolerance)*pairingMatrix;
+            else
+                forwardMatrix = gramMatrix \ pairingMatrix;
             end
 
-            forwardMatrix = gramMatrix \ (inverseMatrix.'*metricMatrix);
             scale = 1./sqrt(abs(targetNorms));
             scaledDifference = scale.*(gramMatrix - targetGramMatrix).*scale.';
+            relativeGramOperatorError = norm(scaledDifference,2);
+            if sampledGramRank < nModes
+                relativeGramOperatorError = Inf;
+            end
 
             self.z = z;
             self.weights = weights;
@@ -497,9 +518,10 @@ classdef IMDiscreteTransform
             self.forwardMatrix = forwardMatrix;
             self.gramMatrix = gramMatrix;
             self.targetGramMatrix = targetGramMatrix;
-            self.relativeGramOperatorError = norm(scaledDifference,2);
+            self.relativeGramOperatorError = relativeGramOperatorError;
             self.roundTripError = norm(forwardMatrix*inverseMatrix - eye(nModes),2);
             self.inverseMatrixConditionNumber = cond(inverseMatrix);
+            self.sampledGramRank = sampledGramRank;
             self.gramConditionNumber = cond(gramMatrix);
             self.targetGramIsPositiveDefinite = all(targetNorms > 0);
             self.hasNegativeWeights = any(weights < 0);
@@ -539,7 +561,7 @@ classdef IMDiscreteTransform
             % - Returns coefficients: `nModes`-by-`nProfiles` retained modal coefficient array
             arguments
                 self IMDiscreteTransform
-                values double {mustBeFinite}
+                values double
             end
 
             if size(values,1) ~= length(self.z)
@@ -577,7 +599,7 @@ classdef IMDiscreteTransform
             % - Returns values: `nSamples`-by-`nProfiles` reconstructed profile array sampled on `z`
             arguments
                 self IMDiscreteTransform
-                coefficients double {mustBeFinite}
+                coefficients double
             end
 
             if size(coefficients,1) ~= length(self.modeNumber)

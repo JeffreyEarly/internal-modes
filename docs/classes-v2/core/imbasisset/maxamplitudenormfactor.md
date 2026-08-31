@@ -3,7 +3,7 @@ layout: default
 title: maxAmplitudeNormFactor
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 10
+nav_order: 11
 mathjax: true
 ---
 
@@ -28,9 +28,9 @@ Return the maximum scalar amplitude.
 
 ## Discussion
 
-This developer utility returns the raw maximum-amplitude
-scale
-$$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$
-on the basis-set integration grid. Normalization rules can
-use this factor to make the largest scalar mode amplitude
-equal to one.
+  This developer utility returns the raw maximum-amplitude
+  scale
+  $$s_j=\max_z |u_j^{\mathrm{raw}}(z)|$$
+  on the basis-set integration grid. Normalization rules can
+  use this factor to make the largest scalar mode amplitude
+  equal to one.

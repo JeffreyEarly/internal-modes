@@ -69,7 +69,6 @@ psi = im.surfaceModesAtWavenumber(2*pi/1000);
 ## Topics
 + Create and initialize modes
   + [`InternalModes`](/internal-modes/classes/core-classes/internalmodes/internalmodes.html) Initialize the wrapper from a profile or a built-in benchmark case.
-  + [`internalModes`](/internal-modes/classes/core-classes/internalmodes/internalmodes_.html) Initialize the wrapper from a profile or a built-in benchmark case.
   + [`method`](/internal-modes/classes/core-classes/internalmodes/method.html) Name of the selected concrete solver implementation.
 + Inspect grids and stratification
   + [`Lz`](/internal-modes/classes/core-classes/internalmodes/lz.html) Total water-column depth.
@@ -113,6 +112,7 @@ These items document internal implementation details and are not part of the pri
   + [`ProfileWithDoubleExponentialPlusPycnocline`](/internal-modes/classes/core-classes/internalmodes/profilewithdoubleexponentialpluspycnocline.html) Build a two-exponential pycnocline profile used by the built-in benchmarks.
   + [`ProfileWithDoubleGaussianExponentialPlusPycnocline`](/internal-modes/classes/core-classes/internalmodes/profilewithdoublegaussianexponentialpluspycnocline.html) Build a mixed Gaussian-exponential pycnocline profile used by the built-in benchmarks.
   + [`ProfileWithDoubleGaussianPlusPycnocline`](/internal-modes/classes/core-classes/internalmodes/profilewithdoublegaussianpluspycnocline.html) Build a double-Gaussian pycnocline profile used by the built-in benchmarks.
+  + [`internalModes`](/internal-modes/classes/core-classes/internalmodes/internalmodes_.html) Concrete solver instance created by the wrapper.
   + [`isRunningTestCase`](/internal-modes/classes/core-classes/internalmodes/isrunningtestcase.html) Flag indicating whether the wrapper was initialized from a built-in benchmark case.
   + [`shouldShowDiagnostics`](/internal-modes/classes/core-classes/internalmodes/shouldshowdiagnostics.html) Toggle diagnostic messages from the concrete solver.
 

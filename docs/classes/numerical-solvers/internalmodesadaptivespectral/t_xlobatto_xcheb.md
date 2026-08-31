@@ -29,4 +29,4 @@ Transform adaptive-grid values into the coupled Chebyshev basis.
 
 ## Discussion
 
-transform from xLobatto basis to xCheb basis
+              transform from xLobatto basis to xCheb basis

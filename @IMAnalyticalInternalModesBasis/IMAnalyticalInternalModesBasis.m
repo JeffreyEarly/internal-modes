@@ -124,7 +124,7 @@ classdef IMAnalyticalInternalModesBasis
             self.normalizationNameMap = configureDictionary("string","cell");
             self = self.installNormalizationRules();
             if isempty(options.normalization)
-                self.normalization = self.defaultNormalization();
+                self.normalization = IMInternalModesNormalizationTools.default(self.evp);
             else
                 self.normalization = options.normalization;
             end
@@ -537,31 +537,21 @@ classdef IMAnalyticalInternalModesBasis
 
     methods (Access = private)
         function self = installNormalizationRules(self)
+            availableNormalizations = IMInternalModesNormalizationTools.available(self.evp);
             self = self.addNormalization("unity", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode));
             self = self.addNormalization("uMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="F"));
             self = self.addNormalization("wMax", @(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode, variable="G"));
-            self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
-            if self.evp.modeFamily == "hydrostatic"
+            if ismember("surfacePressure",availableNormalizations)
+                self = self.addNormalization("surfacePressure", @(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode));
+            end
+            if ismember("geostrophic",availableNormalizations)
                 self = self.addNormalization("geostrophic", @(basisSet,iMode) basisSet.geostrophicNormFactor(iMode));
-                FSpec = self.evp.innerProduct("F");
-                if FSpec.hasInnerProduct
-                    self = self.addNormalization("depth", @(basisSet,iMode) basisSet.depthNormFactor(iMode));
-                end
             end
-            if string(self.evp.name) == "waveModesAtWavenumber"
+            if ismember("depth",availableNormalizations)
+                self = self.addNormalization("depth", @(basisSet,iMode) basisSet.depthNormFactor(iMode));
+            end
+            if ismember("kConstant",availableNormalizations)
                 self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
-            end
-        end
-
-        function name = defaultNormalization(self)
-            if string(self.evp.name) == "geostrophicAPVModes"
-                name = "depth";
-            elseif self.evp.modeFamily == "hydrostatic"
-                name = "geostrophic";
-            elseif string(self.evp.name) == "waveModesAtWavenumber"
-                name = "kConstant";
-            else
-                name = "unity";
             end
         end
 

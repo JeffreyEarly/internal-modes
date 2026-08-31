@@ -32,7 +32,7 @@ Build a transform on another transform's vertical grid.
 
 ## Discussion
 
-This method evaluates the current basis on the reference grid
-and builds a weighted pseudoinverse there. It is intended for
-cases where a model fixes the hydrostatic quadrature grid but
-needs nonzero-$$\kappa$$ IGW modes evaluated on that grid.
+  This method evaluates the current basis on the reference grid
+  and builds a weighted pseudoinverse there. It is intended for
+  cases where a model fixes the hydrostatic quadrature grid but
+  needs nonzero-$$\kappa$$ IGW modes evaluated on that grid.

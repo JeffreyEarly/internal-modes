@@ -149,10 +149,6 @@ classdef IMGeostrophicTransform
             if gravityMismatch > compatibilityTolerance
                 error("IMGeostrophicTransform:GravityMismatch", "The APV and zero-APV gravitational accelerations are incompatible.");
             end
-            if any(zeroAPVModes.k <= 0)
-                error("IMGeostrophicTransform:ZeroWavenumber", "IMGeostrophicTransform requires positive kappa. Use mean-density-anomaly modes at kappa=0.");
-            end
-
             zeroN2Values = zeroAPVModes.N2(apvTransform.z);
             zeroN2Values = zeroN2Values(:);
             if numel(zeroN2Values) ~= numel(apvTransform.z) || any(~isfinite(zeroN2Values)) || any(zeroN2Values <= 0)
@@ -310,8 +306,8 @@ classdef IMGeostrophicTransform
             % - Returns zeroAPVCoefficients: zero-APV coefficient pages
             arguments
                 self IMGeostrophicTransform
-                options.APV double {mustBeFinite}
-                options.endpointAnomalies double {mustBeFinite}
+                options.APV double
+                options.endpointAnomalies double
                 options.zeroAPVCoordinates (1,1) IMGeostrophicZeroAPVModesBasis = self.zeroAPVModes
             end
 
@@ -356,8 +352,8 @@ classdef IMGeostrophicTransform
             % - Returns endpointAnomalies: endpoint-anomaly pages
             arguments
                 self IMGeostrophicTransform
-                options.APVCoefficients double {mustBeFinite}
-                options.zeroAPVCoefficients double {mustBeFinite}
+                options.APVCoefficients double
+                options.zeroAPVCoefficients double
                 options.zeroAPVCoordinates (1,1) IMGeostrophicZeroAPVModesBasis = self.zeroAPVModes
             end
 
@@ -412,8 +408,8 @@ classdef IMGeostrophicTransform
             % - Returns zeroAPVSourceCoefficients: zero-APV source-coefficient pages
             arguments
                 self IMGeostrophicTransform
-                options.vorticitySource double {mustBeFinite}
-                options.displacementSource double {mustBeFinite}
+                options.vorticitySource double
+                options.displacementSource double
                 options.zeroAPVCoordinates (1,1) IMGeostrophicZeroAPVModesBasis = self.zeroAPVModes
             end
 
@@ -462,11 +458,6 @@ classdef IMGeostrophicTransform
         function coordinates = requireCoordinateBasis(self, coordinates)
             if ~coordinates.sharesCanonicalBasisWith(self.zeroAPVModes)
                 error("IMGeostrophicTransform:IncompatibleZeroAPVCoordinates", "zeroAPVCoordinates must derive from the canonical zeroAPVModes supplied at construction.");
-            end
-            for iK = 1:numel(self.k)
-                if rcond(coordinates.rotationMatrix(:,:,iK)) <= sqrt(eps)
-                    error("IMGeostrophicTransform:SingularCoordinateRotation", "zeroAPVCoordinates has an ill-conditioned rotation on page %d.",iK);
-                end
             end
         end
 

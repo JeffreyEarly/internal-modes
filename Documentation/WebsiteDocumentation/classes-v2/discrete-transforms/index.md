@@ -96,11 +96,15 @@ Products involving an identically zero source column are skipped. Continuous pro
 
 `IMInternalModesDiscreteTransformAssessment.prefixDiagnostics` records the worst variable or product channel at every prefix. `variablePrefixDiagnostics(variable=...)` exposes active counts, Gram and round-trip errors, rank, conditioning, and target definiteness for one channel. Supplying explicit `nModes` remains strict: a failing requested family band throws instead of silently shortening it.
 
+When `variable` is omitted from a transform accessor, `primaryVariable` selects the solved formulation when it is directly representable and otherwise the first available channel. Thus an F-form hydrostatic transform defaults to F, a G-form transform defaults to G, and an MDA transform defaults to its directly projectable G channel.
+
+For scalar transforms, `sampledGramRank` makes a rank-deficient candidate rule inspectable. Automatic construction reduces to a full-rank accepted prefix; an explicit `nModes` request remains strict and reports the failed band instead of silently changing it.
+
 These diagnostics assess the sampled transform rule. Continuous EVP residuals, coefficient tails, boundary residuals, and refinement remain part of the separate solver-quality workflow.
 
 ## Mean-density-anomaly transforms
 
-`IMMeanDensityAnomalyModesBasis` uses the same aligned transform object with a deliberately asymmetric channel contract. The solved displacement channel `G` has the signed generalized-energy metric and is the only direct projection channel selected when `variables` is omitted. The mean-pressure channel
+`IMMeanDensityAnomalyModesBasis` uses the same aligned transform object with a deliberately asymmetric channel contract. The solved displacement channel `G` has the signed generalized-energy metric and is the only direct projection channel selected when `variables` is omitted, so it is also the transform's `primaryVariable`. The mean-pressure channel
 
 $$
 F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz'

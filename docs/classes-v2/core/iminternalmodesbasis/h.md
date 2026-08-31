@@ -16,6 +16,6 @@ Equivalent depths for the retained internal modes.
 
 ## Discussion
 
-These are computed from the parent EVP as
-$$h_j=\texttt{evp.hFromEigenvalue}(\lambda_j),$$
-where $$\lambda_j$$ is `eigenvalues(j)`.
+  These are computed from the parent EVP as
+  $$h_j=\texttt{evp.hFromEigenvalue}(\lambda_j),$$
+  where $$\lambda_j$$ is `eigenvalues(j)`.

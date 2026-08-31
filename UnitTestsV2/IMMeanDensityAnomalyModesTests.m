@@ -22,10 +22,10 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
         function factoryMapsEndpointLimitsAndStoresMetadata(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
             cases = {
-                0, 0, ["surface";"bottom"]
+                0, 0, ["surface","bottom"]
                 0.02, Inf, "surface"
                 Inf, -0.03, "bottom"
-                Inf, Inf, strings(0,1)};
+                Inf, Inf, strings(1,0)};
             for iCase = 1:size(cases,1)
                 g0 = cases{iCase,1};
                 gd = cases{iCase,2};
@@ -229,16 +229,19 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             testCase.verifyClass(transform,"IMInternalModesDiscreteTransform")
             testCase.verifyClass(assessment,"IMInternalModesDiscreteTransformAssessment")
             testCase.verifyEqual(transform.availableVariables,"G")
+            testCase.verifyEqual(transform.primaryVariable,"G")
             testCase.verifyTrue(transform.hasForwardTransform(variable="G"))
             testCase.verifyFalse(transform.hasForwardTransform(variable="F"))
             testCase.verifyEqual(transform.transformForward(GValues,variable="G"),coefficients,RelTol=2e-10,AbsTol=2e-10)
+            testCase.verifyEqual(transform.transformForward(GValues),coefficients,RelTol=2e-10,AbsTol=2e-10)
+            testCase.verifyEqual(transform.transformBack(coefficients),GValues,RelTol=2e-10,AbsTol=2e-10)
             testCase.verifyEqual(transform.transformBack(coefficients,variable="F"), ...
                 transform.inverseMatrix(variable="F")*coefficients,RelTol=2e-14,AbsTol=2e-14)
             testCase.verifyEqual(transform.endpointLocations,["surface";"bottom"])
             testCase.verifyEqual(transform.modeFamily,"meanDensityAnomaly")
             testCase.verifyEqual(transform.problemMetadata.g0,0,AbsTol=0)
             testCase.verifyEqual(transform.problemMetadata.gd,0,AbsTol=0)
-            testCase.verifyEqual(transform.problemMetadata.activeEndpoints,["surface";"bottom"])
+            testCase.verifyEqual(transform.problemMetadata.activeEndpoints,["surface","bottom"])
             testCase.verifyError(@() transform.transformForward(transform.inverseMatrix(variable="F"),variable="F"), ...
                 "IMInternalModesDiscreteTransform:UnavailableForwardTransform")
         end

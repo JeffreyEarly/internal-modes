@@ -69,6 +69,8 @@ factors = basisSet.normalizationFactors("unity");
   + [`modeNumber`](/internal-modes/classes-v2/core/imbasisset/modenumber.html) Retained-mode labels.
   + [`modeSelectionDiagnostics`](/internal-modes/classes-v2/core/imbasisset/modeselectiondiagnostics.html) Mode-selection diagnostics.
   + [`zDomain`](/internal-modes/classes-v2/core/imbasisset/zdomain.html) Physical vertical domain.
++ Other
+  + [`innerProductNormFactors`](/internal-modes/classes-v2/core/imbasisset/innerproductnormfactors.html) Return raw scalar inner-product factors for the whole family.
 
 
 ## Developer Topics

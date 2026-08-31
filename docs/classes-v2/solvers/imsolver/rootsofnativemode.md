@@ -3,7 +3,7 @@ layout: default
 title: rootsOfNativeMode
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 
@@ -28,6 +28,6 @@ Return physical roots of one native mode.
 
 ## Discussion
 
-Concrete solvers may implement this developer hook when their
-native representation supports accurate root finding. The base
-implementation reports that mode-root grids are unavailable.
+  Concrete solvers may implement this developer hook when their
+  native representation supports accurate root finding. The base
+  implementation reports that mode-root grids are unavailable.

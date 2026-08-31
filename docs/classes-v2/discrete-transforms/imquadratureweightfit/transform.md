@@ -16,10 +16,10 @@ Discrete transform constructed with the fitted weights.
 
 ## Discussion
 
-This is the production transform associated with `weights`. Its
-sample points, retained modes, normalization, metric, and transform
-matrices match the quadrature-weight fit.
+  This is the production transform associated with `weights`. Its
+  sample points, retained modes, normalization, metric, and transform
+  matrices match the quadrature-weight fit.
 
-```matlab
-coefficients = weightFit.transform.transformForward(values);
-```
+  ```matlab
+  coefficients = weightFit.transform.transformForward(values);
+  ```

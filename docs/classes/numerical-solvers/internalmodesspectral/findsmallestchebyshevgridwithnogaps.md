@@ -28,5 +28,5 @@ Find the coarsest Lobatto grid that covers a target grid without gaps.
 
 ## Discussion
 
-Want to create a chebyshev grid that never has two or more point between
-its points. If that makes sense.
+            Want to create a chebyshev grid that never has two or more point between
+  its points. If that makes sense.

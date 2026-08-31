@@ -16,5 +16,5 @@ Canonically ordered endpoint coordinates.
 
 ## Discussion
 
-`endpoints` is a nonempty subset of `["surface","bottom"]`.
-Its order defines the second dimension of solved mode arrays.
+  `endpoints` is a nonempty subset of `["surface","bottom"]`.
+  Its order defines the second dimension of solved mode arrays.

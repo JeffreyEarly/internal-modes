@@ -27,4 +27,4 @@ Estimate the barotropic equivalent depth for fixed $$K$$.
 
 ## Discussion
 
-this function estimates the location of the root
+            this function estimates the location of the root

@@ -95,11 +95,11 @@ arguments
     options.nCheckModes double {mustBeReal, mustBeFinite} = zeros(0,1)
 end
 
-validateOptionalPositiveInteger(options.nPoints,"nPoints");
-validateOptionalPositiveInteger(options.nModes,"nModes");
-validateOptionalPositiveInteger(options.nCheckModes,"nCheckModes");
-validateOptionalPositiveTolerance(options.leakageTolerance,"leakageTolerance");
-validateOptionalPositiveTolerance(options.quadraticAliasingTolerance,"quadraticAliasingTolerance");
+IMDiscreteTransformTools.validateOptionalPositiveInteger(options.nPoints,"nPoints");
+IMDiscreteTransformTools.validateOptionalPositiveInteger(options.nModes,"nModes");
+IMDiscreteTransformTools.validateOptionalPositiveInteger(options.nCheckModes,"nCheckModes");
+IMDiscreteTransformTools.validateOptionalPositiveTolerance(options.leakageTolerance,"leakageTolerance");
+IMDiscreteTransformTools.validateOptionalPositiveTolerance(options.quadraticAliasingTolerance,"quadraticAliasingTolerance");
 
 hasPointCount = ~isempty(options.nPoints);
 hasExplicitPoints = ~isempty(options.z);
@@ -118,7 +118,7 @@ end
 nAvailableModes = size(self.nativeModes,2);
 if hasPointCount
     requestedPointCount = options.nPoints;
-    [z,candidateModeCount] = pointsForExactCount(self,requestedPointCount,nAvailableModes);
+    [z,candidateModeCount] = IMDiscreteTransformTools.pointsForExactCount(self,requestedPointCount,nAvailableModes);
 else
     z = options.z(:);
     requestedPointCount = length(z);
@@ -150,21 +150,23 @@ gramError = zeros(candidateModeCount,1);
 roundTripError = zeros(candidateModeCount,1);
 inverseConditionNumber = zeros(candidateModeCount,1);
 gramConditionNumber = zeros(candidateModeCount,1);
+sampledGramRank = zeros(candidateModeCount,1);
 for nPrefix = 1:candidateModeCount
     prefixTransforms{nPrefix} = prefixTransform(candidateTransform,nPrefix);
     gramError(nPrefix) = prefixTransforms{nPrefix}.relativeGramOperatorError;
     roundTripError(nPrefix) = prefixTransforms{nPrefix}.roundTripError;
     inverseConditionNumber(nPrefix) = prefixTransforms{nPrefix}.inverseMatrixConditionNumber;
     gramConditionNumber(nPrefix) = prefixTransforms{nPrefix}.gramConditionNumber;
+    sampledGramRank(nPrefix) = prefixTransforms{nPrefix}.sampledGramRank;
 end
-gramAccepted = cumulativeAcceptance(gramError <= options.gramTolerance);
-gramPolicy = policyResult("gram",true,options.gramTolerance,gramError,gramAccepted,candidateModeCount);
+gramAccepted = IMDiscreteTransformTools.cumulativeAcceptance(gramError <= options.gramTolerance);
+gramPolicy = IMDiscreteTransformTools.policyResult("gram",true,options.gramTolerance,gramError,gramAccepted,candidateModeCount);
 
 leakageError = nan(candidateModeCount,1);
 leakageLimitingModeNumber = nan(candidateModeCount,1);
 if isempty(options.leakageTolerance)
     leakageAccepted = true(candidateModeCount,1);
-    leakagePolicy = policyResult("leakage",false,[],leakageError,leakageAccepted,candidateModeCount);
+    leakagePolicy = IMDiscreteTransformTools.policyResult("leakage",false,[],leakageError,leakageAccepted,candidateModeCount);
     leakagePolicy.nCheckModes = [];
     leakagePolicy.limitingModeNumber = leakageLimitingModeNumber;
 else
@@ -205,8 +207,8 @@ else
     end
     checkModeNumber = checkBasis.modeNumber(1:nCheckModes);
     [leakageError,leakageLimitingModeNumber] = rejectedModeLeakage(prefixTransforms,checkValues,checkNorms,checkModeNumber);
-    leakageAccepted = cumulativeAcceptance(leakageError <= options.leakageTolerance);
-    leakagePolicy = policyResult("leakage",true,options.leakageTolerance,leakageError,leakageAccepted,candidateModeCount);
+    leakageAccepted = IMDiscreteTransformTools.cumulativeAcceptance(leakageError <= options.leakageTolerance);
+    leakagePolicy = IMDiscreteTransformTools.policyResult("leakage",true,options.leakageTolerance,leakageError,leakageAccepted,candidateModeCount);
     leakagePolicy.nCheckModes = nCheckModes;
     leakagePolicy.limitingModeNumber = leakageLimitingModeNumber;
 end
@@ -216,7 +218,7 @@ quadraticLimitingModeNumberI = nan(candidateModeCount,1);
 quadraticLimitingModeNumberJ = nan(candidateModeCount,1);
 if isempty(options.quadraticAliasingTolerance)
     quadraticAccepted = true(candidateModeCount,1);
-    quadraticPolicy = policyResult("quadraticAliasing",false,[],quadraticError,quadraticAccepted,candidateModeCount);
+    quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",false,[],quadraticError,quadraticAccepted,candidateModeCount);
     quadraticPolicy.limitingModeNumberI = quadraticLimitingModeNumberI;
     quadraticPolicy.limitingModeNumberJ = quadraticLimitingModeNumberJ;
 else
@@ -257,8 +259,8 @@ else
     integrate = @(integrand) self.solver.integrateInnerProduct(integrationGrid,integrand,self.zDomain);
     [quadraticError,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ] = scalarQuadraticAliasing( ...
         candidateTransform,prefixTransforms,integrationModes,interiorWeight,integrate,endpointModeValues,endpointCoefficients);
-    quadraticAccepted = cumulativeAcceptance(quadraticError <= options.quadraticAliasingTolerance);
-    quadraticPolicy = policyResult("quadraticAliasing",true,options.quadraticAliasingTolerance,quadraticError,quadraticAccepted,candidateModeCount);
+    quadraticAccepted = IMDiscreteTransformTools.cumulativeAcceptance(quadraticError <= options.quadraticAliasingTolerance);
+    quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",true,options.quadraticAliasingTolerance,quadraticError,quadraticAccepted,candidateModeCount);
     quadraticPolicy.limitingModeNumberI = quadraticLimitingModeNumberI;
     quadraticPolicy.limitingModeNumberJ = quadraticLimitingModeNumberJ;
 end
@@ -279,10 +281,10 @@ end
 transform = prefixTransforms{retainedModeCount};
 modeCount = (1:candidateModeCount).';
 lastModeNumber = candidateTransform.modeNumber(:);
-prefixDiagnostics = table(modeCount,lastModeNumber,gramError,roundTripError,inverseConditionNumber,gramConditionNumber, ...
+prefixDiagnostics = table(modeCount,lastModeNumber,gramError,roundTripError,inverseConditionNumber,gramConditionNumber,sampledGramRank, ...
     leakageError,leakageLimitingModeNumber,quadraticError,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ, ...
     gramAccepted,leakageAccepted,quadraticAccepted,combinedAccepted, ...
-    VariableNames=["modeCount","lastModeNumber","gramError","roundTripError","inverseMatrixConditionNumber","gramConditionNumber", ...
+    VariableNames=["modeCount","lastModeNumber","gramError","roundTripError","inverseMatrixConditionNumber","gramConditionNumber","sampledGramRank", ...
     "leakageError","leakageLimitingModeNumber","quadraticAliasingError","quadraticLimitingModeNumberI","quadraticLimitingModeNumberJ", ...
     "gramAccepted","leakageAccepted","quadraticAccepted","combinedAccepted"]);
 assessment = IMDiscreteTransformAssessment(transform=transform,candidateTransform=candidateTransform,weightFit=weightFit, ...
@@ -290,94 +292,11 @@ assessment = IMDiscreteTransformAssessment(transform=transform,candidateTransfor
     leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,retentionReason=retentionReason);
 end
 
-function validateOptionalPositiveInteger(value,name)
-if isempty(value)
-    return
-end
-if ~isscalar(value) || value <= 0 || value ~= floor(value)
-    error("IMBasisSet:InvalidDiscreteTransformOption", "%s must be empty or a positive integer scalar.", name);
-end
-end
-
-function validateOptionalPositiveTolerance(value,name)
-if isempty(value)
-    return
-end
-if ~isscalar(value) || value <= 0
-    error("IMBasisSet:InvalidDiscreteTransformOption", "%s must be empty or a positive finite scalar.", name);
-end
-end
-
-function [z,candidateModeCount] = pointsForExactCount(basisSet,nPoints,nAvailableModes)
-pointCounts = nan(nAvailableModes,1);
-pointGrids = cell(nAvailableModes,1);
-maximumPossibleModeCount = min(nAvailableModes,nPoints);
-for nModes = maximumPossibleModeCount:-1:1
-    try
-        pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
-        pointCounts(nModes) = length(pointGrids{nModes});
-    catch exception
-        if nModes == nAvailableModes && strcmp(exception.identifier,"IMBasisSet:AuxiliaryModeUnavailable")
-            continue
-        end
-        rethrow(exception)
-    end
-    if pointCounts(nModes) == nPoints
-        candidateModeCount = nModes;
-        z = pointGrids{nModes};
-        return
-    end
-end
-for nModes = (maximumPossibleModeCount+1):nAvailableModes
-    try
-        pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
-        pointCounts(nModes) = length(pointGrids{nModes});
-    catch exception
-        if nModes == nAvailableModes && strcmp(exception.identifier,"IMBasisSet:AuxiliaryModeUnavailable")
-            continue
-        end
-        rethrow(exception)
-    end
-end
-attainableCounts = unique(pointCounts(isfinite(pointCounts)));
-[~,order] = sort(abs(attainableCounts-nPoints));
-nearestCounts = attainableCounts(order(1:min(3,length(order))));
-nearestText = join(string(nearestCounts(:).'),", ");
-error("IMBasisSet:UnattainableDiscretePointCount", ...
-    "No available mode-root grid has exactly %d points. Nearest attainable counts are %s.",nPoints,nearestText);
-end
-
 function transform = prefixTransform(candidateTransform,nModes)
 transform = IMDiscreteTransform(z=candidateTransform.z,weights=candidateTransform.weights, ...
     modeNumber=candidateTransform.modeNumber(1:nModes),normalization=candidateTransform.normalization, ...
     inverseMatrix=candidateTransform.inverseMatrix(:,1:nModes),metricMatrix=candidateTransform.metricMatrix, ...
     targetGramMatrix=candidateTransform.targetGramMatrix(1:nModes,1:nModes));
-end
-
-function accepted = cumulativeAcceptance(rawAccepted)
-accepted = cumprod(double(rawAccepted(:))) > 0;
-end
-
-function policy = policyResult(name,enabled,tolerance,errorValues,accepted,candidateModeCount)
-acceptedModeCount = find(accepted,1,"last");
-if isempty(acceptedModeCount)
-    acceptedModeCount = 0;
-end
-if ~enabled
-    limitingValue = NaN;
-    reason = sprintf("The %s policy is disabled.", name);
-elseif acceptedModeCount < candidateModeCount
-    limitingValue = errorValues(acceptedModeCount+1);
-    reason = sprintf("Accepted %d of %d candidate modes; the next prefix has value %.6g above tolerance %.6g.", ...
-        acceptedModeCount,candidateModeCount,limitingValue,tolerance);
-else
-    limitingValue = max(errorValues);
-    reason = sprintf("All %d candidate modes pass tolerance %.6g; the largest policy value is %.6g.", ...
-        candidateModeCount,tolerance,limitingValue);
-end
-policy = struct(name=string(name),enabled=logical(enabled),tolerance=tolerance,error=errorValues(:), ...
-    accepted=accepted(:),acceptedModeCount=acceptedModeCount,maximumAcceptedModeCount=acceptedModeCount, ...
-    limitingValue=limitingValue,reason=string(reason),limited=enabled && acceptedModeCount < candidateModeCount);
 end
 
 function [errors,limitingModeNumber] = rejectedModeLeakage(prefixTransforms,checkValues,checkNorms,checkModeNumber)

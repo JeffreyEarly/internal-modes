@@ -29,5 +29,5 @@ Find physical-domain roots of a Chebyshev series.
 
 ## Discussion
 
-Copyright (c) 2007, Stephen Morris
-All rights reserved.
+              Copyright (c) 2007, Stephen Morris
+  All rights reserved.

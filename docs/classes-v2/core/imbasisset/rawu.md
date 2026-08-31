@@ -3,7 +3,7 @@ layout: default
 title: rawU
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 22
+nav_order: 23
 mathjax: true
 ---
 
@@ -28,8 +28,8 @@ Evaluate raw solved scalar modes.
 
 ## Discussion
 
-This developer utility evaluates the unnormalized native
-mode columns on the physical grid `z`. The public `u` method
-applies the active normalization rule after this step:
-$$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
-where $$s_j$$ comes from `normalizationFactors`.
+  This developer utility evaluates the unnormalized native
+  mode columns on the physical grid `z`. The public `u` method
+  applies the active normalization rule after this step:
+  $$u_j(z)=u_j^{\mathrm{raw}}(z)/s_j,$$
+  where $$s_j$$ comes from `normalizationFactors`.

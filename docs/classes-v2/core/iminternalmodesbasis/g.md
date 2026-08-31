@@ -27,10 +27,10 @@ Evaluate `G` modes.
 
 ## Discussion
 
-If the EVP formulation is `G`, this evaluates the solved
-canonical variable. If the formulation is `F`, `G` is recovered
-by `evp.GfromFz`. The default relation is
-$$G_j(z)=-\frac{g}{N^2(z)}
-\frac{\partial F_j}{\partial z}(z),$$
-but individual EVPs may supply a different diagnostic
-relation.
+  If the EVP formulation is `G`, this evaluates the solved
+  canonical variable. If the formulation is `F`, `G` is recovered
+  by `evp.GfromFz`. The default relation is
+  $$G_j(z)=-\frac{g}{N^2(z)}
+  \frac{\partial F_j}{\partial z}(z),$$
+  but individual EVPs may supply a different diagnostic
+  relation.

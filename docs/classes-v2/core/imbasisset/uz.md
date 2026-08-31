@@ -3,7 +3,7 @@ layout: default
 title: uz
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 27
+nav_order: 28
 mathjax: true
 ---
 
@@ -27,5 +27,5 @@ Evaluate solved scalar vertical derivatives.
 
 ## Discussion
 
-Derivatives are scaled by the same modal factors used for
-`u`, so $$u'_j(z)=u_j^{\mathrm{raw}\prime}(z)/s_j$$.
+  Derivatives are scaled by the same modal factors used for
+  `u`, so $$u'_j(z)=u_j^{\mathrm{raw}\prime}(z)/s_j$$.

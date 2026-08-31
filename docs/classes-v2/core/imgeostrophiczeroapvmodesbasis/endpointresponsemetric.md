@@ -16,5 +16,5 @@ Endpoint-response Gram matrix $$\mathsf R_B$$.
 
 ## Discussion
 
-Canonical unit boundary coordinates give $$\mathsf R_B=\mathsf I$$.
-Rotated bases expose the congruence-transformed matrix.
+  Canonical unit boundary coordinates give $$\mathsf R_B=\mathsf I$$.
+  Rotated bases expose the congruence-transformed matrix.

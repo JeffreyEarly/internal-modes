@@ -28,5 +28,5 @@ Return a solver configured for geostrophic zero-APV modes.
 
 ## Discussion
 
-Concrete solvers prepare their native grid, coordinate mapping,
-and derivative matrices for the supplied zero-APV problem.
+  Concrete solvers prepare their native grid, coordinate mapping,
+  and derivative matrices for the supplied zero-APV problem.

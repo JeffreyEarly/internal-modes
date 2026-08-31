@@ -6,7 +6,7 @@ has_toc: false
 mathjax: true
 parent: Core
 grand_parent: Class documentation V2
-nav_order: 8
+nav_order: 10
 ---
 
 #  IMGeostrophicZeroAPVModesBasis

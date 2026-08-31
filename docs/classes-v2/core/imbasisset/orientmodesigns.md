@@ -3,7 +3,7 @@ layout: default
 title: orientModeSigns
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 18
+nav_order: 19
 mathjax: true
 ---
 
@@ -25,11 +25,11 @@ Orient scalar modes with a deterministic sign convention.
 
 ## Discussion
 
-This developer utility flips native mode columns so each
-scalar mode has a deterministic sign based on its largest
-amplitude on the solver integration grid. `IMBasisSet` is a
-value class, so callers must keep the returned basis set:
+  This developer utility flips native mode columns so each
+  scalar mode has a deterministic sign based on its largest
+  amplitude on the solver integration grid. `IMBasisSet` is a
+  value class, so callers must keep the returned basis set:
 
-```matlab
-basisSet = basisSet.orientModeSigns();
-```
+  ```matlab
+  basisSet = basisSet.orientModeSigns();
+  ```

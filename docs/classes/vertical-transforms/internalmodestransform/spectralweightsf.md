@@ -19,4 +19,4 @@ Real valued property with dimension $$modeF$$ and no units.
 
 ## Discussion
 
-For geostrophic F modes this stores $$\gamma_j$$.
+  For geostrophic F modes this stores $$\gamma_j$$.

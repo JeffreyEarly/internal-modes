@@ -19,6 +19,6 @@ Real valued property with dimension $$zIndex$$ and units of $$\mathrm{m}$$.
 
 ## Discussion
 
-The grid is a column vector in meters. Projection operators built
-from this basis act on scalar fields sampled at these depths unless
-an observation projection supplies its own observation operator.
+  The grid is a column vector in meters. Projection operators built
+  from this basis act on scalar fields sampled at these depths unless
+  an observation projection supplies its own observation operator.

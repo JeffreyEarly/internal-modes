@@ -31,6 +31,6 @@ Solve modes at fixed frequency and return an annotated basis.
 
 ## Discussion
 
-For `omega=0`, the returned basis is marked geostrophic and
-both F and G components are canonical vertical projection
-bases.
+  For `omega=0`, the returned basis is marked geostrophic and
+  both F and G components are canonical vertical projection
+  bases.

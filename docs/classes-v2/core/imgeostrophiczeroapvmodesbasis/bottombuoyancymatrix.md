@@ -16,4 +16,4 @@ Bottom-buoyancy matrix $$\mathsf B_d$$.
 
 ## Discussion
 
-This matrix is exactly zero when the bottom endpoint is absent.
+  This matrix is exactly zero when the bottom endpoint is absent.

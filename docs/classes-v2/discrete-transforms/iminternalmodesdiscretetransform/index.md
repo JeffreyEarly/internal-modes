@@ -41,6 +41,9 @@ $$A_\mathrm{f}^{V}A_\mathrm{i}^{V}=Q_V.$$
 `modeProjectionFunctional` returns
 $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$ before the active Gram solve;
 `transformForward` returns coefficients after that solve.
+When `variable` is omitted, accessors use `primaryVariable`, which is
+the solved formulation when that channel was requested and otherwise
+the first directly representable requested channel.
 
 ```matlab
 [transform,assessment] = basisSet.discreteTransform(nPoints=24,variables=["F","G"]);
@@ -52,6 +55,8 @@ F = transform.transformBack(aG,variable="F");
 
 
 ## Topics
++ Inspect samples and modes
+  + [`primaryVariable`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/primaryvariable.html) Default F/G channel used when `variable` is omitted.
 + Other
   + [`N2Values`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/n2values.html) Buoyancy frequency squared sampled at `z`.
   + [`activeModeMask`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/activemodemask.html) Return the full-family active-column projector mask.

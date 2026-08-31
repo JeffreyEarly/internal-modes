@@ -35,5 +35,5 @@ Create a basis from already-solved mode arrays.
 
 ## Discussion
 
-Use this factory when another workflow has already computed
-sampled inverse modes and equivalent depths.
+  Use this factory when another workflow has already computed
+  sampled inverse modes and equivalent depths.

@@ -35,13 +35,13 @@ Build an aligned internal-mode F/G discrete transform.
 
 ## Discussion
 
-The point rule is shared, but each requested variable retains its own
-sampled metric, active columns, target Gram matrix, and forward
-projection. Omitted `variables` selects every directly representable
-channel in canonical order `F`, `G`. Point-limited construction still
-uses roots of the next mode in the EVP's solved formulation.
+  The point rule is shared, but each requested variable retains its own
+  sampled metric, active columns, target Gram matrix, and forward
+  projection. Omitted `variables` selects every directly representable
+  channel in canonical order `F`, `G`. Point-limited construction still
+  uses roots of the next mode in the EVP's solved formulation.
 
-The Gram policy must pass independently for every requested channel.
-Optional leakage uses same-variable rejected modes. Coupled quadratic
-aliasing assesses `FF->F` and `GG->F` when F is enabled, and `FG->G`
-when G is enabled. All prefixes reuse the candidate points and weights.
+  The Gram policy must pass independently for every requested channel.
+  Optional leakage uses same-variable rejected modes. Coupled quadratic
+  aliasing assesses `FF->F` and `GG->F` when F is enabled, and `FG->G`
+  when G is enabled. All prefixes reuse the candidate points and weights.

@@ -7,6 +7,20 @@ The complete class hierarchy contains several implementations that include spect
 
 The classes contain many options, but also try to remain simple to use. Use `help InternalModes` in Matlab for a complete description, or use the Quick Start below.
 
+## V2 prerelease API
+
+The repository also contains the parallel V2 API under active prerelease development. V2 separates the physical eigenvalue problem, numerical solver, continuous basis, and sampled transform:
+
+```matlab
+N2 = @(z) 1e-4*exp(z/1000);
+evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-4000 0]);
+basisSet = IMSolverSpectral(nEVP=256,coordinateKind="wkb").solveEVP(evp,nModes=72);
+basisSet.normalization = "geostrophic";
+[transform,assessment] = basisSet.discreteTransform(nPoints=64,variables=["F","G"]);
+```
+
+The V2 guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate the current API; the stable `InternalModes` quick start below remains unchanged.
+
 If you use these classes to compute the vertical modes, please cite the following paper,
 - J. Early, M. P. Lelong, and K. S. Smith. Fast and Accurate Coputation of Vertical Modes. Journal of Advances in Modeling Earth Systems. 2020. [doi](https://doi.org/10.1029/2019MS001939)
 

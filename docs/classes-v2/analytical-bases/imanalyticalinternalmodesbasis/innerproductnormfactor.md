@@ -29,8 +29,8 @@ Return the raw inner-product norm factor.
 
 ## Discussion
 
-This developer utility returns the raw scale factor
-$$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$
-for exact analytical `F` or `G` modes before the active
-normalization is applied. The requested variable must have a
-known inner product.
+  This developer utility returns the raw scale factor
+  $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$
+  for exact analytical `F` or `G` modes before the active
+  normalization is applied. The requested variable must have a
+  known inner product.

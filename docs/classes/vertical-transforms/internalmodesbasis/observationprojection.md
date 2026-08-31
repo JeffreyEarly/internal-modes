@@ -32,8 +32,8 @@ Build a vertical projection for an arbitrary observation grid.
 
 ## Discussion
 
-The observation problem uses the sampled matrix
-$$B=H\Phi$$, where $$H$$ is either a point-sampling grid or an
-explicit observation operator and $$\Phi$$ is the inverse mode
-matrix. Rank-revealing QR selects a resolvable, possibly
-non-contiguous set of modes.
+  The observation problem uses the sampled matrix
+  $$B=H\Phi$$, where $$H$$ is either a point-sampling grid or an
+  explicit observation operator and $$\Phi$$ is the inverse mode
+  matrix. Rank-revealing QR selects a resolvable, possibly
+  non-contiguous set of modes.

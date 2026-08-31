@@ -31,11 +31,11 @@ base class owns the common generalized-eigenvalue workflow.
 
 ## Topics
 + Solve EVPs
+  + [`IMSolver`](/internal-modes/classes-v2/solvers/imsolver/imsolver.html) Define the shared protocol for canonical EVP solvers.
   + [`solveEVP`](/internal-modes/classes-v2/solvers/imsolver/solveevp.html) Solve an EVP and return a basis set.
 + Solve geostrophic zero-APV modes
   + [`solveGeostrophicZeroAPVModes`](/internal-modes/classes-v2/solvers/imsolver/solvegeostrophiczeroapvmodes.html) Solve canonical geostrophic zero-APV boundary modes.
 + Other
-  + [`IMSolver`](/internal-modes/classes-v2/solvers/imsolver/imsolver.html)
   + [`N2`](/internal-modes/classes-v2/solvers/imsolver/n2.html)
   + [`boundaryIndex`](/internal-modes/classes-v2/solvers/imsolver/boundaryindex.html)
   + [`configuredForEVP`](/internal-modes/classes-v2/solvers/imsolver/configuredforevp.html)

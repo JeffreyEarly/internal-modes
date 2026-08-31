@@ -16,6 +16,6 @@ Rejected-mode leakage policy result.
 
 ## Discussion
 
-This policy is disabled when its tolerance is empty. With the
-default check band it samples rejected modes through twice the
-candidate count.
+  This policy is disabled when its tolerance is empty. With the
+  default check band it samples rejected modes through twice the
+  candidate count.

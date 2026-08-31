@@ -31,9 +31,9 @@ Compute a vertical modal cross-spectrum.
 
 ## Discussion
 
-For component spectral weights $$s_j$$, coefficients $$a_j$$
-and $$b_j$$, and multiplicity $$m$$, this method returns
+  For component spectral weights $$s_j$$, coefficients $$a_j$$
+  and $$b_j$$, and multiplicity $$m$$, this method returns
 
-$$
-S_j = m\,s_j\,\Re\{a_j b_j^*\}.
-$$
+  $$
+  S_j = m\,s_j\,\Re\{a_j b_j^*\}.
+  $$

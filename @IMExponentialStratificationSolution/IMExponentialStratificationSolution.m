@@ -148,7 +148,8 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
                     modeSelectionDiagnostics=diagnostics);
                 return;
             end
-            [f0, gValue] = IMExponentialStratificationSolution.physicalConstants(evp);
+            f0 = evp.f0;
+            gValue = evp.g;
             [h, roots, frequencies, modeNumber, modeKinds] = IMExponentialStratificationSolution.solveSpectrum(evp, self.N0, self.b, self.zDomain, options.nModes, f0, gValue);
             phaseSpeeds = sqrt(gValue*h);
             signFactors = IMExponentialStratificationSolution.surfaceSignFactors(self.N0, self.b, self.zDomain, frequencies, phaseSpeeds, gValue, modeKinds);
@@ -194,8 +195,7 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
                 options.metadata struct = struct()
             end
 
-            [endpoints,surfaceBoundary] = self.validateZeroAPVRequest(options.endpoints,options.surfaceBoundary);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) self.N2(z),zDomain=self.zDomain,f0=self.f0,g=self.g,k=k,endpoints=endpoints,surfaceBoundary=surfaceBoundary,metadata=options.metadata);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) self.N2(z),zDomain=self.zDomain,f0=self.f0,g=self.g,k=k,endpoints=options.endpoints,surfaceBoundary=options.surfaceBoundary,metadata=options.metadata);
             modeData = self.zeroAPVModeData(problem);
             metadata = options.metadata;
             metadata.analyticalSolution = "exponentialStratification";
@@ -280,28 +280,6 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             end
         end
 
-        function [endpoints,surfaceBoundary] = validateZeroAPVRequest(self,endpoints,surfaceBoundary)
-            if self.f0 == 0
-                error("IMExponentialStratificationSolution:InvalidCoriolis", "Exact geostrophic zero-APV modes require nonzero f0.");
-            end
-            endpoints = reshape(string(endpoints),1,[]);
-            canonicalEndpoints = ["surface", "bottom"];
-            if isempty(endpoints)
-                error("IMExponentialStratificationSolution:NoEndpoint", "endpoints must request at least one of ""surface"" or ""bottom"".");
-            end
-            if any(~ismember(endpoints,canonicalEndpoints))
-                error("IMExponentialStratificationSolution:InvalidEndpoint", "endpoints must contain only ""surface"" and ""bottom"".");
-            end
-            if numel(unique(endpoints)) ~= numel(endpoints)
-                error("IMExponentialStratificationSolution:DuplicateEndpoint", "endpoints must not contain duplicate values.");
-            end
-            endpoints = canonicalEndpoints(ismember(canonicalEndpoints,endpoints));
-            surfaceBoundary = string(surfaceBoundary);
-            if ~ismember(surfaceBoundary,["freeSurface", "rigidLid"])
-                error("IMExponentialStratificationSolution:UnsupportedSurfaceBoundary", "surfaceBoundary must be ""freeSurface"" or ""rigidLid"".");
-            end
-        end
-
         function modeData = zeroAPVModeData(self,problem)
             nEndpoints = numel(problem.endpoints);
             nK = numel(problem.k);
@@ -374,31 +352,6 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             tolerance = 100*eps(max(1,max(abs(zDomain))));
             if abs(zDomain(2)) > tolerance
                 error("IMExponentialStratificationSolution:UnsupportedDomain", "Exponential-stratification analytical modes currently require the surface at z=0.");
-            end
-        end
-
-        function [f0, gValue] = physicalConstants(evp)
-            f0 = evp.f0;
-            gValue = evp.g;
-            if ~(isscalar(f0) && isfinite(f0))
-                error("IMExponentialStratificationSolution:InvalidCoriolis", "The Coriolis parameter must be finite.");
-            end
-            if ~(isscalar(gValue) && isfinite(gValue) && gValue > 0)
-                error("IMExponentialStratificationSolution:InvalidGravity", "The gravitational acceleration must be positive.");
-            end
-        end
-
-        function normalizations = supportedNormalizations(evp)
-            normalizations = ["unity", "uMax", "wMax", "surfacePressure"];
-            if evp.modeFamily == "hydrostatic"
-                normalizations(end+1) = "geostrophic";
-                FSpec = evp.innerProduct("F");
-                if FSpec.hasInnerProduct
-                    normalizations(end+1) = "depth";
-                end
-            end
-            if string(evp.name) == "waveModesAtWavenumber"
-                normalizations(end+1) = "kConstant";
             end
         end
 

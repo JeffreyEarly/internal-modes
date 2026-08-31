@@ -27,15 +27,15 @@ Diagonalize surface buoyancy relative to generalized energy.
 
 ## Discussion
 
-For every wavenumber page, solve
+  For every wavenumber page, solve
 
-$$
-g\mathsf B_0\mathbf c^a=\chi^a\mathsf H_g\mathbf c^a.
-$$
+  $$
+  g\mathsf B_0\mathbf c^a=\chi^a\mathsf H_g\mathbf c^a.
+  $$
 
-The surface-buoyancy-carrying direction is ordered first.
-This rotation leaves `h0` empty.
+  The surface-buoyancy-carrying direction is ordered first.
+  This rotation leaves `h0` empty.
 
-```matlab
-surfaceModes = boundaryModes.rotateSurfaceBuoyancy(g0=-0.035,gd=0.01);
-```
+  ```matlab
+  surfaceModes = boundaryModes.rotateSurfaceBuoyancy(g0=-0.035,gd=0.01);
+  ```

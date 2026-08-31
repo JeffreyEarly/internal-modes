@@ -514,6 +514,7 @@ classdef IMGeostrophicZeroAPVModesBasis
         end
 
         function basisSet = basisWithRotation(self,name,rotationMatrix,eigenvalues,signatures,h0Values,normalizationConvention,residuals)
+            IMGeostrophicZeroAPVFormTools.validateRotationPages(rotationMatrix,numel(self.endpoints),numel(self.k),"IMGeostrophicZeroAPVModesBasis");
             basisSet = IMGeostrophicZeroAPVModesBasis(problem=self.problem,solver=self.solver,nativeModes=self.canonicalNativeModes,metadata=self.metadata);
             nK = numel(self.k);
             for iK = 1:nK

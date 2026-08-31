@@ -79,31 +79,23 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMInternalModesBasis:InvalidEquivalentDepthCount", "hFromEigenvalue must return one equivalent depth for each native mode column.");
             end
 
+            availableNormalizations = IMInternalModesNormalizationTools.available(self.evp);
             self = self.addVectorNormalization("uMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="F"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="F"));
             self = self.addVectorNormalization("wMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="G"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="G"));
-            if self.evp.modeFamily ~= "meanDensityAnomaly"
+            if ismember("surfacePressure",availableNormalizations)
                 self = self.addVectorNormalization("surfacePressure",@(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode),@(basisSet) basisSet.surfacePressureNormFactors());
             end
-            if self.evp.modeFamily == "hydrostatic"
+            if ismember("geostrophic",availableNormalizations)
                 self = self.addVectorNormalization("geostrophic",@(basisSet,iMode) basisSet.geostrophicNormFactor(iMode),@(basisSet) basisSet.geostrophicNormFactors());
-                FSpec = self.evp.innerProduct("F");
-                if FSpec.hasInnerProduct
-                    self = self.addVectorNormalization("depth",@(basisSet,iMode) basisSet.depthNormFactor(iMode),@(basisSet) basisSet.depthNormFactors());
-                end
             end
-            if string(self.evp.name) == "waveModesAtWavenumber"
+            if ismember("depth",availableNormalizations)
+                self = self.addVectorNormalization("depth",@(basisSet,iMode) basisSet.depthNormFactor(iMode),@(basisSet) basisSet.depthNormFactors());
+            end
+            if ismember("kConstant",availableNormalizations)
                 self = self.addVectorNormalization("kConstant",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode,variable="G"),@(basisSet) basisSet.innerProductNormFactors(variable="G"));
             end
             if isempty(options.normalization)
-                if string(self.evp.name) == "geostrophicAPVModes"
-                    self.normalization = "depth";
-                elseif self.evp.modeFamily == "hydrostatic"
-                    self.normalization = "geostrophic";
-                elseif string(self.evp.name) == "waveModesAtWavenumber"
-                    self.normalization = "kConstant";
-                else
-                    self.normalization = "unity";
-                end
+                self.normalization = IMInternalModesNormalizationTools.default(self.evp);
             end
         end
 
@@ -775,9 +767,13 @@ classdef IMInternalModesBasis < IMBasisSet
             end
 
             metadata = self.metadata;
+            primaryVariable = string(self.evp.formulation);
+            if ~ismember(primaryVariable,variables)
+                primaryVariable = variables(1);
+            end
             transform = IMInternalModesDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
                 normalization=self.normalizationName(self.normalization),inverseF=inverseF,inverseG=inverseG,endpointF=endpointF,endpointG=endpointG, ...
-                channelData=channelData,zDomain=self.zDomain,g=self.evp.g,modeFamily=self.evp.modeFamily,N2Values=self.N2(z),problemMetadata=metadata);
+                channelData=channelData,primaryVariable=primaryVariable,zDomain=self.zDomain,g=self.evp.g,modeFamily=self.evp.modeFamily,N2Values=self.N2(z),problemMetadata=metadata);
         end
 
         function variables = directlyRepresentableDiscreteVariables(self, z)

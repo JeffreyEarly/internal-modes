@@ -57,6 +57,24 @@ classdef IMDiscreteTransformPolicyTests < matlab.unittest.TestCase
             end
         end
 
+        function rankDeficientCandidateReducesToFullRankPrefix(testCase)
+            solver = IMSolverSpectral(nEVP=64);
+            evp = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+            basis = solver.solveEVP(evp,nModes=6);
+            sampleZ = linspace(-1,0,5).';
+            sampleWeights = [0.5;ones(3,1);0.5]/4;
+
+            [transform,assessment] = basis.discreteTransform(z=sampleZ,weights=sampleWeights);
+
+            testCase.verifyEqual(assessment.candidateModeCount,5)
+            testCase.verifyEqual(assessment.candidateTransform.sampledGramRank,3)
+            testCase.verifyEqual(assessment.prefixDiagnostics.sampledGramRank,[1;2;3;3;3])
+            testCase.verifyEqual(assessment.gramPolicy.maximumAcceptedModeCount,3)
+            testCase.verifyEqual(assessment.retainedModeCount,3)
+            testCase.verifyEqual(transform.sampledGramRank,3)
+            testCase.verifyError(@() basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=5),"IMBasisSet:DiscreteTransformPolicyFailed")
+        end
+
         function leakageMatchesIndependentRejectedModeProjection(testCase)
             [~,assessment] = testCase.cosineBasis.discreteTransform(z=testCase.z,weights=testCase.weights, ...
                 leakageTolerance=1e-8,nCheckModes=20);

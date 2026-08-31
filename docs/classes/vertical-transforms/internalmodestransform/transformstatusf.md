@@ -16,5 +16,5 @@ F transform construction status.
 
 ## Discussion
 
-Values include `"canonical"`, `"directInverse"`,
-`"weightedPseudoinverse"`, and `"diagnosticOnly"`.
+  Values include `"canonical"`, `"directInverse"`,
+  `"weightedPseudoinverse"`, and `"diagnosticOnly"`.

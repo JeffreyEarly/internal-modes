@@ -3,7 +3,7 @@ layout: default
 title: solveGeostrophicZeroAPVModes
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 15
+nav_order: 16
 mathjax: true
 ---
 
@@ -26,7 +26,7 @@ Solve canonical geostrophic zero-APV boundary modes.
 
 ## Discussion
 
-The operator is factored once for each distinct requested
-horizontal wavenumber. Every requested unit endpoint response is solved
-in the same multiple-right-hand-side operation. No
-generalized-energy coefficient or rotation enters this solve.
+  The operator is factored once for each distinct requested
+  horizontal wavenumber. Every requested unit endpoint response is solved
+  in the same multiple-right-hand-side operation. No
+  generalized-energy coefficient or rotation enters this solve.

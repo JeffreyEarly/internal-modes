@@ -27,5 +27,5 @@ Return $$\mathsf H_g=\mathsf H+g_0\mathsf B_0+g_d\mathsf B_d$$.
 
 ## Discussion
 
-Coefficients for endpoints absent from `endpoints` have no
-effect because their form matrices are exactly zero.
+  Coefficients for endpoints absent from `endpoints` have no
+  effect because their form matrices are exactly zero.

@@ -89,17 +89,6 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             if numel(N2Values) ~= numel(zNative) || any(~isfinite(N2Values)) || any(N2Values <= 0)
                 error("IMMeanDensityAnomalyModesBasis:InvalidStratification", "N2 must return one finite positive value for each solver grid point.");
             end
-            if isfinite(self.g0) && isfinite(self.gd)
-                zIntegration = options.solver.innerProductGrid(self.zDomain);
-                N2Integration = options.evp.N2(zIntegration);
-                N2Integral = options.solver.integrateInnerProduct(zIntegration,N2Integration(:),self.zDomain);
-                nullNormNumerator = N2Integral+self.g0+self.gd;
-                nullNormScale = max(1,abs(N2Integral)+abs(self.g0)+abs(self.gd));
-                if abs(nullNormNumerator) <= 1e3*eps(nullNormScale)
-                    error("IMMeanDensityAnomalyModesBasis:ZeroNormMode", ...
-                        "The constant mean-density-anomaly mode has zero signed generalized-energy norm because integral(N2 dz)+g0+gd is zero. Adjust g0 or gd away from this singular endpoint balance.");
-                end
-            end
             GNativeValues = options.solver.evaluateNativeModes(options.nativeModes,zNative);
             self.nativeFModes = options.solver.integrateGridValuesFromSurface((N2Values/options.evp.g).*GNativeValues);
 

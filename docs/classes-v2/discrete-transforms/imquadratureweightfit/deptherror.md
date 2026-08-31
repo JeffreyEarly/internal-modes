@@ -16,10 +16,10 @@ Difference between the fitted weight sum and `depthTarget`.
 
 ## Discussion
 
-The value is
+  The value is
 
-$$
-\sum_k w_k-D.
-$$
+  $$
+  \sum_k w_k-D.
+  $$
 
-It should be near zero when `depthConstraint` is true.
+  It should be near zero when `depthConstraint` is true.

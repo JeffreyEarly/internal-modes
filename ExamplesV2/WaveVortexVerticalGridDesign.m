@@ -9,8 +9,8 @@ addpath(repoRoot);
 
 %% Specify the stratification and point count
 % The buoyancy frequency decreases exponentially with depth. We fix the
-% number of physical points at Nz=64 and let the internal modes determine
-% their locations.
+% number of physical points in Nz and let the internal modes determine
+% their locations. Change Nz to explore a different grid size.
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
@@ -92,7 +92,7 @@ ylabel("z (m)")
 title("Grid spacing follows the stratification")
 
 %% Inspect how the retained count is selected
-% The curves use the same 64 points and fitted weights for every mode
+% The curves use the same selected points and fitted weights for every mode
 % count. A count is accepted only while all smaller counts also satisfy the
 % corresponding tolerance.
 diagnostics = assessment.prefixDiagnostics;

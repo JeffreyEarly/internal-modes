@@ -207,15 +207,15 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function invalidRequestsThrowConcreteErrors(testCase)
             constant = IMConstantStratificationSolution(f0=0);
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1),"IMConstantStratificationSolution:InvalidCoriolis")
+            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
             constant = IMConstantStratificationSolution(f0=1);
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=string.empty(1,0)),"IMConstantStratificationSolution:NoEndpoint")
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints="middle"),"IMConstantStratificationSolution:InvalidEndpoint")
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=["surface" "surface"]),"IMConstantStratificationSolution:DuplicateEndpoint")
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,surfaceBoundary="other"),"IMConstantStratificationSolution:UnsupportedSurfaceBoundary")
+            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
+            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
+            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
+            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,surfaceBoundary="other"),"MATLAB:validators:mustBeMember")
 
             exponential = IMExponentialStratificationSolution(f0=0);
-            testCase.verifyError(@() exponential.geostrophicZeroAPVModesAtWavenumber(1),"IMExponentialStratificationSolution:InvalidCoriolis")
+            testCase.verifyError(@() exponential.geostrophicZeroAPVModesAtWavenumber(1),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
         end
     end
 

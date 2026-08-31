@@ -1,6 +1,8 @@
 # Version History
 
 ## Unreleased
+- identified the integrated V2 development package as `2.0.0-beta.1`; this remains a prerelease and does not declare or publish a stable V2 API
+- reconciled the scalar and aligned transform contracts, centralized retained-band fitting and normalization policy, simplified redundant validation, and qualified the V2 API, examples, generated reference, and installed package as one integration increment
 - replaced the V2 analytical SQG-profile and availability-report APIs with concrete constant- and exponential-stratification `geostrophicZeroAPVModesAtWavenumber` constructors, exact canonical `F/G` endpoint responses, and an `IMAnalyticalGeostrophicZeroAPVModesBasis` supporting the numerical quadratic-form and rotation contracts
 - replaced the projected surface-geostrophic API with coefficient-independent `IMGeostrophicZeroAPVModes` boundary-response problems, page-shaped canonical `F/G` bases, explicit physical-energy and endpoint-buoyancy forms, and boundary-depth, surface-buoyancy, and custom symmetric-pencil rotations
 - added the public v2 `IMInternalModes.geostrophicAPVModes` generalized-energy APV factory, signed endpoint-limit mappings and metadata, exact numerical zero retention, volume-only `depth` normalization, and exact constant-stratification trigonometric/affine/hyperbolic branches with independent factory, endpoint, normalization, analytical-root, and refined-spectral regression coverage
@@ -15,7 +17,8 @@
 - added `IMGeostrophicTransform` to compose generalized-energy APV transforms with boundary-normalized or rotated geostrophic zero-APV coordinates, including admissible-state inversion, generic volume-plus-endpoint source projection, explicit wavenumber pages, singularity diagnostics, and arbitrary trailing field dimensions
 - added generalized-energy mean-density-anomaly `G` modes with finite/zero/inactive endpoint limits, signed-unit normalization and signatures, exact constant-null handling, surface-referenced spectral `F` integration, aligned sampled transforms with direct `G` projection and diagnostic `F` synthesis, and rejection of numerically finite representations of infinite generalized eigenmodes
 
-## [2.0.0] - 2026-05-19
+### Earlier V2 development
+
 - added the parallel v2 `IMEigenvalueProblem` architecture with physical-coordinate EVP descriptors, structured operators, first-class boundary conditions, coordinate-aware spectral/WKB/density/finite-difference solvers, and `IMBasisSet`
 - moved v2 modal normalization ownership to `IMBasisSet` so solved native modes can be reinterpreted with different normalizations without re-solving the EVP
 - added v2 analytical solution families for constant and exponential stratification

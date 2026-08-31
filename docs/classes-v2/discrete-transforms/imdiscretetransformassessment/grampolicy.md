@@ -16,6 +16,6 @@ Normalized-Gram retained-band policy result.
 
 ## Discussion
 
-This policy is always enabled. Its shipped default tolerance is
-$$10^{-2}$$, selected by constant/exponential coordinate sweeps;
-callers can override it through `discreteTransform`.
+  This policy is always enabled. Its shipped default tolerance is
+  $$10^{-2}$$, selected by constant/exponential coordinate sweeps;
+  callers can override it through `discreteTransform`.

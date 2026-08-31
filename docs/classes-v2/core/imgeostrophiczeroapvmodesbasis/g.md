@@ -26,5 +26,5 @@ Evaluate diagnostic displacement structures $$G(z)$$.
 
 ## Discussion
 
-The result has dimensions `nZ x nEndpoints x nK` and uses
-$$G=-gN^{-2}\partial_zF$$.
+  The result has dimensions `nZ x nEndpoints x nK` and uses
+  $$G=-gN^{-2}\partial_zF$$.

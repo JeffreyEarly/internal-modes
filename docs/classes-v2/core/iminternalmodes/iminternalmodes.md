@@ -41,7 +41,7 @@ Create an internal-mode canonical EVP.
 
 ## Discussion
 
-The constructor copies `options.parameters`, then writes the
-internal-mode fields `f0`, `g`, and `formulation` into the
-parameter struct. These constructor-owned fields override
-same-named entries in `options.parameters`.
+  The constructor copies `options.parameters`, then writes the
+  internal-mode fields `f0`, `g`, and `formulation` into the
+  parameter struct. These constructor-owned fields override
+  same-named entries in `options.parameters`.

@@ -121,5 +121,16 @@ classdef (Hidden, Sealed) IMGeostrophicZeroAPVFormTools
                 pages(:,:,iPage) = IMGeostrophicZeroAPVFormTools.symmetrize(pages(:,:,iPage));
             end
         end
+
+        function validateRotationPages(rotation,nEndpoints,nK,errorPrefix)
+            if ~isequal(size(rotation),[nEndpoints nEndpoints nK]) && ~(nK == 1 && isequal(size(rotation),[nEndpoints nEndpoints]))
+                error(errorPrefix + ":InvalidRotationShape", "A rotation must have nEndpoints rows and columns and one page per wavenumber.");
+            end
+            for iK = 1:nK
+                if rcond(rotation(:,:,iK)) <= sqrt(eps)
+                    error(errorPrefix + ":SingularCoordinateRotation", "The coordinate rotation is singular or ill-conditioned on page %d.",iK);
+                end
+            end
+        end
     end
 end

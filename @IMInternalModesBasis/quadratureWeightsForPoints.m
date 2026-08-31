@@ -127,62 +127,11 @@ else
 end
 
 nSamples = length(z);
-if ~isnumeric(objectiveMatrix) || ~ismatrix(objectiveMatrix) || ~isreal(objectiveMatrix) ...
-        || size(objectiveMatrix,2) ~= nSamples || any(~isfinite(objectiveMatrix),"all")
-    error("IMBasisSet:InvalidQuadratureObjective", "The objective matrix A must be finite, real, and have one column per sample point.");
-end
-if ~isnumeric(objectiveTarget) || ~isvector(objectiveTarget) || ~isreal(objectiveTarget) ...
-        || length(objectiveTarget) ~= size(objectiveMatrix,1) || any(~isfinite(objectiveTarget),"all")
-    error("IMBasisSet:InvalidQuadratureObjective", "The objective target b must be finite, real, and have one entry per objective row.");
-end
+[objectiveMatrix,objectiveTarget] = IMDiscreteTransformTools.validateObjectiveSystem(objectiveMatrix,objectiveTarget,nSamples,true);
 if length(objectiveRowVariables) ~= size(objectiveMatrix,1) || size(objectiveModePairs,1) ~= size(objectiveMatrix,1)
     error("IMBasisSet:InvalidQuadratureObjective", "Custom objective row provenance must align with its rows.");
 end
-objectiveMatrix = double(objectiveMatrix);
-objectiveTarget = double(objectiveTarget(:));
-
-if ~isempty(objectiveMatrix) && isempty(which("lsqlin"))
-    error("IMBasisSet:MissingQuadratureOptimizer", "Fitting quadrature weights requires lsqlin from Optimization Toolbox. Supply weights explicitly when it is unavailable.");
-end
-if options.nonnegative
-    lowerBounds = zeros(nSamples,1);
-else
-    lowerBounds = [];
-end
-if options.constrainDepth
-    equalityMatrix = ones(1,nSamples);
-    equalityTarget = 1;
-else
-    equalityMatrix = [];
-    equalityTarget = [];
-end
-if isempty(objectiveMatrix)
-    weights = geometricWeights;
-    exitFlag = 1;
-    solverOutput = struct("message","No active modal Gram rows; returned the geometric rule satisfying the requested constraints.");
-else
-    scaledObjectiveMatrix = depth*objectiveMatrix;
-    initialScaledWeights = geometricWeights/depth;
-    solverOptions = sharedQuadratureSolverOptions();
-    try
-        [scaledWeights,~,~,exitFlag,solverOutput] = lsqlin(scaledObjectiveMatrix,objectiveTarget,[],[],equalityMatrix,equalityTarget,lowerBounds,[],initialScaledWeights,solverOptions);
-    catch cause
-        exception = MException("IMBasisSet:QuadratureWeightFitFailed", "lsqlin failed while fitting shared internal-mode quadrature weights.");
-        throw(addCause(exception,cause))
-    end
-    if isempty(scaledWeights) || exitFlag <= 0 || any(~isfinite(scaledWeights))
-        error("IMBasisSet:QuadratureWeightFitFailed", "lsqlin did not converge to finite quadrature weights (exit flag %d).",exitFlag);
-    end
-    weights = depth*scaledWeights;
-end
-constraintTolerance = 1e-10*max(1,depth);
-if options.nonnegative && any(weights < -constraintTolerance)
-    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested nonnegative constraint.");
-end
-if options.constrainDepth && abs(sum(weights)-depth) > constraintTolerance
-    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested full-depth constraint.");
-end
-weights(weights < 0 & weights >= -constraintTolerance) = 0;
+[weights,exitFlag,solverOutput] = IMDiscreteTransformTools.fitQuadrature(objectiveMatrix,objectiveTarget,geometricWeights,depth,options.nonnegative,options.constrainDepth);
 
 if nargout > 1
     transform = geometricTransform.transformWithWeights(weights);
@@ -190,12 +139,4 @@ if nargout > 1
         objectiveMatrix=objectiveMatrix,objectiveTarget=objectiveTarget,objectiveRowVariables=objectiveRowVariables,objectiveModePairs=objectiveModePairs, ...
         nonnegativeConstraint=options.nonnegative,depthConstraint=options.constrainDepth,depthTarget=depth,exitFlag=exitFlag,solverOutput=solverOutput);
 end
-end
-
-function options = sharedQuadratureSolverOptions()
-persistent cachedOptions
-if isempty(cachedOptions)
-    cachedOptions = optimoptions("lsqlin",Algorithm="active-set",Display="off",ConstraintTolerance=1e-12,OptimalityTolerance=1e-12,StepTolerance=1e-14,MaxIterations=5000);
-end
-options = cachedOptions;
 end

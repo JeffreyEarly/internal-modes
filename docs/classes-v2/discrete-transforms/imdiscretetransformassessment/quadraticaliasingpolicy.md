@@ -16,6 +16,6 @@ Scalar quadratic-aliasing policy result.
 
 ## Discussion
 
-This policy is disabled when its tolerance is empty. It applies to
-products projected back into the same scalar basis; coupled `F/G`
-product channels are outside this class.
+  This policy is disabled when its tolerance is empty. It applies to
+  products projected back into the same scalar basis; coupled `F/G`
+  product channels are outside this class.

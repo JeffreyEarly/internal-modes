@@ -16,4 +16,4 @@ Surface endpoint convention.
 
 ## Discussion
 
-`surfaceBoundary` is `"freeSurface"` or `"rigidLid"`.
+  `surfaceBoundary` is `"freeSurface"` or `"rigidLid"`.

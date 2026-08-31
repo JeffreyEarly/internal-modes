@@ -37,8 +37,8 @@ Create diagnostics for a quadrature-weight fit.
 
 ## Discussion
 
-This developer constructor combines transforms built on the
-same fixed points and retained modes with the least-squares
-system and optimizer result that produced the fitted weights.
-Ordinary users obtain this object from
-`IMBasisSet.quadratureWeightsForPoints`.
+  This developer constructor combines transforms built on the
+  same fixed points and retained modes with the least-squares
+  system and optimizer result that produced the fitted weights.
+  Ordinary users obtain this object from
+  `IMBasisSet.quadratureWeightsForPoints`.

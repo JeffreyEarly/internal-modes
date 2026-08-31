@@ -60,6 +60,7 @@ classdef IMDiscreteTransformAssessment
     % - `roundTripError`: $$\lVert A_\mathrm fA_\mathrm i-I\rVert_2$$.
     % - `inverseMatrixConditionNumber`: $$\kappa_2(A_\mathrm i)$$.
     % - `gramConditionNumber`: $$\kappa_2(\Gamma_N)$$.
+    % - `sampledGramRank`: numerical rank of $$\Gamma_N$$.
     % - `leakageError`: $$\ell_N$$, or `NaN` when disabled.
     % - `leakageLimitingModeNumber`: rejected physical mode label attaining $$\ell_N$$.
     % - `quadraticAliasingError`: $$q_N$$, or `NaN` when disabled.
@@ -237,7 +238,7 @@ classdef IMDiscreteTransformAssessment
                 error("IMDiscreteTransformAssessment:IncompatibleTransforms", "The retained and candidate transforms must use identical points and weights.");
             end
             requiredColumns = ["modeCount" "lastModeNumber" "gramError" "roundTripError" ...
-                "inverseMatrixConditionNumber" "gramConditionNumber" "leakageError" "leakageLimitingModeNumber" ...
+                "inverseMatrixConditionNumber" "gramConditionNumber" "sampledGramRank" "leakageError" "leakageLimitingModeNumber" ...
                 "quadraticAliasingError" "quadraticLimitingModeNumberI" "quadraticLimitingModeNumberJ" ...
                 "gramAccepted" "leakageAccepted" "quadraticAccepted" "combinedAccepted"];
             if ~all(ismember(requiredColumns,string(options.prefixDiagnostics.Properties.VariableNames)))

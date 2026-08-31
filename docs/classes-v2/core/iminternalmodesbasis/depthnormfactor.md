@@ -28,6 +28,6 @@ Return the volume-only depth normalization factor.
 
 ## Discussion
 
-This developer utility evaluates the positive factor
-$$s_j=\sqrt{D^{-1}\int_{z_b}^{z_s}(F_j^{\mathrm{raw}})^2\,dz}$$
-without endpoint terms. The same factor scales `F` and `G`.
+  This developer utility evaluates the positive factor
+  $$s_j=\sqrt{D^{-1}\int_{z_b}^{z_s}(F_j^{\mathrm{raw}})^2\,dz}$$
+  without endpoint terms. The same factor scales `F` and `G`.

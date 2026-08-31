@@ -205,56 +205,8 @@ else
     error("IMBasisSet:InvalidQuadratureObjective", "objective must be ""normalizedGramFrobenius"" or a function handle returning a least-squares system.");
 end
 
-if ~isnumeric(objectiveMatrix) || ~ismatrix(objectiveMatrix) || ~isreal(objectiveMatrix) || isempty(objectiveMatrix) ...
-        || size(objectiveMatrix,2) ~= nSamples || any(~isfinite(objectiveMatrix),"all")
-    error("IMBasisSet:InvalidQuadratureObjective", "The custom objective matrix A must be a finite real matrix with one column per sample point.");
-end
-if ~isnumeric(objectiveTarget) || ~isvector(objectiveTarget) || ~isreal(objectiveTarget) ...
-        || length(objectiveTarget) ~= size(objectiveMatrix,1) || any(~isfinite(objectiveTarget),"all")
-    error("IMBasisSet:InvalidQuadratureObjective", "The custom objective target b must be a finite real vector with one entry per row of A.");
-end
-objectiveMatrix = double(objectiveMatrix);
-objectiveTarget = double(objectiveTarget(:));
-
-if isempty(which("lsqlin"))
-    error("IMBasisSet:MissingQuadratureOptimizer", "Fitting quadrature weights requires lsqlin from Optimization Toolbox. Supply weights explicitly when Optimization Toolbox is unavailable.");
-end
-
-if options.nonnegative
-    lowerBounds = zeros(nSamples,1);
-else
-    lowerBounds = [];
-end
-if options.constrainDepth
-    equalityMatrix = ones(1,nSamples);
-    equalityTarget = 1;
-else
-    equalityMatrix = [];
-    equalityTarget = [];
-end
-
-scaledObjectiveMatrix = depth*objectiveMatrix;
-initialScaledWeights = geometricWeights/depth;
-solverOptions = optimoptions("lsqlin",Algorithm="active-set",Display="off",ConstraintTolerance=1e-12,OptimalityTolerance=1e-12,StepTolerance=1e-14,MaxIterations=1000);
-try
-    [scaledWeights,~,~,exitFlag,solverOutput] = lsqlin(scaledObjectiveMatrix,objectiveTarget,[],[],equalityMatrix,equalityTarget,lowerBounds,[],initialScaledWeights,solverOptions);
-catch cause
-    exception = MException("IMBasisSet:QuadratureWeightFitFailed", "lsqlin failed while fitting quadrature weights on the supplied points.");
-    throw(addCause(exception,cause))
-end
-if isempty(scaledWeights) || exitFlag <= 0 || any(~isfinite(scaledWeights))
-    error("IMBasisSet:QuadratureWeightFitFailed", "lsqlin did not converge to finite quadrature weights (exit flag %d).", exitFlag);
-end
-weights = depth*scaledWeights;
-
-constraintTolerance = 1e-10*max(1,depth);
-if options.nonnegative && any(weights < -constraintTolerance)
-    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested nonnegative constraint.");
-end
-if options.constrainDepth && abs(sum(weights) - depth) > constraintTolerance
-    error("IMBasisSet:QuadratureWeightFitFailed", "The fitted weights violate the requested full-depth constraint.");
-end
-weights(weights < 0 & weights >= -constraintTolerance) = 0;
+[objectiveMatrix,objectiveTarget] = IMDiscreteTransformTools.validateObjectiveSystem(objectiveMatrix,objectiveTarget,nSamples,false);
+[weights,exitFlag,solverOutput] = IMDiscreteTransformTools.fitQuadrature(objectiveMatrix,objectiveTarget,geometricWeights,depth,options.nonnegative,options.constrainDepth);
 
 if nargout > 1
     transform = self.buildDiscreteTransform(z,weights,nModes);

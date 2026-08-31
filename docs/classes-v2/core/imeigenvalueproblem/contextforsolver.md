@@ -28,6 +28,6 @@ Return the coefficient context for this EVP and solver.
 
 ## Discussion
 
-The context begins with `solver.context()`, adds `zDomain`,
-then copies each field of `parameters`. Coefficient handles such
-as `p(z,ctx)`, `q(z,ctx)`, and `r(z,ctx)` receive this struct.
+  The context begins with `solver.context()`, adds `zDomain`,
+  then copies each field of `parameters`. Coefficient handles such
+  as `p(z,ctx)`, `q(z,ctx)`, and `r(z,ctx)` receive this struct.

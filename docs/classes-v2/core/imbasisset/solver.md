@@ -3,7 +3,7 @@ layout: default
 title: solver
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 24
+nav_order: 25
 mathjax: true
 ---
 
@@ -18,6 +18,6 @@ that created the native modes.
 
 ## Discussion
 
-This is the discretization object used to interpolate native
-coefficient columns. It is mainly useful for diagnostics and
-developer workflows.
+  This is the discretization object used to interpolate native
+  coefficient columns. It is mainly useful for diagnostics and
+  developer workflows.

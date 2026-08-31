@@ -16,6 +16,6 @@ Canonical-to-current column transformation.
 
 ## Discussion
 
-`rotationMatrix` has dimensions
-`nEndpoints x nEndpoints x nK` and acts identically on `F` and
-`G`.
+  `rotationMatrix` has dimensions
+  `nEndpoints x nEndpoints x nK` and acts identically on `F` and
+  `G`.

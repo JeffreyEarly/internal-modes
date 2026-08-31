@@ -27,16 +27,16 @@ Diagonalize generalized energy relative to endpoint response.
 
 ## Discussion
 
-For each wavenumber page, solve
+  For each wavenumber page, solve
 
-$$
-\mathsf H_g\mathbf c^a=\gamma_a\mathsf R_B\mathbf c^a,
-\qquad
-(\mathbf c^a)^T\mathsf R_B\mathbf c^b=\delta^{ab},
-\qquad
-h_0^a=2k^2\gamma_a.
-$$
+  $$
+  \mathsf H_g\mathbf c^a=\gamma_a\mathsf R_B\mathbf c^a,
+  \qquad
+  (\mathbf c^a)^T\mathsf R_B\mathbf c^b=\delta^{ab},
+  \qquad
+  h_0^a=2k^2\gamma_a.
+  $$
 
-```matlab
-depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0.01);
-```
+  ```matlab
+  depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0.01);
+  ```

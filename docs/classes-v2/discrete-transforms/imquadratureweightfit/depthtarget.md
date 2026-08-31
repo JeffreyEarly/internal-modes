@@ -16,6 +16,6 @@ Full physical depth targeted by the weight-sum constraint.
 
 ## Discussion
 
-This is
-$$D=z_\mathrm{surface}-z_\mathrm{bottom}$$ in the same coordinate
-units as the fixed points, normally meters.
+  This is
+  $$D=z_\mathrm{surface}-z_\mathrm{bottom}$$ in the same coordinate
+  units as the fixed points, normally meters.

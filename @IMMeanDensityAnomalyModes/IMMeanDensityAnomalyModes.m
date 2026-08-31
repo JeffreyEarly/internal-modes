@@ -88,16 +88,16 @@ classdef IMMeanDensityAnomalyModes < IMInternalModes
                 error("IMMeanDensityAnomalyModes:InvalidBottomAcceleration", "gd must be signed finite, zero, or positive Inf.");
             end
 
-            activeEndpoints = strings(0,1);
+            activeEndpoints = strings(1,0);
             if isfinite(options.g0)
                 surfaceCondition = IMBoundaryCondition(a=0,b=1,c=options.g0/options.g,d=0);
-                activeEndpoints(end+1,1) = "surface";
+                activeEndpoints(end+1) = "surface";
             else
                 surfaceCondition = IMBoundaryCondition.dirichlet();
             end
             if isfinite(options.gd)
                 bottomCondition = IMBoundaryCondition(a=0,b=1,c=-options.gd/options.g,d=0);
-                activeEndpoints(end+1,1) = "bottom";
+                activeEndpoints(end+1) = "bottom";
             else
                 bottomCondition = IMBoundaryCondition.dirichlet();
             end

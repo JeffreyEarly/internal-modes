@@ -1,4 +1,4 @@
-%% Custom quadrature objectives on fixed physical points
+%% Investigation: custom quadrature objectives on fixed physical points
 % The default fixed-point fit minimizes a normalized Gram residual. This
 % walkthrough appends a small penalty on relative movement away from the
 % geometric weights, illustrating how custom objectives can trade a small

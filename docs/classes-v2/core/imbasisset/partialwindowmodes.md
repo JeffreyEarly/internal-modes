@@ -3,7 +3,7 @@ layout: default
 title: partialWindowModes
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 19
+nav_order: 20
 mathjax: true
 ---
 
@@ -26,6 +26,6 @@ Diagonalize a partial scalar Gram matrix.
 
 ## Discussion
 
-This computes the eigendecomposition of the symmetric Gram
-matrix on `zBounds` and sorts window-mode eigenvalues from
-largest to smallest.
+  This computes the eigendecomposition of the symmetric Gram
+  matrix on `zBounds` and sorts window-mode eigenvalues from
+  largest to smallest.

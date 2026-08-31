@@ -32,7 +32,7 @@ Find turning points and region signs for $$N^2(z)-\omega^2$$.
 
 ## Discussion
 
-This function returns not just the turning points, but also
-the top and bottom boundary locations in z. The boundary
-indices are the index to the point just *above* the turning
-point.
+                    This function returns not just the turning points, but also
+  the top and bottom boundary locations in z. The boundary
+  indices are the index to the point just *above* the turning
+  point.

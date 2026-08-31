@@ -27,4 +27,4 @@ Return the analytical surface SQG mode for constant stratification.
 
 ## Discussion
 
-size(psi) = [size(k); length(z)]
+            size(psi) = [size(k); length(z)]

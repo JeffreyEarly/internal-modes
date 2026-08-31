@@ -16,7 +16,7 @@ Equivalent-depth conversion function.
 
 ## Discussion
 
-`hFromEigenvalue` maps retained eigenvalues to equivalent depths
-for internal-mode basis sets. The handle has signature
-`h = hFromEigenvalue(lambda)`, so
-$$h_j=\texttt{hFromEigenvalue}(\lambda_j).$$
+  `hFromEigenvalue` maps retained eigenvalues to equivalent depths
+  for internal-mode basis sets. The handle has signature
+  `h = hFromEigenvalue(lambda)`, so
+  $$h_j=\texttt{hFromEigenvalue}(\lambda_j).$$

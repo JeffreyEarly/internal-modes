@@ -32,8 +32,8 @@ Find analytical eigenvalue roots over a bounded search interval.
 
 ## Discussion
 
-nu(x) is a function of x [used in the solution J_\nu(s)]
-s(x) is a function of x [used in the solution J_\nu(s)]
-bounds is the [xmin xmax] of the region to search for roots
-x_nu is where the solution transitions from big_nu to
-small_nu
+                    nu(x) is a function of x [used in the solution J_\nu(s)]
+  s(x) is a function of x [used in the solution J_\nu(s)]
+  bounds is the [xmin xmax] of the region to search for roots
+  x_nu is where the solution transitions from big_nu to
+  small_nu

@@ -434,6 +434,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         end
 
         function basisSet = basisWithRotation(self,name,rotation,eigenvalues,signatures,h0Values,normalizationConvention,residuals)
+            IMGeostrophicZeroAPVFormTools.validateRotationPages(rotation,numel(self.endpoints),numel(self.k),"IMAnalyticalGeostrophicZeroAPVModesBasis");
             basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self.solution,problem=self.problem,FFunction=self.canonicalFFunction,GFunction=self.canonicalGFunction,metadata=self.metadata);
             for iK = 1:numel(self.k)
                 C = rotation(:,:,iK);

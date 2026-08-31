@@ -1,4 +1,4 @@
-%% Geometric regularization of fixed-point quadrature weights
+%% Investigation: geometric regularization of fixed-point quadrature weights
 % This sweep compares geometric control-volume weights, the production
 % normalized-Gram fit, and a dimension-normalized regularized Gram fit. It
 % intentionally leaves the production objective unchanged. The resulting

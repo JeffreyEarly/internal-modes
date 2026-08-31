@@ -20,6 +20,9 @@ classdef IMInternalModesDiscreteTransform
     % `modeProjectionFunctional` returns
     % $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$ before the active Gram solve;
     % `transformForward` returns coefficients after that solve.
+    % When `variable` is omitted, accessors use `primaryVariable`, which is
+    % the solved formulation when that channel was requested and otherwise
+    % the first directly representable requested channel.
     %
     % ```matlab
     % [transform,assessment] = basisSet.discreteTransform(nPoints=24,variables=["F","G"]);
@@ -46,6 +49,14 @@ classdef IMInternalModesDiscreteTransform
         normalization
         % Directly representable forward channels in canonical order.
         availableVariables
+        % Default F/G channel used when `variable` is omitted.
+        %
+        % `primaryVariable` is the solved formulation when it is among
+        % `availableVariables`; otherwise it is the first available requested
+        % channel in canonical order.
+        %
+        % - Topic: Inspect samples and modes
+        primaryVariable
         % Physical vertical domain `[zBottom zSurface]`.
         zDomain
         % Full physical depth.
@@ -94,6 +105,7 @@ classdef IMInternalModesDiscreteTransform
                 options.endpointF (2,:) double {mustBeReal, mustBeFinite}
                 options.endpointG (2,:) double {mustBeReal, mustBeFinite}
                 options.channelData (1,1) struct
+                options.primaryVariable {mustBeTextScalar, mustBeMember(options.primaryVariable,["","F","G"])} = ""
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
                 options.modeFamily {mustBeTextScalar}
@@ -202,12 +214,23 @@ classdef IMInternalModesDiscreteTransform
                 channelData.(field) = data;
             end
 
+            primaryVariable = string(options.primaryVariable);
+            if primaryVariable == ""
+                if isempty(availableVariables)
+                    error("IMInternalModesDiscreteTransform:NoAvailableVariable", "At least one directly representable F or G channel is required.");
+                end
+                primaryVariable = availableVariables(1);
+            elseif ~ismember(primaryVariable,availableVariables)
+                error("IMInternalModesDiscreteTransform:InvalidPrimaryVariable", "primaryVariable must name one of the directly representable requested channels: %s.",join(availableVariables,", "));
+            end
+
             self.z = z;
             self.weights = weights;
             self.modeNumber = reshape(options.modeNumber,1,[]);
             self.h = reshape(options.h,1,[]);
             self.normalization = string(options.normalization);
             self.availableVariables = availableVariables;
+            self.primaryVariable = primaryVariable;
             self.zDomain = options.zDomain;
             self.depth = diff(options.zDomain);
             self.g = options.g;
@@ -225,7 +248,7 @@ classdef IMInternalModesDiscreteTransform
             % Return whether a direct sampled projection exists.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             tf = self.channelData.(char(string(options.variable))).available;
         end
@@ -234,7 +257,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the reason a direct projection is unavailable.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.channelData.(char(string(options.variable)));
             if data.available
@@ -248,7 +271,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the full-family active-column projector mask.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             mask = data.activeModeMask;
@@ -258,7 +281,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the sampled modal synthesis matrix for F or G.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             matrix = self.inverseMatrices.(char(string(options.variable)));
         end
@@ -267,7 +290,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the variable-qualified Galerkin forward matrix.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             matrix = data.forwardMatrix;
@@ -277,7 +300,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the variable-qualified sampled metric.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             matrix = data.metricMatrix;
@@ -287,7 +310,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the sampled full-family Gram matrix.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             matrix = data.gramMatrix;
@@ -297,7 +320,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the continuous full-family target Gram matrix.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             matrix = data.targetGramMatrix;
@@ -307,7 +330,7 @@ classdef IMInternalModesDiscreteTransform
             % Return normalized endpoint traces, surface then bottom.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             values = self.endpointMatrices.(char(string(options.variable)));
         end
@@ -316,8 +339,8 @@ classdef IMInternalModesDiscreteTransform
             % Apply `(A_i^V)' W_V` without solving the modal Gram system.
             arguments
                 self IMInternalModesDiscreteTransform
-                values double {mustBeFinite}
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                values double
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             variable = string(options.variable);
             data = self.requireChannel(variable);
@@ -332,8 +355,8 @@ classdef IMInternalModesDiscreteTransform
             % Project sampled values into aligned family coefficients.
             arguments
                 self IMInternalModesDiscreteTransform
-                values double {mustBeFinite}
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                values double
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             variable = string(options.variable);
             data = self.requireChannel(variable);
@@ -347,8 +370,8 @@ classdef IMInternalModesDiscreteTransform
             % Synthesize F or G values from full-family coefficients.
             arguments
                 self IMInternalModesDiscreteTransform
-                coefficients double {mustBeFinite}
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                coefficients double
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             if size(coefficients,1) ~= length(self.modeNumber)
                 error("IMInternalModesDiscreteTransform:InvalidCoefficientCount", "coefficients must have one row for each aligned family mode.");
@@ -361,7 +384,7 @@ classdef IMInternalModesDiscreteTransform
             % - Developer: true
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             diagnostics = rmfield(data,["metricMatrix","targetGramMatrix","gramMatrix","forwardMatrix"]);
@@ -371,7 +394,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the normalized Gram operator error for one channel.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             value = data.relativeGramOperatorError;
@@ -381,7 +404,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the active-projector round-trip error for one channel.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             value = data.roundTripError;
@@ -391,7 +414,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the active sampled-basis condition number.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             value = data.inverseMatrixConditionNumber;
@@ -401,7 +424,7 @@ classdef IMInternalModesDiscreteTransform
             % Return the active sampled-Gram condition number.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             value = data.gramConditionNumber;
@@ -411,7 +434,7 @@ classdef IMInternalModesDiscreteTransform
             % Return whether the active target channel defines a norm.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             tf = data.targetGramIsPositiveDefinite;
@@ -442,7 +465,7 @@ classdef IMInternalModesDiscreteTransform
             transform = IMInternalModesDiscreteTransform(z=self.z,weights=self.weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
                 normalization=self.normalization,inverseF=self.inverseMatrices.F(:,1:nModes),inverseG=self.inverseMatrices.G(:,1:nModes), ...
                 endpointF=self.endpointMatrices.F(:,1:nModes),endpointG=self.endpointMatrices.G(:,1:nModes),channelData=preparedChannels, ...
-                zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
+                primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
         end
 
         function transform = transformWithWeights(self, weights)
@@ -468,14 +491,14 @@ classdef IMInternalModesDiscreteTransform
             end
             transform = IMInternalModesDiscreteTransform(z=self.z,weights=weights,modeNumber=self.modeNumber,h=self.h,normalization=self.normalization, ...
                 inverseF=self.inverseMatrices.F,inverseG=self.inverseMatrices.G,endpointF=self.endpointMatrices.F,endpointG=self.endpointMatrices.G, ...
-                channelData=preparedChannels,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
+                channelData=preparedChannels,primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
         end
 
         function context = quadratureFitContext(self, options)
             % Return the prepared normalized-Gram system for one channel.
             arguments
                 self IMInternalModesDiscreteTransform
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = "F"
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             variable = string(options.variable);
             data = self.requireChannel(variable);

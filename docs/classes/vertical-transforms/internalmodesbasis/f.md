@@ -19,6 +19,6 @@ Real valued property with dimensions $$(zIndex,modeF)$$ and no units.
 
 ## Discussion
 
-The columns are the solver-returned $$F_j(z)$$ modes. For
-geostrophic transforms, methods may prepend the barotropic mode
-$$F_0=1$$ when building an F transform.
+  The columns are the solver-returned $$F_j(z)$$ modes. For
+  geostrophic transforms, methods may prepend the barotropic mode
+  $$F_0=1$$ when building an F transform.

@@ -16,13 +16,13 @@ Norm of the geometric-weight objective residual.
 
 ## Discussion
 
-This is
+  This is
 
-$$
-\left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}-b_{\mathrm{LS}}\right\|_2.
-$$
+  $$
+  \left\|A_{\mathrm{LS}}w_{\mathrm{geometric}}-b_{\mathrm{LS}}\right\|_2.
+  $$
 
-For the built-in objective this equals
-$$\|E(w^{\mathrm{geometric}})\|_{\mathrm F}$$. It is the
-unoptimized baseline for `residualNorm`; custom objectives retain
-the generic least-squares interpretation.
+  For the built-in objective this equals
+  $$\|E(w^{\mathrm{geometric}})\|_{\mathrm F}$$. It is the
+  unoptimized baseline for `residualNorm`; custom objectives retain
+  the generic least-squares interpretation.

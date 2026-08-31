@@ -19,4 +19,4 @@ Real valued property with dimensions $$(zIndex,modeG)$$ and no units.
 
 ## Discussion
 
-The columns are the solver-returned $$G_j(z)$$ modes.
+  The columns are the solver-returned $$G_j(z)$$ modes.

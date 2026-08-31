@@ -31,6 +31,6 @@ Integrate a Chebyshev series between two physical limits.
 
 ## Discussion
 
-v are the coefficients of the chebyshev polynomials
-x is the domain, a Gauss-Lobatto grid
-a and b are the lower and upper limits, respectively
+                  v are the coefficients of the chebyshev polynomials
+  x is the domain, a Gauss-Lobatto grid
+  a and b are the lower and upper limits, respectively

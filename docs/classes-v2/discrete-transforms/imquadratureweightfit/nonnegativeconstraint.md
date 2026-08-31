@@ -16,7 +16,7 @@ Whether the optimization required nonnegative weights.
 
 ## Discussion
 
-When true, the least-squares problem imposed $$w_k\geq0$$ at every
-fixed point. When false, `transform.hasNegativeWeights` reports
-whether the fitted algebraic rule actually contains negative
-weights.
+  When true, the least-squares problem imposed $$w_k\geq0$$ at every
+  fixed point. When false, `transform.hasNegativeWeights` reports
+  whether the fitted algebraic rule actually contains negative
+  weights.

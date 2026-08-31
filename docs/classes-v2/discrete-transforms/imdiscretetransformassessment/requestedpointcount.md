@@ -16,5 +16,5 @@ Requested physical sample count.
 
 ## Discussion
 
-For `discreteTransform(nPoints=Nz)`, this is the exact requested
-count. For explicit `z`, it is `length(z)`.
+  For `discreteTransform(nPoints=Nz)`, this is the exact requested
+  count. For explicit `z`, it is `length(z)`.

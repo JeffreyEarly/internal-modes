@@ -16,5 +16,5 @@ Physical-energy matrix $$\mathsf H$$.
 
 ## Discussion
 
-`energyMatrix(:,:,iK)` is the physical-energy bilinear form in
-the current boundary coordinates for `k(iK)`.
+  `energyMatrix(:,:,iK)` is the physical-energy bilinear form in
+  the current boundary coordinates for `k(iK)`.

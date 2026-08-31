@@ -22,36 +22,14 @@ if ~isfield(options,"rootDir")
 end
 
 %% bump the version number, if requested
-mpkgPath = fullfile(options.rootDir, "resources", "mpackage.json");
-if ~isfile(mpkgPath)
-    error("ci_release:mpackageNotFound", ...
-        "Could not find mpackage.json at %s", mpkgPath);
-end
-
-% 1) Read and bump version (semantic x.y.z)
-txt = fileread(mpkgPath);
-cfg = jsondecode(txt);
-
-if ~isfield(cfg,"version")
-    error("ci_release:noVersionField", ...
-        "mpackage.json does not have a 'version' field.");
-end
-if ~isfield(cfg,"name")
-    error("ci_release:noNameField", ...
-        "mpackage.json does not have a 'name' field.");
-end
-
-oldVer = string(cfg.version);
-tokens = regexp(oldVer, "^(\d+)\.(\d+)\.(\d+)$", "tokens", "once");
-if isempty(tokens)
-    error("ci_release:badVersion", ...
-        "Existing version '%s' is not of the form x.y.z", oldVer);
-end
-major = str2double(tokens{1});
-minor = str2double(tokens{2});
-patch = str2double(tokens{3});
+package = matlab.mpm.Package(options.rootDir);
+oldVersion = package.Version;
+newVersion = oldVersion;
 
 if options.bumpType ~= "none"
+    major = oldVersion.Major;
+    minor = oldVersion.Minor;
+    patch = oldVersion.Patch;
     switch options.bumpType
         case "major"
             major = major + 1;
@@ -64,23 +42,14 @@ if options.bumpType ~= "none"
             patch = patch + 1;
     end
 
-    newVer = sprintf('%d.%d.%d', major, minor, patch);
-    cfg.version = newVer;
+    newVersion = matlab.mpm.Version(major,minor,patch);
+    package.Version = newVersion;
 
-    fprintf('Bumping version: %s -> %s (%s)\n', oldVer, newVer, options.bumpType);
-
-    % Write back pretty JSON (R2021b+ supports PrettyPrint)
-    jsonStr = jsonencode(cfg, PrettyPrint=true);
-    fid = fopen(mpkgPath, 'w');
-    assert(fid ~= -1, "Could not open mpackage.json for writing");
-    fwrite(fid, jsonStr);
-    fclose(fid);
+    fprintf('Bumping version: %s -> %s (%s)\n', string(oldVersion), string(newVersion), options.bumpType);
 
     %% If we bumped the version, and were handed notes, record that
     changelogPath = fullfile(options.rootDir, "CHANGELOG.md");
-    update_changelog(changelogPath,options.notes,newVer);
-else
-    newVer = sprintf('%d.%d.%d', major, minor, patch);
+    update_changelog(changelogPath,options.notes,string(newVersion));
 end
 
 %% 2) Run your custom documentation build
@@ -96,13 +65,16 @@ end
 %% 3) Export package root to dist/<name>-<version> for MPM repo
 
 if options.shouldPackageForDistribution == true
-    pkgName = string(cfg.name);
-    distDir = fullfile(options.rootDir, options.dist_folder);
+    pkgName = package.Name;
+    distDir = string(options.dist_folder);
+    if ~java.io.File(char(distDir)).isAbsolute()
+        distDir = fullfile(options.rootDir,distDir);
+    end
     if ~isfolder(distDir)
         mkdir(distDir);
     end
 
-    pkgFolderName = pkgName + "-" + newVer;
+    pkgFolderName = pkgName + "-" + string(newVersion);
     targetRoot    = fullfile(distDir, pkgFolderName);
 
     % Clean any stale output
@@ -126,15 +98,19 @@ if options.shouldPackageForDistribution == true
         rmdir(fullfile(targetRoot, "dist"), "s");
     catch
     end
+    finderFiles = dir(fullfile(targetRoot,"**",".DS_Store"));
+    for iFile = 1:numel(finderFiles)
+        delete(fullfile(finderFiles(iFile).folder,finderFiles(iFile).name));
+    end
 
     % Write a small metadata file for the GitHub Action
     metaPath = fullfile(distDir, "mpm_release_metadata.txt");
     fid = fopen(metaPath, "w");
     assert(fid ~= -1, "Could not open metadata file for writing");
     fprintf(fid, "NAME=%s\nVERSION=%s\nFOLDER=%s\n", ...
-        pkgName, newVer, pkgFolderName);
+        pkgName, string(newVersion), pkgFolderName);
     fclose(fid);
 
-    fprintf('ci_release complete: %s %s\n', pkgName, newVer);
+    fprintf('ci_release complete: %s %s\n', pkgName, string(newVersion));
 end
 end

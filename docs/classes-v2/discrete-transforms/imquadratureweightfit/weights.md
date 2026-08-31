@@ -16,7 +16,7 @@ Fitted algebraic quadrature weights aligned with the fixed points.
 
 ## Discussion
 
-These are the weights $$w_k$$ returned as the first output of
-`quadratureWeightsForPoints`. They minimize the selected objective
-subject to the requested constraints and satisfy
-`weights = transform.weights`.
+  These are the weights $$w_k$$ returned as the first output of
+  `quadratureWeightsForPoints`. They minimize the selected objective
+  subject to the requested constraints and satisfy
+  `weights = transform.weights`.

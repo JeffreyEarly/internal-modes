@@ -3,7 +3,7 @@ layout: default
 title: targetGramIsPositiveDefinite
 parent: IMInternalModesDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 27
+nav_order: 28
 mathjax: true
 ---
 

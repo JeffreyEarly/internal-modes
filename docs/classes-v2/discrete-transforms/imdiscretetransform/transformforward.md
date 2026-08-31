@@ -3,7 +3,7 @@ layout: default
 title: transformForward
 parent: IMDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 16
+nav_order: 17
 mathjax: true
 ---
 
@@ -26,26 +26,26 @@ Transform sampled profiles forward to modal coefficients.
 
 ## Discussion
 
-For $$n_p$$ profiles arranged as
-$$X\in\mathbb{R}^{n_z\times n_p}$$, this method returns
-$$A\in\mathbb{R}^{n_m\times n_p}$$ using
+  For $$n_p$$ profiles arranged as
+  $$X\in\mathbb{R}^{n_z\times n_p}$$, this method returns
+  $$A\in\mathbb{R}^{n_m\times n_p}$$ using
 
-$$
-A=A_{\mathrm f}X
-=\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
-A_{\mathrm i}^\mathsf{T}WX.
-$$
+  $$
+  A=A_{\mathrm f}X
+  =\left(A_{\mathrm i}^\mathsf{T}WA_{\mathrm i}\right)^{-1}
+  A_{\mathrm i}^\mathsf{T}WX.
+  $$
 
-Each input column is transformed independently. The resulting
-coefficients minimize the sampled quadratic residual when
-$$W$$ is positive definite and, more generally, satisfy
+  Each input column is transformed independently. The resulting
+  coefficients minimize the sampled quadratic residual when
+  $$W$$ is positive definite and, more generally, satisfy
 
-$$
-A_{\mathrm i}^\mathsf{T}W
-\left(X-A_{\mathrm i}A\right)=0.
-$$
+  $$
+  A_{\mathrm i}^\mathsf{T}W
+  \left(X-A_{\mathrm i}A\right)=0.
+  $$
 
-```matlab
-coefficients = transform.transformForward(values);
-coefficientsByMatrix = transform.forwardMatrix*values;
-```
+  ```matlab
+  coefficients = transform.transformForward(values);
+  coefficientsByMatrix = transform.forwardMatrix*values;
+  ```

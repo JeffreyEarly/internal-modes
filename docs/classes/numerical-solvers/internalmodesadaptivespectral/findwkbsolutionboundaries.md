@@ -32,5 +32,5 @@ Estimate adaptive-region boundaries from turning points and WKB decay.
 
 ## Discussion
 
-The requiredDecay is <=1 and find the point at which the
-solution has decayed below that value.
+                    The requiredDecay is <=1 and find the point at which the
+  solution has decayed below that value.

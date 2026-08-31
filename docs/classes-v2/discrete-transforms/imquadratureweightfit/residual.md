@@ -18,4 +18,4 @@ Objective residual vector at the fitted weights.
 
 ## Discussion
 
-This is `objectiveMatrix*weights-objectiveTarget`.
+  This is `objectiveMatrix*weights-objectiveTarget`.

@@ -116,6 +116,7 @@ valuesFit = transform.transformBack(coefficients);
   + [`relativeGramOperatorError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/relativegramoperatorerror.html) Measure the worst normalized Gram distortion.
   + [`roundTripError`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/roundtriperror.html) Measure recovery of retained modal coefficients.
   + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/inversematrixconditionnumber.html) Two-norm condition number of the sampled modal basis.
+  + [`sampledGramRank`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/sampledgramrank.html) Numerical rank of the sampled modal Gram matrix.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/gramconditionnumber.html) Two-norm condition number of the sampled Gram matrix.
   + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/targetgramispositivedefinite.html) Whether the target modal Gram matrix defines a positive norm.
   + [`hasNegativeWeights`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransform/hasnegativeweights.html) Whether at least one quadrature weight is negative.

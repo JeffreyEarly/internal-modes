@@ -18,5 +18,5 @@ Least-squares target vector $$b_{\mathrm{LS}}$$.
 
 ## Discussion
 
-Together with `objectiveMatrix`, this defines the physical-unit
-residual $$A_{\mathrm{LS}}w-b_{\mathrm{LS}}$$.
+  Together with `objectiveMatrix`, this defines the physical-unit
+  residual $$A_{\mathrm{LS}}w-b_{\mathrm{LS}}$$.

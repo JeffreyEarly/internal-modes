@@ -16,6 +16,6 @@ Actual physical sample count.
 
 ## Discussion
 
-Exact point-count construction guarantees this equals
-`requestedPointCount`; it is recorded separately so the contract
-remains directly inspectable.
+  Exact point-count construction guarantees this equals
+  `requestedPointCount`; it is recorded separately so the contract
+  remains directly inspectable.

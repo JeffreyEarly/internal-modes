@@ -3,7 +3,7 @@ layout: default
 title: transformForward
 parent: IMInternalModesDiscreteTransform
 grand_parent: Discrete transforms
-nav_order: 30
+nav_order: 31
 mathjax: true
 ---
 

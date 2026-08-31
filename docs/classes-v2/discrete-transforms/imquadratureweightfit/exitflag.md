@@ -18,6 +18,6 @@ Exit flag returned by `lsqlin`.
 
 ## Discussion
 
-Positive values indicate successful termination. Consult MATLAB's
-`lsqlin` documentation together with `solverOutput` for detailed
-optimizer diagnostics.
+  Positive values indicate successful termination. Consult MATLAB's
+  `lsqlin` documentation together with `solverOutput` for detailed
+  optimizer diagnostics.

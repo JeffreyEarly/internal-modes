@@ -16,4 +16,4 @@ Surface-buoyancy matrix $$\mathsf B_0$$.
 
 ## Discussion
 
-This matrix is exactly zero when the surface endpoint is absent.
+  This matrix is exactly zero when the surface endpoint is absent.

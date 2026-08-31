@@ -27,5 +27,5 @@ Return the analytical surface SQG mode for exponential stratification.
 
 ## Discussion
 
-See LaCasce 2012.
-size(psi) = [size(k); length(z)]
+            See LaCasce 2012.
+  size(psi) = [size(k); length(z)]

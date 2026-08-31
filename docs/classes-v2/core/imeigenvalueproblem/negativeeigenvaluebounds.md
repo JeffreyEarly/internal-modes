@@ -27,13 +27,13 @@ Bound negative eigenvalues using a grid-level assessment.
 
 ## Discussion
 
-The returned counts describe how many negative eigenvalues are
-supported by the discretized canonical problem, rather than by
-raw negative finite-real eigenvalues alone. Exact negative
-counts require the zero mode to be absent. The returned struct
-includes `assessmentLevel`, `negativeEndpointWeightCount`,
-`zeroModeStatus`, `minNegativeEigenvalueCount`,
-`maxNegativeEigenvalueCount`, and `reason`.
-`maxNegativeEigenvalueCount` may be the string `"unknown"`
-when coefficient signs or endpoint determinants cannot be
-assessed on the grid.
+  The returned counts describe how many negative eigenvalues are
+  supported by the discretized canonical problem, rather than by
+  raw negative finite-real eigenvalues alone. Exact negative
+  counts require the zero mode to be absent. The returned struct
+  includes `assessmentLevel`, `negativeEndpointWeightCount`,
+  `zeroModeStatus`, `minNegativeEigenvalueCount`,
+  `maxNegativeEigenvalueCount`, and `reason`.
+  `maxNegativeEigenvalueCount` may be the string `"unknown"`
+  when coefficient signs or endpoint determinants cannot be
+  assessed on the grid.

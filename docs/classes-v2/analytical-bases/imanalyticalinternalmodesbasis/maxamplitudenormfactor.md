@@ -29,8 +29,8 @@ Return the maximum amplitude of `F` or `G`.
 
 ## Discussion
 
-This developer utility returns the raw maximum-amplitude
-scale
-$$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$
-for exact analytical modes on the analytical integration
-grid.
+  This developer utility returns the raw maximum-amplitude
+  scale
+  $$s_j=\max_z |V_j^{\mathrm{raw}}(z)|$$
+  for exact analytical modes on the analytical integration
+  grid.
