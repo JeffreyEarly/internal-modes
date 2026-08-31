@@ -676,6 +676,16 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
                 basisSet.normalizationFactors("unity"), RelTol=1e-12)
         end
 
+        function customNormalizationOverridesBuiltInVectorRule(testCase)
+            [N2, zDomain, nEVP] = testCase.profile();
+            solver = IMSolverSpectral(nEVP=nEVP);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+            basisSet = solver.solveEVP(evp,nModes=4);
+            basisSet = basisSet.addNormalization("geostrophic",@(~,iMode) 10+iMode);
+
+            testCase.verifyEqual(basisSet.normalizationFactors("geostrophic"),11:14,AbsTol=0)
+        end
+
         function standardInternalModeFactoryDefaultsAreInstalledOnBasisSets(testCase)
             [N2, zDomain, nEVP, f0] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);

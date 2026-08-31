@@ -130,6 +130,8 @@ classdef IMBasisSet
     properties (Access = private)
         % Map from normalization names to rule handles.
         normalizationNameMap
+        % Optional whole-family normalization rule handles.
+        normalizationVectorRuleMap
     end
 
     methods
@@ -179,7 +181,8 @@ classdef IMBasisSet
             self.metadata = options.metadata;
             self.zDomain = self.evp.zDomain;
             self.normalizationNameMap = configureDictionary("string","cell");
-            self = self.addNormalization("unity", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode));
+            self.normalizationVectorRuleMap = configureDictionary("string","cell");
+            self = self.addVectorNormalization("unity",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode),@(basisSet) basisSet.innerProductNormFactors());
         end
 
         function self = addNormalization(self, name, rule)
@@ -224,6 +227,7 @@ classdef IMBasisSet
 
             name = self.normalizationName(name);
             self.normalizationNameMap{name} = rule;
+            self.normalizationVectorRuleMap{name} = [];
         end
 
         function names = normalizationNames(self)
@@ -317,9 +321,18 @@ classdef IMBasisSet
             end
             normalizeMode = self.normalizationNameMap{name};
             nModes = size(self.nativeModes,2);
-            factors = zeros(1,nModes);
-            for iMode = 1:nModes
-                factors(iMode) = normalizeMode(self, iMode);
+            vectorRule = self.normalizationVectorRuleMap{name};
+            if isempty(vectorRule)
+                factors = zeros(1,nModes);
+                for iMode = 1:nModes
+                    factors(iMode) = normalizeMode(self,iMode);
+                end
+            else
+                factors = vectorRule(self);
+                if ~isnumeric(factors) || ~isreal(factors) || ~isvector(factors) || numel(factors) ~= nModes
+                    error("IMBasisSet:InvalidNormalizationRule", "The vector normalization rule ""%s"" must return one real numeric factor per retained mode.",name);
+                end
+                factors = reshape(factors,1,[]);
             end
             factors = abs(factors);
             factors(factors == 0 | ~isfinite(factors)) = 1;
@@ -609,6 +622,30 @@ classdef IMBasisSet
             factor = sqrt(abs(value));
         end
 
+        function factors = innerProductNormFactors(self)
+            % Return raw scalar inner-product factors for the whole family.
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            normSquared = zeros(1,size(values,2));
+            for iMode = 1:size(values,2)
+                normSquared(iMode) = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
+            end
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            end
+            factors = sqrt(abs(normSquared));
+        end
+
         function factor = maxAmplitudeNormFactor(self, iMode)
             % Return the maximum scalar amplitude.
             %
@@ -682,6 +719,18 @@ classdef IMBasisSet
     end
 
     methods (Access = protected)
+        function self = addVectorNormalization(self,name,rule,vectorRule)
+            arguments
+                self IMBasisSet
+                name {mustBeTextScalar}
+                rule (1,1) function_handle
+                vectorRule (1,1) function_handle
+            end
+            name = self.normalizationName(name);
+            self.normalizationNameMap{name} = rule;
+            self.normalizationVectorRuleMap{name} = vectorRule;
+        end
+
         function transform = buildDiscreteTransform(self, z, weights, nModes)
             arguments
                 self IMBasisSet

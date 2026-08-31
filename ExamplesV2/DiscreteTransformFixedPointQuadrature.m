@@ -1,13 +1,14 @@
-%% Fit a scalar discrete transform on caller-chosen physical points
+%% Fit aligned F/G transforms on caller-chosen physical points
 % Suppose measurements already exist on a fixed vertical grid. This
-% walkthrough fits quadrature weights on those points, builds a Galerkin
-% transform for hydrostatic G modes, and separates the diagnostics that
-% describe quadrature accuracy from those that describe linear algebra.
+% walkthrough fits one quadrature rule on those points, builds aligned F/G
+% Galerkin transforms, and separates the diagnostics that describe shared
+% quadrature accuracy from those that describe each variable's linear
+% algebra.
 
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
 
-%% Solve exponential-stratification G modes
+%% Solve paired exponential-stratification modes
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
@@ -32,12 +33,23 @@ nPoints = 24;
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);
 
-[transform, assessment] = basisSet.discreteTransform(z=z,nModes=nModes);
+variables = ["F","G"];
+[transform, assessment] = basisSet.discreteTransform(z=z,nModes=nModes,variables=variables);
 fit = assessment.weightFit;
 
 % Supplying weights bypasses fitting. Use the geometric control-volume
 % weights stored by the fit to build a comparison on exactly the same grid.
-geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights,nModes=nModes);
+geometricTransform = fit.geometricTransform;
+
+% Every normalized-Gram objective row retains its variable and mode-pair
+% provenance. F has one active row for every upper-triangle pair. G omits
+% any identically zero family column while preserving its aligned label.
+objectiveVariable = variables.';
+objectiveRows = [sum(fit.objectiveRowVariables == "F");sum(fit.objectiveRowVariables == "G")];
+fittedResidual = [fit.variableResidualNorm(variable="F");fit.variableResidualNorm(variable="G")];
+geometricResidual = [fit.variableGeometricResidualNorm(variable="F");fit.variableGeometricResidualNorm(variable="G")];
+stackedObjectiveSummary = table(objectiveVariable,objectiveRows,fittedResidual,geometricResidual);
+disp(stackedObjectiveSummary)
 
 %% Separate fit, transform, and conditioning diagnostics
 % The fitted objective is the Frobenius norm of the normalized Gram error;
@@ -45,65 +57,87 @@ geometricTransform = basisSet.discreteTransform(z=z,weights=fit.geometricWeights
 % the worst error over normalized modal combinations. `roundTripError`
 % measures algebraic coefficient recovery and may remain tiny even when the
 % quadrature rule has visible Gram error.
-rule = ["fitted"; "geometric"];
-frobeniusResidual = [fit.residualNorm; fit.geometricResidualNorm];
-relativeGramOperatorError = [transform.relativeGramOperatorError; geometricTransform.relativeGramOperatorError];
-roundTripError = [transform.roundTripError; geometricTransform.roundTripError];
-forwardMatrixConditionNumber = [cond(transform.forwardMatrix); cond(geometricTransform.forwardMatrix)];
-inverseMatrixConditionNumber = [transform.inverseMatrixConditionNumber; geometricTransform.inverseMatrixConditionNumber];
-gramConditionNumber = [transform.gramConditionNumber; geometricTransform.gramConditionNumber];
-depthSum = [sum(transform.weights); sum(geometricTransform.weights)];
-minimumWeight = [min(transform.weights); min(geometricTransform.weights)];
-maximumWeight = [max(transform.weights); max(geometricTransform.weights)];
-diagnostics = table(rule,frobeniusResidual,relativeGramOperatorError,roundTripError, ...
+rule = ["fitted";"fitted";"geometric";"geometric"];
+variable = ["F";"G";"F";"G"];
+frobeniusResidual = [fit.variableResidualNorm(variable="F");fit.variableResidualNorm(variable="G"); ...
+    fit.variableGeometricResidualNorm(variable="F");fit.variableGeometricResidualNorm(variable="G")];
+transforms = {transform;transform;geometricTransform;geometricTransform};
+relativeGramOperatorError = zeros(4,1);
+roundTripError = zeros(4,1);
+forwardMatrixConditionNumber = zeros(4,1);
+inverseMatrixConditionNumber = zeros(4,1);
+gramConditionNumber = zeros(4,1);
+for iRow = 1:4
+    current = transforms{iRow};
+    currentVariable = variable(iRow);
+    relativeGramOperatorError(iRow) = current.relativeGramOperatorError(variable=currentVariable);
+    roundTripError(iRow) = current.roundTripError(variable=currentVariable);
+    forwardMatrixConditionNumber(iRow) = cond(current.forwardMatrix(variable=currentVariable));
+    inverseMatrixConditionNumber(iRow) = current.inverseMatrixConditionNumber(variable=currentVariable);
+    gramConditionNumber(iRow) = current.gramConditionNumber(variable=currentVariable);
+end
+depthSum = [sum(transform.weights);sum(transform.weights);sum(geometricTransform.weights);sum(geometricTransform.weights)];
+minimumWeight = [min(transform.weights);min(transform.weights);min(geometricTransform.weights);min(geometricTransform.weights)];
+maximumWeight = [max(transform.weights);max(transform.weights);max(geometricTransform.weights);max(geometricTransform.weights)];
+diagnostics = table(rule,variable,frobeniusResidual,relativeGramOperatorError,roundTripError, ...
     forwardMatrixConditionNumber,inverseMatrixConditionNumber,gramConditionNumber, ...
     depthSum,minimumWeight,maximumWeight);
 
-fprintf("\nFixed-point transform for exponential hydrostatic G modes\n");
+fprintf("\nFixed-point transform for aligned exponential hydrostatic F/G modes\n");
 fprintf("Requested modes: %d; fixed points: %d; normalization: %s\n\n",nModes,nPoints,transform.normalization);
 disp(diagnostics)
 
 % Prefix diagnostics show how the same fitted rule behaves as modes are
 % added. The Gram policy is the acceptance test; the other columns diagnose
 % algebraic consistency and sensitivity.
-prefixDiagnostics = assessment.prefixDiagnostics(:,["modeCount" "lastModeNumber" "gramError" ...
-    "roundTripError" "inverseMatrixConditionNumber" "gramConditionNumber" "gramAccepted"]);
+prefixDiagnostics = assessment.prefixDiagnostics(:,["modeCount" "lastModeNumber" "gramError" "gramLimitingVariable" "gramAccepted"]);
 disp(prefixDiagnostics)
+fprintf("\nPer-variable prefix diagnostics for G:\n");
+disp(assessment.variablePrefixDiagnostics(variable="G"))
 
-%% Recover known modal coefficients
-% A field made entirely from retained modes should round-trip to numerical
-% precision. Both transform directions accept multiple profile columns.
+%% Recover one coefficient matrix through both physical variables
+% The same coefficient matrix addresses the aligned F/G family. A field
+% made entirely from retained modes should round-trip through either direct
+% channel to numerical precision.
 mode = (1:nModes).';
 coefficientsTrue = [1./mode (-1).^(mode - 1)./mode.^2];
-valuesFromModes = transform.transformBack(coefficientsTrue);
-coefficientsRecovered = transform.transformForward(valuesFromModes);
-coefficientRoundTripError = norm(coefficientsRecovered - coefficientsTrue,2)/norm(coefficientsTrue,2);
-fprintf("Relative coefficient round-trip error: %.3e\n",coefficientRoundTripError);
+FValuesFromModes = transform.transformBack(coefficientsTrue,variable="F");
+GValuesFromModes = transform.transformBack(coefficientsTrue,variable="G");
+FCoefficientsRecovered = transform.transformForward(FValuesFromModes,variable="F");
+GCoefficientsRecovered = transform.transformForward(GValuesFromModes,variable="G");
+variable = ["F";"G"];
+coefficientRoundTripError = [norm(FCoefficientsRecovered-coefficientsTrue,2);norm(GCoefficientsRecovered-coefficientsTrue,2)]/norm(coefficientsTrue,2);
+disp(table(variable,coefficientRoundTripError))
 
 %% Project a smooth sampled profile
 % Galerkin projection returns the retained modal field whose residual is
 % orthogonal to the retained basis in the sampled metric W. An arbitrary
 % profile is therefore projected, not expected to round-trip exactly.
 profile = sin(pi*(z - zDomain(1))/D).*exp(z/900).*(1 + 0.2*cos(2*pi*(z - zDomain(1))/D));
-profileCoefficients = transform.transformForward(profile);
-profileReconstruction = transform.transformBack(profileCoefficients);
+profileCoefficients = transform.transformForward(profile,variable="G");
+profileReconstruction = transform.transformBack(profileCoefficients,variable="G");
 profileResidual = profile - profileReconstruction;
-profileNorm = sqrt(profile.'*transform.metricMatrix*profile);
-relativeProfileResidual = sqrt(profileResidual.'*transform.metricMatrix*profileResidual)/profileNorm;
+GMetric = transform.metricMatrix(variable="G");
+profileNorm = sqrt(profile.'*GMetric*profile);
+relativeProfileResidual = sqrt(profileResidual.'*GMetric*profileResidual)/profileNorm;
 fprintf("Relative sampled-metric residual of the smooth profile: %.3e\n",relativeProfileResidual);
 
 %% Inspect the sampled modes, weights, and Gram errors
-targetNorms = diag(transform.targetGramMatrix);
+targetGramG = transform.targetGramMatrix(variable="G");
+sampledGramG = transform.gramMatrix(variable="G");
+geometricTargetGramG = geometricTransform.targetGramMatrix(variable="G");
+geometricSampledGramG = geometricTransform.gramMatrix(variable="G");
+targetNorms = diag(targetGramG);
 gramScale = 1./sqrt(abs(targetNorms));
-fittedGramError = gramScale.*(transform.gramMatrix - transform.targetGramMatrix).*gramScale.';
-geometricGramError = gramScale.*(geometricTransform.gramMatrix - geometricTransform.targetGramMatrix).*gramScale.';
+fittedGramError = gramScale.*(sampledGramG-targetGramG).*gramScale.';
+geometricGramError = gramScale.*(geometricSampledGramG-geometricTargetGramG).*gramScale.';
 gramColorLimit = max(abs([fittedGramError geometricGramError]),[],"all");
 
-figure(Name="V2 fixed-point scalar discrete transform",Color="w");
+figure(Name="V2 fixed-point aligned F-G discrete transform",Color="w");
 tiledlayout(2,2,TileSpacing="compact",Padding="compact");
 
 nexttile
-plot(transform.inverseMatrix,z,LineWidth=1.1)
+plot(transform.inverseMatrix(variable="G"),z,LineWidth=1.1)
 grid on
 xlabel("G")
 ylabel("z (m)")

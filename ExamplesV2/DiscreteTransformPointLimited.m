@@ -1,8 +1,8 @@
-%% Build a scalar discrete transform from an exact point budget
+%% Build aligned internal-mode transforms from an exact point budget
 % Suppose an instrument or numerical model fixes the number of available
-% vertical samples. This walkthrough asks how many hydrostatic G modes an
-% exact physical point budget can support and lets the transform assessment
-% choose the production modal band.
+% vertical samples. This walkthrough asks how many aligned hydrostatic F/G
+% modes an exact physical point budget can support and lets the transform
+% assessment choose one common production family band.
 
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
@@ -40,7 +40,8 @@ fprintf("Mode basis: hydrostatic G modes with G(-D) = G(0) = 0; normalization: %
 % physical points, fits one weight vector for that full band, and assesses
 % every leading modal prefix without refitting the weights.
 nPoints = 18;
-[transform, assessment] = basisSet.discreteTransform(nPoints=nPoints);
+variables = ["F","G"];
+[transform, assessment] = basisSet.discreteTransform(nPoints=nPoints,variables=variables);
 
 requestedPointCount = assessment.requestedPointCount;
 actualPointCount = assessment.actualPointCount;
@@ -50,6 +51,7 @@ gramTolerance = assessment.gramPolicy.tolerance;
 limitingPolicy = assessment.limitingPolicy;
 transformSummary = table(requestedPointCount,actualPointCount,candidateModeCount,retainedModeCount,gramTolerance,limitingPolicy);
 disp(transformSummary)
+fprintf("Directly projected channels: %s. Both channels remain aligned to the same family labels.\n",join(transform.availableVariables,", "));
 
 % `weightFit.transform` and `candidateTransform` contain the complete band
 % used to fit the rule. `transform` and `assessment.transform` contain only
@@ -62,16 +64,17 @@ fprintf("Candidate and production rules share points and weights: %d\n", ...
     isequal(candidateTransform.z,transform.z) && isequal(candidateTransform.weights,transform.weights));
 
 prefixDiagnostics = assessment.prefixDiagnostics(:,["modeCount" "lastModeNumber" "gramError" ...
-    "roundTripError" "inverseMatrixConditionNumber" "gramAccepted" "combinedAccepted"]);
+    "gramLimitingVariable" "gramAccepted" "combinedAccepted"]);
 disp(prefixDiagnostics)
+disp(assessment.variablePrefixDiagnostics(variable="G"))
 
 %% Recover known modal coefficients
 % A field assembled from the retained modes should transform back to sample
 % space and forward to coefficients with only numerical round-off error.
 mode = (1:retainedModeCount).';
 coefficientsTrue = [1./mode (-1).^(mode - 1)./mode.^2];
-valuesFromModes = transform.transformBack(coefficientsTrue);
-coefficientsRecovered = transform.transformForward(valuesFromModes);
+valuesFromModes = transform.transformBack(coefficientsTrue,variable="G");
+coefficientsRecovered = transform.transformForward(valuesFromModes,variable="G");
 coefficientRoundTripError = norm(coefficientsRecovered - coefficientsTrue,2)/norm(coefficientsTrue,2);
 fprintf("Relative coefficient round-trip error: %.3e\n",coefficientRoundTripError);
 
@@ -84,11 +87,12 @@ fprintf("Relative coefficient round-trip error: %.3e\n",coefficientRoundTripErro
 z = transform.z;
 x = (z - zDomain(1))/D;
 profile = sin(pi*x).*exp(z/1800).*(1 + 0.15*cos(2*pi*x));
-profileCoefficients = transform.transformForward(profile);
-profileReconstruction = transform.transformBack(profileCoefficients);
+profileCoefficients = transform.transformForward(profile,variable="G");
+profileReconstruction = transform.transformBack(profileCoefficients,variable="G");
 profileResidual = profile - profileReconstruction;
-profileNorm = sqrt(profile.'*transform.metricMatrix*profile);
-relativeSampledResidual = sqrt(profileResidual.'*transform.metricMatrix*profileResidual)/profileNorm;
+GMetric = transform.metricMatrix(variable="G");
+profileNorm = sqrt(profile.'*GMetric*profile);
+relativeSampledResidual = sqrt(profileResidual.'*GMetric*profileResidual)/profileNorm;
 
 zFine = linspace(zDomain(1),zDomain(2),801).';
 xFine = (zFine - zDomain(1))/D;
@@ -107,7 +111,7 @@ figure(Name="V2 point-limited scalar discrete transform",Color="w");
 tiledlayout(1,2,TileSpacing="compact",Padding="compact");
 
 nexttile
-plot(transform.inverseMatrix,z,LineWidth=1.1)
+plot(transform.inverseMatrix(variable="G"),z,LineWidth=1.1)
 grid on
 xlabel("G")
 ylabel("z (m)")
@@ -151,7 +155,7 @@ candidateCounts = zeros(size(pointBudgets));
 retainedCounts = zeros(size(pointBudgets));
 maximumGramError = zeros(size(pointBudgets));
 for iBudget = 1:length(pointBudgets)
-    [~, budgetAssessment] = basisSet.discreteTransform(nPoints=pointBudgets(iBudget));
+    [~, budgetAssessment] = basisSet.discreteTransform(nPoints=pointBudgets(iBudget),variables=variables);
     candidateCounts(iBudget) = budgetAssessment.candidateModeCount;
     retainedCounts(iBudget) = budgetAssessment.retainedModeCount;
     maximumGramError(iBudget) = max(budgetAssessment.prefixDiagnostics.gramError);

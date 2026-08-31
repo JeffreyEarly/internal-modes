@@ -291,6 +291,17 @@ classdef IMSolverFiniteDifference < IMSolver
         end
     end
 
+    methods (Hidden)
+        function weights = innerProductWeights(~, z, ~)
+            % Return physical-value weights for trapezoidal integration.
+            [zSorted,sortIndex] = sort(z(:));
+            spacing = diff(zSorted);
+            sortedWeights = [spacing(1)/2;(spacing(1:end-1)+spacing(2:end))/2;spacing(end)/2];
+            weights = zeros(size(z));
+            weights(sortIndex) = sortedWeights;
+        end
+    end
+
     methods (Access = private)
         function D = finiteDifferenceMatrix(self, derivativeOrder)
             if derivativeOrder == 0

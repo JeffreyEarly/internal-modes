@@ -58,6 +58,9 @@ G = basisSet.G(z);
 + Inspect basis sets
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodesbasis/n2.html) Buoyancy frequency squared profile.
   + [`h`](/internal-modes/classes-v2/core/iminternalmodesbasis/h.html) Equivalent depths for the retained internal modes.
++ Build discrete transforms
+  + [`discreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/discretetransform.html) Build an aligned internal-mode F/G discrete transform.
+  + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/iminternalmodesbasis/quadratureweightsforpoints.html) Fit one quadrature rule to aligned internal-mode F/G channels.
 
 
 ## Developer Topics

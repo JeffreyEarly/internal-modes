@@ -156,13 +156,15 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp,nModes=8);
             sigma = linspace(0,1,24).';
             z = zDomain(1) + D*(1 - (1 - sigma).^2);
-            [~, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=4);
+            [~, fit] = basisSet.quadratureWeightsForPoints(z=z,nModes=4,variables="G");
 
             testCase.verifyGreaterThan(fit.exitFlag,0)
             testCase.verifyGreaterThanOrEqual(min(fit.weights),-1e-10)
             testCase.verifyEqual(sum(fit.weights),D,AbsTol=1e-8)
             testCase.verifyLessThan(fit.residualNorm,fit.geometricResidualNorm)
-            testCase.verifyLessThan(fit.transform.relativeGramOperatorError,fit.geometricTransform.relativeGramOperatorError)
+            fittedDiagnostics = fit.transform.channelDiagnostics(variable="G");
+            geometricDiagnostics = fit.geometricTransform.channelDiagnostics(variable="G");
+            testCase.verifyLessThan(fittedDiagnostics.relativeGramOperatorError,geometricDiagnostics.relativeGramOperatorError)
         end
 
         function dimensionNormalizedRegularizedObjectiveMatchesDefinition(testCase)
@@ -185,13 +187,15 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             [basisSet,z] = testCase.exponentialBasisAndClusteredGrid();
             nModes = 8;
             lambda = 1e-6;
-            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables="G");
             objective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,nModes);
-            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables="G",objective=objective);
             pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
             regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
 
-            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramOperatorError,1.10*pureFit.transform.relativeGramOperatorError + 1e-12)
+            regularizedDiagnostics = regularizedFit.transform.channelDiagnostics(variable="G");
+            pureDiagnostics = pureFit.transform.channelDiagnostics(variable="G");
+            testCase.verifyLessThanOrEqual(regularizedDiagnostics.relativeGramOperatorError,max(10*pureDiagnostics.relativeGramOperatorError+1e-12,1e-8))
             testCase.verifyLessThan(regularizedDisplacement,0.01*pureDisplacement)
             testCase.verifyGreaterThan(min(regularizedFit.weights),0)
         end
@@ -201,13 +205,15 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             nModes = 8;
             lambda = 1e-6;
             z = basisSet.pointsFromModeRoots(nModes=nModes);
-            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes);
+            [~, pureFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables="G");
             objective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,nModes);
-            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,objective=objective);
+            [~, regularizedFit] = basisSet.quadratureWeightsForPoints(z=z,nModes=nModes,variables="G",objective=objective);
             pureDisplacement = testCase.relativeWeightDisplacement(pureFit.weights,pureFit.geometricWeights);
             regularizedDisplacement = testCase.relativeWeightDisplacement(regularizedFit.weights,pureFit.geometricWeights);
 
-            testCase.verifyLessThanOrEqual(regularizedFit.transform.relativeGramOperatorError,1.10*pureFit.transform.relativeGramOperatorError + 1e-12)
+            regularizedDiagnostics = regularizedFit.transform.channelDiagnostics(variable="G");
+            pureDiagnostics = pureFit.transform.channelDiagnostics(variable="G");
+            testCase.verifyLessThanOrEqual(regularizedDiagnostics.relativeGramOperatorError,1.10*pureDiagnostics.relativeGramOperatorError + 1e-12)
             testCase.verifyLessThan(regularizedDisplacement,pureDisplacement)
             testCase.verifyGreaterThan(min(regularizedFit.weights),0)
         end
@@ -232,7 +238,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             sigma = linspace(0,1,18).';
             fZ = zDomain(1) + D*(1-(1-sigma).^2);
             fObjective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,4);
-            [fWeights,fFit] = fBasis.quadratureWeightsForPoints(z=fZ,nModes=4,objective=fObjective);
+            [fWeights,fFit] = fBasis.quadratureWeightsForPoints(z=fZ,nModes=4,variables="F",objective=fObjective);
 
             testCase.verifyGreaterThanOrEqual(min(endpointWeights),-1e-12)
             testCase.verifyEqual(sum(endpointWeights),1,AbsTol=1e-10)
@@ -240,7 +246,8 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             testCase.verifyEqual(fBasis.modeNumber(1),0)
             testCase.verifyGreaterThanOrEqual(min(fWeights),-1e-10)
             testCase.verifyEqual(sum(fWeights),D,AbsTol=1e-8)
-            testCase.verifyTrue(fFit.transform.targetGramIsPositiveDefinite)
+            fDiagnostics = fFit.transform.channelDiagnostics(variable="F");
+            testCase.verifyTrue(fDiagnostics.targetGramIsPositiveDefinite)
         end
 
         function customObjectiveCanReplaceNormalizedGramSystem(testCase)

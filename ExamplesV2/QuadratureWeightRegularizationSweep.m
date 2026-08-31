@@ -2,28 +2,43 @@
 % This sweep compares geometric control-volume weights, the production
 % normalized-Gram fit, and a dimension-normalized regularized Gram fit. It
 % intentionally leaves the production objective unchanged. The resulting
-% tables remain in the workspace for inspection.
+% tables remain in the workspace for inspection. The default run is a
+% representative developer smoke matrix suitable for the stacked F/G fit.
+% Set `runExtendedSweep=true` in the workspace before running this script to
+% restore the original 32/64/120-mode and sensitivity investigation.
 
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
 
-lambdaValues = [0 1e-14 1e-12 1e-10 1e-8 1e-6 1e-4 1e-2];
-nModesValues = [4 8 16 32];
+if ~exist("runExtendedSweep","var")
+    runExtendedSweep = false;
+end
+if runExtendedSweep
+    lambdaValues = [0 1e-14 1e-12 1e-10 1e-8 1e-6 1e-4 1e-2];
+    nModesValues = [4 8 16 32];
+    pointKinds = ["modeRoots" "uniform" "surfaceClustered"];
+else
+    lambdaValues = [0 1e-8 1e-4];
+    nModesValues = [4 8];
+    pointKinds = ["modeRoots" "surfaceClustered"];
+end
 configurations = regularizationConfigurations();
 
 fprintf("Running the main quadrature-weight regularization sweep...\n");
-sweepResults = runConfigurationSweep(configurations,nModesValues,["modeRoots" "uniform" "surfaceClustered"],lambdaValues);
+sweepResults = runConfigurationSweep(configurations,nModesValues,pointKinds,lambdaValues);
 
-fprintf("Running the high-order exponential-WKB mode-root cases...\n");
-highOrderConfiguration = configurations([configurations.name] == "hydrostaticGExponentialWKB");
-highOrderConfiguration.nEVP = 384;
-highOrderResults64 = runConfigurationSweep(highOrderConfiguration,64,"modeRoots",lambdaValues);
-highOrderResults120 = runConfigurationSweep(highOrderConfiguration,120,"modeRoots",lambdaValues);
-highOrderResults = [highOrderResults64; highOrderResults120];
+if runExtendedSweep
+    fprintf("Running the high-order exponential-WKB mode-root cases...\n");
+    highOrderConfiguration = configurations([configurations.name] == "hydrostaticGExponentialWKB");
+    highOrderConfiguration.nEVP = 384;
+    highOrderResults64 = runConfigurationSweep(highOrderConfiguration,64,"modeRoots",lambdaValues);
+    highOrderResults120 = runConfigurationSweep(highOrderConfiguration,120,"modeRoots",lambdaValues);
+    highOrderResults = [highOrderResults64;highOrderResults120];
 
-fprintf("Running point-perturbation and solver-resolution sensitivity cases...\n");
-sensitivityResults = runSensitivitySweep(highOrderConfiguration,[16 32],[160 256 384],[0 1e-4 1e-2],lambdaValues);
-sweepResults = [sweepResults; highOrderResults; sensitivityResults];
+    fprintf("Running point-perturbation and solver-resolution sensitivity cases...\n");
+    sensitivityResults = runSensitivitySweep(highOrderConfiguration,[16 32],[160 256 384],[0 1e-4 1e-2],lambdaValues);
+    sweepResults = [sweepResults;highOrderResults;sensitivityResults];
+end
 
 [candidateSummary,familySummary,pointSummary,modeCountSummary] = summarizeCandidates(sweepResults,lambdaValues(2:end));
 
@@ -232,20 +247,59 @@ specification = struct("A",[context.normalizedGramA/nModes; regularizationMatrix
 end
 
 function record = diagnosticRecord(configuration,basisSet,weights,transform,pureFit,nModes,pointKind,rule,lambda,perturbation,caseID,elapsedSeconds,exitFlag)
-targetNorms = diag(transform.targetGramMatrix);
-scale = 1./sqrt(abs(targetNorms));
-gramDifference = scale.*(transform.gramMatrix-transform.targetGramMatrix).*scale.';
-offDiagonalDifference = gramDifference - diag(diag(gramDifference));
 relativeDisplacement = (weights-pureFit.geometricWeights)./pureFit.geometricWeights;
 weightRatios = weights./pureFit.geometricWeights;
 
-heldOutValues = basisSet.u(transform.z);
-nHeldOut = min(2,size(heldOutValues,2)-nModes);
-if nHeldOut > 0
-    heldOutCoefficients = transform.forwardMatrix*heldOutValues(:,nModes+(1:nHeldOut));
-    heldOutLeakage = max(vecnorm(heldOutCoefficients,2,1));
+if isa(transform,"IMInternalModesDiscreteTransform")
+    gramFrobeniusError = 0;
+    gramOperatorError = 0;
+    maximumDiagonalGramError = 0;
+    maximumOffDiagonalGramError = 0;
+    heldOutLeakage = 0;
+    inverseMatrixConditionNumber = 0;
+    gramConditionNumber = 0;
+    roundTripError = 0;
+    for variable = transform.availableVariables
+        active = transform.activeModeMask(variable=variable);
+        target = transform.targetGramMatrix(variable=variable);
+        gram = transform.gramMatrix(variable=variable);
+        scale = 1./sqrt(abs(diag(target(active,active))));
+        gramDifference = scale.*(gram(active,active)-target(active,active)).*scale.';
+        offDiagonalDifference = gramDifference-diag(diag(gramDifference));
+        gramFrobeniusError = max(gramFrobeniusError,norm(gramDifference,"fro"));
+        gramOperatorError = max(gramOperatorError,norm(gramDifference,2));
+        maximumDiagonalGramError = max(maximumDiagonalGramError,max(abs(diag(gramDifference))));
+        maximumOffDiagonalGramError = max(maximumOffDiagonalGramError,max(abs(offDiagonalDifference),[],"all"));
+        heldOutValues = internalModeValues(basisSet,variable,transform.z);
+        nHeldOut = min(2,size(heldOutValues,2)-nModes);
+        if nHeldOut > 0
+            heldOutCoefficients = transform.transformForward(heldOutValues(:,nModes+(1:nHeldOut)),variable=variable);
+            heldOutLeakage = max(heldOutLeakage,max(vecnorm(heldOutCoefficients,2,1)));
+        end
+        inverseMatrixConditionNumber = max(inverseMatrixConditionNumber,transform.inverseMatrixConditionNumber(variable=variable));
+        gramConditionNumber = max(gramConditionNumber,transform.gramConditionNumber(variable=variable));
+        roundTripError = max(roundTripError,transform.roundTripError(variable=variable));
+    end
 else
-    heldOutLeakage = NaN;
+    targetNorms = diag(transform.targetGramMatrix);
+    scale = 1./sqrt(abs(targetNorms));
+    gramDifference = scale.*(transform.gramMatrix-transform.targetGramMatrix).*scale.';
+    offDiagonalDifference = gramDifference-diag(diag(gramDifference));
+    gramFrobeniusError = norm(gramDifference,"fro");
+    gramOperatorError = norm(gramDifference,2);
+    maximumDiagonalGramError = max(abs(diag(gramDifference)));
+    maximumOffDiagonalGramError = max(abs(offDiagonalDifference),[],"all");
+    heldOutValues = basisSet.u(transform.z);
+    nHeldOut = min(2,size(heldOutValues,2)-nModes);
+    if nHeldOut > 0
+        heldOutCoefficients = transform.forwardMatrix*heldOutValues(:,nModes+(1:nHeldOut));
+        heldOutLeakage = max(vecnorm(heldOutCoefficients,2,1));
+    else
+        heldOutLeakage = NaN;
+    end
+    inverseMatrixConditionNumber = transform.inverseMatrixConditionNumber;
+    gramConditionNumber = transform.gramConditionNumber;
+    roundTripError = transform.roundTripError;
 end
 
 record = emptyRecord();
@@ -262,10 +316,10 @@ record.rule = string(rule);
 record.isStressCase = configuration.isStressCase;
 record.perturbation = perturbation;
 record.succeeded = true;
-record.gramFrobeniusError = norm(gramDifference,"fro");
-record.gramOperatorError = norm(gramDifference,2);
-record.maximumDiagonalGramError = max(abs(diag(gramDifference)));
-record.maximumOffDiagonalGramError = max(abs(offDiagonalDifference),[],"all");
+record.gramFrobeniusError = gramFrobeniusError;
+record.gramOperatorError = gramOperatorError;
+record.maximumDiagonalGramError = maximumDiagonalGramError;
+record.maximumOffDiagonalGramError = maximumOffDiagonalGramError;
 record.heldOutLeakage = heldOutLeakage;
 record.relativeWeightDisplacementRMS = norm(relativeDisplacement)/sqrt(length(weights));
 record.relativeWeightDisplacementMaximum = max(abs(relativeDisplacement));
@@ -275,11 +329,19 @@ record.minimumWeightRatio = min(weightRatios);
 record.maximumWeightRatio = max(weightRatios);
 record.zeroWeightCount = sum(abs(weights) <= 1e-12*max(1,diff(configuration.zDomain)));
 record.depthError = sum(weights)-diff(configuration.zDomain);
-record.inverseMatrixConditionNumber = transform.inverseMatrixConditionNumber;
-record.gramConditionNumber = transform.gramConditionNumber;
-record.roundTripError = transform.roundTripError;
+record.inverseMatrixConditionNumber = inverseMatrixConditionNumber;
+record.gramConditionNumber = gramConditionNumber;
+record.roundTripError = roundTripError;
 record.exitFlag = exitFlag;
 record.elapsedSeconds = elapsedSeconds;
+end
+
+function values = internalModeValues(basisSet,variable,z)
+if variable == "F"
+    values = basisSet.F(z);
+else
+    values = basisSet.G(z);
+end
 end
 
 function records = failureRecords(configuration,nModes,pointKind,lambdaValues,perturbation,exception)

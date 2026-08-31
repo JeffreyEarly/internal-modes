@@ -497,6 +497,44 @@ classdef IMSolverSpectral < IMSolver
         end
     end
 
+    methods (Hidden)
+        function weights = innerProductWeights(self, z, zBounds)
+            % Return physical-value weights for the spectral integral.
+            arguments
+                self IMSolverSpectral
+                z (:,1) double
+                zBounds (1,2) double
+            end
+
+            if length(z) ~= self.nEVP || max(abs(z(:)-self.zNative(:))) > self.gridTolerance()
+                error("IMSolverSpectral:InvalidInnerProductGrid", ...
+                    "Spectral inner products must be evaluated on the solver's native grid.");
+            end
+            if ~self.boundsCoverDomain(zBounds)
+                weights = innerProductWeights@IMSolver(self,z,zBounds);
+                return
+            end
+
+            nIntervals = self.nEVP-1;
+            theta = pi*(0:nIntervals).'/nIntervals;
+            interiorTheta = theta(2:nIntervals);
+            valueWeights = zeros(self.nEVP,1);
+            if mod(nIntervals,2) == 0
+                valueWeights([1 end]) = 1/(nIntervals^2-1);
+                harmonics = 1:(nIntervals/2-1);
+                interior = 1-sum(2*cos(interiorTheta*(2*harmonics))./(4*harmonics.^2-1),2);
+                interior = interior-cos(nIntervals*interiorTheta)/(nIntervals^2-1);
+            else
+                valueWeights([1 end]) = 1/nIntervals^2;
+                harmonics = 1:((nIntervals-1)/2);
+                interior = 1-sum(2*cos(interiorTheta*(2*harmonics))./(4*harmonics.^2-1),2);
+            end
+            valueWeights(2:nIntervals) = 2*interior/nIntervals;
+            valueWeights = (max(self.xNative)-min(self.xNative))*valueWeights/2;
+            weights = valueWeights./self.qAtZ(self.zNative);
+        end
+    end
+
     methods (Access = protected)
         function self = setupCoordinate(self)
             nReference = max(2001, 20*self.nEVP);

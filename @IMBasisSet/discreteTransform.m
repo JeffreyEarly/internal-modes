@@ -311,7 +311,24 @@ end
 function [z,candidateModeCount] = pointsForExactCount(basisSet,nPoints,nAvailableModes)
 pointCounts = nan(nAvailableModes,1);
 pointGrids = cell(nAvailableModes,1);
-for nModes = 1:nAvailableModes
+maximumPossibleModeCount = min(nAvailableModes,nPoints);
+for nModes = maximumPossibleModeCount:-1:1
+    try
+        pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
+        pointCounts(nModes) = length(pointGrids{nModes});
+    catch exception
+        if nModes == nAvailableModes && strcmp(exception.identifier,"IMBasisSet:AuxiliaryModeUnavailable")
+            continue
+        end
+        rethrow(exception)
+    end
+    if pointCounts(nModes) == nPoints
+        candidateModeCount = nModes;
+        z = pointGrids{nModes};
+        return
+    end
+end
+for nModes = (maximumPossibleModeCount+1):nAvailableModes
     try
         pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
         pointCounts(nModes) = length(pointGrids{nModes});
@@ -322,17 +339,12 @@ for nModes = 1:nAvailableModes
         rethrow(exception)
     end
 end
-matchingPrefixes = find(pointCounts == nPoints);
-if isempty(matchingPrefixes)
-    attainableCounts = unique(pointCounts(isfinite(pointCounts)));
-    [~,order] = sort(abs(attainableCounts-nPoints));
-    nearestCounts = attainableCounts(order(1:min(3,length(order))));
-    nearestText = join(string(nearestCounts(:).'),", ");
-    error("IMBasisSet:UnattainableDiscretePointCount", ...
-        "No available mode-root grid has exactly %d points. Nearest attainable counts are %s.", nPoints, nearestText);
-end
-candidateModeCount = matchingPrefixes(end);
-z = pointGrids{candidateModeCount};
+attainableCounts = unique(pointCounts(isfinite(pointCounts)));
+[~,order] = sort(abs(attainableCounts-nPoints));
+nearestCounts = attainableCounts(order(1:min(3,length(order))));
+nearestText = join(string(nearestCounts(:).'),", ");
+error("IMBasisSet:UnattainableDiscretePointCount", ...
+    "No available mode-root grid has exactly %d points. Nearest attainable counts are %s.",nPoints,nearestText);
 end
 
 function transform = prefixTransform(candidateTransform,nModes)

@@ -13,11 +13,10 @@ classdef IMDiscreteTransformPolicyTests < matlab.unittest.TestCase
             testCase.originalPath = path;
             addpath(repoRoot);
 
-            N0 = 5.2e-3;
             zDomain = [-4000 0];
-            N2 = @(z) N0*N0*ones(size(z));
             solver = IMSolverSpectral(nEVP=160);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+            evp = IMEigenvalueProblem(zDomain=zDomain,p=1,q=0,r=1, ...
+                surfaceBoundary=IMBoundaryCondition.neumann(),bottomBoundary=IMBoundaryCondition.neumann());
             testCase.cosineBasis = solver.solveEVP(evp,nModes=30);
             testCase.z = linspace(zDomain(1),zDomain(2),13).';
             testCase.weights = [0.5; ones(11,1); 0.5]*(diff(zDomain)/12);
@@ -63,7 +62,7 @@ classdef IMDiscreteTransformPolicyTests < matlab.unittest.TestCase
                 leakageTolerance=1e-8,nCheckModes=20);
             prefixCount = 6;
             prefixTransform = testCase.cosineBasis.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=prefixCount);
-            sourceValues = testCase.cosineBasis.F(testCase.z);
+            sourceValues = testCase.cosineBasis.u(testCase.z);
             sourceGram = testCase.cosineBasis.gramMatrix();
             rejectedIndices = (prefixCount+1):20;
             coefficients = prefixTransform.forwardMatrix*sourceValues(:,rejectedIndices);
