@@ -101,7 +101,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
             transform = testCase.basisSet.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=4,variables=["F","G"],gramTolerance=1);
             expectedF = [testCase.basisSet.F(0);testCase.basisSet.F(-1000)];
             expectedG = [testCase.basisSet.G(0);testCase.basisSet.G(-1000)];
-            testCase.verifyEqual(transform.endpointLocations,[0;-1000],AbsTol=0)
+            testCase.verifyEqual(transform.endpointLocations,["surface";"bottom"])
             testCase.verifyEqual(transform.endpointValues(variable="F"),expectedF(:,1:4),RelTol=1e-12,AbsTol=1e-12)
             testCase.verifyEqual(transform.endpointValues(variable="G"),expectedG(:,1:4),RelTol=1e-12,AbsTol=1e-12)
             testCase.verifyEqual(transform.N2Values,testCase.basisSet.N2(testCase.z),AbsTol=0)

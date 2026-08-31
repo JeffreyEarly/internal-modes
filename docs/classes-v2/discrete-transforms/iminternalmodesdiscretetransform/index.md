@@ -57,7 +57,7 @@ F = transform.transformBack(aG,variable="F");
   + [`activeModeMask`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/activemodemask.html) Return the full-family active-column projector mask.
   + [`availableVariables`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/availablevariables.html) Directly representable forward channels in canonical order.
   + [`depth`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/depth.html) Full physical depth.
-  + [`endpointLocations`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/endpointlocations.html) Endpoint coordinates ordered surface then bottom.
+  + [`endpointLocations`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/endpointlocations.html) Canonical endpoint identities, `["surface";"bottom"]`.
   + [`endpointValues`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/endpointvalues.html) Return normalized endpoint traces, surface then bottom.
   + [`forwardMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/forwardmatrix.html) Return the variable-qualified Galerkin forward matrix.
   + [`forwardTransformReason`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/forwardtransformreason.html) Return the reason a direct projection is unavailable.

@@ -56,7 +56,7 @@ classdef IMInternalModesDiscreteTransform
         modeFamily
         % Buoyancy frequency squared sampled at `z`.
         N2Values
-        % Endpoint coordinates ordered surface then bottom.
+        % Canonical endpoint identities, `["surface";"bottom"]`.
         endpointLocations
         % Immutable basis metadata snapshot.
         problemMetadata
@@ -213,7 +213,7 @@ classdef IMInternalModesDiscreteTransform
             self.g = options.g;
             self.modeFamily = string(options.modeFamily);
             self.N2Values = options.N2Values(:);
-            self.endpointLocations = [options.zDomain(2);options.zDomain(1)];
+            self.endpointLocations = ["surface";"bottom"];
             self.problemMetadata = options.problemMetadata;
             self.hasNegativeWeights = any(weights < 0);
             self.inverseMatrices = inverseMatrices;

@@ -9,7 +9,7 @@ mathjax: true
 
 #  endpointLocations
 
-Endpoint coordinates ordered surface then bottom.
+Canonical endpoint identities, `["surface";"bottom"]`.
 
 
 ---

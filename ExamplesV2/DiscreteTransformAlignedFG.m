@@ -89,12 +89,16 @@ ylabel("z (m)")
 title("G contains only active columns")
 
 %% Inspect endpoint traces and the detached physical snapshot
-% Endpoint traces are always ordered surface then bottom. The transform
-% also carries the physical state needed to interpret its matrices without
-% retaining the source basis object.
+% Endpoint traces are always ordered surface then bottom. The symbolic
+% endpoint identities remain valid for any physical domain; their physical
+% coordinates follow from `zDomain`. The transform also carries the
+% physical state needed to interpret its matrices without retaining the
+% source basis object.
 FEndpoints = transform.endpointValues(variable="F");
 GEndpoints = transform.endpointValues(variable="G");
-endpointSummary = table(transform.endpointLocations,FEndpoints(:,1),GEndpoints(:,1),VariableNames=["z" "barotropicF" "barotropicG"]);
+endpointZ = [transform.zDomain(2);transform.zDomain(1)];
+endpointSummary = table(transform.endpointLocations,endpointZ,FEndpoints(:,1),GEndpoints(:,1), ...
+    VariableNames=["endpoint" "z" "barotropicF" "barotropicG"]);
 disp(endpointSummary)
 
 fprintf("Snapshot: depth %.1f m, g %.2f m s^-2, family %s, normalization %s.\n", ...
