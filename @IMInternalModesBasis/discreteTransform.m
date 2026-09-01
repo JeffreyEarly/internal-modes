@@ -183,7 +183,11 @@ if hasExplicitModeCount && ~options.allowRetainedPrefix && retainedModeCount < c
 end
 
 [limitingPolicy,limitingVariable,retentionReason] = combinedPolicyResult(candidateModeCount,retainedModeCount,gramPolicy,leakagePolicy,quadraticPolicy);
-transform = candidateTransform.prefixTransform(retainedModeCount);
+if retainedModeCount == candidateModeCount
+    transform = candidateTransform;
+else
+    transform = candidateTransform.prefixTransform(retainedModeCount);
+end
 modeCount = (1:candidateModeCount).';
 lastModeNumber = candidateTransform.modeNumber(:);
 prefixDiagnostics = table(modeCount,lastModeNumber,gramError,gramLimitingVariable,leakageError,leakageLimitingVariable,leakageLimitingModeNumber, ...

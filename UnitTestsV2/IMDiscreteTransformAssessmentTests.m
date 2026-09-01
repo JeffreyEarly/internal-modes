@@ -114,6 +114,85 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             testCase.verifyEqual(longTransform.weights,shortTransform.weights,RelTol=1e-12,AbsTol=1e-12)
         end
 
+        function certifiedSearchProbeMatchesCompletePrefixAssessment(testCase)
+            basisSet = testCase.constantFBasis(10);
+            z = linspace(-4000,0,9).';
+            variables = ["F","G"];
+            gramTolerance = 1e-2;
+            [transform,assessment] = basisSet.certifiedDiscreteTransform(z=z,variables=variables,gramTolerance=gramTolerance);
+            search = assessment.certificationSearch;
+
+            testCase.verifyGreaterThan(height(search),1)
+            for iSearch = 1:height(search)
+                modeCount = search.modeCount(iSearch);
+                [referenceTransform,referenceAssessment] = basisSet.discreteTransform( ...
+                    z=z,nModes=modeCount,variables=variables,gramTolerance=gramTolerance,allowRetainedPrefix=true);
+                referenceAccepted = referenceAssessment.gramPolicy.accepted(end);
+                referenceError = referenceAssessment.gramPolicy.error(end);
+                fullBandAccepted = referenceError <= gramTolerance;
+
+                testCase.verifyTrue(search.fitSucceeded(iSearch))
+                testCase.verifyEqual(referenceAccepted,fullBandAccepted)
+                testCase.verifyEqual(search.accepted(iSearch),referenceAccepted)
+                if isfinite(referenceError)
+                    testCase.verifyEqual(search.gramError(iSearch),referenceError,RelTol=2e-12,AbsTol=2e-14)
+                else
+                    testCase.verifyEqual(search.gramError(iSearch),referenceError)
+                end
+                if referenceAccepted
+                    testCase.verifyEqual(search.retainedModeCount(iSearch),modeCount)
+                    testCase.verifyEqual(transform.weights,referenceTransform.weights,RelTol=2e-12,AbsTol=2e-12)
+                else
+                    testCase.verifyTrue(isnan(search.retainedModeCount(iSearch)))
+                end
+            end
+        end
+
+        function signedAPVFullBandAcceptanceImpliesPrefixAcceptance(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            N2 = @(z) N0*N0*exp(2*z/1300);
+            zDomain = [-D 0];
+            g0 = -integral(N2,zDomain(1),zDomain(2));
+            solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g0=g0,gd=Inf,surfaceBoundary="freeSurface");
+            basisSet = solver.solveEVP(evp,nModes=16);
+            [z,gridDesign] = basisSet.modeRootGrid(nPoints=16);
+            [~,assessment] = basisSet.certifiedDiscreteTransform(z=z,gridDesign=gridDesign,variables=["F","G"],gramTolerance=1e-2);
+
+            search = assessment.certificationSearch;
+            acceptedRow = find(search.accepted,1);
+            modeCount = search.modeCount(acceptedRow);
+            [referenceTransform,referenceAssessment] = basisSet.discreteTransform(z=z,nModes=modeCount,variables=["F","G"],gramTolerance=1e-2,allowRetainedPrefix=true);
+            signedG = referenceAssessment.candidateTransform.targetGramMatrix(variable="G");
+
+            testCase.verifyTrue(any(diag(signedG) < 0))
+            testCase.verifyFalse(referenceTransform.hasNegativeWeights)
+            testCase.verifyTrue(all(referenceAssessment.gramPolicy.accepted))
+            testCase.verifyEqual(referenceAssessment.retainedModeCount,modeCount)
+        end
+
+        function fixedWavenumberWavePagesCertifyIndependently(testCase)
+            N0 = 5.2e-3;
+            zDomain = [-4000 0];
+            N2 = @(z) N0*N0*exp(2*z/1300);
+            z = linspace(zDomain(1),zDomain(2),17).';
+            solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
+            surfaceBoundary = IMBoundaryCondition(a=0,b=1,c=1,d=0);
+            k = 2*pi./[200e3 20e3];
+
+            for iK = 1:length(k)
+                evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=k(iK),f0=1e-4,surfaceBoundary=surfaceBoundary);
+                basisSet = solver.solveEVP(evp,nModes=16);
+                [transform,assessment] = basisSet.certifiedDiscreteTransform(z=z,variables="G",gramTolerance=1e-2);
+
+                testCase.verifyEqual(length(transform.modeNumber),assessment.retainedModeCount)
+                testCase.verifyEqual(assessment.weightFitModeCount,assessment.retainedModeCount)
+                testCase.verifyLessThanOrEqual(assessment.gramPolicy.error(end),1e-2)
+                testCase.verifyTrue(assessment.certificationSearch.accepted(end))
+            end
+        end
+
         function suppliedWeightsBypassOnlyTheFit(testCase)
             basisSet = testCase.constantFBasis(8);
             z = linspace(-4000,0,17).';

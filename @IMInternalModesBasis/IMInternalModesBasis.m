@@ -754,6 +754,22 @@ classdef IMInternalModesBasis < IMBasisSet
                 variables (1,:) string
             end
 
+            preparation = self.prepareInternalModesDiscreteTransform(z,weights,nModes,variables);
+            transform = IMInternalModesDiscreteTransform(z=preparation.z,weights=preparation.weights,modeNumber=preparation.modeNumber,h=preparation.h, ...
+                normalization=preparation.normalization,inverseF=preparation.inverseF,inverseG=preparation.inverseG,endpointF=preparation.endpointF,endpointG=preparation.endpointG, ...
+                channelData=preparation.channelData,primaryVariable=preparation.primaryVariable,zDomain=preparation.zDomain,g=preparation.g, ...
+                modeFamily=preparation.modeFamily,N2Values=preparation.N2Values,problemMetadata=preparation.problemMetadata);
+        end
+
+        function preparation = prepareInternalModesDiscreteTransform(self, z, weights, nModes, variables)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal, mustBeFinite}
+                weights (:,1) double {mustBeReal, mustBeFinite}
+                nModes (1,1) double {mustBeInteger, mustBePositive}
+                variables (1,:) string
+            end
+
             z = z(:);
             weights = weights(:);
             if length(z) ~= length(weights)
@@ -838,7 +854,7 @@ classdef IMInternalModesBasis < IMBasisSet
             if ~ismember(primaryVariable,variables)
                 primaryVariable = variables(1);
             end
-            transform = IMInternalModesDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
+            preparation = struct(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
                 normalization=self.normalizationName(self.normalization),inverseF=inverseF,inverseG=inverseG,endpointF=endpointF,endpointG=endpointG, ...
                 channelData=channelData,primaryVariable=primaryVariable,zDomain=self.zDomain,g=self.evp.g,modeFamily=self.evp.modeFamily,N2Values=self.N2(z),problemMetadata=metadata);
         end
