@@ -1,13 +1,13 @@
 classdef IMDiscreteTransformAssessment
     % Store fixed-rule retained-band diagnostics for a scalar transform.
     %
-    % `IMDiscreteTransformAssessment` records one point-and-weight rule and
-    % the leading modal prefixes assessed on that fixed rule. The rule is
-    % fitted once against the full `candidateTransform`; its weights are not
-    % refitted as the prefix changes. `transform` is the production prefix
-    % accepted by the default Gram policy and every enabled optional policy.
-    % `weightFit` preserves the full-band `IMQuadratureWeightFit`, or is
-    % empty when the caller supplied weights.
+    % `IMDiscreteTransformAssessment` records one final point-and-weight rule
+    % and the leading modal prefixes assessed on that rule. For certified
+    % construction, `certificationSearch` records the independently refitted
+    % counts considered before this exact final band was selected, and
+    % `weightFitModeCount` equals `retainedModeCount`. Lower-level fixed-rule
+    % calls can still fit a larger candidate once and return a shorter
+    % prefix; their differing counts make that behavior explicit.
     %
     % For prefix $$N$$, let $$\Gamma_N$$ be its sampled Gram matrix,
     % $$\Gamma_{0,N}$$ its diagonal continuous target, and
@@ -191,6 +191,22 @@ classdef IMDiscreteTransformAssessment
         %
         % - Topic: Inspect retained-band policies
         retentionReason
+
+        % Provenance of the physical sample grid.
+        gridDesign
+
+        % Independently refitted count-selection attempts.
+        %
+        % Empty for a direct fixed-band assessment. Certified construction
+        % records each attempted count and whether its freshly fitted rule
+        % passed the relevant selection stage.
+        certificationSearch
+
+        % Number of modes used when fitting the stored quadrature weights.
+        %
+        % This equals `retainedModeCount` for a certified transform. It can
+        % exceed it for legacy fixed-rule prefix assessment.
+        weightFitModeCount
     end
 
     methods
@@ -221,6 +237,8 @@ classdef IMDiscreteTransformAssessment
                 options.quadraticAliasingPolicy (1,1) struct
                 options.limitingPolicy {mustBeTextScalar}
                 options.retentionReason {mustBeTextScalar}
+                options.gridDesign struct = struct.empty
+                options.certificationSearch table = table()
             end
 
             if ~isempty(options.weightFit) && ~isa(options.weightFit,"IMQuadratureWeightFit")
@@ -277,6 +295,28 @@ classdef IMDiscreteTransformAssessment
             self.quadraticAliasingPolicy = options.quadraticAliasingPolicy;
             self.limitingPolicy = string(options.limitingPolicy);
             self.retentionReason = string(options.retentionReason);
+            if isempty(options.gridDesign)
+                options.gridDesign = struct(kind="unknown",pointCount=length(options.candidateTransform.z));
+            end
+            self.gridDesign = options.gridDesign;
+            self.certificationSearch = options.certificationSearch;
+            if isempty(options.weightFit)
+                self.weightFitModeCount = NaN;
+            else
+                self.weightFitModeCount = length(options.weightFit.transform.modeNumber);
+            end
+        end
+
+        function assessment = withCertificationMetadata(self,gridDesign,certificationSearch)
+            % Return this assessment with grid and count-search provenance.
+            arguments
+                self IMDiscreteTransformAssessment
+                gridDesign (1,1) struct
+                certificationSearch table
+            end
+            assessment = self;
+            assessment.gridDesign = gridDesign;
+            assessment.certificationSearch = certificationSearch;
         end
     end
 end

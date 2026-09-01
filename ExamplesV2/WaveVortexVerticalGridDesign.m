@@ -42,11 +42,12 @@ mdaEVP = IMInternalModes.meanDensityAnomalyModes( ...
 mdaBasis = solver.solveEVP(mdaEVP,nModes=nAvailableModes);
 
 %% Build both transforms on the APV-designed grid
-% `nPoints` is an exact physical point count. The APV transform first
-% designs a mode-root grid, fits weights, and assesses every candidate
-% prefix. The MDA transform then receives those points explicitly and fits
-% an independent G-channel quadrature rule. The families are not forced to
-% retain the same number of modes.
+% Grid design and transform fitting are named separately. `modeRootGrid`
+% records that these physical points are roots of the next APV F mode (and
+% therefore extrema-like points for nonzero APV G modes). Each
+% `certifiedDiscreteTransform` call then searches mode counts using freshly
+% fitted family-specific weights. The MDA assessment keeps the APV grid
+% provenance even though its G weights and retained count are independent.
 %
 % The Gram error measures normalized distortion of the continuous modal
 % inner product by the sampled transform. APV reports both F and G channel
@@ -61,26 +62,28 @@ mdaBasis = solver.solveEVP(mdaEVP,nModes=nAvailableModes);
 % MDA does not use this APV quadratic-product policy.
 gramTolerance = 1e-2;
 quadraticAliasingTolerance = 0.1;
-[apvTransform,apvAssessment] = apvBasis.discreteTransform( ...
-    nPoints=Nz,variables=["F","G"],gramTolerance=gramTolerance, ...
+[z,apvGridDesign] = apvBasis.modeRootGrid(nPoints=Nz);
+[apvTransform,apvAssessment] = apvBasis.certifiedDiscreteTransform( ...
+    z=z,gridDesign=apvGridDesign,variables=["F","G"],gramTolerance=gramTolerance, ...
     quadraticAliasingTolerance=quadraticAliasingTolerance);
 
-z = apvTransform.z;
-[mdaTransform,mdaAssessment] = mdaBasis.discreteTransform( ...
-    z=z,variables="G",gramTolerance=gramTolerance);
-[mdaDesignedTransform,mdaDesignedAssessment] = mdaBasis.discreteTransform( ...
-    nPoints=Nz,variables="G",gramTolerance=gramTolerance);
+[mdaTransform,mdaAssessment] = mdaBasis.certifiedDiscreteTransform( ...
+    z=z,gridDesign=apvGridDesign,variables="G",gramTolerance=gramTolerance);
+[mdaDesignedZ,mdaGridDesign] = mdaBasis.modeRootGrid(nPoints=Nz);
+[mdaDesignedTransform,mdaDesignedAssessment] = mdaBasis.certifiedDiscreteTransform( ...
+    z=mdaDesignedZ,gridDesign=mdaGridDesign,variables="G",gramTolerance=gramTolerance);
 
 %% Summarize the independently retained modal bands
-% `candidateModeCount` is the complete band tested on the fitted rule.
-% `maximumAcceptedModeCount` is the largest cumulative prefix satisfying a
-% policy. The production transform retains the intersection of the enabled
-% policies for that family. The third row is a diagnostic comparison: it
-% lets MDA design its own point locations instead of using the APV grid.
+% A certified assessment's fitted count equals its retained count. The
+% search table records all larger independently refitted counts that were
+% rejected. The third row is a diagnostic comparison: it lets MDA design
+% its own point locations instead of using the APV grid.
 family = ["APV";"MDA";"MDA"];
 pointRule = ["APV-designed";"APV-designed";"MDA-designed"];
-candidateModeCount = [apvAssessment.candidateModeCount; ...
-    mdaAssessment.candidateModeCount;mdaDesignedAssessment.candidateModeCount];
+initialModeCount = [max(apvAssessment.certificationSearch.modeCount); ...
+    max(mdaAssessment.certificationSearch.modeCount);max(mdaDesignedAssessment.certificationSearch.modeCount)];
+fittedModeCount = [apvAssessment.weightFitModeCount; ...
+    mdaAssessment.weightFitModeCount;mdaDesignedAssessment.weightFitModeCount];
 gramAcceptedModeCount = [apvAssessment.gramPolicy.maximumAcceptedModeCount; ...
     mdaAssessment.gramPolicy.maximumAcceptedModeCount; ...
     mdaDesignedAssessment.gramPolicy.maximumAcceptedModeCount];
@@ -96,7 +99,7 @@ firstRetainedModeLabel = [apvTransform.modeNumber(1); ...
 lastRetainedModeLabel = [apvTransform.modeNumber(end); ...
     mdaTransform.modeNumber(end);mdaDesignedTransform.modeNumber(end)];
 
-designSummary = table(family,pointRule,candidateModeCount,gramAcceptedModeCount, ...
+designSummary = table(family,pointRule,initialModeCount,fittedModeCount,gramAcceptedModeCount, ...
     quadraticAcceptedModeCount,retainedModeCount,retainedNegativeModeCount, ...
     retainsZeroMode,firstRetainedModeLabel,lastRetainedModeLabel);
 disp(designSummary)
@@ -270,11 +273,12 @@ title(["Lowest MDA modes",sprintf("%d pass APV points; %d pass MDA points", ...
 legend(Location="best")
 
 %% Compare the Gram and APV quadratic errors
-% All curves assess leading modal prefixes without refitting their family's
-% weights. The top-left panel separates APV F and G errors so the limiting
-% physical variable is visible. The top-right panel shows why the same
-% points can support a different MDA band. The lower panels show the APV
-% nonlinear limit and the two independently fitted weight vectors.
+% Each curve assesses prefixes of its family's final, exactly refitted
+% rule. The count-search tables separately retain diagnostics for rejected
+% larger fits. The top-left panel separates APV F and G errors so the
+% limiting physical variable is visible. The top-right panel compares the
+% two MDA point choices. The lower panels show the APV nonlinear limit and
+% the two independently fitted weight vectors.
 apvFDiagnostics = apvAssessment.variablePrefixDiagnostics(variable="F");
 apvGDiagnostics = apvAssessment.variablePrefixDiagnostics(variable="G");
 mdaGDiagnostics = mdaAssessment.variablePrefixDiagnostics(variable="G");

@@ -547,8 +547,11 @@ classdef IMBasisSet
         end
 
         [transform, assessment] = discreteTransform(self, options)
+        [transform, assessment] = certifiedDiscreteTransform(self, options)
+        [transform, assessment] = fitDiscreteTransform(self, options)
         [weights, weightFit] = quadratureWeightsForPoints(self, options)
-        z = pointsFromModeRoots(self, options)
+        [z, gridDesign] = pointsFromModeRoots(self, options)
+        [z, gridDesign] = modeRootGrid(self, options)
 
     end
 

@@ -1,5 +1,5 @@
 function [transform, assessment] = discreteTransform(self, options)
-% Build an aligned internal-mode F/G discrete transform.
+% Build an aligned internal-mode F/G transform through the compatibility API.
 %
 % The point rule is shared, but each requested variable retains its own
 % sampled metric, active columns, target Gram matrix, and forward
@@ -7,10 +7,17 @@ function [transform, assessment] = discreteTransform(self, options)
 % channel in canonical order `F`, `G`. Point-limited construction still
 % uses roots of the next mode in the EVP's solved formulation.
 %
-% The Gram policy must pass independently for every requested channel.
-% Optional leakage uses same-variable rejected modes. Coupled quadratic
-% aliasing assesses `FF->F` and `GG->F` when F is enabled, and `FG->G`
-% when G is enabled. All prefixes reuse the candidate points and weights.
+% With neither `weights` nor `nModes`, this delegates to
+% `certifiedDiscreteTransform`, which independently refits family weights
+% while selecting the retained count. Prefer that named method in new code.
+% `fitDiscreteTransform(z=z,modeCount=N)` is the strict exact-band API, and
+% `modeRootGrid` makes the source of shared APV/MDA points explicit.
+%
+% Supplying weights or the legacy `nModes` name retains fixed-rule prefix
+% assessment. The Gram policy must pass independently for every requested
+% channel. Optional leakage uses same-variable rejected modes. Coupled
+% quadratic aliasing assesses `FF->F` and `GG->F` when F is enabled, and
+% `FG->G` when G is enabled.
 %
 % - Topic: Build discrete transforms
 % - Declaration: [transform,assessment] = discreteTransform(basisSet,options)
@@ -24,7 +31,7 @@ function [transform, assessment] = discreteTransform(self, options)
 % - Parameter options.quadraticAliasingTolerance: optional coupled-product tolerance
 % - Parameter options.nCheckModes: optional rejected-mode check count
 % - Returns transform: retained aligned transform
-% - Returns assessment: shared-rule retained-band diagnostics
+% - Returns assessment: family diagnostics and, for certified construction, grid and search provenance
 arguments
     self IMInternalModesBasis
     options.nPoints double {mustBeReal, mustBeFinite} = zeros(0,1)
@@ -36,6 +43,7 @@ arguments
     options.leakageTolerance double {mustBeReal, mustBeFinite} = zeros(0,1)
     options.quadraticAliasingTolerance double {mustBeReal, mustBeFinite} = zeros(0,1)
     options.nCheckModes double {mustBeReal, mustBeFinite} = zeros(0,1)
+    options.allowRetainedPrefix (1,1) logical = false
 end
 
 IMDiscreteTransformTools.validateOptionalPositiveInteger(options.nPoints,"nPoints");
@@ -62,13 +70,23 @@ end
 if hasPointCount && (hasExplicitWeights || hasExplicitModeCount)
     error("IMBasisSet:InvalidDiscretePointSpecification", "The nPoints workflow determines its mode-root candidate band and cannot be combined with weights or nModes.");
 end
+if options.allowRetainedPrefix && ~hasExplicitModeCount
+    error("IMBasisSet:InvalidDiscreteTransformOption", "allowRetainedPrefix is an internal refinement option and requires an explicit nModes band.");
+end
+if ~hasExplicitWeights && ~hasExplicitModeCount
+    [transform,assessment] = self.certifiedDiscreteTransform(nPoints=options.nPoints,z=options.z,variables=options.variables, ...
+        gramTolerance=options.gramTolerance,leakageTolerance=options.leakageTolerance, ...
+        quadraticAliasingTolerance=options.quadraticAliasingTolerance,nCheckModes=options.nCheckModes);
+    return
+end
 
 nAvailableModes = size(self.nativeModes,2);
 if hasPointCount
     requestedPointCount = options.nPoints;
-    [z,candidateModeCount] = IMDiscreteTransformTools.pointsForExactCount(self,requestedPointCount,nAvailableModes);
+    [z,candidateModeCount,gridDesign] = IMDiscreteTransformTools.pointsForExactCount(self,requestedPointCount,nAvailableModes);
 else
     z = options.z(:);
+    gridDesign = IMDiscreteTransformTools.explicitGridDesign(self,z);
     requestedPointCount = length(z);
     if hasExplicitModeCount
         candidateModeCount = options.nModes;
@@ -154,12 +172,12 @@ quadraticPolicy.limitingModeNumberJ = quadraticLimitingModeNumberJ;
 combinedAccepted = gramAccepted & leakageAccepted & quadraticAccepted;
 retainedModeCount = find(combinedAccepted,1,"last");
 if isempty(retainedModeCount)
-    if hasExplicitModeCount
+    if hasExplicitModeCount && ~options.allowRetainedPrefix
         throwStrictModeFailure(candidateModeCount,gramPolicy,leakagePolicy,quadraticPolicy);
     end
     error("IMBasisSet:NoAcceptableDiscreteTransformPrefix", "No candidate family mode passes every enabled retained-band policy on this shared rule.");
 end
-if hasExplicitModeCount && retainedModeCount < candidateModeCount
+if hasExplicitModeCount && ~options.allowRetainedPrefix && retainedModeCount < candidateModeCount
     throwStrictModeFailure(candidateModeCount,gramPolicy,leakagePolicy,quadraticPolicy);
 end
 
@@ -173,7 +191,7 @@ prefixDiagnostics = table(modeCount,lastModeNumber,gramError,gramLimitingVariabl
     "quadraticAliasingError","quadraticLimitingChannel","quadraticLimitingModeNumberI","quadraticLimitingModeNumberJ","gramAccepted","leakageAccepted","quadraticAccepted","combinedAccepted"]);
 assessment = IMInternalModesDiscreteTransformAssessment(transform=transform,candidateTransform=candidateTransform,weightFit=weightFit, ...
     requestedPointCount=requestedPointCount,prefixDiagnostics=prefixDiagnostics,variableDiagnostics=variableDiagnostics,gramPolicy=gramPolicy, ...
-    leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,limitingVariable=limitingVariable,retentionReason=retentionReason);
+    leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,limitingVariable=limitingVariable,retentionReason=retentionReason,gridDesign=gridDesign);
 end
 
 function diagnostics = emptyVariableDiagnostics(nModes,modeNumber)

@@ -14,13 +14,14 @@ classdef (Hidden, Sealed) IMDiscreteTransformTools
             end
         end
 
-        function [z,candidateModeCount] = pointsForExactCount(basisSet,nPoints,nAvailableModes)
+        function [z,candidateModeCount,gridDesign] = pointsForExactCount(basisSet,nPoints,nAvailableModes)
             pointCounts = nan(nAvailableModes,1);
             pointGrids = cell(nAvailableModes,1);
+            pointGridDesigns = cell(nAvailableModes,1);
             maximumPossibleModeCount = min(nAvailableModes,nPoints);
             for nModes = maximumPossibleModeCount:-1:1
                 try
-                    pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
+                    [pointGrids{nModes},pointGridDesigns{nModes}] = basisSet.pointsFromModeRoots(nModes=nModes);
                     pointCounts(nModes) = length(pointGrids{nModes});
                 catch exception
                     if nModes == nAvailableModes && strcmp(exception.identifier,"IMBasisSet:AuxiliaryModeUnavailable")
@@ -31,12 +32,13 @@ classdef (Hidden, Sealed) IMDiscreteTransformTools
                 if pointCounts(nModes) == nPoints
                     candidateModeCount = nModes;
                     z = pointGrids{nModes};
+                    gridDesign = pointGridDesigns{nModes};
                     return
                 end
             end
             for nModes = (maximumPossibleModeCount+1):nAvailableModes
                 try
-                    pointGrids{nModes} = basisSet.pointsFromModeRoots(nModes=nModes);
+                    [pointGrids{nModes},pointGridDesigns{nModes}] = basisSet.pointsFromModeRoots(nModes=nModes);
                     pointCounts(nModes) = length(pointGrids{nModes});
                 catch exception
                     if nModes == nAvailableModes && strcmp(exception.identifier,"IMBasisSet:AuxiliaryModeUnavailable")
@@ -49,6 +51,60 @@ classdef (Hidden, Sealed) IMDiscreteTransformTools
             [~,order] = sort(abs(attainableCounts-nPoints));
             nearestCounts = attainableCounts(order(1:min(3,length(order))));
             error("IMBasisSet:UnattainableDiscretePointCount", "No available mode-root grid has exactly %d points. Nearest attainable counts are %s.",nPoints,join(string(nearestCounts(:).'),", "));
+        end
+
+        function gridDesign = explicitGridDesign(basisSet,z)
+            gridDesign = struct( ...
+                "kind","explicit", ...
+                "pointCount",length(z), ...
+                "sourceClass",string(class(basisSet)), ...
+                "sourceEVP",string(basisSet.evp.name), ...
+                "sourceFamily",IMDiscreteTransformTools.sourceFamily(basisSet), ...
+                "generatingVariable","", ...
+                "generatingModeIndex",NaN, ...
+                "generatingModeNumber",NaN, ...
+                "representedModeCount",NaN, ...
+                "interpretationForG","Caller-supplied physical points.");
+        end
+
+        function gridDesign = modeRootGridDesign(basisSet,z,nModes,generatingModeNumber)
+            generatingVariable = "u";
+            interpretationForG = "Not an internal-mode basis.";
+            if isa(basisSet,"IMInternalModesBasis")
+                generatingVariable = string(basisSet.evp.formulation);
+                if generatingVariable == "F"
+                    interpretationForG = "Roots of F; for nonzero eigenvalues these are G-extrema-like because Gz=lambda*F.";
+                else
+                    interpretationForG = "Roots of G.";
+                end
+            end
+            gridDesign = struct( ...
+                "kind","modeRoot", ...
+                "pointCount",length(z), ...
+                "sourceClass",string(class(basisSet)), ...
+                "sourceEVP",string(basisSet.evp.name), ...
+                "sourceFamily",IMDiscreteTransformTools.sourceFamily(basisSet), ...
+                "generatingVariable",generatingVariable, ...
+                "generatingModeIndex",nModes+1, ...
+                "generatingModeNumber",generatingModeNumber, ...
+                "representedModeCount",nModes, ...
+                "interpretationForG",interpretationForG);
+        end
+
+        function gridDesign = validatedGridDesign(basisSet,z,gridDesign)
+            if isempty(gridDesign)
+                gridDesign = IMDiscreteTransformTools.explicitGridDesign(basisSet,z);
+                return
+            end
+            requiredFields = ["kind","pointCount","sourceClass","sourceEVP","sourceFamily", ...
+                "generatingVariable","generatingModeIndex","generatingModeNumber", ...
+                "representedModeCount","interpretationForG"];
+            if ~isscalar(gridDesign) || ~all(isfield(gridDesign,requiredFields))
+                error("IMBasisSet:InvalidGridDesign", "gridDesign must be the scalar provenance struct returned by modeRootGrid.");
+            end
+            if ~isscalar(gridDesign.pointCount) || gridDesign.pointCount ~= length(z)
+                error("IMBasisSet:InvalidGridDesign", "gridDesign.pointCount must equal length(z).");
+            end
         end
 
         function accepted = cumulativeAcceptance(rawAccepted)
@@ -141,6 +197,13 @@ classdef (Hidden, Sealed) IMDiscreteTransformTools
     end
 
     methods (Static, Access = private)
+        function family = sourceFamily(basisSet)
+            family = "scalar";
+            if isa(basisSet,"IMInternalModesBasis")
+                family = string(basisSet.evp.modeFamily);
+            end
+        end
+
         function options = quadratureSolverOptions()
             persistent cachedOptions
             if isempty(cachedOptions)

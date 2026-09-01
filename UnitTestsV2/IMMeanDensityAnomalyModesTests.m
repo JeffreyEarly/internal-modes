@@ -246,6 +246,37 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 "IMInternalModesDiscreteTransform:UnavailableForwardTransform")
         end
 
+        function sharedAPVGridRefitsMDAWeightsToTheSelectedBand(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            g = 9.81;
+            Nz = 64;
+            N2 = @(z) N0*N0*exp(2*z/b);
+            solver = IMSolverSpectral(nEVP=256,coordinateKind="wkb");
+            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes( ...
+                N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=0.03,surfaceBoundary="freeSurface"),nModes=Nz+8);
+            mda = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes( ...
+                N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=0.03),nModes=Nz+8);
+            [z,apvGridDesign] = apv.modeRootGrid(nPoints=Nz);
+
+            [transform,assessment] = mda.certifiedDiscreteTransform( ...
+                z=z,variables="G",gridDesign=apvGridDesign,gramTolerance=1e-2);
+            [~,allBandFit] = mda.quadratureWeightsForPoints(z=z,nModes=Nz,variables="G");
+            [~,fixedRuleAssessment] = mda.discreteTransform( ...
+                z=z,weights=allBandFit.transform.weights,variables="G",gramTolerance=1e-2);
+
+            testCase.verifyGreaterThan(assessment.retainedModeCount,fixedRuleAssessment.retainedModeCount)
+            testCase.verifyGreaterThanOrEqual(assessment.retainedModeCount,35)
+            testCase.verifyEqual(assessment.weightFitModeCount,assessment.retainedModeCount)
+            testCase.verifyEqual(length(transform.modeNumber),assessment.retainedModeCount)
+            testCase.verifyEqual(assessment.gridDesign.sourceEVP,"geostrophicAPVModes")
+            testCase.verifyEqual(assessment.gridDesign.sourceFamily,"hydrostatic")
+            testCase.verifyEqual(assessment.gridDesign.generatingVariable,"F")
+            testCase.verifyLessThanOrEqual(assessment.gramPolicy.error(end),1e-2)
+            testCase.verifyTrue(assessment.certificationSearch.accepted(end))
+        end
+
         function retainedPoliciesRespectSignedTargetsAndUndefinedProducts(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
             positiveEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);

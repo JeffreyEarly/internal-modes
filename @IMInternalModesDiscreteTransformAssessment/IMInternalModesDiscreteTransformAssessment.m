@@ -1,8 +1,11 @@
 classdef IMInternalModesDiscreteTransformAssessment
     % Store retained-band diagnostics for aligned F/G transforms.
     %
-    % One shared point-and-weight rule is assessed for every leading family
-    % prefix. `prefixDiagnostics` reports the worst requested channel for
+    % One family-specific point-and-weight rule is assessed for every
+    % leading family prefix. Certified construction records independently
+    % refitted candidate counts in `certificationSearch`; its final
+    % `weightFitModeCount` equals `retainedModeCount`. `prefixDiagnostics`
+    % reports the worst requested channel for
     % each policy, while `variablePrefixDiagnostics` exposes the underlying
     % per-variable Gram, rank, round-trip, and conditioning records.
     % The combined table includes `modeCount`, `lastModeNumber`, the Gram
@@ -52,6 +55,12 @@ classdef IMInternalModesDiscreteTransformAssessment
         limitingPolicy
         % Readable retained-band explanation.
         retentionReason
+        % Provenance of the physical sample grid.
+        gridDesign
+        % Independently refitted count-selection attempts.
+        certificationSearch
+        % Number of family modes used to fit the stored weights.
+        weightFitModeCount
     end
 
     properties (Access = private)
@@ -77,6 +86,8 @@ classdef IMInternalModesDiscreteTransformAssessment
                 options.limitingPolicy {mustBeTextScalar}
                 options.limitingVariable {mustBeTextScalar}
                 options.retentionReason {mustBeTextScalar}
+                options.gridDesign struct = struct.empty
+                options.certificationSearch table = table()
             end
             if ~isempty(options.weightFit) && ~isa(options.weightFit,"IMInternalModesQuadratureWeightFit")
                 error("IMInternalModesDiscreteTransformAssessment:InvalidWeightFit", "weightFit must be empty or an IMInternalModesQuadratureWeightFit.");
@@ -120,6 +131,16 @@ classdef IMInternalModesDiscreteTransformAssessment
             self.quadraticAliasingPolicy = options.quadraticAliasingPolicy;
             self.limitingPolicy = string(options.limitingPolicy);
             self.retentionReason = string(options.retentionReason);
+            if isempty(options.gridDesign)
+                options.gridDesign = struct(kind="unknown",pointCount=length(options.candidateTransform.z));
+            end
+            self.gridDesign = options.gridDesign;
+            self.certificationSearch = options.certificationSearch;
+            if isempty(options.weightFit)
+                self.weightFitModeCount = NaN;
+            else
+                self.weightFitModeCount = length(options.weightFit.transform.modeNumber);
+            end
         end
 
         function diagnostics = variablePrefixDiagnostics(self, options)
@@ -134,6 +155,18 @@ classdef IMInternalModesDiscreteTransformAssessment
                 error("IMInternalModesDiscreteTransformAssessment:UnavailableVariable", "%s",reason);
             end
             diagnostics = self.variableDiagnostics.(char(variable));
+        end
+
+        function assessment = withCertificationMetadata(self,gridDesign,certificationSearch)
+            % Return this assessment with grid and count-search provenance.
+            arguments
+                self IMInternalModesDiscreteTransformAssessment
+                gridDesign (1,1) struct
+                certificationSearch table
+            end
+            assessment = self;
+            assessment.gridDesign = gridDesign;
+            assessment.certificationSearch = certificationSearch;
         end
     end
 end

@@ -41,11 +41,15 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
                     testCase.verifyEqual(length(transform.z),8)
                     testCase.verifyEqual(transform.z(1),zDomain(1),AbsTol=0)
                     testCase.verifyEqual(transform.z(end),zDomain(2),AbsTol=0)
-                    testCase.verifyEqual(assessment.candidateModeCount,6)
+                    testCase.verifyEqual(max(assessment.certificationSearch.modeCount),6)
+                    testCase.verifyEqual(assessment.candidateModeCount,assessment.retainedModeCount)
+                    testCase.verifyEqual(assessment.weightFitModeCount,assessment.retainedModeCount)
                     testCase.verifyGreaterThanOrEqual(assessment.retainedModeCount,1)
                     testCase.verifyLessThanOrEqual(assessment.retainedModeCount,6)
                     testCase.verifyEqual(assessment.gramPolicy.tolerance,1e-2,AbsTol=0)
                     testCase.verifyLessThanOrEqual(assessment.prefixDiagnostics.gramError(assessment.retainedModeCount),1e-2)
+                    testCase.verifyEqual(assessment.gridDesign.kind,"modeRoot")
+                    testCase.verifyEqual(assessment.gridDesign.pointCount,8)
                 end
             end
         end
@@ -78,6 +82,36 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             testCase.verifyEqual(finalRow.gramError,max(channelErrors),AbsTol=0)
             testCase.verifyEqual(height(assessment.prefixDiagnostics),assessment.candidateModeCount)
             testCase.verifyEqual(assessment.limitingPolicy,"none")
+        end
+
+        function namedGridAndExactFitMakeProvenanceAndBandExplicit(testCase)
+            basisSet = testCase.constantFBasis(10);
+            [z,gridDesign] = basisSet.modeRootGrid(modeCount=6);
+            [transform,assessment] = basisSet.fitDiscreteTransform(z=z,modeCount=6,variables=["F","G"],gridDesign=gridDesign,gramTolerance=1);
+
+            testCase.verifyEqual(length(transform.modeNumber),6)
+            testCase.verifyEqual(assessment.retainedModeCount,6)
+            testCase.verifyEqual(assessment.weightFitModeCount,6)
+            testCase.verifyEmpty(assessment.certificationSearch)
+            testCase.verifyEqual(assessment.gridDesign.kind,"modeRoot")
+            testCase.verifyEqual(assessment.gridDesign.sourceFamily,"hydrostatic")
+            testCase.verifyEqual(assessment.gridDesign.generatingVariable,"F")
+            testCase.verifyEqual(assessment.gridDesign.generatingModeIndex,7)
+            testCase.verifySubstring(assessment.gridDesign.interpretationForG,"G-extrema-like")
+        end
+
+        function certifiedSelectionIsUnaffectedByAdditionalSolvedModes(testCase)
+            shortBasis = testCase.constantFBasis(10);
+            longBasis = testCase.constantFBasis(16);
+            [z,gridDesign] = shortBasis.modeRootGrid(modeCount=6);
+            [shortTransform,shortAssessment] = shortBasis.certifiedDiscreteTransform( ...
+                z=z,variables=["F","G"],gridDesign=gridDesign,gramTolerance=1);
+            [longTransform,longAssessment] = longBasis.certifiedDiscreteTransform( ...
+                z=z,variables=["F","G"],gridDesign=gridDesign,gramTolerance=1);
+
+            testCase.verifyEqual(longAssessment.retainedModeCount,shortAssessment.retainedModeCount)
+            testCase.verifyEqual(longTransform.modeNumber,shortTransform.modeNumber,AbsTol=0)
+            testCase.verifyEqual(longTransform.weights,shortTransform.weights,RelTol=1e-12,AbsTol=1e-12)
         end
 
         function suppliedWeightsBypassOnlyTheFit(testCase)

@@ -1,5 +1,5 @@
 function [transform, assessment] = discreteTransform(self, options)
-% Build and assess a scalar Galerkin transform on a fixed quadrature rule.
+% Build a scalar Galerkin transform using the compatibility entry point.
 %
 % A transform can be built from explicit physical points `z`, or from an
 % exact requested point count `nPoints`. The point-count workflow searches
@@ -7,20 +7,23 @@ function [transform, assessment] = discreteTransform(self, options)
 % largest candidate modal prefix whose grid has exactly the requested
 % number of points. `nPoints` and `z` are mutually exclusive.
 %
-% Unless `weights` are supplied with `z`, the quadrature weights are fitted
-% once for the complete candidate band by `quadratureWeightsForPoints`.
-% Every leading modal prefix is then assessed using those same physical
-% points and weights. The normalized-Gram policy is always active. Optional
-% rejected-mode leakage and scalar quadratic-aliasing policies are enabled
-% by supplying their positive tolerances. The returned production transform
-% contains the largest consecutive prefix accepted by every enabled policy.
+% With neither `weights` nor `nModes`, this method delegates to
+% `certifiedDiscreteTransform`: candidate counts receive independent weight
+% fits, so a poorly represented large band cannot contaminate a smaller
+% band's rule. Prefer that named method in new code. Use
+% `fitDiscreteTransform(z=z,modeCount=N)` for a strict exact-band fit, and
+% `modeRootGrid` to design and name a shared physical grid explicitly.
+%
+% Supplying `weights`, or the legacy `nModes` name, retains the lower-level
+% fixed-rule behavior. Every leading prefix is assessed on those same
+% weights. This path remains useful for diagnosing a caller-owned rule and
+% for compatibility, but it does not perform independently refitted count
+% selection.
 %
 % If `nModes` is supplied with `z`, that band is strict: every requested
 % mode must pass every enabled policy, or construction throws an error.
-% With `nModes` omitted, the candidate band is the largest available prefix
-% that can be represented by the supplied points and may be reduced by the
-% policies. The `nPoints` workflow determines its candidate band from the
-% exact mode-root grid and therefore does not accept `nModes`.
+% The `nPoints` workflow designs its physical grid from mode roots and then
+% uses certified count selection. It therefore does not accept `nModes`.
 %
 % For prefix $$N$$, define
 %
@@ -82,7 +85,7 @@ function [transform, assessment] = discreteTransform(self, options)
 % - Parameter options.quadraticAliasingTolerance: optional positive scalar quadratic-aliasing tolerance
 % - Parameter options.nCheckModes: optional number of source modes used by the leakage policy
 % - Returns transform: retained production transform
-% - Returns assessment: fixed-rule candidate and retained-prefix diagnostics
+% - Returns assessment: transform diagnostics and, for certified construction, grid and search provenance
 arguments
     self IMBasisSet
     options.nPoints double {mustBeReal, mustBeFinite} = zeros(0,1)
@@ -93,6 +96,7 @@ arguments
     options.leakageTolerance double {mustBeReal, mustBeFinite} = zeros(0,1)
     options.quadraticAliasingTolerance double {mustBeReal, mustBeFinite} = zeros(0,1)
     options.nCheckModes double {mustBeReal, mustBeFinite} = zeros(0,1)
+    options.allowRetainedPrefix (1,1) logical = false
 end
 
 IMDiscreteTransformTools.validateOptionalPositiveInteger(options.nPoints,"nPoints");
@@ -114,13 +118,23 @@ end
 if hasPointCount && (hasExplicitWeights || hasExplicitModeCount)
     error("IMBasisSet:InvalidDiscretePointSpecification", "The nPoints workflow determines its mode-root candidate band and cannot be combined with weights or nModes.");
 end
+if options.allowRetainedPrefix && ~hasExplicitModeCount
+    error("IMBasisSet:InvalidDiscreteTransformOption", "allowRetainedPrefix is an internal refinement option and requires an explicit nModes band.");
+end
+if ~hasExplicitWeights && ~hasExplicitModeCount
+    [transform,assessment] = self.certifiedDiscreteTransform(nPoints=options.nPoints,z=options.z, ...
+        gramTolerance=options.gramTolerance,leakageTolerance=options.leakageTolerance, ...
+        quadraticAliasingTolerance=options.quadraticAliasingTolerance,nCheckModes=options.nCheckModes);
+    return
+end
 
 nAvailableModes = size(self.nativeModes,2);
 if hasPointCount
     requestedPointCount = options.nPoints;
-    [z,candidateModeCount] = IMDiscreteTransformTools.pointsForExactCount(self,requestedPointCount,nAvailableModes);
+    [z,candidateModeCount,gridDesign] = IMDiscreteTransformTools.pointsForExactCount(self,requestedPointCount,nAvailableModes);
 else
     z = options.z(:);
+    gridDesign = IMDiscreteTransformTools.explicitGridDesign(self,z);
     requestedPointCount = length(z);
     if hasExplicitModeCount
         candidateModeCount = options.nModes;
@@ -268,12 +282,12 @@ end
 combinedAccepted = gramAccepted & leakageAccepted & quadraticAccepted;
 retainedModeCount = find(combinedAccepted,1,"last");
 if isempty(retainedModeCount)
-    if hasExplicitModeCount
+    if hasExplicitModeCount && ~options.allowRetainedPrefix
         throwStrictModeFailure(candidateModeCount,gramPolicy,leakagePolicy,quadraticPolicy);
     end
     error("IMBasisSet:NoAcceptableDiscreteTransformPrefix", "No candidate mode passes every enabled retained-band policy on this fixed quadrature rule.");
 end
-if hasExplicitModeCount && retainedModeCount < candidateModeCount
+if hasExplicitModeCount && ~options.allowRetainedPrefix && retainedModeCount < candidateModeCount
     throwStrictModeFailure(candidateModeCount,gramPolicy,leakagePolicy,quadraticPolicy);
 end
 
@@ -289,7 +303,7 @@ prefixDiagnostics = table(modeCount,lastModeNumber,gramError,roundTripError,inve
     "gramAccepted","leakageAccepted","quadraticAccepted","combinedAccepted"]);
 assessment = IMDiscreteTransformAssessment(transform=transform,candidateTransform=candidateTransform,weightFit=weightFit, ...
     requestedPointCount=requestedPointCount,prefixDiagnostics=prefixDiagnostics,gramPolicy=gramPolicy, ...
-    leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,retentionReason=retentionReason);
+    leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,retentionReason=retentionReason,gridDesign=gridDesign);
 end
 
 function transform = prefixTransform(candidateTransform,nModes)

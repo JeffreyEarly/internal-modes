@@ -1,4 +1,4 @@
-function z = pointsFromModeRoots(self, options)
+function [z, gridDesign] = pointsFromModeRoots(self, options)
 % Return physical endpoints and roots of the next selected mode.
 %
 % Let `nModes=N` select the first $$N$$ columns of the ordered basis. The
@@ -52,6 +52,7 @@ end
 
 if nModes < nRetained
     generatingMode = self.nativeModes(:,nModes+1);
+    generatingModeNumber = self.modeNumber(nModes+1);
 else
     try
         auxiliaryBasis = self.solver.solveEVP(self.evp,nModes=nModes+1);
@@ -77,6 +78,7 @@ else
             "The auxiliary solve did not reproduce the retained mode prefix used by this basis set.");
     end
     generatingMode = auxiliaryBasis.nativeModes(:,nModes+1);
+    generatingModeNumber = auxiliaryBasis.modeNumber(nModes+1);
 end
 
 zRoots = self.solver.rootsOfNativeMode(generatingMode);
@@ -91,4 +93,5 @@ if length(z) < nModes
     error("IMBasisSet:InsufficientQuadraturePoints", ...
         "The auxiliary mode produced %d full-depth points for %d retained modes.", length(z), nModes);
 end
+gridDesign = IMDiscreteTransformTools.modeRootGridDesign(self,z,nModes,generatingModeNumber);
 end
