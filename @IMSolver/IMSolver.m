@@ -11,6 +11,31 @@ classdef (Abstract) IMSolver
     % - Declaration: classdef (Abstract) IMSolver
 
     methods
+        function [z,weights] = nativeQuadratureRule(self,zBounds)
+            % Return the solver's native physical quadrature rule.
+            %
+            % The returned points are increasing in physical coordinate and
+            % `weights` are reordered with them. For a WKB-configured
+            % `IMSolverSpectral`, the points are Chebyshev--Lobatto points in
+            % $$x(z)=\int N(z)\,dz$$ and the weights act directly on values
+            % sampled in physical $$z$$.
+            %
+            % - Topic: Solve EVPs
+            % - Declaration: [z,weights] = nativeQuadratureRule(solver,zBounds)
+            % - Parameter zBounds: physical integration bounds
+            % - Returns z: increasing physical quadrature points
+            % - Returns weights: physical-coordinate quadrature weights
+            arguments
+                self IMSolver
+                zBounds (1,2) double
+            end
+
+            nativeZ = self.innerProductGrid(zBounds);
+            nativeWeights = self.innerProductWeights(nativeZ,zBounds);
+            [z,index] = sort(nativeZ(:));
+            weights = nativeWeights(index);
+        end
+
         function basisSet = solveEVP(self, evp, options)
             % Solve an EVP and return a basis set.
             %

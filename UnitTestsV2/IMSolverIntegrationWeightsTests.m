@@ -37,6 +37,27 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             end
         end
 
+        function nativeQuadratureRuleReturnsPairedIncreasingWKBValues(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            N2 = @(z) N0*N0*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]);
+            solver = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
+            [z,weights] = solver.nativeQuadratureRule(evp.zDomain);
+            values = [ones(size(z)) sin(z/317) exp(z/2300).*cos(z/411)];
+            nativeZ = solver.innerProductGrid(evp.zDomain);
+            nativeValues = [ones(size(nativeZ)) sin(nativeZ/317) exp(nativeZ/2300).*cos(nativeZ/411)];
+
+            testCase.verifyEqual(z([1 end]),[-D;0],AbsTol=1e-10)
+            testCase.verifyTrue(all(diff(z) > 0))
+            testCase.verifyTrue(all(weights > 0))
+            for iValue = 1:size(values,2)
+                expected = solver.integrateInnerProduct(nativeZ,nativeValues(:,iValue),evp.zDomain);
+                testCase.verifyEqual(weights.'*values(:,iValue),expected,RelTol=5e-12,AbsTol=5e-12)
+            end
+        end
+
         function partialSpectralWeightsUseExactBoundedOperator(testCase)
             zDomain = [-4000 0];
             partialBounds = [-3150 -275];

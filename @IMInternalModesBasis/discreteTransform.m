@@ -7,17 +7,12 @@ function [transform, assessment] = discreteTransform(self, options)
 % channel in canonical order `F`, `G`. Point-limited construction still
 % uses roots of the next mode in the EVP's solved formulation.
 %
-% With neither `weights` nor `nModes`, this delegates to
-% `certifiedDiscreteTransform`, which independently refits family weights
-% while selecting the retained count. Prefer that named method in new code.
-% `fitDiscreteTransform(z=z,modeCount=N)` is the strict exact-band API, and
-% `modeRootGrid` makes the source of shared APV/MDA points explicit.
-%
-% Supplying weights or the legacy `nModes` name retains fixed-rule prefix
-% assessment. The Gram policy must pass independently for every requested
-% channel. Optional leakage uses same-variable rejected modes. Coupled
-% quadratic aliasing assesses `FF->F` and `GG->F` when F is enabled, and
-% `FG->G` when G is enabled.
+% Supplying explicit `z` and `weights` keeps that quadrature rule unchanged.
+% The method assesses every leading mode set on the one rule and returns the
+% largest set that passes all enabled policies. The Gram policy must pass
+% independently for every requested channel. Optional leakage uses
+% same-variable rejected modes. Coupled quadratic aliasing assesses `FF->F`
+% and `GG->F` when F is enabled, and `FG->G` when G is enabled.
 %
 % - Topic: Build discrete transforms
 % - Declaration: [transform,assessment] = discreteTransform(basisSet,options)
@@ -31,7 +26,7 @@ function [transform, assessment] = discreteTransform(self, options)
 % - Parameter options.quadraticAliasingTolerance: optional coupled-product tolerance
 % - Parameter options.nCheckModes: optional rejected-mode check count
 % - Returns transform: retained aligned transform
-% - Returns assessment: family diagnostics and, for certified construction, grid and search provenance
+% - Returns assessment: family diagnostics and grid-selection provenance
 arguments
     self IMInternalModesBasis
     options.nPoints double {mustBeReal, mustBeFinite} = zeros(0,1)

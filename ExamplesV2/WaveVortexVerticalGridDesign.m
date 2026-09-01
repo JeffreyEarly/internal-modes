@@ -1,460 +1,145 @@
 %% Design a vertical grid for free-surface Wave-Vortex modes
 % Given a stratification profile and a fixed number of vertical points,
-% this example builds geostrophic available-potential-vorticity (APV) and
-% mean-density-anomaly (MDA) transforms on one physical grid. It compares
-% the APV F/G Gram errors, the MDA G Gram error, and the APV coupled
-% quadratic-product error that limit their independently retained bands.
+% this example builds APV and mean-density-anomaly (MDA) transforms on one
+% WKB-stretched Chebyshev--Lobatto quadrature rule. The two families share
+% physical points and weights but choose their usable mode counts
+% independently.
 
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
 addpath(repoRoot);
 
 %% Specify the stratification, endpoints, and point count
-% The buoyancy frequency decreases exponentially with depth. We fix the
-% number of physical points in Nz and let the APV modes determine their
-% locations. Both families then fit their own quadrature weights on those
-% shared points. The endpoint parameters match the WaveVortex default:
-% the surface acceleration is the negative column-integrated
-% stratification and the bottom endpoint is inactive.
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
 g = 9.81;
-Nz = 128;
+Nz = 65;
 zDomain = [-D 0];
 N2 = @(z) N0*N0*exp(2*z/b);
-gNPrime = integral(N2,zDomain(1),zDomain(2));
-g0 = -gNPrime;
+g0 = -integral(N2,zDomain(1),zDomain(2));
 gd = Inf;
-
-%% Solve the APV and MDA mode families
-% Solving slightly more modes than the point count gives the APV grid
-% designer enough modes to identify its complete candidate family. The MDA
-% solve uses the same numerical resolution but remains a separate modal
-% family with its own retained count.
-nAvailableModes = Nz+8;
-nEVP = max(256,4*Nz);
-solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
-
-apvEVP = IMInternalModes.geostrophicAPVModes( ...
-    N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
-apvBasis = solver.solveEVP(apvEVP,nModes=nAvailableModes);
-
-mdaEVP = IMInternalModes.meanDensityAnomalyModes( ...
-    N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
-mdaBasis = solver.solveEVP(mdaEVP,nModes=nAvailableModes);
-
-%% Inspect the signed pairing and its positive majorant
-% InternalModes uses two related quadratic forms for different jobs. The
-% signed Pontryagin pairing is the scientific invariant used for modal
-% orthogonality, projection, coefficient recovery, and signatures. Its
-% endpoint coefficients keep their signs, so a retained APV mode can have
-% a negative self-pairing. The induced Hilbert majorant replaces every
-% endpoint coefficient by its absolute value and is positive. Use it for
-% error magnitudes, convergence tests, and state-size comparisons.
-%
-% In particular, neither `sqrt([u,u])` nor `sqrt(abs([u,u]))` is a norm for
-% an arbitrary state: positive and negative directions can cancel. The
-% convenience method `majorantNorm` evaluates `sqrt(c'*Mplus*c)` instead.
-apvSignedGram = apvBasis.gramMatrix(variable="G");
-apvMajorantGram = apvBasis.majorantGramMatrix(variable="G");
-nDiagnosticModes = min(6,length(apvBasis.modeNumber));
-normDiagnostics = table(apvBasis.modeNumber(1:nDiagnosticModes).', ...
-    real(diag(apvSignedGram(1:nDiagnosticModes,1:nDiagnosticModes))), ...
-    real(diag(apvMajorantGram(1:nDiagnosticModes,1:nDiagnosticModes))), ...
-    VariableNames=["modeNumber","signedSelfPairing","majorantSquaredNorm"]);
-disp(normDiagnostics)
-
-diagnosticCoefficients = zeros(length(apvBasis.modeNumber),1);
-diagnosticCoefficients(1:nDiagnosticModes) = 1./(1:nDiagnosticModes).';
-diagnosticSignedPairing = real(diagnosticCoefficients'*apvSignedGram*diagnosticCoefficients);
-diagnosticMajorantNorm = apvBasis.majorantNorm(diagnosticCoefficients,variable="G");
-fprintf("Diagnostic APV state: signed self-pairing %.6g; Hilbert-majorant norm %.6g.\n", ...
-    diagnosticSignedPairing,diagnosticMajorantNorm);
-
-%% Build both transforms on the APV-designed grid
-% Grid design and transform fitting are named separately. `modeRootGrid`
-% records that these physical points are roots of the next APV F mode (and
-% therefore extrema-like points for nonzero APV G modes). Each
-% `certifiedDiscreteTransform` call then searches mode counts using freshly
-% fitted family-specific weights. The MDA assessment keeps the APV grid
-% provenance even though its G weights and retained count are independent.
-%
-% The Gram error measures normalized distortion of the continuous modal
-% inner product by the sampled transform. APV reports both F and G channel
-% errors and applies their worst value. MDA is projected through G, while
-% its aligned F structures remain available for pressure synthesis.
-%
-% APV additionally assesses the worst projection error in the three
-% coupled product channels
-%
-%   F_i F_j -> F,   F_i G_j -> G,   G_i G_j -> F.
-%
-% Both the discrete and continuous product projections use the signed
-% pairing and signed Gram solve. Their difference and the source product
-% are measured with the positive majorant, so every retained negative APV
-% mode participates without making an error magnitude negative or
-% imaginary. MDA does not use this APV quadratic-product policy.
 gramTolerance = 1e-2;
 quadraticAliasingTolerance = 0.1;
-[z,apvGridDesign] = apvBasis.modeRootGrid(nPoints=Nz);
-[apvTransform,apvAssessment] = apvBasis.certifiedDiscreteTransform( ...
-    z=z,gridDesign=apvGridDesign,variables=["F","G"],gramTolerance=gramTolerance, ...
-    quadraticAliasingTolerance=quadraticAliasingTolerance);
 
-[mdaTransform,mdaAssessment] = mdaBasis.certifiedDiscreteTransform( ...
-    z=z,gridDesign=apvGridDesign,variables="G",gramTolerance=gramTolerance);
-[mdaDesignedZ,mdaGridDesign] = mdaBasis.modeRootGrid(nPoints=Nz);
-[mdaDesignedTransform,mdaDesignedAssessment] = mdaBasis.certifiedDiscreteTransform( ...
-    z=mdaDesignedZ,gridDesign=mdaGridDesign,variables="G",gramTolerance=gramTolerance);
+%% Solve the continuous APV and MDA mode families
+nAvailableModes = Nz+4;
+nEVP = max(96,3*nAvailableModes);
+modeSolver = IMSolverSpectral(nEVP=nEVP);
+apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
+mdaEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
+apvBasis = modeSolver.solveEVP(apvEVP,nModes=nAvailableModes);
+mdaBasis = modeSolver.solveEVP(mdaEVP,nModes=nAvailableModes);
 
-%% Summarize the independently retained modal bands
-% A certified assessment's fitted count equals its retained count. The
-% search table records all larger independently refitted counts that were
-% rejected. The third row is a diagnostic comparison: it lets MDA design
-% its own point locations instead of using the APV grid.
-family = ["APV";"MDA";"MDA"];
-pointRule = ["APV-designed";"APV-designed";"MDA-designed"];
-initialModeCount = [max(apvAssessment.certificationSearch.modeCount); ...
-    max(mdaAssessment.certificationSearch.modeCount);max(mdaDesignedAssessment.certificationSearch.modeCount)];
-fittedModeCount = [apvAssessment.weightFitModeCount; ...
-    mdaAssessment.weightFitModeCount;mdaDesignedAssessment.weightFitModeCount];
-gramAcceptedModeCount = [apvAssessment.gramPolicy.maximumAcceptedModeCount; ...
-    mdaAssessment.gramPolicy.maximumAcceptedModeCount; ...
-    mdaDesignedAssessment.gramPolicy.maximumAcceptedModeCount];
-quadraticAcceptedModeCount = [apvAssessment.quadraticAliasingPolicy.maximumAcceptedModeCount;NaN;NaN];
-retainedModeCount = [apvAssessment.retainedModeCount; ...
-    mdaAssessment.retainedModeCount;mdaDesignedAssessment.retainedModeCount];
-retainedNegativeModeCount = [nnz(apvTransform.modeNumber < 0); ...
-    nnz(mdaTransform.modeNumber < 0);nnz(mdaDesignedTransform.modeNumber < 0)];
-retainsZeroMode = [any(apvTransform.modeNumber == 0); ...
-    any(mdaTransform.modeNumber == 0);any(mdaDesignedTransform.modeNumber == 0)];
-firstRetainedModeLabel = [apvTransform.modeNumber(1); ...
-    mdaTransform.modeNumber(1);mdaDesignedTransform.modeNumber(1)];
-lastRetainedModeLabel = [apvTransform.modeNumber(end); ...
-    mdaTransform.modeNumber(end);mdaDesignedTransform.modeNumber(end)];
+%% Construct one WKB-stretched physical quadrature rule
+% `nativeQuadratureRule` returns both parts of the rule together. For this
+% solver, the points are Chebyshev--Lobatto points in
+% $$x(z)=\int_{-D}^{z}N(s)\,ds$$. The weights already act on values sampled
+% in physical $$z$$. A final scalar adjustment makes the constant-function
+% integral equal to the exact depth.
+gridSolver = IMSolverSpectral(nEVP=Nz,coordinateKind="wkb").configuredForEVP(apvEVP);
+[z,weights] = gridSolver.nativeQuadratureRule(zDomain);
+weights = weights*(D/sum(weights));
 
-designSummary = table(family,pointRule,initialModeCount,fittedModeCount,gramAcceptedModeCount, ...
-    quadraticAcceptedModeCount,retainedModeCount,retainedNegativeModeCount, ...
-    retainsZeroMode,firstRetainedModeLabel,lastRetainedModeLabel);
-disp(designSummary)
+%% Select APV and MDA modes on the fixed rule
+% Explicit weights are never replaced. Each call assesses all leading mode
+% sets on this one rule and returns the largest set satisfying its errors.
+% APV uses F/G Gram errors and the coupled quadratic-product error. MDA uses
+% its G Gram error and may choose a different number of modes.
+[apvTransform,apvAssessment] = apvBasis.discreteTransform(z=z,weights=weights,variables=["F","G"], ...
+    gramTolerance=gramTolerance,quadraticAliasingTolerance=quadraticAliasingTolerance);
+[mdaTransform,mdaAssessment] = mdaBasis.discreteTransform(z=z,weights=weights,variables="G",gramTolerance=gramTolerance);
 
-apvDiagnostics = apvAssessment.prefixDiagnostics;
-mdaDiagnostics = mdaAssessment.prefixDiagnostics;
-mdaDesignedDiagnostics = mdaDesignedAssessment.prefixDiagnostics;
-firstAPVQuadraticRejection = find(~apvDiagnostics.quadraticAccepted,1);
-if ~isempty(firstAPVQuadraticRejection)
-    rejected = apvDiagnostics(firstAPVQuadraticRejection,:);
-    fprintf("First rejected APV quadratic prefix: %d modes; %s from physical modes %g and %g; error %.3e.\n", ...
-        rejected.modeCount,rejected.quadraticLimitingChannel, ...
-        rejected.quadraticLimitingModeNumberI,rejected.quadraticLimitingModeNumberJ, ...
-        rejected.quadraticAliasingError);
-end
+apvRow = length(apvTransform.modeNumber);
+mdaRow = length(mdaTransform.modeNumber);
+family = ["APV";"MDA"];
+modeCount = [apvRow;mdaRow];
+lastModeNumber = [apvTransform.modeNumber(end);mdaTransform.modeNumber(end)];
+gramError = [apvAssessment.prefixDiagnostics.gramError(apvRow);mdaAssessment.prefixDiagnostics.gramError(mdaRow)];
+quadraticError = [apvAssessment.prefixDiagnostics.quadraticAliasingError(apvRow);NaN];
+summary = table(family,modeCount,lastModeNumber,gramError,quadraticError);
+disp(summary)
+fprintf("Shared rule: %d points, minimum weight %.6g m, depth error %.3e.\n",Nz,min(weights),abs(sum(weights)-D)/D);
 
-firstMDAGramRejection = find(~mdaDiagnostics.gramAccepted,1);
-if ~isempty(firstMDAGramRejection)
-    rejected = mdaDiagnostics(firstMDAGramRejection,:);
-    fprintf("First rejected MDA Gram prefix: %d modes; limiting channel %s; error %.3e.\n", ...
-        rejected.modeCount,rejected.gramLimitingVariable,rejected.gramError);
-end
-
-firstMDADesignedGramRejection = find(~mdaDesignedDiagnostics.gramAccepted,1);
-if ~isempty(firstMDADesignedGramRejection)
-    rejected = mdaDesignedDiagnostics(firstMDADesignedGramRejection,:);
-    fprintf("First MDA-designed Gram rejection: %d modes; limiting channel %s; error %.3e.\n", ...
-        rejected.modeCount,rejected.gramLimitingVariable,rejected.gramError);
-end
-
-%% Compare the APV- and MDA-designed point rules
-% The APV mode-root grid places more points where the vertical structures
-% vary rapidly. For this profile that means fine spacing near the surface
-% and progressively wider spacing at depth. The second rule shows where
-% MDA would place the same number of points if it designed its own grid.
+%% Inspect the quadrature and lowest modes
+% Physical mode labels control line colors in both family panels. Negative
+% labels use red shades, the zero mode is gray, and equal positive labels
+% use the same color in APV and MDA.
 zPlot = linspace(zDomain(1),zDomain(2),801).';
-mdaDesignedZ = mdaDesignedTransform.z;
-apvZMidpoint = 0.5*(z(1:end-1)+z(2:end));
-mdaZMidpoint = 0.5*(mdaDesignedZ(1:end-1)+mdaDesignedZ(2:end));
-apvDz = diff(z);
-mdaDz = diff(mdaDesignedZ);
+nModeShapes = 4;
+apvShapeCount = min(nModeShapes,length(apvTransform.modeNumber));
+mdaShapeCount = min(nModeShapes,length(mdaTransform.modeNumber));
+apvGReference = apvBasis.G(zPlot);
+apvGReference = apvGReference(:,1:apvShapeCount);
+mdaGReference = mdaBasis.G(zPlot);
+mdaGReference = mdaGReference(:,1:mdaShapeCount);
+apvGPlot = normalizeColumns(apvGReference);
+apvGPoints = apvBasis.G(z);
+apvGPoints = normalizeWithReference(apvGPoints(:,1:apvShapeCount),apvGReference);
+mdaGPlot = normalizeColumns(mdaGReference);
+mdaGPoints = mdaBasis.G(z);
+mdaGPoints = normalizeWithReference(mdaGPoints(:,1:mdaShapeCount),mdaGReference);
 
-figure(Name="Free-surface Wave-Vortex vertical grid",Color="w");
-tiledlayout(1,2,TileSpacing="compact",Padding="compact");
+figure(Name="Free-surface Wave-Vortex vertical quadrature",Color="w");
+tiledlayout(2,2,TileSpacing="compact",Padding="compact");
 
 nexttile
-plot(sqrt(N2(zPlot)),zPlot,"k-",LineWidth=1.5)
+plot(sqrt(N2(zPlot)),zPlot,"k-",LineWidth=1.4)
 hold on
-plot(sqrt(N2(z)),z,"o",MarkerSize=4,DisplayName="APV-designed points")
-plot(sqrt(N2(mdaDesignedZ)),mdaDesignedZ,"x",MarkerSize=5, ...
-    LineWidth=1.0,DisplayName="MDA-designed points")
+plot(sqrt(N2(z)),z,"o",MarkerSize=4)
 hold off
 grid on
 xlabel("N (s^{-1})")
 ylabel("z (m)")
-title(sprintf("Two family-designed %d-point grids",Nz))
-legend(["N(z)" "APV-designed points" "MDA-designed points"],Location="best")
+title("WKB-stretched points")
 
 nexttile
-plot(apvDz,apvZMidpoint,"o-",LineWidth=1.2,MarkerSize=4,DisplayName="APV-designed")
-hold on
-plot(mdaDz,mdaZMidpoint,"x-",LineWidth=1.2,MarkerSize=4,DisplayName="MDA-designed")
-hold off
+plot(weights,z,"o-",LineWidth=1.1,MarkerSize=4)
 grid on
-xlabel("vertical spacing, \Delta z (m)")
+xlabel("physical weight (m)")
 ylabel("z (m)")
-title("Family-designed grid spacing")
-legend(Location="best")
-
-%% Inspect the lowest modes on both point rules
-% The lines show each G mode on a fine vertical grid. Circles mark the
-% APV-designed points used by the shared-grid transform, while crosses in
-% the MDA panel mark the independently MDA-designed points. Each mode is
-% divided by its own maximum absolute value so that the sampling of every
-% shape remains visible. The basis already applies the canonical
-% shallow-interior-G-positive orientation, so the example does not apply a
-% separate display phase.
-%
-% Array columns are ordinal storage locations, while `modeNumber` is the
-% physical label. Negative labels identify retained negative eigenvalues,
-% zero identifies an actual null mode, and positive labels identify the
-% ordinary positive branch. APV and MDA labels are separate coordinates;
-% the family names are therefore included explicitly in the legends. The
-% first four MDA candidates are shown even when the APV-designed rule
-% accepts only a shorter MDA prefix.
-nModeShapes = 4;
-apvModeShapeCount = min(nModeShapes,length(apvBasis.modeNumber));
-mdaModeShapeCount = min(nModeShapes,length(mdaBasis.modeNumber));
-
-apvGModeFine = apvBasis.G(zPlot);
-apvGModeFine = apvGModeFine(:,1:apvModeShapeCount);
-apvGModeScale = max(abs(apvGModeFine),[],1);
-apvGModeFine = apvGModeFine./apvGModeScale;
-apvGModeAtPoints = apvBasis.G(z);
-apvGModeAtPoints = apvGModeAtPoints(:,1:apvModeShapeCount)./apvGModeScale;
-
-mdaGModeFine = mdaBasis.G(zPlot);
-mdaGModeFine = mdaGModeFine(:,1:mdaModeShapeCount);
-mdaGModeScale = max(abs(mdaGModeFine),[],1);
-mdaGModeFine = mdaGModeFine./mdaGModeScale;
-mdaGModeAtPoints = mdaBasis.G(z);
-mdaGModeAtPoints = mdaGModeAtPoints(:,1:mdaModeShapeCount)./mdaGModeScale;
-mdaGModeAtDesignedPoints = mdaBasis.G(mdaDesignedZ);
-mdaGModeAtDesignedPoints = mdaGModeAtDesignedPoints(:,1:mdaModeShapeCount)./mdaGModeScale;
-
-modeColors = colororder;
-zeroModeColor = [0.35 0.35 0.35];
-negativeModeColors = [0.64 0.08 0.18;0.85 0.33 0.10];
-figure(Name="Lowest free-surface Wave-Vortex modes",Color="w");
-tiledlayout(1,2,TileSpacing="compact",Padding="compact");
+title("Shared APV/MDA weights")
 
 nexttile
-hold on
-for iMode = 1:apvModeShapeCount
-    modeNumber = apvBasis.modeNumber(iMode);
-    if modeNumber < 0
-        modeKind = "negative";
-        modeColor = negativeModeColors(min(abs(modeNumber),size(negativeModeColors,1)),:);
-    elseif modeNumber == 0
-        modeKind = "zero/null";
-        modeColor = zeroModeColor;
-    else
-        modeKind = "positive";
-        colorIndex = mod(modeNumber-1,size(modeColors,1))+1;
-        modeColor = modeColors(colorIndex,:);
-    end
-    plot(apvGModeFine(:,iMode),zPlot,LineWidth=1.4, ...
-        Color=modeColor,DisplayName="apvModeNumber="+string(modeNumber)+" ("+modeKind+")")
-    plot(apvGModeAtPoints(:,iMode),z,"o",Color=modeColor, ...
-        MarkerSize=3,MarkerFaceColor="w",HandleVisibility="off")
+plotModeFamily(apvGPlot,apvGPoints,zPlot,z,apvTransform.modeNumber(1:apvShapeCount),"APV")
+
+nexttile
+plotModeFamily(mdaGPlot,mdaGPoints,zPlot,z,mdaTransform.modeNumber(1:mdaShapeCount),"MDA")
+
+function values = normalizeColumns(values)
+scale = max(abs(values),[],1);
+values = values./scale;
 end
-plot(NaN,NaN,"ko",MarkerSize=4,MarkerFaceColor="w",DisplayName="APV-designed points")
+
+function values = normalizeWithReference(values,reference)
+scale = max(abs(reference),[],1);
+values = values./scale;
+end
+
+function plotModeFamily(modeValues,pointValues,zPlot,z,modeNumbers,family)
+hold on
+labels = strings(1,length(modeNumbers));
+for iMode = 1:length(modeNumbers)
+    color = colorForModeNumber(modeNumbers(iMode));
+    plot(modeValues(:,iMode),zPlot,Color=color,LineWidth=1.3)
+    plot(pointValues(:,iMode),z,"o",Color=color,MarkerSize=3)
+    labels(iMode) = sprintf("%s %g",family,modeNumbers(iMode));
+end
 hold off
 grid on
-xlabel("canonically oriented, individually normalized G_j(z)")
+xlabel("normalized G")
 ylabel("z (m)")
-title("Lowest APV modes")
-legend(Location="best")
-
-nexttile
-hold on
-for iMode = 1:mdaModeShapeCount
-    modeNumber = mdaBasis.modeNumber(iMode);
-    if modeNumber < 0
-        modeKind = "negative";
-        modeColor = negativeModeColors(min(abs(modeNumber),size(negativeModeColors,1)),:);
-    elseif modeNumber == 0
-        modeKind = "zero/null";
-        modeColor = zeroModeColor;
-    else
-        modeKind = "positive";
-        colorIndex = mod(modeNumber-1,size(modeColors,1))+1;
-        modeColor = modeColors(colorIndex,:);
-    end
-    plot(mdaGModeFine(:,iMode),zPlot,LineWidth=1.4, ...
-        Color=modeColor,DisplayName="mdaModeNumber="+string(modeNumber)+" ("+modeKind+")")
-    plot(mdaGModeAtPoints(:,iMode),z,"o",Color=modeColor, ...
-        MarkerSize=3,MarkerFaceColor="w",HandleVisibility="off")
-    plot(mdaGModeAtDesignedPoints(:,iMode),mdaDesignedZ,"x",Color=modeColor, ...
-        MarkerSize=4,LineWidth=1.0,HandleVisibility="off")
+title(family+" modes on the shared rule")
+legend(labels,Location="best")
 end
-plot(NaN,NaN,"ko",MarkerSize=4,MarkerFaceColor="w",DisplayName="APV-designed points")
-plot(NaN,NaN,"kx",MarkerSize=5,LineWidth=1.0,DisplayName="MDA-designed points")
-hold off
-grid on
-xlabel("canonically oriented, individually normalized G_j(z)")
-ylabel("z (m)")
-title(["Lowest MDA modes",sprintf("%d pass APV points; %d pass MDA points", ...
-    mdaAssessment.gramPolicy.maximumAcceptedModeCount, ...
-    mdaDesignedAssessment.gramPolicy.maximumAcceptedModeCount)])
-legend(Location="best")
 
-%% Compare the Gram and APV quadratic errors
-% Each curve assesses prefixes of its family's final, exactly refitted
-% rule. The count-search tables separately retain diagnostics for rejected
-% larger fits. The top-left panel separates APV F and G errors so the
-% limiting physical variable is visible. The top-right panel compares the
-% two MDA point choices. The lower panels show the APV nonlinear limit and
-% the two independently fitted weight vectors.
-apvFDiagnostics = apvAssessment.variablePrefixDiagnostics(variable="F");
-apvGDiagnostics = apvAssessment.variablePrefixDiagnostics(variable="G");
-mdaGDiagnostics = mdaAssessment.variablePrefixDiagnostics(variable="G");
-mdaDesignedGDiagnostics = mdaDesignedAssessment.variablePrefixDiagnostics(variable="G");
-
-figure(Name="Free-surface Wave-Vortex transform diagnostics",Color="w");
-tiledlayout(2,2,TileSpacing="compact",Padding="compact");
-
-nexttile
-semilogy(apvFDiagnostics.modeCount,max(apvFDiagnostics.gramError,eps),"o-", ...
-    LineWidth=1.1,MarkerSize=3,DisplayName="F Gram error")
-hold on
-semilogy(apvGDiagnostics.modeCount,max(apvGDiagnostics.gramError,eps),"o-", ...
-    LineWidth=1.1,MarkerSize=3,DisplayName="G Gram error")
-semilogy(apvDiagnostics.modeCount,max(apvDiagnostics.gramError,eps),"k-", ...
-    LineWidth=1.5,DisplayName="worst channel")
-yline(gramTolerance,"--",DisplayName="tolerance")
-xline(apvAssessment.gramPolicy.maximumAcceptedModeCount,":", ...
-    DisplayName=sprintf("accept through %d",apvAssessment.gramPolicy.maximumAcceptedModeCount))
-hold off
-grid on
-xlabel("APV prefix mode count")
-ylabel("normalized Gram error")
-title("APV F/G Gram errors")
-legend(Location="northwest")
-
-nexttile
-semilogy(mdaGDiagnostics.modeCount,max(mdaGDiagnostics.gramError,eps),"o-", ...
-    LineWidth=1.1,MarkerSize=3,DisplayName="APV-designed points")
-hold on
-semilogy(mdaDesignedGDiagnostics.modeCount,max(mdaDesignedGDiagnostics.gramError,eps),"x-", ...
-    LineWidth=1.1,MarkerSize=3,DisplayName="MDA-designed points")
-yline(gramTolerance,"--",DisplayName="tolerance")
-xline(mdaAssessment.gramPolicy.maximumAcceptedModeCount,":", ...
-    DisplayName=sprintf("APV points accept %d",mdaAssessment.gramPolicy.maximumAcceptedModeCount))
-xline(mdaDesignedAssessment.gramPolicy.maximumAcceptedModeCount,":", ...
-    DisplayName=sprintf("MDA points accept %d",mdaDesignedAssessment.gramPolicy.maximumAcceptedModeCount))
-if ~isempty(firstMDAGramRejection)
-    plot(mdaDiagnostics.modeCount(firstMDAGramRejection), ...
-        mdaDiagnostics.gramError(firstMDAGramRejection),"rx", ...
-        MarkerSize=9,LineWidth=1.8,HandleVisibility="off")
+function color = colorForModeNumber(modeNumber)
+positiveColors = lines(7);
+negativeColors = [0.64 0.08 0.18;0.85 0.33 0.10];
+if modeNumber < 0
+    color = negativeColors(min(abs(modeNumber),size(negativeColors,1)),:);
+elseif modeNumber == 0
+    color = [0.35 0.35 0.35];
+else
+    color = positiveColors(mod(modeNumber-1,size(positiveColors,1))+1,:);
 end
-if ~isempty(firstMDADesignedGramRejection)
-    plot(mdaDesignedDiagnostics.modeCount(firstMDADesignedGramRejection), ...
-        mdaDesignedDiagnostics.gramError(firstMDADesignedGramRejection),"rx", ...
-        MarkerSize=9,LineWidth=1.8,HandleVisibility="off")
 end
-hold off
-grid on
-xlabel("MDA prefix mode count")
-ylabel("normalized Gram error")
-title("MDA G Gram error by point rule")
-legend(Location="northwest")
-
-nexttile
-semilogy(apvDiagnostics.modeCount,max(apvDiagnostics.quadraticAliasingError,eps),"o-", ...
-    LineWidth=1.1,MarkerSize=3,DisplayName="quadratic-product error")
-hold on
-yline(quadraticAliasingTolerance,"--",DisplayName="tolerance")
-xline(apvAssessment.quadraticAliasingPolicy.maximumAcceptedModeCount,":", ...
-    DisplayName=sprintf("accept through %d",apvAssessment.quadraticAliasingPolicy.maximumAcceptedModeCount))
-if ~isempty(firstAPVQuadraticRejection)
-    plot(apvDiagnostics.modeCount(firstAPVQuadraticRejection), ...
-        apvDiagnostics.quadraticAliasingError(firstAPVQuadraticRejection),"rx", ...
-        MarkerSize=9,LineWidth=1.8,DisplayName="first rejection")
-end
-hold off
-grid on
-xlabel("APV prefix mode count")
-ylabel("Hilbert-majorant relative error")
-title("APV coupled quadratic products")
-legend(Location="northwest")
-
-nexttile
-plot(apvTransform.weights,z,"o-",LineWidth=1.1,MarkerSize=3, ...
-    DisplayName="APV weights, APV points")
-hold on
-plot(mdaTransform.weights,z,"o-",LineWidth=1.1,MarkerSize=3, ...
-    DisplayName="MDA weights, APV points")
-plot(mdaDesignedTransform.weights,mdaDesignedZ,"x--",LineWidth=1.1,MarkerSize=4, ...
-    DisplayName="MDA weights, MDA points")
-hold off
-grid on
-xlabel("fitted quadrature weight (m)")
-ylabel("z (m)")
-title("Family metrics and point rules")
-legend(Location="best")
-
-%% Extract the retained Wave-Vortex basis arrays
-% APV and MDA have different coefficient axes and different retained
-% counts. APV has directly projectable F and G channels. MDA projects
-% through G and uses the aligned F modes only to synthesize the diagnostic
-% surface-referenced pressure.
-apvFinv = apvTransform.inverseMatrix(variable="F");
-apvF = apvTransform.forwardMatrix(variable="F");
-apvGinv = apvTransform.inverseMatrix(variable="G");
-apvG = apvTransform.forwardMatrix(variable="G");
-apvModeNumber = apvTransform.modeNumber(:);
-apvEquivalentDepth = apvTransform.h(:);
-
-mdaFinv = mdaTransform.inverseMatrix(variable="F");
-mdaGinv = mdaTransform.inverseMatrix(variable="G");
-mdaG = mdaTransform.forwardMatrix(variable="G");
-mdaModeNumber = mdaTransform.modeNumber(:);
-mdaEquivalentDepth = mdaTransform.h(:);
-
-fprintf("APV weights: sum %.6f m; minimum %.6f m.\n", ...
-    sum(apvTransform.weights),min(apvTransform.weights));
-fprintf("MDA weights: sum %.6f m; minimum %.6f m.\n", ...
-    sum(mdaTransform.weights),min(mdaTransform.weights));
-fprintf("MDA-designed weights: sum %.6f m; minimum %.6f m.\n", ...
-    sum(mdaDesignedTransform.weights),min(mdaDesignedTransform.weights));
-fprintf("APV retains %d modes: %d negative, zero present %d, %d positive; smallest h is %.3e m.\n", ...
-    length(apvModeNumber),nnz(apvModeNumber < 0),any(apvModeNumber == 0), ...
-    nnz(apvModeNumber > 0),min(apvEquivalentDepth));
-fprintf("MDA retains %d modes: %d negative, zero present %d, %d positive; smallest h is %.3e m.\n", ...
-    length(mdaModeNumber),nnz(mdaModeNumber < 0),any(mdaModeNumber == 0), ...
-    nnz(mdaModeNumber > 0),min(mdaEquivalentDepth));
-mdaDesignedModeNumber = mdaDesignedTransform.modeNumber(:);
-fprintf("MDA on its own point rule retains %d modes: %d negative, zero present %d, %d positive.\n", ...
-    length(mdaDesignedModeNumber),nnz(mdaDesignedModeNumber < 0), ...
-    any(mdaDesignedModeNumber == 0),nnz(mdaDesignedModeNumber > 0));
-
-%% Verify independent modal round trips
-% Each retained family should reconstruct and recover its own coefficients
-% to numerical precision. The MDA coefficients also synthesize an aligned
-% pressure field whose value is zero at the surface by construction.
-apvCoefficient = exp(-(0:length(apvModeNumber)-1).'/8) ...
-    .*cos((0:length(apvModeNumber)-1).'*pi/5);
-apvFRecovered = apvF*(apvFinv*apvCoefficient);
-apvGRecovered = apvG*(apvGinv*apvCoefficient);
-relativeAPVFError = norm(apvFRecovered-apvCoefficient)/norm(apvCoefficient);
-relativeAPVGError = norm(apvGRecovered-apvCoefficient)/norm(apvCoefficient);
-
-mdaCoefficient = exp(-(0:length(mdaModeNumber)-1).'/4) ...
-    .*cos((0:length(mdaModeNumber)-1).'*pi/7);
-mdaDisplacement = mdaGinv*mdaCoefficient;
-mdaRecovered = mdaG*mdaDisplacement;
-mdaMeanPressure = mdaFinv*mdaRecovered;
-relativeMDAGError = norm(mdaRecovered-mdaCoefficient)/norm(mdaCoefficient);
-
-fprintf("APV F coefficient round-trip error: %.3e\n",relativeAPVFError);
-fprintf("APV G coefficient round-trip error: %.3e\n",relativeAPVGError);
-fprintf("MDA G coefficient round-trip error: %.3e\n",relativeMDAGError);
-fprintf("Maximum MDA pressure value at the surface: %.3e\n",max(abs(mdaMeanPressure(end,:))));

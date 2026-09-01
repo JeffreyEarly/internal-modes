@@ -31,24 +31,19 @@ Build an aligned internal-mode F/G transform through the compatibility API.
 
 ## Returns
 + `transform`  retained aligned transform
-+ `assessment`  family diagnostics and, for certified construction, grid and search provenance
++ `assessment`  family diagnostics and grid-selection provenance
 
 ## Discussion
 
-  The point rule is shared, but each requested variable retains its own
-  sampled metric, active columns, target Gram matrix, and forward
-  projection. Omitted `variables` selects every directly representable
-  channel in canonical order `F`, `G`. Point-limited construction still
-  uses roots of the next mode in the EVP's solved formulation.
+The point rule is shared, but each requested variable retains its own
+sampled metric, active columns, target Gram matrix, and forward
+projection. Omitted `variables` selects every directly representable
+channel in canonical order `F`, `G`. Point-limited construction still
+uses roots of the next mode in the EVP's solved formulation.
 
-  With neither `weights` nor `nModes`, this delegates to
-  `certifiedDiscreteTransform`, which independently refits family weights
-  while selecting the retained count. Prefer that named method in new code.
-  `fitDiscreteTransform(z=z,modeCount=N)` is the strict exact-band API, and
-  `modeRootGrid` makes the source of shared APV/MDA points explicit.
-
-  Supplying weights or the legacy `nModes` name retains fixed-rule prefix
-  assessment. The Gram policy must pass independently for every requested
-  channel. Optional leakage uses same-variable rejected modes. Coupled
-  quadratic aliasing assesses `FF->F` and `GG->F` when F is enabled, and
-  `FG->G` when G is enabled.
+Supplying explicit `z` and `weights` keeps that quadrature rule unchanged.
+The method assesses every leading mode set on the one rule and returns the
+largest set that passes all enabled policies. The Gram policy must pass
+independently for every requested channel. Optional leakage uses
+same-variable rejected modes. Coupled quadratic aliasing assesses `FF->F`
+and `GG->F` when F is enabled, and `FG->G` when G is enabled.
