@@ -36,6 +36,40 @@ classdef (Abstract) IMSolver
             weights = nativeWeights(index);
         end
 
+        function [z,weights,Dz] = nativeDifferentiationRule(self,zBounds,derivativeOrder)
+            % Return one ordered grid for physical quadrature and differentiation.
+            %
+            % The returned points increase in physical coordinate. `weights`
+            % integrate values in that order, and `Dz*values` differentiates
+            % columns sampled in the same order. This keeps the grid, weights,
+            % and differentiation matrix as one inseparable numerical rule.
+            %
+            % - Topic: Solve EVPs
+            % - Declaration: [z,weights,Dz] = nativeDifferentiationRule(solver,zBounds,derivativeOrder)
+            % - Parameter zBounds: physical integration bounds
+            % - Parameter derivativeOrder: physical derivative order; default `1`
+            % - Returns z: increasing physical grid points
+            % - Returns weights: physical-coordinate quadrature weights
+            % - Returns Dz: matrix mapping values on `z` to physical derivatives on `z`
+            arguments
+                self IMSolver
+                zBounds (1,2) double
+                derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 1
+            end
+
+            nativeZ = self.zNative(:);
+            quadratureZ = self.innerProductGrid(zBounds);
+            if length(quadratureZ) ~= length(nativeZ) || max(abs(sort(quadratureZ(:))-sort(nativeZ))) > 100*eps(max(1,max(abs(nativeZ))))
+                error("IMSolver:UnsupportedDifferentiationBounds", ...
+                    "nativeDifferentiationRule requires bounds whose quadrature uses the complete native solver grid.");
+            end
+            nativeWeights = self.innerProductWeights(nativeZ,zBounds);
+            nativeDerivative = self.differentiateGridValues(eye(length(nativeZ)),derivativeOrder);
+            [z,index] = sort(nativeZ(:));
+            weights = nativeWeights(index);
+            Dz = nativeDerivative(index,index);
+        end
+
         function basisSet = solveEVP(self, evp, options)
             % Solve an EVP and return a basis set.
             %

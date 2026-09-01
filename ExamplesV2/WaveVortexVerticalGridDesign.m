@@ -30,14 +30,16 @@ mdaEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=g0
 apvBasis = modeSolver.solveEVP(apvEVP,nModes=nAvailableModes);
 mdaBasis = modeSolver.solveEVP(mdaEVP,nModes=nAvailableModes);
 
-%% Construct one WKB-stretched physical quadrature rule
-% `nativeQuadratureRule` returns both parts of the rule together. For this
+%% Construct one WKB-stretched quadrature and differentiation rule
+% `nativeDifferentiationRule` returns the points, weights, and physical
+% first-derivative matrix together. For this
 % solver, the points are Chebyshev--Lobatto points in
 % $$x(z)=\int_{-D}^{z}N(s)\,ds$$. The weights already act on values sampled
-% in physical $$z$$. A final scalar adjustment makes the constant-function
-% integral equal to the exact depth.
+% in physical $$z$$, and `Dz*values` differentiates values in the same
+% increasing-$$z$$ order. A final scalar adjustment makes the
+% constant-function integral equal to the exact depth.
 gridSolver = IMSolverSpectral(nEVP=Nz,coordinateKind="wkb").configuredForEVP(apvEVP);
-[z,weights] = gridSolver.nativeQuadratureRule(zDomain);
+[z,weights,Dz] = gridSolver.nativeDifferentiationRule(zDomain);
 weights = weights*(D/sum(weights));
 
 %% Select APV and MDA modes on the fixed rule
@@ -59,6 +61,7 @@ quadraticError = [apvAssessment.prefixDiagnostics.quadraticAliasingError(apvRow)
 summary = table(family,modeCount,lastModeNumber,gramError,quadraticError);
 disp(summary)
 fprintf("Shared rule: %d points, minimum weight %.6g m, depth error %.3e.\n",Nz,min(weights),abs(sum(weights)-D)/D);
+fprintf("Maximum linear-derivative error: %.3e.\n",max(abs(Dz*z-1)));
 
 %% Inspect the quadrature and lowest modes
 % Physical mode labels control line colors in both family panels. Negative

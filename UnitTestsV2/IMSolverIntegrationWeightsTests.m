@@ -58,6 +58,42 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             end
         end
 
+        function nativeDifferentiationRulePairsOrdinaryGridWeightsAndDerivatives(testCase)
+            zDomain = [-4000 0];
+            evp = IMEigenvalueProblem(zDomain=zDomain,p=1,q=0,r=1);
+            solver = IMSolverSpectral(nEVP=65).configuredForEVP(evp);
+            [z,weights,Dz] = solver.nativeDifferentiationRule(zDomain);
+            [quadratureZ,quadratureWeights] = solver.nativeQuadratureRule(zDomain);
+
+            testCase.verifyEqual(z,quadratureZ,AbsTol=0)
+            testCase.verifyEqual(weights,quadratureWeights,AbsTol=0)
+            testCase.verifyEqual(Dz*ones(size(z)),zeros(size(z)),AbsTol=2e-11)
+            testCase.verifyEqual(Dz*z,ones(size(z)),AbsTol=2e-11)
+            smooth = exp(z/2300).*cos(z/411);
+            expected = exp(z/2300).*(cos(z/411)/2300-sin(z/411)/411);
+            testCase.verifyEqual(Dz*smooth,expected,AbsTol=2e-11)
+        end
+
+        function nativeDifferentiationRulePairsWKBGridWeightsAndDerivatives(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            N2 = @(z) N0*N0*exp(2*z/b);
+            zDomain = [-D 0];
+            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+            solver = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
+            [z,weights,Dz] = solver.nativeDifferentiationRule(zDomain);
+            [quadratureZ,quadratureWeights] = solver.nativeQuadratureRule(zDomain);
+
+            testCase.verifyEqual(z,quadratureZ,AbsTol=0)
+            testCase.verifyEqual(weights,quadratureWeights,AbsTol=0)
+            testCase.verifyEqual(Dz*ones(size(z)),zeros(size(z)),AbsTol=2e-11)
+            testCase.verifyEqual(Dz*z,ones(size(z)),RelTol=2e-6)
+            smooth = exp(z/2300).*cos(z/411);
+            expected = exp(z/2300).*(cos(z/411)/2300-sin(z/411)/411);
+            testCase.verifyEqual(Dz*smooth,expected,AbsTol=7e-10)
+        end
+
         function partialSpectralWeightsUseExactBoundedOperator(testCase)
             zDomain = [-4000 0];
             partialBounds = [-3150 -275];
@@ -83,6 +119,21 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             expected = solver.integrateInnerProduct(z,values,zDomain);
 
             testCase.verifyEqual(weights.'*values,expected,RelTol=2e-14,AbsTol=2e-14)
+        end
+
+        function nativeDifferentiationRuleOrdersFiniteDifferenceGrid(testCase)
+            zDomain = [-4000 0];
+            zNative = -4000+4000*linspace(0,1,83).'.^1.3;
+            evp = IMEigenvalueProblem(zDomain=zDomain,p=1,q=0,r=1);
+            solver = IMSolverFiniteDifference(z=zNative).configuredForEVP(evp);
+            [z,weights,Dz] = solver.nativeDifferentiationRule(zDomain);
+            [quadratureZ,quadratureWeights] = solver.nativeQuadratureRule(zDomain);
+
+            testCase.verifyEqual(z,quadratureZ,AbsTol=0)
+            testCase.verifyEqual(weights,quadratureWeights,AbsTol=0)
+            testCase.verifyTrue(all(diff(z) > 0))
+            testCase.verifyEqual(Dz*ones(size(z)),zeros(size(z)),AbsTol=2e-12)
+            testCase.verifyEqual(Dz*z,ones(size(z)),AbsTol=2e-11)
         end
     end
 end
