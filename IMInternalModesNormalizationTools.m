@@ -16,10 +16,15 @@ classdef (Hidden, Sealed) IMInternalModesNormalizationTools
             if string(evp.name) == "waveModesAtWavenumber"
                 names(end+1) = "kConstant";
             end
+            if string(evp.name) == "geostrophicGeneralizedPotentialEnstrophyModes"
+                names(end+1) = "generalizedPotentialEnstrophy";
+            end
         end
 
         function name = default(evp)
-            if string(evp.name) == "geostrophicAPVModes"
+            if string(evp.name) == "geostrophicGeneralizedPotentialEnstrophyModes"
+                name = "generalizedPotentialEnstrophy";
+            elseif string(evp.name) == "geostrophicAPVModes"
                 name = "depth";
             elseif evp.modeFamily == "hydrostatic"
                 name = "geostrophic";

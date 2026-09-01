@@ -626,6 +626,126 @@ classdef IMInternalModes < IMEigenvalueProblem
             evp = IMInternalModes(name="geostrophicAPVModes", formulation="F", modeFamily="hydrostatic", N2=options.N2, zDomain=options.zDomain, p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, surfaceBoundary=surfaceCondition, bottomBoundary=bottomCondition, parameters=parameters);
         end
 
+        function evp = geostrophicGeneralizedPotentialEnstrophyModes(options)
+            % Create free-surface generalized-potential-enstrophy modes.
+            %
+            % At fixed positive horizontal wavenumber `k`, this factory
+            % creates the `F` problem
+            % $$
+            % -\frac{\partial}{\partial z}\left(\frac{f_0^2}{N^2}\frac{\partial F_j}{\partial z}\right)
+            % +k^2F_j=\Lambda_jF_j.
+            % $$
+            % A finite surface weight applies
+            % $$
+            % \frac{f_0^2}{N_s^2}F_j'(z_s)+\frac{f_0^2}{g}F_j(z_s)
+            % =\Lambda_j\frac{f_0^2}{\alpha_0}F_j(z_s),
+            % $$
+            % while a finite bottom weight applies
+            % $$
+            % \frac{f_0^2}{N_b^2}F_j'(z_b)
+            % =-\Lambda_j\frac{f_0^2}{\alpha_d}F_j(z_b).
+            % $$
+            % Positive infinity removes the corresponding eigenvalue-side
+            % endpoint term. The default bottom is inactive. When `alpha0`
+            % is omitted, the surface weight is
+            % $$
+            % \alpha_0=\frac{f_0^2}{b_\mathrm{eff}},\qquad
+            % b_\mathrm{eff}=\frac{(\int N\,dz)^2}{4\int N^2\,dz}.
+            % $$
+            %
+            % Solved bases use
+            % `Normalization.generalizedPotentialEnstrophy` by default, so
+            % $$
+            % \frac{1}{D}\left[\int F_iF_j\,dz
+            % +\frac{f_0^2}{\alpha_0}F_i(z_s)F_j(z_s)
+            % +\frac{f_0^2}{\alpha_d}F_i(z_b)F_j(z_b)\right]=\delta_{ij},
+            % $$
+            % with inactive terms omitted. The equivalent depth is the
+            % diagnostic quantity
+            % $$h_j=f_0^2/[g(\Lambda_j-k^2)].$$
+            %
+            % ```matlab
+            % evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
+            %     N2=N2,zDomain=[-4000 0],k=2*pi/100e3,f0=1e-4);
+            % basisSet = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=8);
+            % ```
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(options)
+            % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
+            % - Parameter options.zDomain: physical vertical domain in meters
+            % - Parameter options.k: positive horizontal wavenumber in radians per meter
+            % - Parameter options.f0: nonzero Coriolis parameter in radians per second
+            % - Parameter options.g: gravitational acceleration in meters per second squared
+            % - Parameter options.alpha0: optional positive surface generalized-potential-enstrophy weight
+            % - Parameter options.alphaD: positive bottom generalized-potential-enstrophy weight or `Inf`
+            % - Returns evp: generalized-potential-enstrophy mode EVP
+            arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.k (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
+                options.f0 (1,1) double {mustBeReal, mustBeFinite}
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
+                options.alpha0 double {mustBeReal} = zeros(0,1)
+                options.alphaD (1,1) double {mustBeReal} = Inf
+            end
+
+            if options.f0 == 0
+                error("IMInternalModes:InvalidCoriolisParameter", "f0 must be nonzero.");
+            end
+            if ~isempty(options.alpha0) && (~isscalar(options.alpha0) || isnan(options.alpha0) || options.alpha0 <= 0)
+                error("IMInternalModes:InvalidSurfaceEnstrophyWeight", "alpha0 must be empty, positive finite, or positive Inf.");
+            end
+            if isnan(options.alphaD) || options.alphaD <= 0
+                error("IMInternalModes:InvalidBottomEnstrophyWeight", "alphaD must be positive finite or positive Inf.");
+            end
+
+            zDomain = sort(options.zDomain);
+            try
+                I1 = integral(@(z) sqrt(options.N2(z)),zDomain(1),zDomain(2));
+                I2 = integral(options.N2,zDomain(1),zDomain(2));
+            catch cause
+                exception = MException("IMInternalModes:InvalidStratificationScale", "N2 could not be integrated to determine the generalized-potential-enstrophy scale.");
+                throw(addCause(exception,cause))
+            end
+            if ~isscalar(I1) || ~isreal(I1) || ~isfinite(I1) || I1 <= 0 ...
+                    || ~isscalar(I2) || ~isreal(I2) || ~isfinite(I2) || I2 <= 0
+                error("IMInternalModes:InvalidStratificationScale", "The integrals of N and N2 must be finite positive real scalars.");
+            end
+            bEffective = I1*I1/(4*I2);
+            if isempty(options.alpha0)
+                alpha0 = options.f0*options.f0/bEffective;
+                alpha0Source = "stratification";
+            else
+                alpha0 = options.alpha0;
+                alpha0Source = "explicit";
+            end
+
+            f02 = options.f0*options.f0;
+            if isinf(alpha0)
+                surfaceCondition = IMBoundaryCondition(a=-f02/options.g,b=1);
+            else
+                surfaceCondition = IMBoundaryCondition(a=-f02/options.g,b=1,c=f02/alpha0);
+            end
+            if isinf(options.alphaD)
+                bottomCondition = IMBoundaryCondition.neumann();
+            else
+                bottomCondition = IMBoundaryCondition(a=0,b=1,c=-f02/options.alphaD);
+            end
+
+            k = options.k;
+            f0 = options.f0;
+            g = options.g;
+            parameters = struct("k",k,"alpha0",alpha0,"alphaD",options.alphaD, ...
+                "bEffective",bEffective,"alpha0Source",alpha0Source);
+            evp = IMInternalModes(name="geostrophicGeneralizedPotentialEnstrophyModes", ...
+                formulation="F",modeFamily="none",N2=options.N2,zDomain=zDomain, ...
+                p=@(z,ctx) ctx.f0*ctx.f0./ctx.N2(z), ...
+                q=@(z,ctx) ctx.k*ctx.k*ones(size(z)),r=@(z,~) ones(size(z)), ...
+                surfaceBoundary=surfaceCondition,bottomBoundary=bottomCondition, ...
+                f0=f0,g=g,hFromEigenvalue=@(lambda) f0*f0./(g*(lambda-k*k)),parameters=parameters);
+        end
+
         function evp = meanDensityAnomalyModes(options)
             % Create generalized-energy mean-density-anomaly modes.
             %

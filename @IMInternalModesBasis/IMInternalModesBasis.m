@@ -91,6 +91,11 @@ classdef IMInternalModesBasis < IMBasisSet
             if ismember("depth",availableNormalizations)
                 self = self.addVectorNormalization("depth",@(basisSet,iMode) basisSet.depthNormFactor(iMode),@(basisSet) basisSet.depthNormFactors());
             end
+            if ismember("generalizedPotentialEnstrophy",availableNormalizations)
+                self = self.addVectorNormalization("generalizedPotentialEnstrophy", ...
+                    @(basisSet,iMode) basisSet.generalizedPotentialEnstrophyNormFactor(iMode), ...
+                    @(basisSet) basisSet.generalizedPotentialEnstrophyNormFactors());
+            end
             if ismember("kConstant",availableNormalizations)
                 self = self.addVectorNormalization("kConstant",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode,variable="G"),@(basisSet) basisSet.innerProductNormFactors(variable="G"));
             end
@@ -577,6 +582,28 @@ classdef IMInternalModesBasis < IMBasisSet
             factor = sqrt(max(0, real(integral)/diff(self.zDomain)));
         end
 
+        function factor = generalizedPotentialEnstrophyNormFactor(self, iMode)
+            % Return the depth-mean generalized-potential-enstrophy factor.
+            %
+            % The solved `F` inner product contains the interior and active
+            % endpoint terms of the generalized potential enstrophy. This
+            % factor scales that complete inner product by the physical
+            % depth, so normalized modes satisfy
+            % $$D^{-1}\langle F_i,F_j\rangle_\alpha=\delta_{ij}.$$
+            %
+            % - Topic: Developer topics — Normalization rules
+            % - Declaration: factor = generalizedPotentialEnstrophyNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: generalized-potential-enstrophy normalization factor
+            % - Developer: true
+            arguments
+                self IMInternalModesBasis
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+            end
+
+            factor = self.innerProductNormFactor(iMode,variable="F")/sqrt(diff(self.zDomain));
+        end
+
         function factor = maxAmplitudeNormFactor(self, iMode, options)
             % Return the maximum amplitude of `F` or `G`.
             %
@@ -723,6 +750,11 @@ classdef IMInternalModesBasis < IMBasisSet
             integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
             normSquared = sum(integrationWeights.*F.*F,1)/diff(self.zDomain);
             factors = sqrt(max(0,real(normSquared)));
+        end
+
+        function factors = generalizedPotentialEnstrophyNormFactors(self)
+            % Return generalized-potential-enstrophy factors for the family.
+            factors = self.innerProductNormFactors(variable="F")/sqrt(diff(self.zDomain));
         end
 
         function factors = maxAmplitudeNormFactors(self, options)
