@@ -78,6 +78,7 @@ classdef IMAnalyticalInternalModesBasis
     properties (Access = private)
         rawVariableFunction
         rawUzFunction
+        orientationSigns
         normalizationNameMap
     end
 
@@ -121,6 +122,21 @@ classdef IMAnalyticalInternalModesBasis
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
             self.rawVariableFunction = options.rawVariableFunction;
             self.rawUzFunction = options.rawUzFunction;
+            self.orientationSigns = ones(1,length(self.h));
+            zOrientation = self.integrationGrid(self.zDomain);
+            GValues = self.rawVariableFunction(self,"G",zOrientation);
+            FValues = self.rawVariableFunction(self,"F",zOrientation);
+            if self.evp.formulation == "G"
+                GzSurface = self.rawUzFunction(self,self.zDomain(2));
+            else
+                FSurface = self.rawVariableFunction(self,"F",self.zDomain(2));
+                GzSurface = FSurface.*self.eigenvalues;
+            end
+            allowFFallback = self.evp.formulation == "F" & self.eigenvalues == 0;
+            self.orientationSigns = IMModeOrientationTools.shallowInteriorGPositive( ...
+                GValues=GValues,GzSurface=GzSurface,FValues=FValues,depth=diff(self.zDomain), ...
+                surfaceIndex=size(GValues,1),allowFFallback=allowFFallback);
+            self.metadata.modeOrientation = IMModeOrientationTools.convention;
             self.normalizationNameMap = configureDictionary("string","cell");
             self = self.installNormalizationRules();
             if isempty(options.normalization)
@@ -556,11 +572,11 @@ classdef IMAnalyticalInternalModesBasis
         end
 
         function values = rawVariable(self, variable, z)
-            values = self.rawVariableFunction(self, string(variable), z(:));
+            values = self.rawVariableFunction(self, string(variable), z(:)).*self.orientationSigns;
         end
 
         function values = rawUz(self, z)
-            values = self.rawUzFunction(self, z(:));
+            values = self.rawUzFunction(self, z(:)).*self.orientationSigns;
         end
 
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized)

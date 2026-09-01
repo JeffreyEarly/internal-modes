@@ -350,14 +350,15 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods
-        function self = orientModeSigns(self)
-            % Orient modes so the surface `F` value is positive when possible.
+        function [self, signs] = orientModeSigns(self)
+            % Orient modes so `G` is positive immediately below the surface.
             %
-            % This developer utility applies the internal-mode sign
-            % convention used after numerical solves: prefer a finite
-            % nonzero surface `F` value, fall back to the largest `F`
-            % value on the solver grid, then fall back to `G`. The same
-            % sign flip is applied to the coupled `F`/`G` mode pair.
+            % A resolved nonzero surface `G` value sets the sign directly.
+            % When `G` vanishes at the surface, the sign is chosen from
+            % $$-G_z(z_s)$$, the leading one-sided Taylor coefficient into
+            % the ocean. The rigid-lid barotropic mode has `G` identically
+            % zero, so that known `F`-form zero mode uses `F` as a fallback.
+            % The same sign flip is applied to the coupled `F`/`G` pair.
             % `IMInternalModesBasis` is a value class, so callers must keep
             % the returned basis set:
             %
@@ -369,54 +370,22 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Declaration: basisSet = orientModeSigns(basisSet)
             % - Returns basisSet: basis set with oriented native mode signs
             % - Developer: true
+            signs = ones(1,size(self.nativeModes,2));
             if isempty(self.nativeModes)
                 return;
             end
-            zSurface = self.zDomain(2);
-            zGrid = self.solver.innerProductGrid(self.zDomain);
-            variables = ["F", "G"];
-            references = NaN(2,size(self.nativeModes,2));
-            for iVariable = 1:numel(variables)
-                surfaceValues = [];
-                gridValues = [];
-                try
-                    surfaceValues = self.rawVariable(variables(iVariable), zSurface);
-                    gridValues = self.rawVariable(variables(iVariable), zGrid);
-                catch exception
-                    if string(exception.identifier) ~= "IMBasisSet:UnsupportedOperation"
-                        rethrow(exception)
-                    end
-                end
 
-                for iMode = 1:size(self.nativeModes,2)
-                    value = NaN;
-                    tolerance = 0;
-                    if ~isempty(surfaceValues)
-                        value = surfaceValues(1,iMode);
-                        tolerance = 1e-10*max(1,abs(value));
-                    end
-                    if (isempty(surfaceValues) || abs(value) <= tolerance) && ~isempty(gridValues)
-                        [scale, index] = max(abs(gridValues(:,iMode)));
-                        value = gridValues(index,iMode);
-                        tolerance = 1e-10*max(1,scale);
-                    end
-                    if abs(value) <= tolerance
-                        value = 0;
-                    end
-                    references(iVariable,iMode) = value;
-                end
-            end
-            signs = ones(1,size(self.nativeModes,2));
-            for iMode = 1:size(self.nativeModes,2)
-                reference = references(1,iMode);
-                if ~isfinite(reference) || reference == 0
-                    reference = references(2,iMode);
-                end
-                if isfinite(reference) && reference < 0
-                    signs(iMode) = -1;
-                end
-            end
+            zNative = self.solver.zNative;
+            surfaceIndex = self.solver.boundaryIndex("surface");
+            GValues = self.rawVariable("G",zNative);
+            GzValues = self.solver.differentiateGridValues(GValues,1);
+            FValues = self.rawVariable("F",zNative);
+            allowFFallback = self.evp.formulation == "F" & self.eigenvalues == 0;
+            signs = IMModeOrientationTools.shallowInteriorGPositive( ...
+                GValues=GValues,GzSurface=GzValues(surfaceIndex,:),FValues=FValues, ...
+                depth=diff(self.zDomain),surfaceIndex=surfaceIndex,allowFFallback=allowFFallback);
             self.nativeModes = self.nativeModes .* signs;
+            self.metadata.modeOrientation = IMModeOrientationTools.convention;
         end
 
         function factor = innerProductNormFactor(self, iMode, options)

@@ -497,7 +497,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(isprop(basisSet, "N2"))
             testCase.verifyEqual(basisSet.N2(zDomain(:)), N2(zDomain(:)), RelTol=1e-12)
             testCase.verifyFalse(ismethod(basisSet, "dz" + "LogN2"))
-            testCase.verifyEqual(basisSet.metadata, struct())
+            testCase.verifyEqual(basisSet.metadata,struct("modeOrientation",IMModeOrientationTools.convention))
             testCase.verifyTrue(isfield(basisSet.evp.parameters, "formulation"))
         end
 

@@ -129,13 +129,7 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             % - Declaration: basisSet = orientModeSigns(basisSet)
             % - Returns basisSet: basis set with aligned signs oriented
             % - Developer: true
-            before = self.nativeModes;
-            self = orientModeSigns@IMInternalModesBasis(self);
-            denominator = sum(before.*before,1);
-            signs = ones(1,size(before,2));
-            valid = denominator > 0;
-            signs(valid) = sign(sum(before(:,valid).*self.nativeModes(:,valid),1)./denominator(valid));
-            signs(signs == 0) = 1;
+            [self,signs] = orientModeSigns@IMInternalModesBasis(self);
             self.nativeFModes = self.nativeFModes.*signs;
         end
     end

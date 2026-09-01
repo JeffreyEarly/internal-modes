@@ -88,7 +88,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             expected = zeros(length(z), nModes);
             for iMode = 1:nModes
                 k_z = basisSet.metadata.verticalWavenumbers(iMode);
-                signValue = (-1)^basisSet.modeNumber(iMode);
+                signValue = (-1)^(basisSet.modeNumber(iMode)+1);
                 expected(:,iMode) = signValue*k_z*cos(k_z*s);
             end
             expected = expected ./ basisSet.normalizationFactors("unity");
@@ -110,7 +110,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             expected = zeros(length(z), nModes);
             for iMode = 1:nModes
                 k_z = basisSet.metadata.verticalWavenumbers(iMode);
-                signValue = (-1)^basisSet.modeNumber(iMode);
+                signValue = (-1)^(basisSet.modeNumber(iMode)+1);
                 expected(:,iMode) = -signValue*k_z*sin(k_z*s);
             end
             expected = expected ./ basisSet.normalizationFactors("unity");
