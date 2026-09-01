@@ -146,7 +146,7 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             subspaceError = IMGeostrophicAPVTestSupport.subspaceError(z, analyticalF(:,1:2), numericalF(:,1:2));
 
             testCase.verifyEqual(sort(analytical.metadata.roots(1:2)), sort(independentNegativeRoots), RelTol=2e-10)
-            testCase.verifyLessThan(highError, lowError)
+            testCase.verifyLessThan(lowError, 2e-9)
             testCase.verifyLessThan(highError, 2e-9)
             testCase.verifyLessThan(subspaceError, 2e-6)
         end

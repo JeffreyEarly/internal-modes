@@ -3,7 +3,7 @@ layout: default
 title: variablePrefixDiagnostics
 parent: IMInternalModesDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 18
+nav_order: 20
 mathjax: true
 ---
 

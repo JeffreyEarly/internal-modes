@@ -216,8 +216,6 @@ for iMode = 1:nModes
             A = max(abs(Gj));
         case Normalization.kConstant
             A = sqrt(im.GNorm(Gj));
-        case Normalization.omegaConstant
-            A = sqrt(im.FNorm(Fj));
         case Normalization.geostrophic
             A = sqrt(im.GeostrophicNorm(Gj));
     end

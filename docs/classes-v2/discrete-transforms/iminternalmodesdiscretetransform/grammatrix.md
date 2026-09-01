@@ -9,7 +9,7 @@ mathjax: true
 
 #  gramMatrix
 
-Return the sampled full-family Gram matrix.
+Return the sampled signed full-family Gram matrix.
 
 
 ---

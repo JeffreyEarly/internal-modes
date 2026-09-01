@@ -14,6 +14,11 @@ classdef IMInternalModesDiscreteTransformAssessment
     % and cumulative per-policy and combined acceptance flags.
     % Policy structs expose `tolerance`, per-prefix `error` and `accepted`
     % arrays, `maximumAcceptedModeCount`, `limitingValue`, and `reason`.
+    % Internal-mode quadratic products are projected with the signed
+    % Pontryagin pairing and signed Gram solve. Their relative error is
+    % measured with the induced positive Hilbert majorant, recorded as
+    % `quadraticAliasingPolicy.errorNorm`. Signed rejected-mode leakage
+    % and MDA coupled quadratic products remain unsupported.
     %
     % - Topic: Create transform assessments
     % - Topic: Inspect transform assessments
@@ -49,7 +54,7 @@ classdef IMInternalModesDiscreteTransformAssessment
         gramPolicy
         % Worst-channel rejected-mode leakage policy result.
         leakagePolicy
-        % Coupled quadratic-aliasing policy result.
+        % Coupled quadratic policy: signed projection, majorant error norm.
         quadraticAliasingPolicy
         % Policy responsible for the retained count.
         limitingPolicy

@@ -146,9 +146,8 @@ where the variable `stratification` is a string. The returned values `rho` and `
   
 Normalization and boundary conditions
 -------------------
-There are four choices for normalization of the vertical modes. See in Early, et al. (2018) for details.
+The available normalization choices depend on the mode formulation. See Early, et al. (2018) for details.
 - `kConstant` (default) Uses the K-constant norm, which is useful for specifying energy density of an internal wave.
-- `omegaConstant` Uses the omega-constant norm, the utility of which isn't exactly clear.
 - `uMax` Sets the maximum of the F modes to 1. Useful if you want to specify the horizontal velocity of a wave.
 - `wMax` Sets the maximum of the G modes to 1. Useful if you want to specify the vertical velocity of a wave.
 

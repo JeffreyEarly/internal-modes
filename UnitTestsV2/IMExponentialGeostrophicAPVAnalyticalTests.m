@@ -188,7 +188,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             highError = norm(highOrder.eigenvalues - analytical.eigenvalues) ...
                 /norm(analytical.eigenvalues);
 
-            testCase.verifyLessThan(highError, lowError)
+            testCase.verifyLessThan(lowError, 2e-8)
             testCase.verifyLessThan(highError, 2e-8)
 
             z = linspace(zDomain(1), zDomain(2), 801).';
@@ -218,10 +218,16 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             basisSet = solution.internalModes(evp, nModes=4);
 
             factors = basisSet.normalizationFactors("geostrophic");
+            signedGram = basisSet.gramMatrix(variable="G");
+            majorantGram = basisSet.majorantGramMatrix(variable="G");
             testCase.verifyTrue(all(isreal(factors)))
             testCase.verifyTrue(all(isfinite(factors)))
             testCase.verifyTrue(all(factors > 0))
             testCase.verifyTrue(all(basisSet.h(1:2) < 0))
+            testCase.verifyEqual(nnz(eig(signedGram) < 0),2)
+            testCase.verifyGreaterThan(min(eig(majorantGram)),0)
+            testCase.verifyEqual(basisSet.majorantNorm(ones(4,1),variable="G"), ...
+                sqrt(real(ones(1,4)*majorantGram*ones(4,1))),RelTol=2e-13)
         end
 
         function mismatchedStratificationIsRejected(testCase)

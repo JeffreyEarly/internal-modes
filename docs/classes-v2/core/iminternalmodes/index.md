@@ -63,7 +63,8 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/iminternalmodes/hfromeigenvalue.html) Equivalent-depth conversion function.
   + [`modeFamily`](/internal-modes/classes-v2/core/iminternalmodes/modefamily.html) Physical mode-family declaration.
 + Inspect internal-mode inner products
-  + [`innerProduct`](/internal-modes/classes-v2/core/iminternalmodes/innerproduct.html) Return the `F` or `G` inner-product recipe.
+  + [`innerProduct`](/internal-modes/classes-v2/core/iminternalmodes/innerproduct.html) Return the signed `F` or `G` inner-product recipe.
+  + [`majorantInnerProduct`](/internal-modes/classes-v2/core/iminternalmodes/majorantinnerproduct.html) Return the induced positive Hilbert-majorant recipe.
 
 
 ## Developer Topics

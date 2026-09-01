@@ -18,7 +18,7 @@ Evaluate a chosen analytical barotropic branch.
 
 ## Declaration
 ```matlab
- [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BarotropicMode(self,solutionType,k_z,h0)
+ [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BarotropicMode(self,solutionType,k_z,h0)
 ```
 ## Parameters
 + `self`  InternalModesConstantStratification instance
@@ -35,7 +35,6 @@ Evaluate a chosen analytical barotropic branch.
 + `uMaxRatio`  ratio from the active normalization to `uMax`
 + `wMaxRatio`  ratio from the active normalization to `wMax`
 + `kConstantRatio`  ratio from the active normalization to `kConstant`
-+ `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
 + `geostrophicRatio`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

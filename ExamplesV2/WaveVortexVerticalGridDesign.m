@@ -12,17 +12,19 @@ addpath(repoRoot);
 % The buoyancy frequency decreases exponentially with depth. We fix the
 % number of physical points in Nz and let the APV modes determine their
 % locations. Both families then fit their own quadrature weights on those
-% shared points. Positive finite endpoint accelerations give both families
-% positive-definite projection metrics and keep both endpoints active.
+% shared points. The endpoint parameters match the WaveVortex default:
+% the surface acceleration is the negative column-integrated
+% stratification and the bottom endpoint is inactive.
 D = 4000;
 N0 = 5.2e-3;
 b = 1300;
 g = 9.81;
-g0 = 0.02;
-gd = 0.03;
 Nz = 128;
 zDomain = [-D 0];
 N2 = @(z) N0*N0*exp(2*z/b);
+gNPrime = integral(N2,zDomain(1),zDomain(2));
+g0 = -gNPrime;
+gd = Inf;
 
 %% Solve the APV and MDA mode families
 % Solving slightly more modes than the point count gives the APV grid
@@ -40,6 +42,34 @@ apvBasis = solver.solveEVP(apvEVP,nModes=nAvailableModes);
 mdaEVP = IMInternalModes.meanDensityAnomalyModes( ...
     N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
 mdaBasis = solver.solveEVP(mdaEVP,nModes=nAvailableModes);
+
+%% Inspect the signed pairing and its positive majorant
+% InternalModes uses two related quadratic forms for different jobs. The
+% signed Pontryagin pairing is the scientific invariant used for modal
+% orthogonality, projection, coefficient recovery, and signatures. Its
+% endpoint coefficients keep their signs, so a retained APV mode can have
+% a negative self-pairing. The induced Hilbert majorant replaces every
+% endpoint coefficient by its absolute value and is positive. Use it for
+% error magnitudes, convergence tests, and state-size comparisons.
+%
+% In particular, neither `sqrt([u,u])` nor `sqrt(abs([u,u]))` is a norm for
+% an arbitrary state: positive and negative directions can cancel. The
+% convenience method `majorantNorm` evaluates `sqrt(c'*Mplus*c)` instead.
+apvSignedGram = apvBasis.gramMatrix(variable="G");
+apvMajorantGram = apvBasis.majorantGramMatrix(variable="G");
+nDiagnosticModes = min(6,length(apvBasis.modeNumber));
+normDiagnostics = table(apvBasis.modeNumber(1:nDiagnosticModes).', ...
+    real(diag(apvSignedGram(1:nDiagnosticModes,1:nDiagnosticModes))), ...
+    real(diag(apvMajorantGram(1:nDiagnosticModes,1:nDiagnosticModes))), ...
+    VariableNames=["modeNumber","signedSelfPairing","majorantSquaredNorm"]);
+disp(normDiagnostics)
+
+diagnosticCoefficients = zeros(length(apvBasis.modeNumber),1);
+diagnosticCoefficients(1:nDiagnosticModes) = 1./(1:nDiagnosticModes).';
+diagnosticSignedPairing = real(diagnosticCoefficients'*apvSignedGram*diagnosticCoefficients);
+diagnosticMajorantNorm = apvBasis.majorantNorm(diagnosticCoefficients,variable="G");
+fprintf("Diagnostic APV state: signed self-pairing %.6g; Hilbert-majorant norm %.6g.\n", ...
+    diagnosticSignedPairing,diagnosticMajorantNorm);
 
 %% Build both transforms on the APV-designed grid
 % Grid design and transform fitting are named separately. `modeRootGrid`
@@ -59,7 +89,11 @@ mdaBasis = solver.solveEVP(mdaEVP,nModes=nAvailableModes);
 %
 %   F_i F_j -> F,   F_i G_j -> G,   G_i G_j -> F.
 %
-% MDA does not use this APV quadratic-product policy.
+% Both the discrete and continuous product projections use the signed
+% pairing and signed Gram solve. Their difference and the source product
+% are measured with the positive majorant, so every retained negative APV
+% mode participates without making an error magnitude negative or
+% imaginary. MDA does not use this APV quadratic-product policy.
 gramTolerance = 1e-2;
 quadraticAliasingTolerance = 0.1;
 [z,apvGridDesign] = apvBasis.modeRootGrid(nPoints=Nz);
@@ -348,7 +382,7 @@ end
 hold off
 grid on
 xlabel("APV prefix mode count")
-ylabel("normalized projection error")
+ylabel("Hilbert-majorant relative error")
 title("APV coupled quadratic products")
 legend(Location="northwest")
 

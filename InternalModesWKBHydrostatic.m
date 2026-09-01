@@ -126,10 +126,6 @@ classdef InternalModesWKBHydrostatic < InternalModesSpectral
             switch self.normalization
                 case Normalization.kConstant
                     %no-op
-                case Normalization.omegaConstant
-                    A = sqrt( self.Lz ./ h);
-                    F = A.*F;
-                    G = G.*G;
                 otherwise
                     error('This normalization is not available for the analytical WKB solution.');
             end

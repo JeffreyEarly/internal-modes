@@ -9,7 +9,7 @@ mathjax: true
 
 #  gramMatrix
 
-Return a Gram matrix for exact `F` or `G` modes.
+Return the signed Gram matrix for exact `F` or `G` modes.
 
 
 ---
@@ -32,5 +32,8 @@ Return a Gram matrix for exact `F` or `G` modes.
   $$M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
   \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
   \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).$$
+  This is the Pontryagin pairing used for projection and signed
+  invariants and can be indefinite. Use `majorantGramMatrix`
+  for positive magnitudes and error measures.
   Use `endpointGramTerms` to inspect the prepared endpoint
   vectors that generate the rank-one endpoint updates.

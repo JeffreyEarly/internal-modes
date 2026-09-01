@@ -40,7 +40,10 @@ $$A_\mathrm{f}^{V}A_\mathrm{i}^{V}=Q_V.$$
 
 `modeProjectionFunctional` returns
 $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$ before the active Gram solve;
-`transformForward` returns coefficients after that solve.
+`transformForward` returns coefficients after that solve. Both use
+the signed Pontryagin pairing. `targetMajorantGramMatrix` returns the
+induced positive Hilbert majorant used for error magnitudes; it does
+not replace the signed projection metric.
 When `variable` is omitted, accessors use `primaryVariable`, which is
 the solved formulation when that channel was requested and otherwise
 the first directly representable requested channel.
@@ -57,6 +60,8 @@ F = transform.transformBack(aG,variable="F");
 ## Topics
 + Inspect samples and modes
   + [`primaryVariable`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/primaryvariable.html) Default F/G channel used when `variable` is omitted.
++ Assess transform quality
+  + [`targetMajorantGramMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/targetmajorantgrammatrix.html) Return the continuous positive Hilbert-majorant Gram matrix.
 + Other
   + [`N2Values`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/n2values.html) Buoyancy frequency squared sampled at `z`.
   + [`activeModeMask`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/activemodemask.html) Return the full-family active-column projector mask.
@@ -68,13 +73,13 @@ F = transform.transformBack(aG,variable="F");
   + [`forwardTransformReason`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/forwardtransformreason.html) Return the reason a direct projection is unavailable.
   + [`g`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/g.html) Gravitational acceleration.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/gramconditionnumber.html) Return the active sampled-Gram condition number.
-  + [`gramMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/grammatrix.html) Return the sampled full-family Gram matrix.
+  + [`gramMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/grammatrix.html) Return the sampled signed full-family Gram matrix.
   + [`h`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/h.html) Equivalent depths aligned with `modeNumber`.
   + [`hasForwardTransform`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/hasforwardtransform.html) Return whether a direct sampled projection exists.
   + [`hasNegativeWeights`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/hasnegativeweights.html) Whether any shared quadrature weight is negative.
   + [`inverseMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/inversematrix.html) Return the sampled modal synthesis matrix for F or G.
   + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/inversematrixconditionnumber.html) Return the active sampled-basis condition number.
-  + [`metricMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/metricmatrix.html) Return the variable-qualified sampled metric.
+  + [`metricMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/metricmatrix.html) Return the variable-qualified sampled signed metric.
   + [`modeFamily`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/modefamily.html) Internal-mode family name.
   + [`modeNumber`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/modenumber.html) Physical labels for the aligned modal family.
   + [`modeProjectionFunctional`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/modeprojectionfunctional.html) Apply `(A_i^V)' W_V` without solving the modal Gram system.
@@ -83,7 +88,7 @@ F = transform.transformBack(aG,variable="F");
   + [`relativeGramOperatorError`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/relativegramoperatorerror.html) Return the normalized Gram operator error for one channel.
   + [`roundTripError`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/roundtriperror.html) Return the active-projector round-trip error for one channel.
   + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/targetgramispositivedefinite.html) Return whether the active target channel defines a norm.
-  + [`targetGramMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/targetgrammatrix.html) Return the continuous full-family target Gram matrix.
+  + [`targetGramMatrix`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/targetgrammatrix.html) Return the continuous signed full-family target Gram matrix.
   + [`transformBack`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/transformback.html) Synthesize F or G values from full-family coefficients.
   + [`transformForward`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/transformforward.html) Project sampled values into aligned family coefficients.
   + [`weights`](/internal-modes/classes-v2/discrete-transforms/iminternalmodesdiscretetransform/weights.html) Shared quadrature weights.

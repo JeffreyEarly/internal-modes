@@ -3,7 +3,7 @@ layout: default
 title: rawVariable
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 17
+nav_order: 22
 mathjax: true
 ---
 

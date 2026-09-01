@@ -7,6 +7,9 @@ nav_order: 100
 # Version History
 
 ## Unreleased
+- removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
+- added the induced Hilbert-majorant APIs `majorantInnerProduct`, `majorantGramMatrix`, `majorantNorm`, and `targetMajorantGramMatrix`; retained signed Pontryagin projection and spectra; and enabled coupled APV quadratic certification with retained negative modes by measuring relative errors in the positive majorant
+- moved singular-pencil rejection into generic eigenpair processing and made zero-norm classification mode-local, preventing near-null generalized eigenvectors and unrelated large columns from corrupting physical mode selection
 - identified the integrated V2 development package as `2.0.0-beta.1`; this remains a prerelease and does not declare or publish a stable V2 API
 - reconciled the scalar and aligned transform contracts, centralized retained-band fitting and normalization policy, simplified redundant validation, and qualified the V2 API, examples, generated reference, and installed package as one integration increment
 - replaced the V2 analytical SQG-profile and availability-report APIs with concrete constant- and exponential-stratification `geostrophicZeroAPVModesAtWavenumber` constructors, exact canonical `F/G` endpoint responses, and an `IMAnalyticalGeostrophicZeroAPVModesBasis` supporting the numerical quadratic-form and rotation contracts

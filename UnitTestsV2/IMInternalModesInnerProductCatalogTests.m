@@ -63,6 +63,29 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyEqual(gLinkedSpec.endpointInnerProductTerms(1).coefficient, -g/2, RelTol=1e-12)
         end
 
+        function majorantRecipeUsesAbsoluteSolvedAndCatalogEndpointCoefficients(testCase)
+            [N2,zDomain,~,g] = testCase.profile();
+            catalogEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain, ...
+                surfaceBoundary=IMBoundaryCondition(a=2,b=3));
+            signedCatalog = catalogEVP.innerProduct("F");
+            majorantCatalog = catalogEVP.majorantInnerProduct("F");
+            apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g, ...
+                g0=-0.02,gd=-0.03,surfaceBoundary="rigidLid");
+            signedAPV = apvEVP.innerProduct("F");
+            majorantAPV = apvEVP.majorantInnerProduct("F");
+
+            testCase.verifyEqual(signedCatalog.kind,"signedPontryagin")
+            testCase.verifyEqual(majorantCatalog.kind,"inducedHilbertMajorant")
+            testCase.verifyEqual([majorantCatalog.endpointInnerProductTerms.coefficient], ...
+                abs([signedCatalog.endpointInnerProductTerms.coefficient]),AbsTol=0)
+            testCase.verifyEqual([majorantAPV.surfaceWeights.coefficient],abs([signedAPV.surfaceWeights.coefficient]),AbsTol=0)
+            testCase.verifyEqual([majorantAPV.bottomWeights.coefficient],abs([signedAPV.bottomWeights.coefficient]),AbsTol=0)
+            z = linspace(zDomain(1),zDomain(2),5).';
+            context.N2 = N2;
+            context.g = g;
+            testCase.verifyEqual(majorantAPV.interiorWeight(z,context),signedAPV.interiorWeight(z,context),AbsTol=0)
+        end
+
         function diagnosticInteriorRowsMatchCatalog(testCase)
             [N2, zDomain] = testCase.profile();
             fP6 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...

@@ -80,7 +80,7 @@ classdef (Abstract) InternalModesBase < handle
         % Mode normalization convention.
         %
         % - Topic: Configure normalization and boundaries
-        normalization = Normalization.kConstant % Normalization used for the modes. Either Normalization.(kConstant, omegaConstant, uMax, or wMax).
+        normalization = Normalization.kConstant % Normalization used for the modes. Either Normalization.(kConstant, uMax, wMax, surfacePressure, or geostrophic).
         % Upper boundary condition at the ocean surface.
         %
         % - Topic: Configure normalization and boundaries
@@ -210,8 +210,8 @@ classdef (Abstract) InternalModesBase < handle
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function set.normalization(obj,norm)
-            if  (norm ~= Normalization.geostrophic && norm ~= Normalization.kConstant && norm ~= Normalization.omegaConstant && norm ~= Normalization.uMax && norm ~= Normalization.wMax && norm ~= Normalization.surfacePressure)
-                error('Invalid normalization! Valid options: Normalization.kConstant, Normalization.omegaConstant, Normalization.uMax, Normalization.wMax')
+            if  (norm ~= Normalization.geostrophic && norm ~= Normalization.kConstant && norm ~= Normalization.uMax && norm ~= Normalization.wMax && norm ~= Normalization.surfacePressure)
+                error('Invalid normalization! Valid options: Normalization.kConstant, Normalization.uMax, Normalization.wMax, Normalization.surfacePressure, Normalization.geostrophic')
             else
                 obj.normalization = norm;
             end

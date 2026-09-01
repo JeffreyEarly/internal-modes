@@ -3,13 +3,13 @@ layout: default
 title: orientModeSigns
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 14
+nav_order: 19
 mathjax: true
 ---
 
 #  orientModeSigns
 
-Orient modes so the surface `F` value is positive when possible.
+Orient modes so `G` is positive immediately below the surface.
 
 > Developer documentation: this item describes internal implementation details.
 
@@ -25,11 +25,12 @@ Orient modes so the surface `F` value is positive when possible.
 
 ## Discussion
 
-  This developer utility applies the internal-mode sign
-  convention used after numerical solves: prefer a finite
-  nonzero surface `F` value, fall back to the largest `F`
-  value on the solver grid, then fall back to `G`. The same
-  sign flip is applied to the coupled `F`/`G` mode pair.
+  A resolved nonzero surface `G` value sets the sign directly.
+  When `G` vanishes at the surface, the sign is chosen from
+  $$-G_z(z_s)$$, the leading one-sided Taylor coefficient into
+  the ocean. The rigid-lid barotropic mode has `G` identically
+  zero, so that known `F`-form zero mode uses `F` as a fallback.
+  The same sign flip is applied to the coupled `F`/`G` pair.
   `IMInternalModesBasis` is a value class, so callers must keep
   the returned basis set:
 

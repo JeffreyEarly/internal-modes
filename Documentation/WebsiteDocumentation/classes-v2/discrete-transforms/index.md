@@ -2,7 +2,7 @@
 layout: default
 title: Discrete transforms
 parent: Class documentation V2
-nav_order: 4
+nav_order: 5
 has_children: true
 permalink: /classes-v2/discrete-transforms
 mathjax: true
@@ -92,9 +92,15 @@ F_iF_j\rightarrow F,
 \qquad G_iG_j\rightarrow F.
 $$
 
-Products involving an identically zero source column are skipped. Continuous product projections use the solver's integration grid independently of the fixed transform points and weights. Leakage and quadratic-aliasing policies require positive-definite active target subspaces for every participating channel; signed channels use the Gram policy alone.
+Products involving an identically zero source column are skipped. Continuous product projections use the solver's integration grid independently of the fixed transform points and weights. Both continuous and discrete product projections use the signed pairing and signed Gram solve. Their difference and the product magnitude are measured with the induced positive Hilbert majorant:
 
-`IMInternalModesDiscreteTransformAssessment.prefixDiagnostics` records the worst variable or product channel at every prefix. `variablePrefixDiagnostics(variable=...)` exposes active counts, Gram and round-trip errors, rank, conditioning, and target definiteness for one channel. Supplying explicit `nModes` remains strict: a failing requested family band throws instead of silently shortening it.
+$$
+q_N=\max_{i,j}\frac{\left\lVert\Pi_N^\mathrm{discrete}p_{ij}-\Pi_N^\mathrm{continuous}p_{ij}\right\rVert_+}{\lVert p_{ij}\rVert_+}.
+$$
+
+Negative APV modes retain their negative `modeNumber` and participate in every applicable product pair. `quadraticAliasingPolicy` records `projectionPairing="signedPontryagin"` and `errorNorm="inducedHilbertMajorant"`. Rejected-mode leakage still requires positive-definite active target subspaces; signed leakage is unsupported until it has a separate scientific contract.
+
+`IMInternalModesDiscreteTransformAssessment.prefixDiagnostics` records the worst variable or product channel at every prefix. `variablePrefixDiagnostics(variable=...)` exposes active counts, Gram and round-trip errors, rank, conditioning, and target definiteness for one channel. The transform's `targetGramMatrix(variable=...)` is the signed continuous projection target; `targetMajorantGramMatrix(variable=...)` is its positive error-magnitude counterpart. Supplying explicit `nModes` remains strict: a failing requested family band throws instead of silently shortening it.
 
 When `variable` is omitted from a transform accessor, `primaryVariable` selects the solved formulation when it is directly representable and otherwise the first available channel. Thus an F-form hydrostatic transform defaults to F, a G-form transform defaults to G, and an MDA transform defaults to its directly projectable G channel.
 

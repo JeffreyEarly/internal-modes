@@ -24,6 +24,7 @@ Create an aligned internal-mode transform from prepared data.
 
   `channelData.F` and `channelData.G` are scalar structs with
   fields `available`, `reason`, `activeModeMask`,
-  `metricMatrix`, and `targetGramMatrix`.  Diagnostic inverse
+  `metricMatrix`, `targetGramMatrix`, and
+  `targetMajorantGramMatrix`. Diagnostic inverse
   matrices and endpoint traces are supplied for both variables,
   including variables that have no direct sampled projection.

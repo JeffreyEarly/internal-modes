@@ -3,7 +3,7 @@ layout: default
 title: leakagePolicy
 parent: IMInternalModesDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 8
+nav_order: 10
 mathjax: true
 ---
 

@@ -9,7 +9,7 @@ mathjax: true
 
 #  metricMatrix
 
-Return the variable-qualified sampled metric.
+Return the variable-qualified sampled signed metric.
 
 
 ---

@@ -16,7 +16,7 @@ Return the analytical barotropic mode branch for fixed $$\omega$$.
 
 ## Declaration
 ```matlab
- [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self,omega)
+ [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = BarotropicModeAtFrequency(self,omega)
 ```
 ## Parameters
 + `self`  InternalModesConstantStratification instance
@@ -32,7 +32,6 @@ Return the analytical barotropic mode branch for fixed $$\omega$$.
 + `uMaxRatio0`  ratio from the active normalization to `uMax`
 + `wMaxRatio0`  ratio from the active normalization to `wMax`
 + `kConstantRatio0`  ratio from the active normalization to `kConstant`
-+ `omegaConstantRatio0`  ratio from the active normalization to `omegaConstant`
 + `geostrophicRatio0`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

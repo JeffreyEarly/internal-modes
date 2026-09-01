@@ -3,7 +3,7 @@ layout: default
 title: orientModeSigns
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 19
+nav_order: 22
 mathjax: true
 ---
 

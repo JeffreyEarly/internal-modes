@@ -3,7 +3,7 @@ layout: default
 title: endpointGramTerms
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 6
+nav_order: 7
 mathjax: true
 ---
 

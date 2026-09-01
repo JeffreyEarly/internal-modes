@@ -9,7 +9,7 @@ mathjax: true
 
 #  innerProduct
 
-Return the `F` or `G` inner-product recipe.
+Return the signed `F` or `G` inner-product recipe.
 
 
 ---
@@ -28,7 +28,7 @@ Return the `F` or `G` inner-product recipe.
 
   For `G`, the interior weight is $$N^2/g$$. For `F`, the
   interior weight is one. The returned struct has fields
-  `variable`, `interiorWeight`, `surfaceWeights`,
+  `variable`, `kind`, `interiorWeight`, `surfaceWeights`,
   `bottomWeights`, `endpointInnerProductTerms`,
   `hasInnerProduct`, and `reason`. `hasInnerProduct` is true
   when the variable has a known inner product. When it is false, Gram

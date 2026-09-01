@@ -3,13 +3,13 @@ layout: default
 title: discreteTransform
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 7
+nav_order: 8
 mathjax: true
 ---
 
 #  discreteTransform
 
-Build an aligned internal-mode F/G discrete transform.
+Build an aligned internal-mode F/G transform through the compatibility API.
 
 
 ---
@@ -31,7 +31,7 @@ Build an aligned internal-mode F/G discrete transform.
 
 ## Returns
 + `transform`  retained aligned transform
-+ `assessment`  shared-rule retained-band diagnostics
++ `assessment`  family diagnostics and, for certified construction, grid and search provenance
 
 ## Discussion
 
@@ -41,7 +41,14 @@ Build an aligned internal-mode F/G discrete transform.
   channel in canonical order `F`, `G`. Point-limited construction still
   uses roots of the next mode in the EVP's solved formulation.
 
-  The Gram policy must pass independently for every requested channel.
-  Optional leakage uses same-variable rejected modes. Coupled quadratic
-  aliasing assesses `FF->F` and `GG->F` when F is enabled, and `FG->G`
-  when G is enabled. All prefixes reuse the candidate points and weights.
+  With neither `weights` nor `nModes`, this delegates to
+  `certifiedDiscreteTransform`, which independently refits family weights
+  while selecting the retained count. Prefer that named method in new code.
+  `fitDiscreteTransform(z=z,modeCount=N)` is the strict exact-band API, and
+  `modeRootGrid` makes the source of shared APV/MDA points explicit.
+
+  Supplying weights or the legacy `nModes` name retains fixed-rule prefix
+  assessment. The Gram policy must pass independently for every requested
+  channel. Optional leakage uses same-variable rejected modes. Coupled
+  quadratic aliasing assesses `FF->F` and `GG->F` when F is enabled, and
+  `FG->G` when G is enabled.

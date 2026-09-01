@@ -3,7 +3,7 @@ layout: default
 title: makeBasisSet
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 14
+nav_order: 15
 mathjax: true
 ---
 

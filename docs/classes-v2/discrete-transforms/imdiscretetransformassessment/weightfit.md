@@ -3,7 +3,7 @@ layout: default
 title: weightFit
 parent: IMDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 16
+nav_order: 18
 mathjax: true
 ---
 

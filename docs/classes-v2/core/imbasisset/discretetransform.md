@@ -3,13 +3,13 @@ layout: default
 title: discreteTransform
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 4
+nav_order: 5
 mathjax: true
 ---
 
 #  discreteTransform
 
-Build and assess a scalar Galerkin transform on a fixed quadrature rule.
+Build a scalar Galerkin transform using the compatibility entry point.
 
 
 ---
@@ -30,7 +30,7 @@ Build and assess a scalar Galerkin transform on a fixed quadrature rule.
 
 ## Returns
 + `transform`  retained production transform
-+ `assessment`  fixed-rule candidate and retained-prefix diagnostics
++ `assessment`  transform diagnostics and, for certified construction, grid and search provenance
 
 ## Discussion
 
@@ -40,20 +40,23 @@ Build and assess a scalar Galerkin transform on a fixed quadrature rule.
   largest candidate modal prefix whose grid has exactly the requested
   number of points. `nPoints` and `z` are mutually exclusive.
 
-  Unless `weights` are supplied with `z`, the quadrature weights are fitted
-  once for the complete candidate band by `quadratureWeightsForPoints`.
-  Every leading modal prefix is then assessed using those same physical
-  points and weights. The normalized-Gram policy is always active. Optional
-  rejected-mode leakage and scalar quadratic-aliasing policies are enabled
-  by supplying their positive tolerances. The returned production transform
-  contains the largest consecutive prefix accepted by every enabled policy.
+  With neither `weights` nor `nModes`, this method delegates to
+  `certifiedDiscreteTransform`: candidate counts receive independent weight
+  fits, so a poorly represented large band cannot contaminate a smaller
+  band's rule. Prefer that named method in new code. Use
+  `fitDiscreteTransform(z=z,modeCount=N)` for a strict exact-band fit, and
+  `modeRootGrid` to design and name a shared physical grid explicitly.
+
+  Supplying `weights`, or the legacy `nModes` name, retains the lower-level
+  fixed-rule behavior. Every leading prefix is assessed on those same
+  weights. This path remains useful for diagnosing a caller-owned rule and
+  for compatibility, but it does not perform independently refitted count
+  selection.
 
   If `nModes` is supplied with `z`, that band is strict: every requested
   mode must pass every enabled policy, or construction throws an error.
-  With `nModes` omitted, the candidate band is the largest available prefix
-  that can be represented by the supplied points and may be reduced by the
-  policies. The `nPoints` workflow determines its candidate band from the
-  exact mode-root grid and therefore does not accept `nModes`.
+  The `nPoints` workflow designs its physical grid from mode roots and then
+  uses certified count selection. It therefore does not accept `nModes`.
 
   For prefix $$N$$, define
 

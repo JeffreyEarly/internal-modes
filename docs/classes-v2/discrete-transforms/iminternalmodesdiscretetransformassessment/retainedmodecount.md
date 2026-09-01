@@ -3,7 +3,7 @@ layout: default
 title: retainedModeCount
 parent: IMInternalModesDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 14
+nav_order: 16
 mathjax: true
 ---
 

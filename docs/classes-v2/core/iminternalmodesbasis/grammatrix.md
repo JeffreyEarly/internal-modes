@@ -3,13 +3,13 @@ layout: default
 title: gramMatrix
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 10
+nav_order: 12
 mathjax: true
 ---
 
 #  gramMatrix
 
-Return a Gram matrix for `F` or `G`.
+Return the signed Gram matrix for `F` or `G`.
 
 
 ---
@@ -38,6 +38,11 @@ Return a Gram matrix for `F` or `G`.
   \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
   \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).
   $$
+
+  This is the Pontryagin pairing used for modal projection and
+  signed invariants. It can be indefinite. Use
+  `majorantGramMatrix` when a positive matrix is required for
+  magnitudes, error tolerances, or convergence tests.
 
   Use `endpointGramTerms` to inspect the prepared endpoint
   vectors that generate the rank-one endpoint updates.

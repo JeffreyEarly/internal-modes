@@ -200,11 +200,11 @@ classdef IMInternalModes < IMEigenvalueProblem
         end
 
         function spec = innerProduct(self, variable)
-            % Return the `F` or `G` inner-product recipe.
+            % Return the signed `F` or `G` inner-product recipe.
             %
             % For `G`, the interior weight is $$N^2/g$$. For `F`, the
             % interior weight is one. The returned struct has fields
-            % `variable`, `interiorWeight`, `surfaceWeights`,
+            % `variable`, `kind`, `interiorWeight`, `surfaceWeights`,
             % `bottomWeights`, `endpointInnerProductTerms`,
             % `hasInnerProduct`, and `reason`. `hasInnerProduct` is true
             % when the variable has a known inner product. When it is false, Gram
@@ -233,6 +233,7 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             variable = string(variable);
             spec.variable = variable;
+            spec.kind = "signedPontryagin";
             if variable == "G"
                 spec.interiorWeight = @(z,ctx) ctx.N2(z)/ctx.g;
             else
@@ -250,6 +251,50 @@ classdef IMInternalModes < IMEigenvalueProblem
                 spec.endpointInnerProductTerms = catalog.endpointInnerProductTerms;
                 spec.hasInnerProduct = catalog.hasInnerProduct;
                 spec.reason = catalog.reason;
+            end
+        end
+
+        function spec = majorantInnerProduct(self, variable)
+            % Return the induced positive Hilbert-majorant recipe.
+            %
+            % The signed Pontryagin product returned by `innerProduct` is
+            % the physical pairing used for orthogonality and projection.
+            % Its natural $$L^2\oplus\mathbb C^s$$ coordinate decomposition
+            % induces a positive Hilbert product by retaining the positive
+            % interior weight and replacing every endpoint coefficient by
+            % its absolute value:
+            %
+            % $$
+            % (U,V)_+=\int w\,\overline{U}V\,dz+
+            % \sum_\ell |\alpha_\ell|\,
+            % \overline{L_\ell[U]}L_\ell[V].
+            % $$
+            %
+            % Use this recipe for magnitudes, error tolerances, and
+            % convergence diagnostics. Use `innerProduct` for signed
+            % invariants, projection functionals, and modal coefficients.
+            % The two recipes coincide when every endpoint coefficient is
+            % nonnegative.
+            %
+            % - Topic: Inspect internal-mode inner products
+            % - Declaration: spec = majorantInnerProduct(evp,variable)
+            % - Parameter variable: optional variable name, `"F"` or `"G"`
+            % - Returns spec: positive interior and absolute-endpoint recipe
+            arguments
+                self IMInternalModes
+                variable {mustBeTextScalar, mustBeMember(variable, ["F", "G"])} = self.formulation
+            end
+
+            spec = self.innerProduct(variable);
+            spec.kind = "inducedHilbertMajorant";
+            for iWeight = 1:numel(spec.surfaceWeights)
+                spec.surfaceWeights(iWeight).coefficient = abs(spec.surfaceWeights(iWeight).coefficient);
+            end
+            for iWeight = 1:numel(spec.bottomWeights)
+                spec.bottomWeights(iWeight).coefficient = abs(spec.bottomWeights(iWeight).coefficient);
+            end
+            for iTerm = 1:numel(spec.endpointInnerProductTerms)
+                spec.endpointInnerProductTerms(iTerm).coefficient = abs(spec.endpointInnerProductTerms(iTerm).coefficient);
             end
         end
 

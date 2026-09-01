@@ -146,8 +146,27 @@ classdef IMInternalModesBasis < IMBasisSet
             F = self.rawVariable("F", z) ./ self.normalizationFactors(options.normalization);
         end
 
+        function spec = majorantInnerProduct(self, options)
+            % Return the induced positive Hilbert-majorant recipe.
+            %
+            % The recipe retains the positive interior weight and replaces
+            % every signed endpoint coefficient by its absolute value. Use
+            % `evp.innerProduct` for the signed Pontryagin recipe used by
+            % projection and signed invariants.
+            %
+            % - Topic: Analyze modes
+            % - Declaration: spec = majorantInnerProduct(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns spec: positive interior and absolute-endpoint recipe
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+            end
+            spec = self.evp.majorantInnerProduct(options.variable);
+        end
+
         function gram = gramMatrix(self, options)
-            % Return a Gram matrix for `F` or `G`.
+            % Return the signed Gram matrix for `F` or `G`.
             %
             % With no arguments this uses the solved formulation over the full
             % basis-set domain. Use `variable="F"` or `variable="G"` to choose
@@ -160,6 +179,11 @@ classdef IMInternalModesBasis < IMBasisSet
             % \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
             % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).
             % $$
+            %
+            % This is the Pontryagin pairing used for modal projection and
+            % signed invariants. It can be indefinite. Use
+            % `majorantGramMatrix` when a positive matrix is required for
+            % magnitudes, error tolerances, or convergence tests.
             %
             % Use `endpointGramTerms` to inspect the prepared endpoint
             % vectors that generate the rank-one endpoint updates.
@@ -183,6 +207,68 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
             end
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
+        end
+
+        function gram = majorantGramMatrix(self, options)
+            % Return the positive Hilbert-majorant Gram matrix.
+            %
+            % The majorant retains the positive interior contribution and
+            % replaces every signed endpoint coefficient by its absolute
+            % value. It is the positive product associated with the natural
+            % $$L^2\oplus\mathbb C^s$$ decomposition of the Pontryagin
+            % space. It coincides with `gramMatrix` when all endpoint
+            % coefficients are nonnegative.
+            %
+            % - Topic: Analyze modes
+            % - Declaration: gram = majorantGramMatrix(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
+            % - Returns gram: positive Hilbert-majorant Gram matrix
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+            end
+
+            if options.zBounds(1) >= options.zBounds(2)
+                error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
+            end
+            gram = self.variableGramMatrix(string(options.variable), options.zBounds, true, true);
+        end
+
+        function value = majorantNorm(self, coefficients, options)
+            % Return the positive Hilbert-majorant norm of modal coefficients.
+            %
+            % For coefficient vector $$c$$ this returns
+            % $$\sqrt{c^*M_+c}$$, where $$M_+$$ is
+            % `majorantGramMatrix`. Do not replace this with
+            % $$\sqrt{|c^*Mc|}$$ for a signed Gram matrix $$M$$; the latter
+            % can vanish for a nonzero state and is not a norm.
+            %
+            % - Topic: Analyze modes
+            % - Declaration: value = majorantNorm(basisSet,coefficients,options)
+            % - Parameter coefficients: one coefficient per retained mode
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds `[zMin zMax]`
+            % - Returns value: positive scalar norm
+            arguments
+                self IMInternalModesBasis
+                coefficients (:,1) double {mustBeFinite}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+            end
+
+            nModes = size(self.nativeModes,2);
+            if length(coefficients) ~= nModes
+                error("IMBasisSet:InvalidCoefficientCount", "Coefficient vectors must contain one value for each retained mode (%d).", nModes);
+            end
+            gram = self.majorantGramMatrix(variable=options.variable,zBounds=options.zBounds);
+            valueSquared = real(coefficients(:)'*(gram*coefficients(:)));
+            tolerance = 1e3*eps(max(1,norm(gram,2)*norm(coefficients,2)^2));
+            if valueSquared < -tolerance
+                error("IMInternalModesBasis:InvalidMajorantGramMatrix", "The computed majorant quadratic form is negative beyond roundoff.");
+            end
+            value = sqrt(max(0,valueSquared));
         end
 
         function terms = endpointGramTerms(self, options)
@@ -303,6 +389,11 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % If `options.variable` is omitted, the solved formulation is
             % used. The requested variable must have a known inner product.
+            % This is a signed spectrum: entries associated with negative
+            % Pontryagin directions can be negative. Use `majorantNorm` for
+            % a positive total magnitude; a generally additive per-mode
+            % majorant spectrum does not exist because the majorant Gram
+            % matrix need not be diagonal in this basis.
             %
             % - Topic: Analyze modes
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
@@ -394,8 +485,9 @@ classdef IMInternalModesBasis < IMBasisSet
             % This is the raw factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
             % to `F` or `G`. If `variable` is omitted, the solved
-            % formulation is used. The requested variable must have a known
-            % inner product. Custom normalization rules
+            % formulation is used. This is a per-mode normalization
+            % convention, not a norm for arbitrary modal combinations. The
+            % requested variable must have a known inner product. Custom normalization rules
             % registered with `addNormalization` call this method.
             % The factor is computed from raw, unnormalized modes before
             % the active basis normalization is applied.
@@ -713,16 +805,20 @@ classdef IMInternalModesBasis < IMBasisSet
                 requested = ismember(variable,variables);
                 if requested
                     rawGram = self.variableGramMatrix(variable,self.zDomain,false);
+                    rawMajorantGram = self.variableGramMatrix(variable,self.zDomain,false,true);
                     targetGramMatrix = rawGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
+                    targetMajorantGramMatrix = rawMajorantGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
                     targetGramMatrix = 0.5*(targetGramMatrix+targetGramMatrix.');
+                    targetMajorantGramMatrix = 0.5*(targetMajorantGramMatrix+targetMajorantGramMatrix.');
                     if variable == "F"
                         sampled = inverseF;
                     else
                         sampled = inverseG;
                     end
-                    activeMask = self.internalModesTransformActiveMask(variable,sampled,targetGramMatrix);
+                    activeMask = self.internalModesTransformActiveMask(variable,sampled,targetGramMatrix,targetMajorantGramMatrix);
                     channelData.(char(variable)) = struct(available=true,reason="",activeModeMask=activeMask,metricMatrix=preparation.metricMatrix, ...
-                        targetGramMatrix=targetGramMatrix,interiorWeight=preparation.interiorWeight,endpointMetricMatrix=preparation.endpointMetricMatrix);
+                        targetGramMatrix=targetGramMatrix,targetMajorantGramMatrix=targetMajorantGramMatrix, ...
+                        interiorWeight=preparation.interiorWeight,endpointMetricMatrix=preparation.endpointMetricMatrix);
                 else
                     reason = preparation.reason;
                     if preparation.available
@@ -730,8 +826,10 @@ classdef IMInternalModesBasis < IMBasisSet
                     end
                     metricMatrix = zeros(0,0);
                     targetGramMatrix = zeros(0,0);
+                    targetMajorantGramMatrix = zeros(0,0);
                     activeMask = false(1,nModes);
-                    channelData.(char(variable)) = struct(available=false,reason=string(reason),activeModeMask=activeMask,metricMatrix=metricMatrix,targetGramMatrix=targetGramMatrix);
+                    channelData.(char(variable)) = struct(available=false,reason=string(reason),activeModeMask=activeMask,metricMatrix=metricMatrix, ...
+                        targetGramMatrix=targetGramMatrix,targetMajorantGramMatrix=targetMajorantGramMatrix);
                 end
             end
 
@@ -770,9 +868,10 @@ classdef IMInternalModesBasis < IMBasisSet
             variables = canonical(ismember(canonical,variables));
         end
 
-        function [available,reason,metricMatrix,targetGramMatrix,activeMask,interiorWeight,endpointMetricMatrix] = prepareInternalModesTransformChannel(self, variable, z, weights, nModes)
+        function [available,reason,metricMatrix,targetGramMatrix,targetMajorantGramMatrix,activeMask,interiorWeight,endpointMetricMatrix] = prepareInternalModesTransformChannel(self, variable, z, weights, nModes)
             [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = self.sampledInternalModesMetric(variable,z,weights);
             targetGramMatrix = zeros(0,0);
+            targetMajorantGramMatrix = zeros(0,0);
             activeMask = false(1,nModes);
             if ~available
                 return;
@@ -780,21 +879,31 @@ classdef IMInternalModesBasis < IMBasisSet
             normalizationFactors = self.normalizationFactors(self.normalization);
             normalizationFactors = normalizationFactors(1:nModes);
             rawGram = self.variableGramMatrix(string(variable),self.zDomain,false);
+            rawMajorantGram = self.variableGramMatrix(string(variable),self.zDomain,false,true);
             targetGramMatrix = rawGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
+            targetMajorantGramMatrix = rawMajorantGram(1:nModes,1:nModes)./(normalizationFactors(:)*normalizationFactors(:).');
             targetGramMatrix = 0.5*(targetGramMatrix+targetGramMatrix.');
+            targetMajorantGramMatrix = 0.5*(targetMajorantGramMatrix+targetMajorantGramMatrix.');
             sampled = self.rawVariable(string(variable),z);
             sampled = sampled(:,1:nModes)./normalizationFactors;
-            activeMask = self.internalModesTransformActiveMask(string(variable),sampled,targetGramMatrix);
+            activeMask = self.internalModesTransformActiveMask(string(variable),sampled,targetGramMatrix,targetMajorantGramMatrix);
         end
 
-        function [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = sampledInternalModesMetric(self, variable, z, weights)
+        function [available,reason,metricMatrix,interiorWeight,endpointMetricMatrix] = sampledInternalModesMetric(self, variable, z, weights, useMajorant)
+            if nargin < 5
+                useMajorant = false;
+            end
             variable = string(variable);
             z = z(:);
             weights = weights(:);
             metricMatrix = zeros(0,0);
             interiorWeight = zeros(size(z));
             endpointMetricMatrix = zeros(length(z));
-            spec = self.evp.innerProduct(variable);
+            if useMajorant
+                spec = self.evp.majorantInnerProduct(variable);
+            else
+                spec = self.evp.innerProduct(variable);
+            end
             if ~spec.hasInnerProduct
                 available = false;
                 reason = "Its continuous inner product is unavailable. " + string(spec.reason);
@@ -869,25 +978,34 @@ classdef IMInternalModesBasis < IMBasisSet
             reason = "";
         end
 
-        function activeMask = internalModesTransformActiveMask(self, variable, sampled, targetGramMatrix)
-            targetNorms = diag(targetGramMatrix);
-            targetTolerance = 1e3*eps(max(1,max(abs(targetNorms))));
-            columnTolerance = 1e3*eps(max(1,norm(sampled,"fro")));
+        function activeMask = internalModesTransformActiveMask(self, variable, sampled, targetGramMatrix, targetMajorantGramMatrix)
+            targetNorms = diag(targetGramMatrix).';
+            majorantNorms = diag(targetMajorantGramMatrix).';
+            targetTolerance = 1e3*eps(max(1,majorantNorms));
+            columnNorms = vecnorm(sampled,2,1);
+            columnTolerance = 1e3*eps(max(1,columnNorms));
             zeroTarget = abs(targetNorms) <= targetTolerance;
-            zeroSample = vecnorm(sampled,2,1) <= columnTolerance;
-            unsupportedZeroNorm = zeroTarget(:).' & ~zeroSample;
+            zeroSample = columnNorms <= columnTolerance;
+            unsupportedZeroNorm = zeroTarget & ~zeroSample;
             if any(unsupportedZeroNorm)
                 labels = self.modeNumber(1:length(unsupportedZeroNorm));
                 labels = labels(unsupportedZeroNorm);
                 error("IMInternalModesBasis:UnsupportedZeroNormMode", "The %s channel has nonzero sampled columns with zero continuous norm for mode label(s) %s.", variable, join(string(labels),", "));
             end
-            activeMask = ~(zeroTarget(:).' & zeroSample);
+            activeMask = ~(zeroTarget & zeroSample);
         end
 
-        function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
+        function gram = variableGramMatrix(self, variable, zBounds, useNormalized, useMajorant)
+            if nargin < 5
+                useMajorant = false;
+            end
             z = self.solver.innerProductGrid(zBounds);
             context = self.evp.contextForSolver(self.solver);
-            spec = self.evp.innerProduct(variable);
+            if useMajorant
+                spec = self.evp.majorantInnerProduct(variable);
+            else
+                spec = self.evp.innerProduct(variable);
+            end
             if ~isfield(spec, "hasInnerProduct") || ~spec.hasInnerProduct
                 error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot be used as a Gram matrix. %s", string(spec.variable), string(spec.reason));
             end
@@ -908,7 +1026,11 @@ classdef IMInternalModesBasis < IMBasisSet
             endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
             for iTerm = 1:numel(endpointTerms)
                 valuesAtEndpoint = endpointTerms(iTerm).values(:);
-                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
+                coefficient = endpointTerms(iTerm).coefficient;
+                if useMajorant
+                    coefficient = abs(coefficient);
+                end
+                gram = gram + coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
             end
         end
     end

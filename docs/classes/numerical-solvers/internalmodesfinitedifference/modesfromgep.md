@@ -25,7 +25,7 @@ Solve a generalized EVP and map its modes onto the public grid.
 + `A`  left generalized-eigenproblem matrix
 + `B`  right generalized-eigenproblem matrix
 + `h_func`  map from eigenvalue to equivalent depth
-+ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
++ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, and `kConstant`
 
 ## Returns
 + `F`  horizontal-velocity mode matrix on `zOut`

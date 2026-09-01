@@ -102,7 +102,7 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Declaration: [F,G,h,omega,varargout] = modesAtWavenumber(self,k,varargin)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k: horizontal wavenumber
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `geostrophicNorm`
             % - Returns F: horizontal-velocity mode matrix on `zOut`
             % - Returns G: vertical-velocity mode matrix on `zOut`
             % - Returns h: equivalent-depth row vector
@@ -117,10 +117,10 @@ classdef InternalModesConstantStratification < InternalModesBase
             end
             h = (self.N0*self.N0 - self.f0*self.f0)./(self.g*(k*k+k_z.*k_z)); 
             
-            [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio,geostrophicRatio] = self.BaroclinicModesWithEigenvalue(k_z,h);
+            [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = self.BaroclinicModesWithEigenvalue(k_z,h);
             
             if self.upperBoundary == UpperBoundary.freeSurface                
-                [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = self.BarotropicModeAtWavenumber(k);
+                [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = self.BarotropicModeAtWavenumber(k);
                 h = cat(2,h0,h(1:end-1));
                 F = cat(2,F0,F(:,1:end-1));
                 G = cat(2,G0,G(:,1:end-1));
@@ -130,7 +130,6 @@ classdef InternalModesConstantStratification < InternalModesBase
                 uMaxRatio = cat(2,uMaxRatio0,uMaxRatio(1:end-1));
                 wMaxRatio = cat(2,wMaxRatio0,wMaxRatio(1:end-1));
                 kConstantRatio = cat(2,kConstantRatio0,kConstantRatio(1:end-1));
-                omegaConstantRatio = cat(2,omegaConstantRatio0,omegaConstantRatio(1:end-1));
                 geostrophicRatio = cat(2,geostrophicRatio0,geostrophicRatio(1:end-1));
             end
 
@@ -148,12 +147,10 @@ classdef InternalModesConstantStratification < InternalModesBase
                     varargout{iArg} = wMaxRatio;
                 elseif  ( strcmp(varargin{iArg}, 'kConstant') )
                     varargout{iArg} = kConstantRatio;
-                elseif  ( strcmp(varargin{iArg}, 'omegaConstant') )
-                    varargout{iArg} = omegaConstantRatio;
                 elseif  ( strcmp(varargin{iArg}, 'geostrophicNorm') )
                     varargout{iArg} = geostrophicRatio;
                 else
-                    error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, omegaConstant, geostrophicNorm');
+                    error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, geostrophicNorm');
                 end
             end
 
@@ -169,7 +166,7 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Declaration: [F,G,h,k,varargout] = modesAtFrequency(self,omega,varargin)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter omega: frequency in radians per second
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, `omegaConstant`, and `geostrophicNorm`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `geostrophicNorm`
             % - Returns F: horizontal-velocity mode matrix on `zOut`
             % - Returns G: vertical-velocity mode matrix on `zOut`
             % - Returns h: equivalent-depth row vector
@@ -188,10 +185,10 @@ classdef InternalModesConstantStratification < InternalModesBase
                h = zeros(size(h));
             end
             
-            [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio,geostrophicRatio] = self.BaroclinicModesWithEigenvalue(k_z,h);
+            [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = self.BaroclinicModesWithEigenvalue(k_z,h);
             
             if self.upperBoundary == UpperBoundary.freeSurface                
-                [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = self.BarotropicModeAtFrequency(omega);
+                [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = self.BarotropicModeAtFrequency(omega);
                 h = cat(2,h0,h(1:end-1));
                 F = cat(2,F0,F(:,1:end-1));
                 G = cat(2,G0,G(:,1:end-1));
@@ -201,7 +198,6 @@ classdef InternalModesConstantStratification < InternalModesBase
                 uMaxRatio = cat(2,uMaxRatio0,uMaxRatio(1:end-1));
                 wMaxRatio = cat(2,wMaxRatio0,wMaxRatio(1:end-1));
                 kConstantRatio = cat(2,kConstantRatio0,kConstantRatio(1:end-1));
-                omegaConstantRatio = cat(2,omegaConstantRatio0,omegaConstantRatio(1:end-1));
                 geostrophicRatio = cat(2,geostrophicRatio0,geostrophicRatio(1:end-1));
             end
 
@@ -219,12 +215,10 @@ classdef InternalModesConstantStratification < InternalModesBase
                     varargout{iArg} = wMaxRatio;
                 elseif  ( strcmp(varargin{iArg}, 'kConstant') )
                     varargout{iArg} = kConstantRatio;
-                elseif  ( strcmp(varargin{iArg}, 'omegaConstant') )
-                    varargout{iArg} = omegaConstantRatio;
                 elseif  ( strcmp(varargin{iArg}, 'geostrophicNorm') )
                     varargout{iArg} = geostrophicRatio;
                 else
-                    error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, omegaConstant, geostrophicNorm');
+                    error('Invalid option. You may request F2, G2, N2G2, uMax, wMax, kConstant, geostrophicNorm');
                 end
             end
 
@@ -281,11 +275,11 @@ classdef InternalModesConstantStratification < InternalModesBase
         
         % k_z and h should be of size [1, nModes]
         % [F,G] will return with size [length(z), nModes]
-        function [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio,geostrophicRatio] = BaroclinicModesWithEigenvalue(self, k_z, h)
+        function [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BaroclinicModesWithEigenvalue(self, k_z, h)
             % Evaluate the analytical baroclinic mode shapes for given eigenvalues.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BaroclinicModesWithEigenvalue(self,k_z,h)
+            % - Declaration: [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BaroclinicModesWithEigenvalue(self,k_z,h)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k_z: vertical wavenumber row vector
             % - Parameter h: equivalent-depth row vector
@@ -297,7 +291,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Returns uMaxRatio: ratio from the active normalization to `uMax`
             % - Returns wMaxRatio: ratio from the active normalization to `wMax`
             % - Returns kConstantRatio: ratio from the active normalization to `kConstant`
-            % - Returns omegaConstantRatio: ratio from the active normalization to `omegaConstant`
             % - Returns geostrophicRatio: ratio from the active normalization to `geostrophic`
             N0_ = self.N0; % reference buoyancy frequency, radians/seconds
             A = self.BaroclinicModeNormalization(self.normalization,k_z);
@@ -309,7 +302,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             uMaxRatio = self.BaroclinicModeNormalization(Normalization.uMax, k_z, h)./A;
             wMaxRatio = self.BaroclinicModeNormalization(Normalization.wMax, k_z, h)./A;
             kConstantRatio = self.BaroclinicModeNormalization(Normalization.kConstant, k_z, h)./A;
-            omegaConstantRatio = self.BaroclinicModeNormalization(Normalization.omegaConstant, k_z, h)./A;
             geostrophicRatio = self.BaroclinicModeNormalization(Normalization.geostrophic, k_z, h)./A;
         end
 
@@ -328,8 +320,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             switch norm
                 case Normalization.kConstant
                     A = (-1).^j .* (sin(k_z*self.Lz).^2 + (self.Lz/(2*self.g))*(self.N0*self.N0 - self.f0*self.f0)*(1-sin(2*k_z*self.Lz)./(2*k_z*self.Lz))).^(-1/2);
-                case Normalization.omegaConstant
-                    A = (-1).^j./( h .* k_z .* sqrt(1/2 + sin(2*k_z*self.Lz)./(4*k_z*self.Lz)));
                 case Normalization.wMax
                     A = (-1).^j;
                 case Normalization.uMax
@@ -342,11 +332,11 @@ classdef InternalModesConstantStratification < InternalModesBase
             end
         end
         
-        function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = BarotropicModeAtWavenumber(self, k)
+        function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = BarotropicModeAtWavenumber(self, k)
             % Return the analytical barotropic mode branch for fixed $$K$$.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtWavenumber(self,k)
+            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = BarotropicModeAtWavenumber(self,k)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter k: horizontal wavenumber
             % - Returns F0: barotropic horizontal mode
@@ -358,7 +348,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Returns uMaxRatio0: ratio from the active normalization to `uMax`
             % - Returns wMaxRatio0: ratio from the active normalization to `wMax`
             % - Returns kConstantRatio0: ratio from the active normalization to `kConstant`
-            % - Returns omegaConstantRatio0: ratio from the active normalization to `omegaConstant`
             % - Returns geostrophicRatio0: ratio from the active normalization to `geostrophic`
             k_star = sqrt( (self.N0*self.N0 - self.f0*self.f0)/(self.g*self.Lz) );
                 
@@ -380,14 +369,14 @@ classdef InternalModesConstantStratification < InternalModesBase
                 h0 = (self.N0*self.N0 - self.f0*self.f0)./(self.g*(k*k + k_z*k_z ));        
             end
             
-            [F0,G0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = self.BarotropicMode(solutionType, k_z, h0);
+            [F0,G0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = self.BarotropicMode(solutionType, k_z, h0);
         end
         
-        function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = BarotropicModeAtFrequency(self, omega)
+        function [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = BarotropicModeAtFrequency(self, omega)
             % Return the analytical barotropic mode branch for fixed $$\omega$$.
             %
             % - Topic: Inspect analytical solutions
-            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0] = BarotropicModeAtFrequency(self,omega)
+            % - Declaration: [F0,G0,h0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = BarotropicModeAtFrequency(self,omega)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter omega: frequency in radians per second
             % - Returns F0: barotropic horizontal mode
@@ -399,7 +388,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Returns uMaxRatio0: ratio from the active normalization to `uMax`
             % - Returns wMaxRatio0: ratio from the active normalization to `wMax`
             % - Returns kConstantRatio0: ratio from the active normalization to `kConstant`
-            % - Returns omegaConstantRatio0: ratio from the active normalization to `omegaConstant`
             % - Returns geostrophicRatio0: ratio from the active normalization to `geostrophic`
             if (abs(omega-self.N0)/self.N0 < 1e-6)
                 solutionType = 'linear';
@@ -417,15 +405,15 @@ classdef InternalModesConstantStratification < InternalModesBase
                 h0 = (self.N0*self.N0 - omega*omega)./(self.g * k_z.*k_z);
             end
 
-            [F0,G0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,omegaConstantRatio0,geostrophicRatio0] = self.BarotropicMode(solutionType, k_z, h0);
+            [F0,G0,F20,G20,N2G20,uMaxRatio0,wMaxRatio0,kConstantRatio0,geostrophicRatio0] = self.BarotropicMode(solutionType, k_z, h0);
         end
 
-        function [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio,geostrophicRatio] = BarotropicMode(self, solutionType, k_z, h0)
+        function [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BarotropicMode(self, solutionType, k_z, h0)
             % Evaluate a chosen analytical barotropic branch.
             %
             % - Topic: Developer topics
             % - Developer: true
-            % - Declaration: [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BarotropicMode(self,solutionType,k_z,h0)
+            % - Declaration: [F0,G0,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BarotropicMode(self,solutionType,k_z,h0)
             % - Parameter self: InternalModesConstantStratification instance
             % - Parameter solutionType: one of `linear`, `hyperbolic`, or `trig`
             % - Parameter k_z: barotropic vertical wavenumber
@@ -438,7 +426,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             % - Returns uMaxRatio: ratio from the active normalization to `uMax`
             % - Returns wMaxRatio: ratio from the active normalization to `wMax`
             % - Returns kConstantRatio: ratio from the active normalization to `kConstant`
-            % - Returns omegaConstantRatio: ratio from the active normalization to `omegaConstant`
             % - Returns geostrophicRatio: ratio from the active normalization to `geostrophic`
             A = self.BarotropicModeNormalization(self.normalization, solutionType, k_z, h0);
 
@@ -467,7 +454,6 @@ classdef InternalModesConstantStratification < InternalModesBase
             uMaxRatio = self.BarotropicModeNormalization(Normalization.uMax, solutionType, k_z, h0)/A;
             wMaxRatio = self.BarotropicModeNormalization(Normalization.wMax, solutionType, k_z, h0)/A;
             kConstantRatio = self.BarotropicModeNormalization(Normalization.kConstant, solutionType, k_z, h0)/A;
-            omegaConstantRatio = self.BarotropicModeNormalization(Normalization.omegaConstant, solutionType, k_z, h0)/A;
             geostrophicRatio = self.BarotropicModeNormalization(Normalization.geostrophic, solutionType, k_z, h0)/A;
         end
 
@@ -487,8 +473,6 @@ classdef InternalModesConstantStratification < InternalModesBase
                 switch norm
                     case Normalization.kConstant
                         A = 1/(self.Lz * sqrt(1 + (self.N0*self.N0 - self.f0*self.f0)*self.Lz/(2*self.g)));
-                    case Normalization.omegaConstant
-                        A = 1/self.Lz;
                     case Normalization.wMax
                         A = 1/self.Lz;
                     case Normalization.uMax
@@ -502,8 +486,6 @@ classdef InternalModesConstantStratification < InternalModesBase
                 switch norm
                     case Normalization.kConstant
                         A = (sinh(k_z*self.Lz)^2 + (self.Lz/(2*self.g))*(self.N0*self.N0 - self.f0*self.f0)*(sinh(2*k_z*self.Lz)/(2*k_z*self.Lz)-1)).^(-1/2);
-                    case Normalization.omegaConstant
-                        A = 1/( h0 * k_z * sqrt(1/2 + sinh(2*k_z*self.Lz)./(4*k_z*self.Lz)));
                     case Normalization.wMax
                         A = 1/sinh(k_z*self.Lz);
                     case Normalization.uMax
@@ -518,8 +500,6 @@ classdef InternalModesConstantStratification < InternalModesBase
                 switch norm
                     case Normalization.kConstant
                         A = (sin(k_z*self.Lz)^2 + (self.Lz/(2*self.g))*(self.N0*self.N0 - self.f0*self.f0)*(1-sin(2*k_z*self.Lz)/(2*k_z*self.Lz))).^(-1/2);
-                    case Normalization.omegaConstant
-                        A = 1/( h0 * k_z * sqrt(1/2 + sin(2*k_z*self.Lz)./(4*k_z*self.Lz)));
                     case Normalization.wMax
                         A = 1/sin(k_z*self.Lz);
                     case Normalization.uMax

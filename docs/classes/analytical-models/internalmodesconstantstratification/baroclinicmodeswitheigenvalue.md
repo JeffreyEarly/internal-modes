@@ -16,7 +16,7 @@ Evaluate the analytical baroclinic mode shapes for given eigenvalues.
 
 ## Declaration
 ```matlab
- [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,omegaConstantRatio] = BaroclinicModesWithEigenvalue(self,k_z,h)
+ [F,G,F2,G2,N2G2,uMaxRatio,wMaxRatio,kConstantRatio,geostrophicRatio] = BaroclinicModesWithEigenvalue(self,k_z,h)
 ```
 ## Parameters
 + `self`  InternalModesConstantStratification instance
@@ -32,7 +32,6 @@ Evaluate the analytical baroclinic mode shapes for given eigenvalues.
 + `uMaxRatio`  ratio from the active normalization to `uMax`
 + `wMaxRatio`  ratio from the active normalization to `wMax`
 + `kConstantRatio`  ratio from the active normalization to `kConstant`
-+ `omegaConstantRatio`  ratio from the active normalization to `omegaConstant`
 + `geostrophicRatio`  ratio from the active normalization to `geostrophic`
 
 ## Discussion

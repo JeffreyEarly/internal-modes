@@ -123,7 +123,7 @@ classdef InternalModes < handle
         % Mode normalization convention.
         %
         % - Topic: Configure normalization and boundaries
-        normalization % Normalization used for the modes. Either Normalization.(kConstant, omegaConstant, uMax, or wMax).
+        normalization % Normalization used for the modes. Either Normalization.(kConstant, uMax, wMax, surfacePressure, or geostrophic).
     end
     
     properties %(Access = private)

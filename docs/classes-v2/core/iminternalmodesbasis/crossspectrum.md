@@ -3,7 +3,7 @@ layout: default
 title: crossSpectrum
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 5
+nav_order: 6
 mathjax: true
 ---
 

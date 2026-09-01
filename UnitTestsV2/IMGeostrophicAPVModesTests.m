@@ -168,6 +168,40 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.metadata.surfaceBoundary, "freeSurface")
         end
 
+        function numericalAndAnalyticalMajorantsGivePositiveStateNorms(testCase)
+            [N2,zDomain,g] = testCase.profile();
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=-0.02,gd=Inf);
+            numerical = IMSolverSpectral(nEVP=128,coordinateKind="z").solveEVP(evp,nModes=4);
+            analytical = IMConstantStratificationSolution(N0=sqrt(N2(0)),zDomain=zDomain,g=g).internalModes(evp,nModes=4);
+            signedGram = numerical.gramMatrix(variable="G");
+            majorantGram = numerical.majorantGramMatrix(variable="G");
+            analyticalMajorant = analytical.majorantGramMatrix(variable="G");
+            numericalRecipe = numerical.majorantInnerProduct(variable="G");
+            analyticalRecipe = analytical.majorantInnerProduct(variable="G");
+            [vectors,values] = eig(0.5*(signedGram+signedGram.'));
+            signedEigenvalues = diag(values);
+            negativeIndex = find(signedEigenvalues < 0,1);
+            positiveIndex = find(signedEigenvalues > 0,1);
+            cancellation = vectors(:,negativeIndex)/sqrt(-signedEigenvalues(negativeIndex)) ...
+                + vectors(:,positiveIndex)/sqrt(signedEigenvalues(positiveIndex));
+            expectedNorm = sqrt(real(cancellation'*(majorantGram*cancellation)));
+
+            testCase.assertNotEmpty(negativeIndex)
+            testCase.assertNotEmpty(positiveIndex)
+            testCase.verifyEqual(numericalRecipe.kind,"inducedHilbertMajorant")
+            testCase.verifyEqual(analyticalRecipe.kind,"inducedHilbertMajorant")
+            testCase.verifyGreaterThan(min(eig(majorantGram)),0)
+            testCase.verifyEqual(majorantGram,analyticalMajorant,RelTol=1e-5,AbsTol=1e-5)
+            testCase.verifyLessThan(abs(real(cancellation'*(signedGram*cancellation))),1e-10)
+            testCase.verifyEqual(numerical.majorantNorm(cancellation,variable="G"),expectedNorm,RelTol=2e-13)
+            testCase.verifyGreaterThan(expectedNorm,0)
+
+            positiveEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=0.02,gd=0.03,surfaceBoundary="rigidLid");
+            positiveBasis = IMSolverSpectral(nEVP=96).solveEVP(positiveEVP,nModes=4);
+            testCase.verifyEqual(positiveBasis.majorantGramMatrix(variable="G"), ...
+                positiveBasis.gramMatrix(variable="G"),RelTol=2e-10,AbsTol=2e-10)
+        end
+
         function otherHydrostaticBasesGainDepthWithoutDefaultChange(testCase)
             [N2, zDomain] = testCase.profile();
             evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
@@ -190,6 +224,24 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.eigenvalues(zeroIndex), 0, AbsTol=0)
             testCase.verifyEqual(basisSet.h(zeroIndex), Inf, AbsTol=0)
             testCase.verifyTrue(all(diff(basisSet.eigenvalues) >= 0))
+        end
+
+        function defaultExponentialNegativeModeConvergesThroughHighResolution(testCase)
+            D = 4000;
+            N0 = 5.2e-3;
+            b = 1300;
+            N2 = @(z) N0*N0*exp(2*z/b);
+            g0 = -integral(N2,-D,0);
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-D 0],g0=g0,gd=Inf);
+            expected = -0.393119878698696;
+
+            for nEVP = [128 256 512]
+                basisSet = IMSolverSpectral(nEVP=nEVP).solveEVP(evp,nModes=4);
+                testCase.verifyEqual(basisSet.modeNumber(1),-1,AbsTol=0)
+                testCase.verifyEqual(basisSet.eigenvalues(1),expected,RelTol=1e-5)
+                testCase.verifyGreaterThan(basisSet.eigenvalues(2),0)
+                testCase.verifyLessThan(max(abs(basisSet.eigenvalues)),1e3)
+            end
         end
     end
 

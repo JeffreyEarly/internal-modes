@@ -40,8 +40,6 @@ for j = 1:maxModes
             A = max(abs(Gj));
         case Normalization.kConstant
             A = sqrt(self.GNorm(Gj));
-        case Normalization.omegaConstant
-            A = sqrt(self.FNorm(Fj));
         case Normalization.geostrophic
             A = sqrt(self.GeostrophicNorm(Gj));
     end
@@ -68,9 +66,6 @@ for j = 1:maxModes
                 varargout{iArg}(j) = abs(A/B);
             case "kConstant"
                 B = sqrt(self.GNorm(Gj));
-                varargout{iArg}(j) = abs(A/B);
-            case "omegaConstant"
-                B = sqrt(self.FNorm(Fj));
                 varargout{iArg}(j) = abs(A/B);
             case "geostrophicNorm"
                 B = sqrt(self.GeostrophicNorm(Gj));

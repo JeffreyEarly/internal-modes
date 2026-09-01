@@ -622,13 +622,21 @@ classdef IMEigenvalueProblem
     end
 
     methods (Hidden)
-        function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,~)
-            % Return family-specific finite generalized eigenpair candidates.
+        function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,metricMatrix)
+            % Reject numerical representations of infinite pencil modes.
             %
-            % The default preserves every finite-real candidate selected by
-            % `IMSolver`. Specialized EVP families may reject numerical
-            % representations of infinite pencil modes before physical mode
-            % ordering is applied.
+            % A finite generalized eigenpair must have a resolvable action
+            % under the pencil metric. Candidates satisfying
+            %
+            % $$
+            % \frac{\lVert Bv\rVert_2}{\lVert B\rVert_2\lVert v\rVert_2}
+            % \leq 10^3\epsilon
+            % $$
+            %
+            % are numerical representations of the singular pencil's
+            % infinite eigenmodes and are removed before physical sorting
+            % and mode labeling. Regular pencils such as $$B=I$$ retain all
+            % nonzero eigenvectors.
             %
             % - Topic: Developer topics
             % - Declaration: mask = finiteGeneralizedEigenpairMask(evp,eigenvectors,metricMatrix)
@@ -636,7 +644,11 @@ classdef IMEigenvalueProblem
             % - Parameter metricMatrix: assembled generalized metric matrix
             % - Returns mask: logical row mask of family-valid candidates
             % - Developer: true
-            mask = true(1,size(eigenvectors,2));
+            metricScale = norm(metricMatrix,2);
+            vectorScale = vecnorm(eigenvectors,2,1);
+            relativeMetricAction = vecnorm(metricMatrix*eigenvectors,2,1) ...
+                ./max(metricScale*vectorScale,realmin);
+            mask = relativeMetricAction > 1e3*eps;
         end
     end
 

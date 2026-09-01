@@ -160,11 +160,12 @@ if isempty(options.quadraticAliasingTolerance)
     quadraticAccepted = true(candidateModeCount,1);
     quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",false,[],quadraticError,quadraticAccepted,candidateModeCount);
 else
-    requirePositiveTargets(candidateTransform,variables,"Coupled quadratic aliasing");
     [quadraticError,quadraticLimitingChannel,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ] = coupledQuadraticAliasing(self,prefixData,candidateTransform,variables);
     quadraticAccepted = IMDiscreteTransformTools.cumulativeAcceptance(quadraticError <= options.quadraticAliasingTolerance);
     quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",true,options.quadraticAliasingTolerance,quadraticError,quadraticAccepted,candidateModeCount);
 end
+quadraticPolicy.errorNorm = "inducedHilbertMajorant";
+quadraticPolicy.projectionPairing = "signedPontryagin";
 quadraticPolicy.limitingChannel = quadraticLimitingChannel;
 quadraticPolicy.limitingModeNumberI = quadraticLimitingModeNumberI;
 quadraticPolicy.limitingModeNumberJ = quadraticLimitingModeNumberJ;
@@ -408,11 +409,10 @@ for iChannel = 1:size(channels,1)
         endpointProducts = sourceAEndpoint(:,iMode).*sourceBEndpoint(:,jMode);
         weightedProducts = context.volumeWeights.*continuousProducts;
         productNorms(batch) = (sum(continuousProducts.*weightedProducts,1) ...
-            + sum(context.endpointMetric.*endpointProducts.*endpointProducts,1)).';
+            + sum(context.majorantEndpointMetric.*endpointProducts.*endpointProducts,1)).';
         pairings(:,batch) = context.targetValues.'*weightedProducts ...
             + context.targetEndpoint.'*(context.endpointMetric.*endpointProducts);
-        productScale = max(abs(continuousProducts),[],1).^2*diff(basisSet.zDomain);
-        zeroTolerance(batch) = 1e3*eps(max(1,productScale)).';
+        zeroTolerance(batch) = 1e3*eps(max(1,productNorms(batch)));
     end
     sampledNorms = vecnorm(sampledProducts,2,1).';
     usable = ~(abs(productNorms) <= zeroTolerance & sampledNorms <= sqrt(zeroTolerance));
@@ -426,6 +426,7 @@ for iChannel = 1:size(channels,1)
     activeFull = candidateTransform.activeModeMask(variable=target);
     sampledGramFull = candidateTransform.gramMatrix(variable=target);
     targetGramFull = candidateTransform.targetGramMatrix(variable=target);
+    targetMajorantGramFull = candidateTransform.targetMajorantGramMatrix(variable=target);
     data = prefixData.(char(target));
     sampledCoefficients = zeros(0,nPairs);
     continuousCoefficients = zeros(0,nPairs);
@@ -438,6 +439,7 @@ for iChannel = 1:size(channels,1)
         selected = usable & max(pairIndices,[],2) <= nPrefix;
         sampledGram = sampledGramFull(1:nPrefix,1:nPrefix);
         targetGram = targetGramFull(1:nPrefix,1:nPrefix);
+        targetMajorantGram = targetMajorantGramFull(1:nPrefix,1:nPrefix);
         sampledFullRank = data.sampledGramRank(nPrefix) == nnz(active);
         [sampledCoefficients,sampledFactor] = updateProjectionSolutions(sampledCoefficients,sampledFactor,previousSelected,selected,active, ...
             sampledGram,sampledPairings,sampledFullRank,previousSampledFullRank);
@@ -450,8 +452,8 @@ for iChannel = 1:size(channels,1)
         end
         selectedPairs = find(selected);
         difference = sampledCoefficients(:,selected)-continuousCoefficients(:,selected);
-        targetActive = targetGram(active,active);
-        numerator = sum(difference.*(targetActive*difference),1);
+        targetMajorantActive = targetMajorantGram(active,active);
+        numerator = real(sum(conj(difference).*(targetMajorantActive*difference),1));
         values = sqrt(max(0,numerator)./productNorms(selected).');
         [value,iLimiting] = max(values);
         if value >= errors(nPrefix)
@@ -585,7 +587,12 @@ endpointZ = [basisSet.zDomain(1);basisSet.zDomain(2)];
 if ~available
     error("IMBasisSet:UnavailableDiscreteTransformPolicy", "The %s product channel cannot construct its endpoint metric. %s",targetVariable,reason);
 end
+[majorantAvailable,majorantReason,~,~,majorantEndpointMetric] = basisSet.sampledInternalModesMetric(targetVariable,endpointZ,zeros(2,1),true);
+if ~majorantAvailable
+    error("IMBasisSet:UnavailableDiscreteTransformPolicy", "The %s product channel cannot construct its endpoint majorant. %s",targetVariable,majorantReason);
+end
 context = struct(volumeWeights=integrationWeights.*weight,endpointMetric=diag(endpointMetric), ...
+    majorantEndpointMetric=diag(majorantEndpointMetric), ...
     targetEndpoint=targetEndpoint(:,1:nCandidate),targetValues=targetValues(:,1:nCandidate));
 end
 

@@ -12,6 +12,7 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             repoRoot = fileparts(fileparts(mfilename("fullpath")));
             testCase.originalPath = path;
             addpath(repoRoot);
+            addpath(fullfile(repoRoot,"UnitTestsV2","TestSupport"));
             D = 4000;
             N2 = @(z) (5.2e-3)^2*ones(size(z));
             solver = IMSolverSpectral(nEVP=160);
@@ -74,7 +75,17 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             end
         end
 
-        function signedAPVRejectsNormPoliciesButKeepsGramDiagnostics(testCase)
+        function zeroNormClassificationUsesPerModeMajorantScale(testCase)
+            basis = IMInternalModesBasisTestAccess(testCase.cosineBasis);
+            sampled = [zeros(4,1) ones(4,1) 1e30*ones(4,1)];
+            targetGram = diag([0 1 1e60]);
+            targetMajorantGram = diag([0 1 1e60]);
+
+            testCase.verifyEqual(basis.classifyTransformColumns(sampled,targetGram,targetMajorantGram), ...
+                [false true true])
+        end
+
+        function signedAPVUsesMajorantForQuadraticErrorsButStillRejectsLeakage(testCase)
             N2 = @(z) 1e-4*ones(size(z));
             evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-4000 0],g0=-1,gd=-1,surfaceBoundary="rigidLid");
             solver = IMSolverSpectral(nEVP=160);
@@ -82,10 +93,17 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             sampleZ = linspace(-4000,0,25).';
             sampleWeights = [0.5;ones(23,1);0.5]*(4000/24);
             transform = basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=4,variables="G",gramTolerance=10);
+            [quadraticTransform,assessment] = basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=4, ...
+                variables=["F","G"],gramTolerance=10,quadraticAliasingTolerance=1);
             testCase.verifyFalse(transform.targetGramIsPositiveDefinite(variable="G"))
+            testCase.verifyEqual(quadraticTransform.modeNumber(1),-1,AbsTol=0)
+            testCase.verifyGreaterThan(min(eig(quadraticTransform.targetMajorantGramMatrix(variable="G"))),0)
+            testCase.verifyTrue(all(isfinite(assessment.quadraticAliasingPolicy.error)))
+            testCase.verifyEqual(assessment.prefixDiagnostics.quadraticLimitingModeNumberI(1),-1,AbsTol=0)
+            testCase.verifyEqual(assessment.prefixDiagnostics.quadraticLimitingModeNumberJ(1),-1,AbsTol=0)
+            testCase.verifyEqual(assessment.quadraticAliasingPolicy.errorNorm,"inducedHilbertMajorant")
+            testCase.verifyEqual(assessment.quadraticAliasingPolicy.projectionPairing,"signedPontryagin")
             testCase.verifyError(@() basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=4,variables="G",gramTolerance=10,leakageTolerance=1), ...
-                "IMBasisSet:UnavailableDiscreteTransformPolicy")
-            testCase.verifyError(@() basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=4,variables="G",gramTolerance=10,quadraticAliasingTolerance=1), ...
                 "IMBasisSet:UnavailableDiscreteTransformPolicy")
         end
 
@@ -185,6 +203,7 @@ for iChannel = 1:size(channels,1)
     metric = transform.metricMatrix(variable=target);
     inverseFull = transform.inverseMatrix(variable=target);
     targetGramFull = transform.targetGramMatrix(variable=target);
+    targetMajorantGramFull = transform.targetMajorantGramMatrix(variable=target);
     activeFull = transform.activeModeMask(variable=target);
     for nPrefix = 1:nModes
         selected = usable & max(pairIndices,[],2) <= nPrefix;
@@ -195,12 +214,13 @@ for iChannel = 1:size(channels,1)
         inverse = inverseFull(:,1:nPrefix);
         sampledGram = inverse.'*metric*inverse;
         targetGram = targetGramFull(1:nPrefix,1:nPrefix);
+        targetMajorantGram = targetMajorantGramFull(1:nPrefix,1:nPrefix);
         sampledCoefficients = zeros(nPrefix,nnz(selected));
         continuousCoefficients = zeros(nPrefix,nnz(selected));
         sampledCoefficients(active,:) = sampledGram(active,active)\(inverse(:,active).'*metric*sampleProducts(:,selected));
         continuousCoefficients(active,:) = targetGram(active,active)\pairings(active,selected);
         difference = sampledCoefficients-continuousCoefficients;
-        numerator = sum(difference(active,:).*(targetGram(active,active)*difference(active,:)),1);
+        numerator = real(sum(conj(difference(active,:)).*(targetMajorantGram(active,active)*difference(active,:)),1));
         values = sqrt(max(0,numerator)./productNorms(selected).');
         [value,iLimiting] = max(values);
         if value >= errors(nPrefix)

@@ -249,14 +249,36 @@ classdef IMAnalyticalInternalModesBasis
             factors(factors == 0 | ~isfinite(factors)) = 1;
         end
 
+        function spec = majorantInnerProduct(self, options)
+            % Return the induced positive Hilbert-majorant recipe.
+            %
+            % The recipe retains the positive interior weight and replaces
+            % every signed endpoint coefficient by its absolute value. Use
+            % `evp.innerProduct` for the signed Pontryagin recipe used by
+            % projection and signed invariants.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: spec = majorantInnerProduct(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns spec: positive interior and absolute-endpoint recipe
+            arguments
+                self IMAnalyticalInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+            end
+            spec = self.evp.majorantInnerProduct(options.variable);
+        end
+
         function gram = gramMatrix(self, options)
-            % Return a Gram matrix for exact `F` or `G` modes.
+            % Return the signed Gram matrix for exact `F` or `G` modes.
             %
             % For variable $$V$$, endpoint terms are included only when
             % `zBounds` reaches the corresponding physical endpoint:
             % $$M_{ij}=\int_{z_a}^{z_b} w(z)V_i(z)V_j(z)\,dz+
             % \sum_\ell \gamma_\ell L_\ell[V_i]L_\ell[V_j]+
             % \sum_\ell \alpha_\ell V_i(z_\ell)V_j(z_\ell).$$
+            % This is the Pontryagin pairing used for projection and signed
+            % invariants and can be indefinite. Use `majorantGramMatrix`
+            % for positive magnitudes and error measures.
             % Use `endpointGramTerms` to inspect the prepared endpoint
             % vectors that generate the rank-one endpoint updates.
             %
@@ -273,6 +295,60 @@ classdef IMAnalyticalInternalModesBasis
 
             self.validateZBounds(options.zBounds);
             gram = self.variableGramMatrix(string(options.variable), options.zBounds, true);
+        end
+
+        function gram = majorantGramMatrix(self, options)
+            % Return the positive Hilbert-majorant Gram matrix.
+            %
+            % The majorant retains the positive interior contribution and
+            % replaces every signed endpoint coefficient by its absolute
+            % value. It coincides with `gramMatrix` when all endpoint
+            % coefficients are nonnegative.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: gram = majorantGramMatrix(basisSet,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds
+            % - Returns gram: positive Hilbert-majorant Gram matrix
+            arguments
+                self IMAnalyticalInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+            end
+
+            self.validateZBounds(options.zBounds);
+            gram = self.variableGramMatrix(string(options.variable), options.zBounds, true, true);
+        end
+
+        function value = majorantNorm(self, coefficients, options)
+            % Return the positive Hilbert-majorant norm of coefficients.
+            %
+            % For coefficient vector $$c$$ this returns
+            % $$\sqrt{c^*M_+c}$$. The quantity
+            % $$\sqrt{|c^*Mc|}$$ formed from the signed Gram matrix is not
+            % a norm for arbitrary states.
+            %
+            % - Topic: Analyze Gram matrices
+            % - Declaration: value = majorantNorm(basisSet,coefficients,options)
+            % - Parameter coefficients: one coefficient per retained mode
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Parameter options.zBounds: integration bounds
+            % - Returns value: positive scalar norm
+            arguments
+                self IMAnalyticalInternalModesBasis
+                coefficients (:,1) double {mustBeFinite}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+                options.zBounds (1,2) double {mustBeReal, mustBeFinite} = self.zDomain
+            end
+
+            self.validateCoefficientVector(coefficients, "coefficients");
+            gram = self.majorantGramMatrix(variable=options.variable,zBounds=options.zBounds);
+            valueSquared = real(coefficients(:)'*(gram*coefficients(:)));
+            tolerance = 1e3*eps(max(1,norm(gram,2)*norm(coefficients,2)^2));
+            if valueSquared < -tolerance
+                error("IMAnalyticalInternalModesBasis:InvalidMajorantGramMatrix", "The computed majorant quadratic form is negative beyond roundoff.");
+            end
+            value = sqrt(max(0,valueSquared));
         end
 
         function terms = endpointGramTerms(self, options)
@@ -395,6 +471,10 @@ classdef IMAnalyticalInternalModesBasis
         function spectrum = spectrum(self, coefficients, options)
             % Compute a modal spectrum.
             %
+            % This is a signed spectrum and can contain negative entries in
+            % negative Pontryagin directions. Use `majorantNorm` for a
+            % positive total magnitude.
+            %
             % - Topic: Analyze Gram matrices
             % - Declaration: spectrum = spectrum(basisSet,coefficients,options)
             % - Parameter coefficients: modal coefficients
@@ -439,8 +519,9 @@ classdef IMAnalyticalInternalModesBasis
             % This developer utility returns the raw scale factor
             % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$
             % for exact analytical `F` or `G` modes before the active
-            % normalization is applied. The requested variable must have a
-            % known inner product.
+            % normalization is applied. This is a per-mode normalization
+            % convention, not a norm for arbitrary modal combinations. The
+            % requested variable must have a known inner product.
             %
             % - Topic: Developer topics
             % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
@@ -579,8 +660,15 @@ classdef IMAnalyticalInternalModesBasis
             values = self.rawUzFunction(self, z(:)).*self.orientationSigns;
         end
 
-        function gram = variableGramMatrix(self, variable, zBounds, useNormalized)
-            spec = self.evp.innerProduct(variable);
+        function gram = variableGramMatrix(self, variable, zBounds, useNormalized, useMajorant)
+            if nargin < 5
+                useMajorant = false;
+            end
+            if useMajorant
+                spec = self.evp.majorantInnerProduct(variable);
+            else
+                spec = self.evp.innerProduct(variable);
+            end
             IMAnalyticalInternalModesBasis.assertInnerProductAvailable(spec);
             z = self.integrationGrid(zBounds);
             context = self.context();
@@ -607,7 +695,11 @@ classdef IMAnalyticalInternalModesBasis
             endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
             for iTerm = 1:numel(endpointTerms)
                 valuesAtEndpoint = endpointTerms(iTerm).values(:);
-                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
+                coefficient = endpointTerms(iTerm).coefficient;
+                if useMajorant
+                    coefficient = abs(coefficient);
+                end
+                gram = gram + coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
             end
         end
 

@@ -158,14 +158,4 @@ classdef IMMeanDensityAnomalyModes < IMInternalModes
         end
     end
 
-    methods (Hidden)
-        function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,metricMatrix)
-            % Reject numerical representations of infinite MDA pencil modes.
-            metricScale = norm(metricMatrix,2);
-            vectorScale = vecnorm(eigenvectors,2,1);
-            relativeMetricAction = vecnorm(metricMatrix*eigenvectors,2,1) ...
-                ./max(metricScale*vectorScale,realmin);
-            mask = relativeMetricAction > 1e3*eps;
-        end
-    end
 end

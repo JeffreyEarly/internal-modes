@@ -306,13 +306,13 @@ classdef InternalModesConstructorSmokeTests < matlab.unittest.TestCase
                 'shouldShowDiagnostics', 1, ...
                 'upperBoundary', UpperBoundary.freeSurface, ...
                 'lowerBoundary', LowerBoundary.noSlip, ...
-                'normalization', Normalization.omegaConstant);
+                'normalization', Normalization.uMax);
             [F, G, h] = im.modesAtWavenumber(1e-4);
 
             testCase.verifyEqual(im.shouldShowDiagnostics, 1)
             testCase.verifyEqual(im.upperBoundary, UpperBoundary.freeSurface)
             testCase.verifyEqual(im.lowerBoundary, LowerBoundary.noSlip)
-            testCase.verifyEqual(im.normalization, Normalization.omegaConstant)
+            testCase.verifyEqual(im.normalization, Normalization.uMax)
             testCase.verifyModes(F, G, h, zOut, 4)
         end
 

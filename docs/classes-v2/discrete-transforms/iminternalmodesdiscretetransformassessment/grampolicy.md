@@ -3,7 +3,7 @@ layout: default
 title: gramPolicy
 parent: IMInternalModesDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 7
+nav_order: 8
 mathjax: true
 ---
 

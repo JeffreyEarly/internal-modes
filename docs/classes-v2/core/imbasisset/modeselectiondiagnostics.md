@@ -3,7 +3,7 @@ layout: default
 title: modeSelectionDiagnostics
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 14
+nav_order: 17
 mathjax: true
 ---
 

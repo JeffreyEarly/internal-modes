@@ -412,7 +412,7 @@ classdef InternalModesFiniteDifference < InternalModesBase
             % - Parameter A: left generalized-eigenproblem matrix
             % - Parameter B: right generalized-eigenproblem matrix
             % - Parameter h_func: map from eigenvalue to equivalent depth
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, and `kConstant`
             % - Returns F: horizontal-velocity mode matrix on `zOut`
             % - Returns G: vertical-velocity mode matrix on `zOut`
             % - Returns h: equivalent-depth row vector
@@ -459,7 +459,7 @@ classdef InternalModesFiniteDifference < InternalModesBase
             % - Parameter G: vertical-velocity mode matrix
             % - Parameter N2: buoyancy-frequency profile associated with the modes
             % - Parameter z: depth grid associated with the modes
-            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
+            % - Parameter varargin: optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, and `kConstant`
             % - Returns F: normalized horizontal-velocity mode matrix
             % - Returns G: normalized vertical-velocity mode matrix
             % - Returns varargout: requested quadratic-integral and normalization diagnostics
@@ -494,10 +494,6 @@ classdef InternalModesFiniteDifference < InternalModesBase
                         A = abs(G20 + trapz( z, (1/self.g) * (N2 - self.f0*self.f0) .* G(:,j) .^ 2));
                         G(:,j) = G(:,j) / sqrt(A);
                         F(:,j) = F(:,j) / sqrt(A);
-                    case Normalization.omegaConstant
-                        A = abs(trapz( z, (1/abs(z(end)-z(1))) .* F(:,j) .^ 2));
-                        G(:,j) = G(:,j) / sqrt(A);
-                        F(:,j) = F(:,j) / sqrt(A);
                 end
                 
                 if F(maxIndexZ,j)< 0
@@ -525,9 +521,6 @@ classdef InternalModesFiniteDifference < InternalModesBase
                             G20 = G(1,j)^2;
                         end
                         B = abs(G20 + trapz( z, (1/self.g) * (N2 - self.f0*self.f0) .* G(:,j) .^ 2));
-                        varargout{iArg}(j) = sqrt(abs(1/B));
-                    elseif ( strcmp(varargin{iArg}, 'omegaConstant') )
-                        B = abs(trapz( z, (1/abs(z(end)-z(1))) .* F(:,j) .^ 2));
                         varargout{iArg}(j) = sqrt(abs(1/B));
                     else
                         error('Invalid option. You may request F2, G2, N2G2');

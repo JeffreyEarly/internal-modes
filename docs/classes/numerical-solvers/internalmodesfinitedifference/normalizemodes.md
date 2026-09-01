@@ -26,7 +26,7 @@ Normalize finite-difference modes using the active convention.
 + `G`  vertical-velocity mode matrix
 + `N2`  buoyancy-frequency profile associated with the modes
 + `z`  depth grid associated with the modes
-+ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, `kConstant`, and `omegaConstant`
++ `varargin`  optional requests among `F2`, `G2`, `N2G2`, `uMax`, `wMax`, and `kConstant`
 
 ## Returns
 + `F`  normalized horizontal-velocity mode matrix

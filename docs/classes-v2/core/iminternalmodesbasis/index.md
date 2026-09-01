@@ -52,14 +52,19 @@ G = basisSet.G(z);
   + [`G`](/internal-modes/classes-v2/core/iminternalmodesbasis/g.html) Evaluate `G` modes.
 + Analyze modes
   + [`crossSpectrum`](/internal-modes/classes-v2/core/iminternalmodesbasis/crossspectrum.html) Compute an internal-mode modal cross-spectrum.
-  + [`gramMatrix`](/internal-modes/classes-v2/core/iminternalmodesbasis/grammatrix.html) Return a Gram matrix for `F` or `G`.
+  + [`gramMatrix`](/internal-modes/classes-v2/core/iminternalmodesbasis/grammatrix.html) Return the signed Gram matrix for `F` or `G`.
+  + [`majorantGramMatrix`](/internal-modes/classes-v2/core/iminternalmodesbasis/majorantgrammatrix.html) Return the positive Hilbert-majorant Gram matrix.
+  + [`majorantInnerProduct`](/internal-modes/classes-v2/core/iminternalmodesbasis/majorantinnerproduct.html) Return the induced positive Hilbert-majorant recipe.
+  + [`majorantNorm`](/internal-modes/classes-v2/core/iminternalmodesbasis/majorantnorm.html) Return the positive Hilbert-majorant norm of modal coefficients.
   + [`partialWindowModes`](/internal-modes/classes-v2/core/iminternalmodesbasis/partialwindowmodes.html) Diagonalize a partial-depth Gram matrix for `F` or `G`.
   + [`spectrum`](/internal-modes/classes-v2/core/iminternalmodesbasis/spectrum.html) Compute an internal-mode modal spectrum.
 + Inspect basis sets
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodesbasis/n2.html) Buoyancy frequency squared profile.
   + [`h`](/internal-modes/classes-v2/core/iminternalmodesbasis/h.html) Equivalent depths for the retained internal modes.
 + Build discrete transforms
-  + [`discreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/discretetransform.html) Build an aligned internal-mode F/G discrete transform.
+  + [`certifiedDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/certifieddiscretetransform.html) Select and independently fit a certified aligned F/G family band.
+  + [`discreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/discretetransform.html) Build an aligned internal-mode F/G transform through the compatibility API.
+  + [`fitDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/fitdiscretetransform.html) Fit and certify one exact aligned F/G family band.
   + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/iminternalmodesbasis/quadratureweightsforpoints.html) Fit one quadrature rule to aligned internal-mode F/G channels.
 
 
@@ -75,7 +80,7 @@ These items document internal implementation details and are not part of the pri
   + Gram-matrix assembly
     + [`endpointGramTerms`](/internal-modes/classes-v2/core/iminternalmodesbasis/endpointgramterms.html) Prepare rank-one endpoint terms for `F` or `G` Gram matrices.
   + Diagnostic variables
-    + [`orientModeSigns`](/internal-modes/classes-v2/core/iminternalmodesbasis/orientmodesigns.html) Orient modes so the surface `F` value is positive when possible.
+    + [`orientModeSigns`](/internal-modes/classes-v2/core/iminternalmodesbasis/orientmodesigns.html) Orient modes so `G` is positive immediately below the surface.
     + [`rawVariable`](/internal-modes/classes-v2/core/iminternalmodesbasis/rawvariable.html) Evaluate raw physical `F` or `G` modes.
 
 

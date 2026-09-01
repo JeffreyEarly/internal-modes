@@ -47,7 +47,10 @@ G = basisSet.G(linspace(-5000,0,128).');
   + [`uz`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/uz.html) Evaluate exact solved-variable derivatives.
 + Analyze Gram matrices
   + [`crossSpectrum`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/crossspectrum.html) Compute a modal cross-spectrum.
-  + [`gramMatrix`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/grammatrix.html) Return a Gram matrix for exact `F` or `G` modes.
+  + [`gramMatrix`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/grammatrix.html) Return the signed Gram matrix for exact `F` or `G` modes.
+  + [`majorantGramMatrix`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/majorantgrammatrix.html) Return the positive Hilbert-majorant Gram matrix.
+  + [`majorantInnerProduct`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/majorantinnerproduct.html) Return the induced positive Hilbert-majorant recipe.
+  + [`majorantNorm`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/majorantnorm.html) Return the positive Hilbert-majorant norm of coefficients.
   + [`partialWindowModes`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/partialwindowmodes.html) Diagonalize a partial-depth Gram matrix.
   + [`spectrum`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/spectrum.html) Compute a modal spectrum.
 + Inspect analytical modes

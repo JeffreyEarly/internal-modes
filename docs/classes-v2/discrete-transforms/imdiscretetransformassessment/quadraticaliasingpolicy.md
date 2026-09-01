@@ -3,7 +3,7 @@ layout: default
 title: quadraticAliasingPolicy
 parent: IMDiscreteTransformAssessment
 grand_parent: Discrete transforms
-nav_order: 10
+nav_order: 12
 mathjax: true
 ---
 

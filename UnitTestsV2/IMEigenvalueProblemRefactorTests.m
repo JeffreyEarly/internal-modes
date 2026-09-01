@@ -38,6 +38,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(B(end,:), zeros(1,nEVP), AbsTol=1e-11)
         end
 
+        function genericFiniteEigenpairFilterRejectsNearNullMetricActions(testCase)
+            evp = IMEigenvalueProblem();
+            metric = diag([1,1e-16,0]);
+            eigenvectors = eye(3);
+            mask = evp.finiteGeneralizedEigenpairMask(eigenvectors,metric);
+
+            testCase.verifyEqual(mask,[true false false])
+        end
+
         function canonicalAssemblyIncludesGridDerivativeOfVariableP(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
@@ -177,7 +186,6 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(spec.hasInnerProduct)
             testCase.verifyEqual(basisSet.normalization, "unity")
-            testCase.verifyFalse(ismember("omegaConstant", basisSet.normalizationNames()))
             testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
@@ -703,11 +711,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(ismember("kConstant", wavenumberBasis.normalizationNames()))
             testCase.verifyFalse(ismember("geostrophic", wavenumberBasis.normalizationNames()))
             testCase.verifyEqual(frequencyBasis.normalization, "unity")
-            testCase.verifyFalse(ismember("omegaConstant", frequencyBasis.normalizationNames()))
             testCase.verifyFalse(ismember("geostrophic", frequencyBasis.normalizationNames()))
             testCase.verifyError(@() wavenumberBasis.normalizationFactors(Normalization.geostrophic), ...
                 "IMBasisSet:UnsupportedNormalization")
-            testCase.verifyTrue(testCase.normalizationEnumMemberThrows("omegaConstant"))
         end
 
         function developerBasisMethodsArePublicAndCallable(testCase)
@@ -865,15 +871,6 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             f0 = 1e-4;
             g = 9.81;
             N2 = @(z) N0*N0*(1 + 0.1*z/abs(zDomain(1)));
-        end
-
-        function tf = normalizationEnumMemberThrows(name)
-            tf = false;
-            try
-                eval("Normalization." + string(name));
-            catch
-                tf = true;
-            end
         end
 
         function hiddenFlags = methodHiddenFlags(className, methodNames)

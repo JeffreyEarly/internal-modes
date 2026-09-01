@@ -9,7 +9,7 @@ mathjax: true
 
 #  targetGramMatrix
 
-Return the continuous full-family target Gram matrix.
+Return the continuous signed full-family target Gram matrix.
 
 
 ---

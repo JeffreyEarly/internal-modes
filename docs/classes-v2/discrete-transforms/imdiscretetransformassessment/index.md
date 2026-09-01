@@ -22,13 +22,13 @@ Store fixed-rule retained-band diagnostics for a scalar transform.
 
 ## Overview
 
-`IMDiscreteTransformAssessment` records one point-and-weight rule and
-the leading modal prefixes assessed on that fixed rule. The rule is
-fitted once against the full `candidateTransform`; its weights are not
-refitted as the prefix changes. `transform` is the production prefix
-accepted by the default Gram policy and every enabled optional policy.
-`weightFit` preserves the full-band `IMQuadratureWeightFit`, or is
-empty when the caller supplied weights.
+`IMDiscreteTransformAssessment` records one final point-and-weight rule
+and the leading modal prefixes assessed on that rule. For certified
+construction, `certificationSearch` records the independently refitted
+counts considered before this exact final band was selected, and
+`weightFitModeCount` equals `retainedModeCount`. Lower-level fixed-rule
+calls can still fit a larger candidate once and return a shorter
+prefix; their differing counts make that behavior explicit.
 
 For prefix $$N$$, let $$\Gamma_N$$ be its sampled Gram matrix,
 $$\Gamma_{0,N}$$ its diagonal continuous target, and
@@ -128,6 +128,11 @@ assessment.quadraticAliasingPolicy
   + [`limitingPolicy`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/limitingpolicy.html) Policy that imposed the final retained count.
   + [`quadraticAliasingPolicy`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/quadraticaliasingpolicy.html) Scalar quadratic-aliasing policy result.
   + [`retentionReason`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/retentionreason.html) Readable explanation of the retained-band decision.
++ Other
+  + [`certificationSearch`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/certificationsearch.html) Independently refitted count-selection attempts.
+  + [`gridDesign`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/griddesign.html) Provenance of the physical sample grid.
+  + [`weightFitModeCount`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/weightfitmodecount.html) Number of modes used when fitting the stored quadrature weights.
+  + [`withCertificationMetadata`](/internal-modes/classes-v2/discrete-transforms/imdiscretetransformassessment/withcertificationmetadata.html) Return this assessment with grid and count-search provenance.
 
 
 ---

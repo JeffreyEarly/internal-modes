@@ -3,7 +3,7 @@ layout: default
 title: uz
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 26
+nav_order: 29
 mathjax: true
 ---
 

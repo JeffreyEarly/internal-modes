@@ -3,7 +3,7 @@ layout: default
 title: spectrum
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 24
+nav_order: 27
 mathjax: true
 ---
 
@@ -26,3 +26,7 @@ Compute a modal spectrum.
 + `spectrum`  modal spectrum
 
 ## Discussion
+
+  This is a signed spectrum and can contain negative entries in
+  negative Pontryagin directions. Use `majorantNorm` for a
+  positive total magnitude.

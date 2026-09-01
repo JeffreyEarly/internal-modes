@@ -19,7 +19,10 @@ classdef IMInternalModesDiscreteTransform
     %
     % `modeProjectionFunctional` returns
     % $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$ before the active Gram solve;
-    % `transformForward` returns coefficients after that solve.
+    % `transformForward` returns coefficients after that solve. Both use
+    % the signed Pontryagin pairing. `targetMajorantGramMatrix` returns the
+    % induced positive Hilbert majorant used for error magnitudes; it does
+    % not replace the signed projection metric.
     % When `variable` is omitted, accessors use `primaryVariable`, which is
     % the solved formulation when that channel was requested and otherwise
     % the first directly representable requested channel.
@@ -87,7 +90,8 @@ classdef IMInternalModesDiscreteTransform
             %
             % `channelData.F` and `channelData.G` are scalar structs with
             % fields `available`, `reason`, `activeModeMask`,
-            % `metricMatrix`, and `targetGramMatrix`.  Diagnostic inverse
+            % `metricMatrix`, `targetGramMatrix`, and
+            % `targetMajorantGramMatrix`. Diagnostic inverse
             % matrices and endpoint traces are supplied for both variables,
             % including variables that have no direct sampled projection.
             %
@@ -141,7 +145,7 @@ classdef IMInternalModesDiscreteTransform
                     error("IMInternalModesDiscreteTransform:InvalidChannelData", "channelData must contain F and G records.");
                 end
                 data = channelData.(field);
-                requiredFields = ["available","reason","activeModeMask","metricMatrix","targetGramMatrix"];
+                requiredFields = ["available","reason","activeModeMask","metricMatrix","targetGramMatrix","targetMajorantGramMatrix"];
                 if ~all(isfield(data,requiredFields))
                     error("IMInternalModesDiscreteTransform:InvalidChannelData", "Each channel record must contain availability, reason, active mask, metric, and target Gram data.");
                 end
@@ -152,16 +156,21 @@ classdef IMInternalModesDiscreteTransform
                     error("IMInternalModesDiscreteTransform:InvalidChannelData", "Each activeModeMask must contain one value per aligned mode.");
                 end
                 if data.available
-                    if ~isequal(size(data.metricMatrix),[nSamples nSamples]) || ~isequal(size(data.targetGramMatrix),[nModes nModes])
+                    if ~isequal(size(data.metricMatrix),[nSamples nSamples]) || ~isequal(size(data.targetGramMatrix),[nModes nModes]) ...
+                            || ~isequal(size(data.targetMajorantGramMatrix),[nModes nModes])
                         error("IMInternalModesDiscreteTransform:InvalidChannelData", "Available channel matrices have incompatible dimensions.");
                     end
                     metricTolerance = 100*eps(max(1,norm(data.metricMatrix,2)));
                     targetTolerance = 100*eps(max(1,norm(data.targetGramMatrix,2)));
-                    if norm(data.metricMatrix-data.metricMatrix.',2) > metricTolerance || norm(data.targetGramMatrix-data.targetGramMatrix.',2) > targetTolerance
-                        error("IMInternalModesDiscreteTransform:NonSymmetricMatrix", "Metric and target Gram matrices must be symmetric.");
+                    majorantTolerance = 100*eps(max(1,norm(data.targetMajorantGramMatrix,2)));
+                    if norm(data.metricMatrix-data.metricMatrix.',2) > metricTolerance ...
+                            || norm(data.targetGramMatrix-data.targetGramMatrix.',2) > targetTolerance ...
+                            || norm(data.targetMajorantGramMatrix-data.targetMajorantGramMatrix.',2) > majorantTolerance
+                        error("IMInternalModesDiscreteTransform:NonSymmetricMatrix", "Metric, target Gram, and target majorant Gram matrices must be symmetric.");
                     end
                     data.metricMatrix = 0.5*(data.metricMatrix+data.metricMatrix.');
                     data.targetGramMatrix = 0.5*(data.targetGramMatrix+data.targetGramMatrix.');
+                    data.targetMajorantGramMatrix = 0.5*(data.targetMajorantGramMatrix+data.targetMajorantGramMatrix.');
                     inverse = inverseMatrices.(field);
                     data.gramMatrix = 0.5*(inverse.'*data.metricMatrix*inverse + inverse.'*data.metricMatrix.'*inverse);
                     active = find(data.activeModeMask);
@@ -202,6 +211,7 @@ classdef IMInternalModesDiscreteTransform
                 else
                     data.metricMatrix = zeros(0,0);
                     data.targetGramMatrix = zeros(0,0);
+                    data.targetMajorantGramMatrix = zeros(0,0);
                     data.gramMatrix = zeros(0,0);
                     data.forwardMatrix = zeros(0,nSamples);
                     data.relativeGramOperatorError = NaN;
@@ -297,7 +307,7 @@ classdef IMInternalModesDiscreteTransform
         end
 
         function matrix = metricMatrix(self, options)
-            % Return the variable-qualified sampled metric.
+            % Return the variable-qualified sampled signed metric.
             arguments
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
@@ -307,7 +317,7 @@ classdef IMInternalModesDiscreteTransform
         end
 
         function matrix = gramMatrix(self, options)
-            % Return the sampled full-family Gram matrix.
+            % Return the sampled signed full-family Gram matrix.
             arguments
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
@@ -317,13 +327,32 @@ classdef IMInternalModesDiscreteTransform
         end
 
         function matrix = targetGramMatrix(self, options)
-            % Return the continuous full-family target Gram matrix.
+            % Return the continuous signed full-family target Gram matrix.
             arguments
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
             matrix = data.targetGramMatrix;
+        end
+
+        function matrix = targetMajorantGramMatrix(self, options)
+            % Return the continuous positive Hilbert-majorant Gram matrix.
+            %
+            % `targetGramMatrix` remains the signed Pontryagin pairing used
+            % for projection. This accessor returns the positive matrix used
+            % for error magnitudes and coupled quadratic certification.
+            %
+            % - Topic: Assess transform quality
+            % - Declaration: matrix = targetMajorantGramMatrix(transform,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns matrix: continuous positive majorant Gram matrix
+            arguments
+                self IMInternalModesDiscreteTransform
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
+            end
+            data = self.requireChannel(string(options.variable));
+            matrix = data.targetMajorantGramMatrix;
         end
 
         function values = endpointValues(self, options)
@@ -387,7 +416,7 @@ classdef IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
-            diagnostics = rmfield(data,["metricMatrix","targetGramMatrix","gramMatrix","forwardMatrix"]);
+            diagnostics = rmfield(data,["metricMatrix","targetGramMatrix","targetMajorantGramMatrix","gramMatrix","forwardMatrix"]);
         end
 
         function value = relativeGramOperatorError(self, options)
@@ -459,6 +488,7 @@ classdef IMInternalModesDiscreteTransform
                 data.activeModeMask = data.activeModeMask(1:nModes);
                 if data.available
                     data.targetGramMatrix = data.targetGramMatrix(1:nModes,1:nModes);
+                    data.targetMajorantGramMatrix = data.targetMajorantGramMatrix(1:nModes,1:nModes);
                 end
                 preparedChannels.(field) = data;
             end
