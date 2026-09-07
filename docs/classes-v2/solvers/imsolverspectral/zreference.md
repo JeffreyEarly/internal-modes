@@ -9,7 +9,7 @@ mathjax: true
 
 #  zReference
 
-Reference physical grid for coordinate interpolation.
+Reference physical grid for inspecting the coordinate map.
 
 > Developer documentation: this item describes internal implementation details.
 

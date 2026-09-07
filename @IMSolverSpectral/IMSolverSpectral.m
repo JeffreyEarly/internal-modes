@@ -4,7 +4,9 @@ classdef IMSolverSpectral < IMSolver
     % `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
     % resolution, derivative matrices, and physical-coordinate pullback
     % rules. It is configured against an EVP or geostrophic zero-APV problem
-    % before solving.
+    % before solving. Stretched-coordinate values, inverse maps, Jacobians,
+    % and second derivatives use one smooth Chebfun representation, so
+    % reconstruction and sampled-field calculus share the same coordinate.
     %
     % ```matlab
     % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
@@ -72,7 +74,7 @@ classdef IMSolverSpectral < IMSolver
     end
 
     properties (SetAccess = private)
-        % Reference physical grid for coordinate interpolation.
+        % Reference physical grid for inspecting the coordinate map.
         %
         % - Topic: Developer topics
         % - Developer: true
@@ -95,6 +97,12 @@ classdef IMSolverSpectral < IMSolver
         % - Topic: Developer topics
         % - Developer: true
         qzReference
+    end
+
+    properties (Access = private)
+        coordinateMap_ = []
+        coordinateDerivative_ = []
+        coordinateSecondDerivative_ = []
     end
 
     properties (Access = protected)
@@ -529,17 +537,39 @@ classdef IMSolverSpectral < IMSolver
             % - Declaration: x = xOfZ(solver,z)
             % - Parameter z: physical coordinate
             % - Returns x: native coordinate
-            x = interp1(self.zReference, self.xReference, z, "pchip");
+            shape = size(z);
+            z = z(:);
+            x = NaN(size(z));
+            inside = z >= self.zDomain(1) & z <= self.zDomain(2);
+            if any(inside), x(inside) = feval(self.coordinateMap_,z(inside)); end
+            x = reshape(x,shape);
         end
 
         function z = zOfX(self, x)
-            % Map native coordinate to physical coordinate.
+            % Invert the same smooth map used by physical differentiation.
             %
             % - Topic: Evaluate native modes
             % - Declaration: z = zOfX(solver,x)
             % - Parameter x: native coordinate
             % - Returns z: physical coordinate
-            z = interp1(self.xReference, self.zReference, x, "pchip");
+            shape = size(x);
+            x = x(:);
+            z = NaN(size(x));
+            inside = x >= self.xReference(1) & x <= self.xReference(end);
+            if ~any(inside), z = reshape(z,shape); return; end
+            target = x(inside);
+            lower = repmat(self.zDomain(1),size(target));
+            upper = repmat(self.zDomain(2),size(target));
+            for iteration = 1:55
+                middle = (lower+upper)/2;
+                below = feval(self.coordinateMap_,middle) < target;
+                lower(below) = middle(below);
+                upper(~below) = middle(~below);
+            end
+            z(inside) = (lower+upper)/2;
+            z(x == self.xReference(1)) = self.zDomain(1);
+            z(x == self.xReference(end)) = self.zDomain(2);
+            z = reshape(z,shape);
         end
     end
 
@@ -585,13 +615,30 @@ classdef IMSolverSpectral < IMSolver
         function self = setupCoordinate(self)
             nReference = max(2001, 20*self.nEVP);
             self.zReference = linspace(self.zDomain(1), self.zDomain(2), nReference).';
-            self.qReference = self.coordinateDerivative(self.zReference);
-            if any(self.qReference <= 0)
+            profileFunction = self.N2Function;
+            switch self.coordinateKind
+                case "z", derivativeFunction = @(z) ones(size(z));
+                case "wkb", derivativeFunction = @(z) sqrt(profileFunction(z));
+                case "density", derivativeFunction = profileFunction;
+            end
+            self.qReference = derivativeFunction(self.zReference);
+            if ~isreal(self.qReference) || any(~isfinite(self.qReference)) || any(self.qReference <= 0)
                 error("IMSolverSpectral:InvalidCoordinate", ...
                     "The native coordinate derivative dx/dz must be positive.");
             end
-            self.xReference = cumtrapz(self.zReference, self.qReference);
-            self.qzReference = gradient(self.qReference, self.zReference);
+            % Derive x, dx/dz, and d2x/dz2 from one smooth representation.
+            % Independent trapezoidal/PCHIP maps and endpoint finite
+            % differences otherwise impose a floor on second derivatives.
+            self.coordinateDerivative_ = chebfun(derivativeFunction,self.zDomain);
+            if min(self.coordinateDerivative_) <= 0
+                error("IMSolverSpectral:InvalidCoordinate","The represented coordinate derivative must remain positive throughout the domain.");
+            end
+            self.coordinateMap_ = cumsum(self.coordinateDerivative_);
+            self.coordinateMap_ = self.coordinateMap_-feval(self.coordinateMap_,self.zDomain(1));
+            self.coordinateSecondDerivative_ = diff(self.coordinateDerivative_);
+            self.xReference = feval(self.coordinateMap_,self.zReference);
+            self.qReference = feval(self.coordinateDerivative_,self.zReference);
+            self.qzReference = feval(self.coordinateSecondDerivative_,self.zReference);
         end
 
         function self = setupNativeGrid(self)
@@ -604,23 +651,12 @@ classdef IMSolverSpectral < IMSolver
             [self.T, self.Tx, self.Txx] = self.chebyshevPolynomialsAtNativePoints(self.xNative);
         end
 
-        function q = coordinateDerivative(self, z)
-            switch self.coordinateKind
-                case "z"
-                    q = ones(size(z));
-                case "wkb"
-                    q = sqrt(self.N2(z));
-                case "density"
-                    q = self.N2(z);
-            end
-        end
-
         function q = qAtZ(self, z)
-            q = self.coordinateDerivative(z);
+            q = feval(self.coordinateDerivative_,z);
         end
 
         function qz = qzAtZ(self, z)
-            qz = interp1(self.zReference, self.qzReference, z, "pchip");
+            qz = feval(self.coordinateSecondDerivative_,z);
         end
 
         function x = clampNativeCoordinate(self, x)

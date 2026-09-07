@@ -9,7 +9,7 @@ mathjax: true
 
 #  zOfX
 
-Map native coordinate to physical coordinate.
+Invert the same smooth map used by physical differentiation.
 
 
 ---

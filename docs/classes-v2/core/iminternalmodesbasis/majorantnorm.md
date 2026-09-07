@@ -3,7 +3,7 @@ layout: default
 title: majorantNorm
 parent: IMInternalModesBasis
 grand_parent: Core
-nav_order: 17
+nav_order: 18
 mathjax: true
 ---
 

@@ -25,7 +25,9 @@ Solve physical-coordinate EVPs with a Chebyshev spectral discretization.
 `IMSolverSpectral` owns the numerical coordinate choice, Chebyshev
 resolution, derivative matrices, and physical-coordinate pullback
 rules. It is configured against an EVP or geostrophic zero-APV problem
-before solving.
+before solving. Stretched-coordinate values, inverse maps, Jacobians,
+and second derivatives use one smooth Chebfun representation, so
+reconstruction and sampled-field calculus share the same coordinate.
 
 ```matlab
 evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
@@ -47,7 +49,7 @@ basisSet = solver.solveEVP(evp);
   + [`zNative`](/internal-modes/classes-v2/solvers/imsolverspectral/znative.html) Physical points corresponding to `xNative`.
 + Evaluate native modes
   + [`xOfZ`](/internal-modes/classes-v2/solvers/imsolverspectral/xofz.html) Map physical coordinate to native coordinate.
-  + [`zOfX`](/internal-modes/classes-v2/solvers/imsolverspectral/zofx.html) Map native coordinate to physical coordinate.
+  + [`zOfX`](/internal-modes/classes-v2/solvers/imsolverspectral/zofx.html) Invert the same smooth map used by physical differentiation.
 
 
 ## Developer Topics
@@ -59,7 +61,7 @@ These items document internal implementation details and are not part of the pri
   + [`qReference`](/internal-modes/classes-v2/solvers/imsolverspectral/qreference.html) Reference coordinate derivative $$dx/dz$$.
   + [`qzReference`](/internal-modes/classes-v2/solvers/imsolverspectral/qzreference.html) Reference physical derivative of $$dx/dz$$.
   + [`xReference`](/internal-modes/classes-v2/solvers/imsolverspectral/xreference.html) Reference native coordinate grid.
-  + [`zReference`](/internal-modes/classes-v2/solvers/imsolverspectral/zreference.html) Reference physical grid for coordinate interpolation.
+  + [`zReference`](/internal-modes/classes-v2/solvers/imsolverspectral/zreference.html) Reference physical grid for inspecting the coordinate map.
 
 
 ---
