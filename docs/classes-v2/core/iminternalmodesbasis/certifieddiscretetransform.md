@@ -40,3 +40,12 @@ Select and independently fit a certified aligned F/G family band.
   leakage and coupled quadratic policies can reduce that Gram-certified
   band; each reduction is refitted until the fitted and retained counts
   agree.
+
+  The count search fits each candidate independently but evaluates only its
+  full-band Gram matrix. For fixed candidate weights, every normalized
+  prefix error is a principal submatrix of the full-band error, so its
+  spectral norm cannot be larger. The normalized continuous target differs
+  from its diagonal signature matrix by a fixed perturbation. When the Gram
+  tolerance is smaller than the resulting nonsingularity margin, the same
+  bound proves that every prefix Gram matrix has full rank. Larger loose
+  tolerances retain a lightweight cumulative-prefix fallback.

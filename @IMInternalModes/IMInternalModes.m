@@ -202,8 +202,11 @@ classdef IMInternalModes < IMEigenvalueProblem
         function spec = innerProduct(self, variable)
             % Return the signed `F` or `G` inner-product recipe.
             %
-            % For `G`, the interior weight is $$N^2/g$$. For `F`, the
-            % interior weight is one. The returned struct has fields
+            % The solved `G` variable uses the EVP's canonical weight `r`:
+            % $$N^2/g$$ for hydrostatic modes, $$(N^2-f_0^2)/g$$ at fixed
+            % wavenumber, and $$(N^2-\omega^2)/g$$ at fixed frequency.
+            % Diagnostic hydrostatic `G` uses $$N^2/g$$; `F` retains unit
+            % interior weight. The returned struct has fields
             % `variable`, `kind`, `interiorWeight`, `surfaceWeights`,
             % `bottomWeights`, `endpointInnerProductTerms`,
             % `hasInnerProduct`, and `reason`. `hasInnerProduct` is true
@@ -241,6 +244,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             spec.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
             if variable == self.formulation
+                if variable == "G"
+                    spec.interiorWeight = self.r;
+                end
                 spec.surfaceWeights = self.endpointWeights("surface");
                 spec.bottomWeights = self.endpointWeights("bottom");
                 [spec.hasInnerProduct, spec.reason] = self.solvedInnerProductAvailability(spec.surfaceWeights, spec.bottomWeights);
@@ -260,12 +266,12 @@ classdef IMInternalModes < IMEigenvalueProblem
             % The signed Pontryagin product returned by `innerProduct` is
             % the physical pairing used for orthogonality and projection.
             % Its natural $$L^2\oplus\mathbb C^s$$ coordinate decomposition
-            % induces a positive Hilbert product by retaining the positive
-            % interior weight and replacing every endpoint coefficient by
-            % its absolute value:
+            % induces a positive Hilbert product by taking the absolute
+            % interior weight and the absolute value of every endpoint
+            % coefficient:
             %
             % $$
-            % (U,V)_+=\int w\,\overline{U}V\,dz+
+            % (U,V)_+=\int |w|\,\overline{U}V\,dz+
             % \sum_\ell |\alpha_\ell|\,
             % \overline{L_\ell[U]}L_\ell[V].
             % $$
@@ -273,8 +279,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Use this recipe for magnitudes, error tolerances, and
             % convergence diagnostics. Use `innerProduct` for signed
             % invariants, projection functionals, and modal coefficients.
-            % The two recipes coincide when every endpoint coefficient is
-            % nonnegative.
+            % The two recipes coincide when the interior weight and every
+            % endpoint coefficient are nonnegative.
             %
             % - Topic: Inspect internal-mode inner products
             % - Declaration: spec = majorantInnerProduct(evp,variable)
@@ -287,6 +293,8 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             spec = self.innerProduct(variable);
             spec.kind = "inducedHilbertMajorant";
+            signedWeight = spec.interiorWeight;
+            spec.interiorWeight = @(z,ctx) abs(signedWeight(z,ctx));
             for iWeight = 1:numel(spec.surfaceWeights)
                 spec.surfaceWeights(iWeight).coefficient = abs(spec.surfaceWeights(iWeight).coefficient);
             end

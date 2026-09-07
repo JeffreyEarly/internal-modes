@@ -18,4 +18,6 @@ Independently refitted count-selection attempts.
 
   Empty for a direct fixed-band assessment. Certified construction
   records each attempted count and whether its freshly fitted rule
-  passed the relevant selection stage.
+  passed the relevant selection stage. Search-only Gram rows record
+  `retainedModeCount=NaN` when the full candidate was rejected,
+  because rejected candidate prefixes are intentionally not built.

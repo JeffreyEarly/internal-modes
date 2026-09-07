@@ -7,6 +7,8 @@ nav_order: 100
 # Version History
 
 ## Unreleased
+- made spectral stretched-coordinate maps, inverse maps, Jacobians, and second derivatives use one smooth Chebfun representation, removing the inconsistent trapezoidal/PCHIP and endpoint-gradient error floor in WKB and density coordinates
+- corrected solved G-mode normalization and projection to use the canonical EVP interior weight, including `(N2-f0^2)/g` for fixed-wavenumber waves and `(N2-omega^2)/g` for fixed-frequency waves; positive majorants now also take the absolute interior weight
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
 - added the induced Hilbert-majorant APIs `majorantInnerProduct`, `majorantGramMatrix`, `majorantNorm`, and `targetMajorantGramMatrix`; retained signed Pontryagin projection and spectra; and enabled coupled APV quadratic certification with retained negative modes by measuring relative errors in the positive majorant
 - moved singular-pencil rejection into generic eigenpair processing and made zero-norm classification mode-local, preventing near-null generalized eigenvectors and unrelated large columns from corrupting physical mode selection

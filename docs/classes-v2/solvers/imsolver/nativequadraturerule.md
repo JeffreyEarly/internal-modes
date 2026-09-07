@@ -3,7 +3,7 @@ layout: default
 title: nativeQuadratureRule
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 
@@ -27,8 +27,8 @@ Return the solver's native physical quadrature rule.
 
 ## Discussion
 
-The returned points are increasing in physical coordinate and
-`weights` are reordered with them. For a WKB-configured
-`IMSolverSpectral`, the points are Chebyshev--Lobatto points in
-$$x(z)=\int N(z)\,dz$$ and the weights act directly on values
-sampled in physical $$z$$.
+  The returned points are increasing in physical coordinate and
+  `weights` are reordered with them. For a WKB-configured
+  `IMSolverSpectral`, the points are Chebyshev--Lobatto points in
+  $$x(z)=\int N(z)\,dz$$ and the weights act directly on values
+  sampled in physical $$z$$.

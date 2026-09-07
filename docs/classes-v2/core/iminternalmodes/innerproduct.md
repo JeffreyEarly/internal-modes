@@ -3,7 +3,7 @@ layout: default
 title: innerProduct
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 13
+nav_order: 14
 mathjax: true
 ---
 
@@ -26,8 +26,11 @@ Return the signed `F` or `G` inner-product recipe.
 
 ## Discussion
 
-  For `G`, the interior weight is $$N^2/g$$. For `F`, the
-  interior weight is one. The returned struct has fields
+  The solved `G` variable uses the EVP's canonical weight `r`:
+  $$N^2/g$$ for hydrostatic modes, $$(N^2-f_0^2)/g$$ at fixed
+  wavenumber, and $$(N^2-\omega^2)/g$$ at fixed frequency.
+  Diagnostic hydrostatic `G` uses $$N^2/g$$; `F` retains unit
+  interior weight. The returned struct has fields
   `variable`, `kind`, `interiorWeight`, `surfaceWeights`,
   `bottomWeights`, `endpointInnerProductTerms`,
   `hasInnerProduct`, and `reason`. `hasInnerProduct` is true
