@@ -345,6 +345,29 @@ classdef (Sealed, Hidden) IMExponentialGeostrophicAPVCatalog
         end
 
         function value = branchResidual(endpoint, s0, branch)
+            if branch == "negative"
+                % Cancel the known exponential factors before forming the
+                % characteristic determinant. Row normalization otherwise
+                % turns a localized root into an unresolvable sign jump.
+                sd=endpoint.expMinusDOverB*s0;
+                x=[sd;s0]; N2=endpoint.N0^2*exp(2*[-endpoint.depth;0]/endpoint.b);
+                values=[besseli(1,x,1),besselk(1,x,1)];
+                flux=x./(endpoint.b*N2).*[besseli(0,x,1),-besselk(0,x,1)];
+                beta=[-endpoint.betaBottom;endpoint.betaSurface];
+                rows=zeros(2); rowScale=zeros(2,1);
+                kinds=[string(endpoint.bottomKind),string(endpoint.surfaceKind)];
+                for row=1:2
+                    if kinds(row)=="dirichlet"
+                        rows(row,:)=values(row,:); rowScale(row)=norm(values(row,:));
+                    else
+                        rows(row,:)=flux(row,:)+beta(row)*values(row,:);
+                        rowScale(row)=norm(abs(flux(row,:))+abs(beta(row)*values(row,:)));
+                    end
+                end
+                rows=rows./rowScale;
+                value=exp(-2*(s0-sd))*rows(1,1)*rows(2,2)-rows(1,2)*rows(2,1);
+                return;
+            end
             [bottomRow, surfaceRow] = IMExponentialGeostrophicAPVCatalog.branchRows( ...
                 endpoint, s0, branch);
             bottomNorm = norm(bottomRow);
