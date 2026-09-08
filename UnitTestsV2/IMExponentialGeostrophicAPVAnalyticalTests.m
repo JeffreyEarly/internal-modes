@@ -20,6 +20,24 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function localizedSurfaceRootsMatchSpectralModes(testCase)
+            N0=5.2e-3; b=1300; g=9.81; zDomain=[-4000 0];
+            N2=@(z)N0^2*exp(2*z/b); gd=integral(N2,zDomain(1),0);
+            solution=IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,g=g);
+            for surfaceLength=[5 10 20 50]
+                g0=-N0^2*surfaceLength;
+                evp=IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
+                exact=solution.internalModes(evp,nModes=3);
+                numerical=IMSolverSpectral(nEVP=257,coordinateKind="z").solveEVP(evp,nModes=3);
+                testCase.verifyEqual(nnz(exact.h<0),1)
+                testCase.verifyEqual(exact.h,numerical.h,RelTol=2e-6)
+                F=exact.F(0,normalization="uMax"); Fz=exact.uz(0,normalization="uMax");
+                residual=Fz/N0^2+(1/g+1/g0)*F;
+                scale=abs(Fz/N0^2)+abs((1/g+1/g0)*F);
+                testCase.verifyLessThan(max(abs(residual)./scale),1e-10)
+                testCase.verifyLessThan(max(abs(exact.metadata.rootResiduals)),1e-10)
+            end
+        end
         function canonicalBenchmarkMatchesIndependentRootEquations(testCase)
             [N0, b, zDomain, g, N2] = testCase.canonicalProfile();
             g0 = -N0*N0*b;

@@ -7,6 +7,7 @@ nav_order: 100
 # Version History
 
 ## Unreleased
+- stabilized the analytical negative-APV characteristic determinant for strongly localized endpoint modes by cancelling known Bessel exponential factors before root finding; added independent spectral and endpoint-residual checks
 - equilibrated generalized eigenproblem rows before solving, reducing high-resolution APV mode and endpoint-response errors while preserving the physical matrices for mode classification and diagnostics
 - made spectral stretched-coordinate maps, inverse maps, Jacobians, and second derivatives use one smooth Chebfun representation, removing the inconsistent trapezoidal/PCHIP and endpoint-gradient error floor in WKB and density coordinates
 - corrected solved G-mode normalization and projection to use the canonical EVP interior weight, including `(N2-f0^2)/g` for fixed-wavenumber waves and `(N2-omega^2)/g` for fixed-frequency waves; positive majorants now also take the absolute interior weight
