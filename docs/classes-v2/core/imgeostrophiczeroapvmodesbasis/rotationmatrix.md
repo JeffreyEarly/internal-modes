@@ -3,7 +3,7 @@ layout: default
 title: rotationMatrix
 parent: IMGeostrophicZeroAPVModesBasis
 grand_parent: Core
-nav_order: 21
+nav_order: 22
 mathjax: true
 ---
 

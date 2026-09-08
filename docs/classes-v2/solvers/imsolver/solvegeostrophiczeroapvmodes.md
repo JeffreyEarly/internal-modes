@@ -3,7 +3,7 @@ layout: default
 title: solveGeostrophicZeroAPVModes
 parent: IMSolver
 grand_parent: Solvers
-nav_order: 16
+nav_order: 18
 mathjax: true
 ---
 

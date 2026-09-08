@@ -46,6 +46,7 @@ G = basisSet.G(linspace(-4000,0,200).');
 + Create internal-mode EVPs
   + [`IMInternalModes`](/internal-modes/classes-v2/core/iminternalmodes/iminternalmodes.html) Create an internal-mode canonical EVP.
   + [`geostrophicAPVModes`](/internal-modes/classes-v2/core/iminternalmodes/geostrophicapvmodes.html) Create signed generalized-energy geostrophic APV modes.
+  + [`geostrophicGeneralizedPotentialEnstrophyModes`](/internal-modes/classes-v2/core/iminternalmodes/geostrophicgeneralizedpotentialenstrophymodes.html) Create free-surface generalized-potential-enstrophy modes.
   + [`hydrostaticFModes`](/internal-modes/classes-v2/core/iminternalmodes/hydrostaticfmodes.html) Create the hydrostatic `F` internal-mode EVP.
   + [`hydrostaticGModes`](/internal-modes/classes-v2/core/iminternalmodes/hydrostaticgmodes.html) Create the hydrostatic `G` internal-mode EVP.
   + [`meanDensityAnomalyModes`](/internal-modes/classes-v2/core/iminternalmodes/meandensityanomalymodes.html) Create generalized-energy mean-density-anomaly modes.

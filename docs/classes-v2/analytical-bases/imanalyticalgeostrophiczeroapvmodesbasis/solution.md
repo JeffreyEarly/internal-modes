@@ -3,7 +3,7 @@ layout: default
 title: solution
 parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 25
+nav_order: 26
 mathjax: true
 ---
 

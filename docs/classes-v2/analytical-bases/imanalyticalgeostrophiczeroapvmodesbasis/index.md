@@ -84,6 +84,8 @@ depthModes = exactModes.rotateBoundaryDepth(g0=-0.03,gd=0.01);
   + [`rotateBoundaryDepth`](/internal-modes/classes-v2/analytical-bases/imanalyticalgeostrophiczeroapvmodesbasis/rotateboundarydepth.html) Diagonalize generalized energy relative to endpoint response.
   + [`rotateSurfaceBuoyancy`](/internal-modes/classes-v2/analytical-bases/imanalyticalgeostrophiczeroapvmodesbasis/rotatesurfacebuoyancy.html) Diagonalize surface buoyancy relative to generalized energy.
   + [`rotateWithPencil`](/internal-modes/classes-v2/analytical-bases/imanalyticalgeostrophiczeroapvmodesbasis/rotatewithpencil.html) Apply a custom symmetric matrix-pencil rotation.
++ Evaluate geostrophic zero-APV modes
+  + [`projectionRecipe`](/internal-modes/classes-v2/analytical-bases/imanalyticalgeostrophiczeroapvmodesbasis/projectionrecipe.html) Report the unavailable scalar F/G projection for boundary-response bases.
 
 
 ## Developer Topics

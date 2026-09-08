@@ -347,8 +347,7 @@ for variable = variables
             active = active(1:nPrefix);
             target = candidateTransform.targetGramMatrix(variable=variable);
             target = target(1:nPrefix,1:nPrefix);
-            numerator = sum(coefficients(active,:).*(target(active,active)*coefficients(active,:)),1);
-            leakage = sqrt(max(0,numerator)./norms(rejected).');
+            leakage = IMProjection.relativeCoefficientNorm(coefficients(active,:),target(active,active),norms(rejected));
             [value,index] = max(leakage);
             label = checkBasis.modeNumber(rejected(index));
         end
@@ -452,8 +451,7 @@ for iChannel = 1:size(channels,1)
         selectedPairs = find(selected);
         difference = sampledCoefficients(:,selected)-continuousCoefficients(:,selected);
         targetMajorantActive = targetMajorantGram(active,active);
-        numerator = real(sum(conj(difference).*(targetMajorantActive*difference),1));
-        values = sqrt(max(0,numerator)./productNorms(selected).');
+        values = IMProjection.relativeCoefficientNorm(difference,targetMajorantActive,productNorms(selected));
         [value,iLimiting] = max(values);
         if value >= errors(nPrefix)
             pair = pairIndices(selectedPairs(iLimiting),:);

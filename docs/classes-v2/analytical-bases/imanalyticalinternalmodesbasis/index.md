@@ -52,6 +52,7 @@ G = basisSet.G(linspace(-5000,0,128).');
   + [`majorantInnerProduct`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/majorantinnerproduct.html) Return the induced positive Hilbert-majorant recipe.
   + [`majorantNorm`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/majorantnorm.html) Return the positive Hilbert-majorant norm of coefficients.
   + [`partialWindowModes`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/partialwindowmodes.html) Diagonalize a partial-depth Gram matrix.
+  + [`projectionRecipe`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/projectionrecipe.html) Bind an analytical aligned basis without requiring a numerical solver.
   + [`spectrum`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/spectrum.html) Compute a modal spectrum.
 + Inspect analytical modes
   + [`N2`](/internal-modes/classes-v2/analytical-bases/imanalyticalinternalmodesbasis/n2.html) Buoyancy frequency squared function.

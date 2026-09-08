@@ -65,6 +65,7 @@ G = basisSet.G(z);
   + [`certifiedDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/certifieddiscretetransform.html) Select and independently fit a certified aligned F/G family band.
   + [`discreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/discretetransform.html) Build an aligned internal-mode F/G transform through the compatibility API.
   + [`fitDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/fitdiscretetransform.html) Fit and certify one exact aligned F/G family band.
+  + [`projectionRecipe`](/internal-modes/classes-v2/core/iminternalmodesbasis/projectionrecipe.html) Bind one aligned variable to its signed pairing and positive majorant.
   + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/iminternalmodesbasis/quadratureweightsforpoints.html) Fit one quadrature rule to aligned internal-mode F/G channels.
 
 
@@ -73,6 +74,7 @@ These items document internal implementation details and are not part of the pri
 + Developer topics
   + Normalization rules
     + [`depthNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/depthnormfactor.html) Return the volume-only depth normalization factor.
+    + [`generalizedPotentialEnstrophyNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/generalizedpotentialenstrophynormfactor.html) Return the depth-mean generalized-potential-enstrophy factor.
     + [`geostrophicNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/geostrophicnormfactor.html) Return the hydrostatic geostrophic normalization factor.
     + [`innerProductNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/innerproductnormfactor.html) Return the `F` or `G` inner-product norm factor.
     + [`maxAmplitudeNormFactor`](/internal-modes/classes-v2/core/iminternalmodesbasis/maxamplitudenormfactor.html) Return the maximum amplitude of `F` or `G`.

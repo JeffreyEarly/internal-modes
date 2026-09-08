@@ -1,6 +1,7 @@
 # Version History
 
 ## Unreleased
+- added a common continuous basis collection, basis-owned projection recipes, shared signed projection/error kernel, and fixed-grid assessment with separate explicit acceptance policies; preserved scientific counts, page/endpoint labels, and unsupported-family capabilities
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
 - added the induced Hilbert-majorant APIs `majorantInnerProduct`, `majorantGramMatrix`, `majorantNorm`, and `targetMajorantGramMatrix`; retained signed Pontryagin projection and spectra; and enabled coupled APV quadratic certification with retained negative modes by measuring relative errors in the positive majorant
 - moved singular-pencil rejection into generic eigenpair processing and made zero-norm classification mode-local, preventing near-null generalized eigenvectors and unrelated large columns from corrupting physical mode selection

@@ -64,6 +64,7 @@ factors = basisSet.normalizationFactors("unity");
   + [`fitDiscreteTransform`](/internal-modes/classes-v2/core/imbasisset/fitdiscretetransform.html) Fit and certify one exact modal band on caller-selected points.
   + [`modeRootGrid`](/internal-modes/classes-v2/core/imbasisset/moderootgrid.html) Design a mode-root grid and report how it was generated.
   + [`pointsFromModeRoots`](/internal-modes/classes-v2/core/imbasisset/pointsfrommoderoots.html) Return physical endpoints and roots of the next selected mode.
+  + [`projectionRecipe`](/internal-modes/classes-v2/core/imbasisset/projectionrecipe.html) Bind the scalar signed pairing and continuous evaluation to a recipe.
   + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/imbasisset/quadratureweightsforpoints.html) Find quadrature weights for fixed physical sample points.
 + Inspect basis sets
   + [`eigenvalues`](/internal-modes/classes-v2/core/imbasisset/eigenvalues.html) Retained eigenvalues.
