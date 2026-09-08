@@ -168,45 +168,18 @@ classdef IMInternalModesDiscreteTransform
                             || norm(data.targetMajorantGramMatrix-data.targetMajorantGramMatrix.',2) > majorantTolerance
                         error("IMInternalModesDiscreteTransform:NonSymmetricMatrix", "Metric, target Gram, and target majorant Gram matrices must be symmetric.");
                     end
-                    data.metricMatrix = 0.5*(data.metricMatrix+data.metricMatrix.');
-                    data.targetGramMatrix = 0.5*(data.targetGramMatrix+data.targetGramMatrix.');
-                    data.targetMajorantGramMatrix = 0.5*(data.targetMajorantGramMatrix+data.targetMajorantGramMatrix.');
-                    inverse = inverseMatrices.(field);
-                    data.gramMatrix = 0.5*(inverse.'*data.metricMatrix*inverse + inverse.'*data.metricMatrix.'*inverse);
-                    active = find(data.activeModeMask);
-                    data.forwardMatrix = zeros(nModes,nSamples);
-                    if isempty(active)
-                        data.relativeGramOperatorError = 0;
-                        data.roundTripError = 0;
-                        data.inverseMatrixConditionNumber = NaN;
-                        data.gramConditionNumber = NaN;
-                        data.targetGramIsPositiveDefinite = true;
-                        data.sampledGramRank = 0;
-                    else
-                        gramActive = data.gramMatrix(active,active);
-                        singularValues = svd(gramActive);
-                        rankTolerance = max(size(gramActive))*eps(max(1,norm(gramActive,2)));
-                        data.sampledGramRank = sum(singularValues > rankTolerance);
-                        if data.sampledGramRank < length(active)
-                            data.forwardMatrix(active,:) = pinv(gramActive,rankTolerance)*(inverse(:,active).'*data.metricMatrix);
-                        else
-                            data.forwardMatrix(active,:) = gramActive \ (inverse(:,active).'*data.metricMatrix);
-                        end
-                        targetActive = data.targetGramMatrix(active,active);
-                        targetNorms = diag(targetActive);
-                        scale = 1./sqrt(abs(targetNorms));
-                        scaledDifference = scale.*(gramActive-targetActive).*scale.';
-                        projector = diag(double(data.activeModeMask));
-                        data.relativeGramOperatorError = norm(scaledDifference,2);
-                        if data.sampledGramRank < length(active)
-                            data.relativeGramOperatorError = Inf;
-                        end
-                        data.roundTripError = norm(data.forwardMatrix*inverse-projector,2);
-                        data.inverseMatrixConditionNumber = cond(inverse(:,active));
-                        data.gramConditionNumber = cond(gramActive);
-                        targetTolerance = 100*eps(max(1,norm(targetActive,2)));
-                        data.targetGramIsPositiveDefinite = min(eig(targetActive)) > targetTolerance;
-                    end
+                    projection = IMProjection(inverseMatrices.(field),data.metricMatrix,data.targetGramMatrix,majorantGramMatrix=data.targetMajorantGramMatrix,activeColumnMask=data.activeModeMask,columnLabels=string(options.modeNumber));
+                    data.metricMatrix = projection.metricMatrix;
+                    data.targetGramMatrix = projection.targetGramMatrix;
+                    data.targetMajorantGramMatrix = projection.majorantGramMatrix;
+                    data.gramMatrix = projection.gramMatrix;
+                    data.forwardMatrix = projection.forwardMatrix;
+                    data.relativeGramOperatorError = projection.gramError;
+                    data.roundTripError = projection.roundTripError;
+                    data.inverseMatrixConditionNumber = projection.inverseMatrixConditionNumber;
+                    data.gramConditionNumber = projection.gramConditionNumber;
+                    data.targetGramIsPositiveDefinite = projection.targetGramIsPositiveDefinite;
+                    data.sampledGramRank = projection.sampledGramRank;
                     availableVariables(end+1) = variable; %#ok<AGROW>
                 else
                     data.metricMatrix = zeros(0,0);

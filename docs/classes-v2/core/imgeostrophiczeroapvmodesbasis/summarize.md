@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMGeostrophicZeroAPVModesBasis
 grand_parent: Core
-nav_order: 26
+nav_order: 27
 mathjax: true
 ---
 

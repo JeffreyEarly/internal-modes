@@ -3,7 +3,7 @@ layout: default
 title: rotationResiduals
 parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 23
+nav_order: 24
 mathjax: true
 ---
 

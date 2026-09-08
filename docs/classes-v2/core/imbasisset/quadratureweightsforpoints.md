@@ -3,7 +3,7 @@ layout: default
 title: quadratureWeightsForPoints
 parent: IMBasisSet
 grand_parent: Core
-nav_order: 25
+nav_order: 26
 mathjax: true
 ---
 
