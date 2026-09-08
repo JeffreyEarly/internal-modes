@@ -91,7 +91,15 @@ classdef (Abstract) IMSolver
 
             solver = self.configuredForEVP(evp);
             [A, B] = evp.assemble(solver);
-            [V, D] = eig(A, B);
+            % Equilibrate equations before QZ: spectral derivative rows can
+            % otherwise overwhelm boundary equations as resolution grows.
+            % Left scaling preserves the generalized eigenproblem and its
+            % native eigenvectors. Keep the physical matrices below for
+            % zero-mode classification and matrix-level diagnostics.
+            rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
+            rowScale(rowScale == 0) = 1;
+            solveB = B./rowScale;
+            [V, D] = eig(A./rowScale, solveB);
             eigenvalues = diag(D);
             valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) ...
                 & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
@@ -102,7 +110,9 @@ classdef (Abstract) IMSolver
 
             V = real(V(:,valid));
             eigenvalues = real(eigenvalues(valid));
-            familyValid = evp.finiteGeneralizedEigenpairMask(V,B);
+            % Numerical null-space rejection must use the metric in the
+            % same equation scaling as the eigensolve.
+            familyValid = evp.finiteGeneralizedEigenpairMask(V,solveB);
             V = V(:,familyValid);
             eigenvalues = eigenvalues(familyValid);
             if isempty(eigenvalues)

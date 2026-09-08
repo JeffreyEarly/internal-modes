@@ -127,6 +127,10 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 GzBottom = basis.Gz(zDomain(1));
                 zCheck = linspace(zDomain(1),zDomain(2),501).';
                 GScale = max(abs(basis.G(zCheck)),[],1);
+                % A boundary-trapped mode can be tiny at the opposite end.
+                % Include its full-domain derivative scale so roundoff in
+                % that trace is not divided by a nearly zero local value.
+                derivativeScale = GScale/diff(zDomain);
 
                 testCase.verifyEqual(any(basis.modeNumber == 0),expectNull)
                 if expectNull
@@ -136,14 +140,14 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 end
                 if isfinite(g0)
                     residual = GzSurface-(g0/g)*GSurface.*lambda;
-                    residualScale = max([abs(GzSurface);abs((g0/g)*GSurface.*lambda)],[],1);
+                    residualScale = max([abs(GzSurface);abs((g0/g)*GSurface.*lambda);derivativeScale],[],1);
                     testCase.verifyLessThan(max(abs(residual)./max(residualScale,eps)),2e-8)
                 else
                     testCase.verifyLessThan(max(abs(GSurface)./max(GScale,eps)),2e-9)
                 end
                 if isfinite(gd)
                     residual = GzBottom+(gd/g)*GBottom.*lambda;
-                    residualScale = max([abs(GzBottom);abs((gd/g)*GBottom.*lambda)],[],1);
+                    residualScale = max([abs(GzBottom);abs((gd/g)*GBottom.*lambda);derivativeScale],[],1);
                     testCase.verifyLessThan(max(abs(residual)./max(residualScale,eps)),2e-8)
                 else
                     testCase.verifyLessThan(max(abs(GBottom)./max(GScale,eps)),2e-9)
