@@ -16,14 +16,15 @@ Evaluate streamfunction structures $$F(z)$$.
 
 ## Declaration
 ```matlab
- values = F(basisSet,z)
+ values = F(basisSet,z,options)
 ```
 ## Parameters
 + `z`  physical coordinate
++ `options.pages`  source wavenumber pages, preserving order and repeats
 
 ## Returns
 + `values`  page-shaped `F` values
 
 ## Discussion
 
-  The result has dimensions `nZ x nEndpoints x nK`.
+  The result has dimensions `nZ x nEndpoints x nSelectedPages`.

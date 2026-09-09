@@ -18,13 +18,14 @@ Select and label retained finite-real eigenmodes.
 
 ## Declaration
 ```matlab
- selection = selectModes(evp,eigenvalues,nModes,solver,A)
+ selection = selectModes(evp,eigenvalues,nModes,solver,A,options)
 ```
 ## Parameters
 + `eigenvalues`  finite real candidate eigenvalues
 + `nModes`  number of retained modes
 + `solver`  canonical solver
 + `A`  assembled left matrix
++ `options.diagnostics`  optional diagnostics prepared for this same EVP and assembled A
 
 ## Returns
 + `selection`  selected indices and mode numbers

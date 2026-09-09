@@ -23,8 +23,8 @@ Create an exact canonical boundary-normalized basis.
 ## Parameters
 + `options.solution`  analytical solution family
 + `options.problem`  canonical zero-APV problem
-+ `options.FFunction`  exact canonical `F` evaluator
-+ `options.GFunction`  exact canonical `G` evaluator
++ `options.FFunction`  exact canonical `F` evaluator, `(z,pages)` for bounded page evaluation
++ `options.GFunction`  exact canonical `G` evaluator, `(z,pages)` for bounded page evaluation
 + `options.metadata`  creation metadata
 
 ## Returns

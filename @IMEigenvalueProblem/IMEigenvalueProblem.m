@@ -202,18 +202,7 @@ classdef IMEigenvalueProblem
             end
 
             solver = solver.configuredForEVP(self);
-            context = self.contextForSolver(solver);
-            z = solver.zNative(:);
-            [pValues, qValues, rValues] = self.coefficientValues(z, context);
-            pzValues = solver.differentiateGridValues(pValues, 1);
-            D0 = solver.physicalDerivativeMatrix(0);
-            D1 = solver.physicalDerivativeMatrix(1);
-            D2 = solver.physicalDerivativeMatrix(2);
-
-            A = -diag(pValues)*D2 - diag(pzValues)*D1 + diag(qValues)*D0;
-            B = diag(rValues)*D0;
-            [A, B] = self.applyBoundaryRow(A, B, solver, "surface", self.surfaceBoundary, pValues);
-            [A, B] = self.applyBoundaryRow(A, B, solver, "bottom", self.bottomBoundary, pValues);
+            [A,B] = self.assembleConfigured(solver);
         end
 
         function context = contextForSolver(self, solver)
@@ -399,34 +388,7 @@ classdef IMEigenvalueProblem
             context = self.contextForSolver(solver);
             z = solver.zNative(:);
             [pValues, qValues, rValues] = self.coefficientValues(z, context);
-            tolerance = 100*eps;
-            pTol = IMEigenvalueProblem.signTolerance(pValues, tolerance);
-            qTol = IMEigenvalueProblem.signTolerance(qValues, tolerance);
-            rTol = IMEigenvalueProblem.signTolerance(rValues, tolerance);
-
-            diagnostics.pMin = min(pValues);
-            diagnostics.qMin = min(qValues);
-            diagnostics.rMin = min(rValues);
-            diagnostics.pPositive = all(isfinite(pValues)) && diagnostics.pMin > pTol;
-            diagnostics.qNonnegative = all(isfinite(qValues)) && diagnostics.qMin >= -qTol;
-            diagnostics.rPositive = all(isfinite(rValues)) && diagnostics.rMin > rTol;
-            diagnostics.endpointWeights = self.endpointWeights();
-            diagnostics.negativeEndpointWeightCount = self.negativeEndpointWeightCount(tolerance=0);
-            diagnostics.metricPositive = diagnostics.rPositive && diagnostics.negativeEndpointWeightCount == 0;
-            diagnostics.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
-            diagnostics.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
-            diagnostics.endpointNumeratorNonnegative = diagnostics.endpointNumeratorNegativeDirections == 0;
-            diagnostics.interiorNonnegative = diagnostics.pPositive && diagnostics.qNonnegative;
-            diagnostics.quadraticFormNonnegative = diagnostics.interiorNonnegative && diagnostics.endpointNumeratorNonnegative;
-            diagnostics.assessmentLevel = "grid";
-            diagnostics.reason = "Grid-level norm and energy signs were checked.";
-            if diagnostics.hasDegenerateEndpointMetric
-                diagnostics.assessmentLevel = "unknown";
-                diagnostics.reason = "An active endpoint determinant is numerically degenerate.";
-            elseif ~(diagnostics.pPositive && diagnostics.rPositive && all(isfinite(qValues)))
-                diagnostics.assessmentLevel = "unknown";
-                diagnostics.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
-            end
+            diagnostics = self.definitenessFromSamples(pValues,qValues,rValues);
         end
 
         function bounds = negativeEigenvalueBounds(self, solver, A)
@@ -455,41 +417,7 @@ classdef IMEigenvalueProblem
             end
 
             definiteness = self.definitenessDiagnostics(solver);
-            zeroMode = self.zeroModeAssessment(A);
-            bounds.assessmentLevel = definiteness.assessmentLevel;
-            bounds.negativeEndpointWeightCount = definiteness.negativeEndpointWeightCount;
-            bounds.zeroModeStatus = zeroMode.zeroModeStatus;
-            bounds.minNegativeEigenvalueCount = 0;
-            bounds.maxNegativeEigenvalueCount = "unknown";
-            bounds.reason = definiteness.reason;
-
-            if definiteness.assessmentLevel == "unknown"
-                return;
-            end
-
-            if definiteness.metricPositive && definiteness.quadraticFormNonnegative
-                bounds.maxNegativeEigenvalueCount = 0;
-                bounds.reason = "The grid-level norm is positive and the energy is nonnegative.";
-                return;
-            end
-
-            if definiteness.quadraticFormNonnegative && definiteness.negativeEndpointWeightCount > 0
-                if bounds.zeroModeStatus == "absent"
-                    bounds.minNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
-                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
-                    bounds.reason = "The energy is nonnegative, the endpoint norm has an assessed negative-weight count, and zero is absent.";
-                else
-                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
-                    bounds.reason = "The negative endpoint weight count bounds the search, but exact negative count requires zero to be absent.";
-                end
-                return;
-            end
-
-            if definiteness.metricPositive && definiteness.interiorNonnegative
-                bounds.maxNegativeEigenvalueCount = definiteness.endpointNumeratorNegativeDirections;
-                bounds.reason = "The norm is positive and only endpoint energy terms can make the energy negative.";
-                return;
-            end
+            bounds = self.negativeBoundsFromDefiniteness(definiteness,A);
         end
 
         function diagnostics = modeSelectionDiagnostics(self, solver, A)
@@ -521,19 +449,10 @@ classdef IMEigenvalueProblem
             end
 
             bounds = self.negativeEigenvalueBounds(solver, A);
-            zeroMode = self.zeroModeAssessment(A);
-            diagnostics.assessmentLevel = bounds.assessmentLevel;
-            diagnostics.negativeEndpointWeightCount = bounds.negativeEndpointWeightCount;
-            diagnostics.minNegativeEigenvalueCount = bounds.minNegativeEigenvalueCount;
-            diagnostics.maxNegativeEigenvalueCount = bounds.maxNegativeEigenvalueCount;
-            diagnostics.zeroModeStatus = zeroMode.zeroModeStatus;
-            diagnostics.zeroModeCount = zeroMode.zeroModeCount;
-            diagnostics.zeroModeSingularValue = zeroMode.zeroModeSingularValue;
-            diagnostics.zeroModeTolerance = zeroMode.zeroModeTolerance;
-            diagnostics.reason = bounds.reason + " Zero mode status is " + zeroMode.zeroModeStatus + ".";
+            diagnostics = self.selectionDiagnosticsFromBounds(bounds,A);
         end
 
-        function selection = selectModes(self, eigenvalues, nModes, solver, A)
+        function selection = selectModes(self, eigenvalues, nModes, solver, A, options)
             % Select and label retained finite-real eigenmodes.
             %
             % Mode-selection diagnostics decide when raw negative discrete
@@ -544,11 +463,12 @@ classdef IMEigenvalueProblem
             % `selection.modeSelectionDiagnostics`.
             %
             % - Topic: Developer topics
-            % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A)
+            % - Declaration: selection = selectModes(evp,eigenvalues,nModes,solver,A,options)
             % - Parameter eigenvalues: finite real candidate eigenvalues
             % - Parameter nModes: number of retained modes
             % - Parameter solver: canonical solver
             % - Parameter A: assembled left matrix
+            % - Parameter options.diagnostics: optional diagnostics prepared for this same EVP and assembled A
             % - Returns selection: selected indices and mode numbers
             % - Developer: true
             arguments
@@ -557,10 +477,14 @@ classdef IMEigenvalueProblem
                 nModes (1,1) double {mustBeInteger, mustBePositive}
                 solver IMSolver
                 A (:,:) double
+                options.diagnostics (1,1) struct = struct()
             end
 
             tolerance = self.eigenvalueTolerance(eigenvalues);
-            diagnostics = self.modeSelectionDiagnostics(solver, A);
+            diagnostics = options.diagnostics;
+            if isempty(fieldnames(diagnostics))
+                diagnostics = self.modeSelectionDiagnostics(solver, A);
+            end
             negativeCount = nnz(eigenvalues < -tolerance);
             if isnumeric(diagnostics.maxNegativeEigenvalueCount)
                 negativeCount = min(negativeCount, diagnostics.maxNegativeEigenvalueCount);
@@ -622,6 +546,32 @@ classdef IMEigenvalueProblem
     end
 
     methods (Hidden)
+        function [A,B,samples] = assembleConfigured(self,solver)
+            % Assemble using the explicitly supplied configured discretization.
+            % Internal callers must configure this solver for the same domain
+            % and coordinate physics before calling. No persistent cache is used.
+            context = self.contextForSolver(solver);
+            z = solver.zNative(:);
+            [pValues, qValues, rValues] = self.coefficientValues(z, context);
+            pzValues = solver.differentiateGridValues(pValues, 1);
+            D0 = solver.physicalDerivativeMatrix(0);
+            D1 = solver.physicalDerivativeMatrix(1);
+            D2 = solver.physicalDerivativeMatrix(2);
+
+            A = -diag(pValues)*D2 - diag(pzValues)*D1 + diag(qValues)*D0;
+            B = diag(rValues)*D0;
+            [A, B] = self.applyBoundaryRow(A, B, solver, "surface", self.surfaceBoundary, pValues);
+            [A, B] = self.applyBoundaryRow(A, B, solver, "bottom", self.bottomBoundary, pValues);
+            samples = struct("p",pValues,"q",qValues,"r",rValues);
+        end
+
+        function diagnostics = preparedModeSelectionDiagnostics(self,samples,A)
+            % Use coefficient samples from the actual requested matrix pencil.
+            definiteness = self.definitenessFromSamples(samples.p,samples.q,samples.r);
+            bounds = self.negativeBoundsFromDefiniteness(definiteness,A);
+            diagnostics = self.selectionDiagnosticsFromBounds(bounds,A);
+        end
+
         function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,metricMatrix)
             % Reject numerical representations of infinite pencil modes.
             %
@@ -670,6 +620,88 @@ classdef IMEigenvalueProblem
     end
 
     methods (Access = private)
+        function diagnostics = definitenessFromSamples(self,pValues,qValues,rValues)
+            tolerance = 100*eps;
+            pTol = IMEigenvalueProblem.signTolerance(pValues, tolerance);
+            qTol = IMEigenvalueProblem.signTolerance(qValues, tolerance);
+            rTol = IMEigenvalueProblem.signTolerance(rValues, tolerance);
+
+            diagnostics.pMin = min(pValues);
+            diagnostics.qMin = min(qValues);
+            diagnostics.rMin = min(rValues);
+            diagnostics.pPositive = all(isfinite(pValues)) && diagnostics.pMin > pTol;
+            diagnostics.qNonnegative = all(isfinite(qValues)) && diagnostics.qMin >= -qTol;
+            diagnostics.rPositive = all(isfinite(rValues)) && diagnostics.rMin > rTol;
+            diagnostics.endpointWeights = self.endpointWeights();
+            diagnostics.negativeEndpointWeightCount = self.negativeEndpointWeightCount(tolerance=0);
+            diagnostics.metricPositive = diagnostics.rPositive && diagnostics.negativeEndpointWeightCount == 0;
+            diagnostics.hasDegenerateEndpointMetric = self.hasDegenerateEndpointMetric();
+            diagnostics.endpointNumeratorNegativeDirections = self.endpointNegativeDirections();
+            diagnostics.endpointNumeratorNonnegative = diagnostics.endpointNumeratorNegativeDirections == 0;
+            diagnostics.interiorNonnegative = diagnostics.pPositive && diagnostics.qNonnegative;
+            diagnostics.quadraticFormNonnegative = diagnostics.interiorNonnegative && diagnostics.endpointNumeratorNonnegative;
+            diagnostics.assessmentLevel = "grid";
+            diagnostics.reason = "Grid-level norm and energy signs were checked.";
+            if diagnostics.hasDegenerateEndpointMetric
+                diagnostics.assessmentLevel = "unknown";
+                diagnostics.reason = "An active endpoint determinant is numerically degenerate.";
+            elseif ~(diagnostics.pPositive && diagnostics.rPositive && all(isfinite(qValues)))
+                diagnostics.assessmentLevel = "unknown";
+                diagnostics.reason = "One or more coefficient samples are nonfinite or fail the required signs.";
+            end
+        end
+
+        function bounds = negativeBoundsFromDefiniteness(self,definiteness,A)
+            zeroMode = self.zeroModeAssessment(A);
+            bounds.assessmentLevel = definiteness.assessmentLevel;
+            bounds.negativeEndpointWeightCount = definiteness.negativeEndpointWeightCount;
+            bounds.zeroModeStatus = zeroMode.zeroModeStatus;
+            bounds.minNegativeEigenvalueCount = 0;
+            bounds.maxNegativeEigenvalueCount = "unknown";
+            bounds.reason = definiteness.reason;
+
+            if definiteness.assessmentLevel == "unknown"
+                return;
+            end
+
+            if definiteness.metricPositive && definiteness.quadraticFormNonnegative
+                bounds.maxNegativeEigenvalueCount = 0;
+                bounds.reason = "The grid-level norm is positive and the energy is nonnegative.";
+                return;
+            end
+
+            if definiteness.quadraticFormNonnegative && definiteness.negativeEndpointWeightCount > 0
+                if bounds.zeroModeStatus == "absent"
+                    bounds.minNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
+                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
+                    bounds.reason = "The energy is nonnegative, the endpoint norm has an assessed negative-weight count, and zero is absent.";
+                else
+                    bounds.maxNegativeEigenvalueCount = definiteness.negativeEndpointWeightCount;
+                    bounds.reason = "The negative endpoint weight count bounds the search, but exact negative count requires zero to be absent.";
+                end
+                return;
+            end
+
+            if definiteness.metricPositive && definiteness.interiorNonnegative
+                bounds.maxNegativeEigenvalueCount = definiteness.endpointNumeratorNegativeDirections;
+                bounds.reason = "The norm is positive and only endpoint energy terms can make the energy negative.";
+                return;
+            end
+        end
+
+        function diagnostics = selectionDiagnosticsFromBounds(self,bounds,A)
+            zeroMode = self.zeroModeAssessment(A);
+            diagnostics.assessmentLevel = bounds.assessmentLevel;
+            diagnostics.negativeEndpointWeightCount = bounds.negativeEndpointWeightCount;
+            diagnostics.minNegativeEigenvalueCount = bounds.minNegativeEigenvalueCount;
+            diagnostics.maxNegativeEigenvalueCount = bounds.maxNegativeEigenvalueCount;
+            diagnostics.zeroModeStatus = zeroMode.zeroModeStatus;
+            diagnostics.zeroModeCount = zeroMode.zeroModeCount;
+            diagnostics.zeroModeSingularValue = zeroMode.zeroModeSingularValue;
+            diagnostics.zeroModeTolerance = zeroMode.zeroModeTolerance;
+            diagnostics.reason = bounds.reason + " Zero mode status is " + zeroMode.zeroModeStatus + ".";
+        end
+
         function [A, B] = applyBoundaryRow(self, A, B, solver, location, boundary, pValues)
             arguments
                 self IMEigenvalueProblem

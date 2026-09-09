@@ -1,0 +1,702 @@
+{
+  "report": {
+    "nEVP": 64,
+    "nModes": 8,
+    "coordinateKind": "z",
+    "kappa": [
+      0.0001,
+      0.00022857142857142857,
+      0.00035714285714285714,
+      0.00048571428571428572,
+      0.00061428571428571435,
+      0.00074285714285714287,
+      0.0008714285714285715,
+      0.001,
+      0.0001,
+      0.00022857142857142857,
+      0.00035714285714285714,
+      0.00048571428571428572,
+      0.00061428571428571435,
+      0.00074285714285714287,
+      0.0008714285714285715,
+      0.001
+    ],
+    "scalarSeconds": [
+      0.29366625,
+      0.46495525,
+      0.078946208333333337,
+      0.045647875,
+      0.092619166666666669
+    ],
+    "scalarDistinctSeconds": [
+      0.14423483333333334,
+      0.13807908333333332,
+      0.023544541666666665,
+      0.068007333333333336,
+      0.033244708333333331
+    ],
+    "bulkSeconds": [
+      0.08768783333333334,
+      0.049446,
+      0.071189625,
+      0.032706958333333334,
+      0.033724958333333332
+    ],
+    "medianRequestedSpeedup": 1.8731376990386821,
+    "medianDistinctSpeedup": 1.3753859429141557,
+    "bulkDiagnostics": [
+      {
+        "requestedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001,
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "solvedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "basisIndex": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "requestedPageCount": 16,
+        "solveCount": 8,
+        "reusedPageCount": 8,
+        "preparationCount": 1,
+        "reuseKind": "exactEqualKappa",
+        "solverClass": "IMSolverSpectral",
+        "nModes": 8,
+        "nInertialModes": [],
+        "solveAccuracy": "unverified",
+        "setupSeconds": 0.0016896666666666666,
+        "sharedAssemblySeconds": 0.000967,
+        "assemblySeconds": 0.010012916666666666,
+        "eigensolveSeconds": 0.008449125,
+        "finalizationSeconds": 0.052493041666666657,
+        "collectionSeconds": 0.0086058333333333334,
+        "totalSeconds": 0.085938541666666673,
+        "sharedAssemblyStorageBytes": 100243,
+        "solves": [
+          {
+            "kappa": 0.0001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0013521666666666667,
+            "eigensolveSeconds": 0.00111775,
+            "finalizationSeconds": 0.006371
+          },
+          {
+            "kappa": 0.00022857142857142857,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0011235833333333334,
+            "eigensolveSeconds": 0.0010545,
+            "finalizationSeconds": 0.011359916666666667
+          },
+          {
+            "kappa": 0.00035714285714285714,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0010705833333333333,
+            "eigensolveSeconds": 0.001075375,
+            "finalizationSeconds": 0.0057959166666666662
+          },
+          {
+            "kappa": 0.00048571428571428572,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0011433333333333334,
+            "eigensolveSeconds": 0.0010502916666666666,
+            "finalizationSeconds": 0.006059083333333333
+          },
+          {
+            "kappa": 0.00061428571428571435,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00122575,
+            "eigensolveSeconds": 0.0010469583333333333,
+            "finalizationSeconds": 0.0070229166666666669
+          },
+          {
+            "kappa": 0.00074285714285714287,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0010399166666666666,
+            "eigensolveSeconds": 0.0010749166666666667,
+            "finalizationSeconds": 0.0059420833333333339
+          },
+          {
+            "kappa": 0.0008714285714285715,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0010574166666666666,
+            "eigensolveSeconds": 0.0010133333333333333,
+            "finalizationSeconds": 0.0050174166666666666
+          },
+          {
+            "kappa": 0.001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0010331666666666666,
+            "eigensolveSeconds": 0.001016,
+            "finalizationSeconds": 0.004924708333333333
+          }
+        ]
+      },
+      {
+        "requestedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001,
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "solvedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "basisIndex": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "requestedPageCount": 16,
+        "solveCount": 8,
+        "reusedPageCount": 8,
+        "preparationCount": 1,
+        "reuseKind": "exactEqualKappa",
+        "solverClass": "IMSolverSpectral",
+        "nModes": 8,
+        "nInertialModes": [],
+        "solveAccuracy": "unverified",
+        "setupSeconds": 0.00092833333333333331,
+        "sharedAssemblySeconds": 0.00097754166666666671,
+        "assemblySeconds": 0.004529625,
+        "eigensolveSeconds": 0.008711125,
+        "finalizationSeconds": 0.022680083333333333,
+        "collectionSeconds": 0.0060784583333333333,
+        "totalSeconds": 0.047797708333333334,
+        "sharedAssemblyStorageBytes": 100243,
+        "solves": [
+          {
+            "kappa": 0.0001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00046341666666666666,
+            "eigensolveSeconds": 0.001133625,
+            "finalizationSeconds": 0.00864425
+          },
+          {
+            "kappa": 0.00022857142857142857,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00067445833333333333,
+            "eigensolveSeconds": 0.0011349583333333333,
+            "finalizationSeconds": 0.0028695833333333334
+          },
+          {
+            "kappa": 0.00035714285714285714,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00041795833333333333,
+            "eigensolveSeconds": 0.0011575833333333334,
+            "finalizationSeconds": 0.0028509583333333334
+          },
+          {
+            "kappa": 0.00048571428571428572,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00043725,
+            "eigensolveSeconds": 0.0010666666666666667,
+            "finalizationSeconds": 0.0012575
+          },
+          {
+            "kappa": 0.00061428571428571435,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00038033333333333333,
+            "eigensolveSeconds": 0.0010305833333333334,
+            "finalizationSeconds": 0.00099979166666666662
+          },
+          {
+            "kappa": 0.00074285714285714287,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00036170833333333335,
+            "eigensolveSeconds": 0.001068875,
+            "finalizationSeconds": 0.0025602916666666664
+          },
+          {
+            "kappa": 0.0008714285714285715,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00044008333333333334,
+            "eigensolveSeconds": 0.0010742083333333333,
+            "finalizationSeconds": 0.0010437083333333333
+          },
+          {
+            "kappa": 0.001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000376875,
+            "eigensolveSeconds": 0.001044625,
+            "finalizationSeconds": 0.002454
+          }
+        ]
+      },
+      {
+        "requestedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001,
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "solvedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "basisIndex": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "requestedPageCount": 16,
+        "solveCount": 8,
+        "reusedPageCount": 8,
+        "preparationCount": 1,
+        "reuseKind": "exactEqualKappa",
+        "solverClass": "IMSolverSpectral",
+        "nModes": 8,
+        "nInertialModes": [],
+        "solveAccuracy": "unverified",
+        "setupSeconds": 0.00060708333333333328,
+        "sharedAssemblySeconds": 0.00044716666666666668,
+        "assemblySeconds": 0.0034591666666666668,
+        "eigensolveSeconds": 0.0084467916666666667,
+        "finalizationSeconds": 0.049656083333333344,
+        "collectionSeconds": 0.0041514583333333334,
+        "totalSeconds": 0.070321458333333337,
+        "sharedAssemblyStorageBytes": 100243,
+        "solves": [
+          {
+            "kappa": 0.0001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00044225,
+            "eigensolveSeconds": 0.00109375,
+            "finalizationSeconds": 0.0050192083333333339
+          },
+          {
+            "kappa": 0.00022857142857142857,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00040079166666666665,
+            "eigensolveSeconds": 0.00110025,
+            "finalizationSeconds": 0.011117583333333333
+          },
+          {
+            "kappa": 0.00035714285714285714,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00036470833333333331,
+            "eigensolveSeconds": 0.0010951666666666666,
+            "finalizationSeconds": 0.0027812083333333334
+          },
+          {
+            "kappa": 0.00048571428571428572,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00038333333333333334,
+            "eigensolveSeconds": 0.001085625,
+            "finalizationSeconds": 0.011085166666666667
+          },
+          {
+            "kappa": 0.00061428571428571435,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000457125,
+            "eigensolveSeconds": 0.0010519583333333333,
+            "finalizationSeconds": 0.002611375
+          },
+          {
+            "kappa": 0.00074285714285714287,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00031925,
+            "eigensolveSeconds": 0.0010011666666666667,
+            "finalizationSeconds": 0.005937625
+          },
+          {
+            "kappa": 0.0008714285714285715,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000315125,
+            "eigensolveSeconds": 0.0010166666666666666,
+            "finalizationSeconds": 0.00091120833333333331
+          },
+          {
+            "kappa": 0.001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00032941666666666666,
+            "eigensolveSeconds": 0.0010022083333333332,
+            "finalizationSeconds": 0.010192708333333333
+          }
+        ]
+      },
+      {
+        "requestedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001,
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "solvedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "basisIndex": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "requestedPageCount": 16,
+        "solveCount": 8,
+        "reusedPageCount": 8,
+        "preparationCount": 1,
+        "reuseKind": "exactEqualKappa",
+        "solverClass": "IMSolverSpectral",
+        "nModes": 8,
+        "nInertialModes": [],
+        "solveAccuracy": "unverified",
+        "setupSeconds": 0.00059004166666666667,
+        "sharedAssemblySeconds": 0.00035066666666666666,
+        "assemblySeconds": 0.0030863749999999997,
+        "eigensolveSeconds": 0.0084232916666666675,
+        "finalizationSeconds": 0.011845874999999999,
+        "collectionSeconds": 0.004758125,
+        "totalSeconds": 0.031912916666666666,
+        "sharedAssemblyStorageBytes": 100243,
+        "solves": [
+          {
+            "kappa": 0.0001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00036133333333333335,
+            "eigensolveSeconds": 0.0010472916666666666,
+            "finalizationSeconds": 0.00098491666666666671
+          },
+          {
+            "kappa": 0.00022857142857142857,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00034604166666666664,
+            "eigensolveSeconds": 0.0010511666666666666,
+            "finalizationSeconds": 0.00091545833333333334
+          },
+          {
+            "kappa": 0.00035714285714285714,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00034883333333333332,
+            "eigensolveSeconds": 0.00102625,
+            "finalizationSeconds": 0.0008905
+          },
+          {
+            "kappa": 0.00048571428571428572,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00033729166666666667,
+            "eigensolveSeconds": 0.0010184583333333332,
+            "finalizationSeconds": 0.0017520416666666667
+          },
+          {
+            "kappa": 0.00061428571428571435,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00030945833333333335,
+            "eigensolveSeconds": 0.0010812083333333333,
+            "finalizationSeconds": 0.00084379166666666663
+          },
+          {
+            "kappa": 0.00074285714285714287,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00032733333333333334,
+            "eigensolveSeconds": 0.0010129166666666667,
+            "finalizationSeconds": 0.00089775
+          },
+          {
+            "kappa": 0.0008714285714285715,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00033429166666666666,
+            "eigensolveSeconds": 0.00110475,
+            "finalizationSeconds": 0.0042299166666666665
+          },
+          {
+            "kappa": 0.001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000371125,
+            "eigensolveSeconds": 0.00108125,
+            "finalizationSeconds": 0.0013315
+          }
+        ]
+      },
+      {
+        "requestedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001,
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "solvedKappa": [
+          0.0001,
+          0.00022857142857142857,
+          0.00035714285714285714,
+          0.00048571428571428572,
+          0.00061428571428571435,
+          0.00074285714285714287,
+          0.0008714285714285715,
+          0.001
+        ],
+        "basisIndex": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "requestedPageCount": 16,
+        "solveCount": 8,
+        "reusedPageCount": 8,
+        "preparationCount": 1,
+        "reuseKind": "exactEqualKappa",
+        "solverClass": "IMSolverSpectral",
+        "nModes": 8,
+        "nInertialModes": [],
+        "solveAccuracy": "unverified",
+        "setupSeconds": 0.0006025,
+        "sharedAssemblySeconds": 0.00033658333333333332,
+        "assemblySeconds": 0.0035369583333333334,
+        "eigensolveSeconds": 0.0083799166666666675,
+        "finalizationSeconds": 0.011300125,
+        "collectionSeconds": 0.0050352083333333334,
+        "totalSeconds": 0.03289383333333333,
+        "sharedAssemblyStorageBytes": 100243,
+        "solves": [
+          {
+            "kappa": 0.0001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00044275,
+            "eigensolveSeconds": 0.0010989583333333333,
+            "finalizationSeconds": 0.0010754583333333332
+          },
+          {
+            "kappa": 0.00022857142857142857,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00046366666666666664,
+            "eigensolveSeconds": 0.0010407916666666666,
+            "finalizationSeconds": 0.000947375
+          },
+          {
+            "kappa": 0.00035714285714285714,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00041416666666666669,
+            "eigensolveSeconds": 0.0010985,
+            "finalizationSeconds": 0.0010455416666666668
+          },
+          {
+            "kappa": 0.00048571428571428572,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000472875,
+            "eigensolveSeconds": 0.0010274583333333333,
+            "finalizationSeconds": 0.0024655833333333331
+          },
+          {
+            "kappa": 0.00061428571428571435,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00039370833333333331,
+            "eigensolveSeconds": 0.0010124583333333333,
+            "finalizationSeconds": 0.00090495833333333335
+          },
+          {
+            "kappa": 0.00074285714285714287,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.0003345,
+            "eigensolveSeconds": 0.0010049583333333334,
+            "finalizationSeconds": 0.0010960833333333335
+          },
+          {
+            "kappa": 0.0008714285714285715,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.000320375,
+            "eigensolveSeconds": 0.001047,
+            "finalizationSeconds": 0.002278625
+          },
+          {
+            "kappa": 0.001,
+            "requestedColumnCount": 8,
+            "assemblySeconds": 0.00035833333333333333,
+            "eigensolveSeconds": 0.0010497916666666668,
+            "finalizationSeconds": 0.0014865
+          }
+        ]
+      }
+    ],
+    "processPeakMemory": "not measured",
+    "evaluationTime": "not measured",
+    "solveCounts": {
+      "scalarRequested": 16,
+      "scalarDistinct": 8,
+      "bulk": 8
+    },
+    "bulkStageMedians": [
+      {
+        "stage": "setupSeconds",
+        "seconds": 0.00060708333333333328
+      },
+      {
+        "stage": "sharedAssemblySeconds",
+        "seconds": 0.00044716666666666668
+      },
+      {
+        "stage": "assemblySeconds",
+        "seconds": 0.0035369583333333334
+      },
+      {
+        "stage": "eigensolveSeconds",
+        "seconds": 0.0084467916666666667
+      },
+      {
+        "stage": "finalizationSeconds",
+        "seconds": 0.022680083333333333
+      },
+      {
+        "stage": "collectionSeconds",
+        "seconds": 0.0050352083333333334
+      },
+      {
+        "stage": "totalSeconds",
+        "seconds": 0.047797708333333334
+      }
+    ]
+  }
+}

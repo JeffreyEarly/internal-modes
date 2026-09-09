@@ -204,7 +204,7 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             metadata.surfaceBoundary = problem.surfaceBoundary;
             metadata.responseReciprocalCondition = modeData.responseReciprocalCondition;
             metadata.formulaFamily = "scaledModifiedBessel";
-            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self,problem=problem,FFunction=@(z) self.zeroAPVVariable(modeData,problem,"F",z),GFunction=@(z) self.zeroAPVVariable(modeData,problem,"G",z),metadata=metadata);
+            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self,problem=problem,FFunction=@(z,pages) self.zeroAPVVariable(modeData,problem,"F",z,pages),GFunction=@(z,pages) self.zeroAPVVariable(modeData,problem,"G",z,pages),metadata=metadata);
         end
 
         function summarize(self)
@@ -307,18 +307,19 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             modeData = struct(eta=eta,coefficients=coefficients,responseReciprocalCondition=responseReciprocalCondition);
         end
 
-        function values = zeroAPVVariable(self,modeData,problem,variable,z)
+        function values = zeroAPVVariable(self,modeData,problem,variable,z,pages)
             z = z(:);
-            values = zeros(numel(z),numel(problem.endpoints),numel(problem.k));
+            values = zeros(numel(z),numel(problem.endpoints),numel(pages));
             N2Values = self.N2(z);
-            for iK = 1:numel(problem.k)
-                [fundamental,FzFundamental] = self.zeroAPVFundamental(modeData.eta(iK),z);
+            for iK = 1:numel(pages)
+                sourcePage = pages(iK);
+                [fundamental,FzFundamental] = self.zeroAPVFundamental(modeData.eta(sourcePage),z);
                 if string(variable) == "F"
                     raw = fundamental;
                 else
                     raw = -(self.g./N2Values).*FzFundamental;
                 end
-                values(:,:,iK) = raw*modeData.coefficients(:,:,iK);
+                values(:,:,iK) = raw*modeData.coefficients(:,:,sourcePage);
             end
         end
 
