@@ -1,0 +1,26 @@
+{
+  "research": {
+    "repository": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-nearby-kappa-reuse",
+    "head": "ee7d340bce6322a40db5ed86d90324870f55d570",
+    "sourceSha256": {
+      "tools/nearby-kappa-study/assessNeighborKappaProducts.m": "ba318016e9a9944761a7bc657cde582b07c5cc815e38730c242797ee0e6ea74b"
+    }
+  },
+  "inventory": {
+    "repository": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories",
+    "head": "ee7d340bce6322a40db5ed86d90324870f55d570",
+    "sourceSha256": {
+      "@IMProductInventory/IMProductInventory.m": "80bb82b2eb095407bc09dce6bf29db0aab80fc209ea4f2a57bc5d113d6e78240",
+      "@IMProductInventory/fixedPlan.m": "0bb6c7e15df90bf70e49c70c6b2b123033e235f858f0cd7db45b73150b6bb94c",
+      "@IMProductPlan/IMProductPlan.m": "3af28d3e6c8390a8bf05362b95d01b54a4b078fffd2d5f2cf5ed70a7359ddd44",
+      "@IMProductPlan/assess.m": "90d490921c2634d599495dcfe3fad29850ed887a537cad8db3e5550156448265",
+      "@IMProductAssessment/IMProductAssessment.m": "981302866e971758e643d5a69711faecb00d9d4e2790a643e5f18279b8c506fd",
+      "@IMProjection/IMProjection.m": "6e81391fcd7a2294125694ef8196070a915597aee01860433557c0e4b367bf7b",
+      "@IMProjection/fromPairing.m": "416e183fbdf9ddb7381fc7db13a622c4c915af8936cec9b9ecd18180335b0e3c",
+      "@IMProjection/productError.m": "0459cc8cf638b3dc726950f19d1c12e2d20bf05aecaf0e430aca2268f689f4a8",
+      "@IMProjection/relativeCoefficientNorm.m": "8b2e0ba5882f2d36bb1e1e6ea656eb538fa144feb9b9976e4c91e90ac7d3509f"
+    }
+  },
+  "integratedProviderCommit": "238f616",
+  "integrationVerification": "All recorded source file hashes match this integrated checkout; no numerical implementation changed during integration."
+}

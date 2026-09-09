@@ -1,0 +1,75 @@
+{
+  "artifactDirectory": "/private/tmp/im21-study/full",
+  "providerCommit": "ee7d340bce6322a40db5ed86d90324870f55d570",
+  "executedStudyScriptSha256": "bff3557852b41cacd0585faf7a86ef3352cf77b31f45cf821887bc63192825c1",
+  "checkedInStudyScriptSha256": "4b79f8f9bcc231e589c469d3c37e036e8c66f5a0bf996dba9857daab3a11c326",
+  "postRunChanges": "Case-inventory preallocation, string-comparison syntax, and analyzer annotations only; numerical operations and guards unchanged.",
+  "files": [
+    {
+      "name": "configuration.mat",
+      "bytes": 2474,
+      "sha256": "a92cc202bda4a3c9d9ee98fe1e5ec7907b914ade3a30335c0f2f6580897d310a"
+    },
+    {
+      "name": "environment-01.mat",
+      "bytes": 44151659,
+      "sha256": "5e6d6265d5c001b061fcd4db903f64dda6b9762f10fbb1106d5c3d8b952936ec"
+    },
+    {
+      "name": "environment-02.mat",
+      "bytes": 46531680,
+      "sha256": "bef3d234679a17873b4c18deaa00dd0e6f49fa01a14c85970d44e3c0749a2e97"
+    },
+    {
+      "name": "environment-03.mat",
+      "bytes": 48054568,
+      "sha256": "de9e5f4aaa200d530bdd5b2b2d063023c3686acdec4995b864597730f215cad1"
+    },
+    {
+      "name": "environment-04.mat",
+      "bytes": 52788857,
+      "sha256": "2171dc3f9a422f19de5a41f773d04b30ad5f8a549865f1ca9c41a5b4df1998eb"
+    },
+    {
+      "name": "environment-05.mat",
+      "bytes": 53551473,
+      "sha256": "5fea2b7c904b193ae97ed1ff302f7785caeb72e9aae9aacd9276e546645bd1b0"
+    },
+    {
+      "name": "environment-06.mat",
+      "bytes": 53781778,
+      "sha256": "8cea834247d270e0dd57929cc7eb0a2709aab1917ad58a670e1ca30cb46e0a68"
+    },
+    {
+      "name": "environment-07.mat",
+      "bytes": 52218518,
+      "sha256": "e92028cb214ae12cccf00b7e8d5924f51053b6770d5a7aa37fbc75643f16b85f"
+    },
+    {
+      "name": "environment-08.mat",
+      "bytes": 52439750,
+      "sha256": "31e486886a0d2029236df09402756abeb69c14da0be7c84ae4a9a8ead23619d9"
+    },
+    {
+      "name": "progress.mat",
+      "bytes": 603895,
+      "sha256": "f005aeeca51f83184cbf1e0e46339c52c66949d138b1a12817760ce98513c3a2"
+    },
+    {
+      "name": "summary.mat",
+      "bytes": 604561,
+      "sha256": "549c4c3154ed9bc58530f2331fb82cc70018ffe10a2adaadc67e513b339d5adc"
+    }
+  ],
+  "maximumResidentSetBytes": 967720960,
+  "peakMemoryFootprintBytes": 602703696,
+  "actualRetainedMatFileBytes": 404729213,
+  "providerFiles": {
+    "@IMSolver/IMSolver.m": "d5dec775ed4bff5534942f9801d230d0eb56ad2a76b70cac3d4e33e748f0ccfe",
+    "@IMSolver/solveWaveModesAtWavenumbers.m": "7dc8391892ba02c4803fd406cdb640aaeb8472b7e9146b3b6977811d62eeda50",
+    "@IMEigenvalueProblem/IMEigenvalueProblem.m": "33cf04b61220f4ab5e8431be95392fdfb1c5dda182253f528631090300f15c64",
+    "@IMSolverSpectral/IMSolverSpectral.m": "b1d59971cdf2a05a040e7219d4ce0ef7d7ef2a9ae6689e74a7800d3070fde8ab",
+    "@IMConstantStratificationSolution/IMConstantStratificationSolution.m": "e805131cf77eed2913d5b19ec992b03368625922ec326c011f48cff634ef5f3f",
+    "@IMExponentialStratificationSolution/IMExponentialStratificationSolution.m": "319ac4ce473ba427ec6838082d59cba4a681184118b7a3fe313dee29add75392"
+  }
+}

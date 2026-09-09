@@ -1,0 +1,152 @@
+[Warning: Directory access failure: /Users/jearly/Documents/MATLAB]
+PILOT ANALYTICAL CONTROL CASE 2
+       eigenvalueError: [3.8686e-11 3.8686e-11]
+        frequencyError: [1.7607e-11 1.7607e-11]
+         subspaceError: [2.1576e-11 4.9063e-12]
+     individualH1Error: [2.1872e-11 2.1872e-11]
+                FError: [4.1525e-11 4.1525e-11]
+    minimumRelativeGap: 0.1211
+       candidateLabels: [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
+       referenceLabels: [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
+              matching: 'Same numerical ordering by eigenvalue; ordinal labels retained. Cluster ambiguity is not resolved by column errors.'
+
+PILOT ANALYTICAL CONTROL CASE 14
+       eigenvalueError: [4.1832e-10 4.1832e-10]
+        frequencyError: [2.0914e-10 2.0914e-10]
+         subspaceError: [7.6568e-11 6.0099e-11]
+     individualH1Error: [1.6244e-09 1.6310e-09]
+                FError: [1.6799e-09 1.6799e-09]
+    minimumRelativeGap: 0.1289
+       candidateLabels: [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20]
+       referenceLabels: [-1 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19]
+              matching: 'Same numerical ordering by eigenvalue; ordinal labels retained. Cluster ambiguity is not resolved by column errors.'
+
+BLAS: trying environment BLAS_VERSION...
+BLAS: loading libmwAF_BLAS_ilp64.dylib
+BLAS: loaded libmwAF_BLAS_ilp64.dylib@0x9691f8b0
+case 1 profile=constant surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=2.9737e-11 elapsed=1.6s
+case 2 profile=constant surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=2.15504e-11 elapsed=1.8s
+case 3 profile=constant surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=4.53373e-12 elapsed=2.1s
+case 4 profile=constant surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=5.23221e-12 elapsed=2.3s
+case 5 profile=constant surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=5.5875e-12 elapsed=2.6s
+case 6 profile=constant surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=8.78644e-12 elapsed=2.8s
+case 7 profile=constant surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=2.11495e-11 elapsed=3.0s
+case 8 profile=constant surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=5.25116e-12 elapsed=3.3s
+case 9 profile=constant surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=5.59848e-12 elapsed=3.5s
+case 10 profile=constant surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=4.45299e-12 elapsed=3.7s
+case 11 profile=constant surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=1.10276e-11 elapsed=3.9s
+case 12 profile=constant surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=1.82411e-11 elapsed=4.1s
+case 13 profile=constant surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=8.12343e-11 elapsed=6.2s
+case 14 profile=constant surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.01329e-08 elapsed=6.5s
+case 15 profile=constant surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.04168e-07 elapsed=6.8s
+case 16 profile=constant surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.35661e-06 elapsed=7.1s
+case 17 profile=constant surface=free delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=1.81037e-11 elapsed=7.4s
+case 18 profile=constant surface=free delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=6.99509e-06 elapsed=7.6s
+case 19 profile=constant surface=free delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=7.02641e-05 elapsed=7.8s
+case 20 profile=constant surface=free delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.000733954 elapsed=8.0s
+case 21 profile=constant surface=free delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=1.91116e-11 elapsed=8.2s
+case 22 profile=constant surface=free delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.000525592 elapsed=8.4s
+case 23 profile=constant surface=free delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.00526326 elapsed=8.6s
+case 24 profile=constant surface=free delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.0532025 elapsed=8.8s
+case 25 profile=exponential surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=4.07134e-09 elapsed=11.6s
+case 26 profile=exponential surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=6.2631e-08 elapsed=12.5s
+case 27 profile=exponential surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=5.96437e-07 elapsed=13.5s
+case 28 profile=exponential surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=6.19786e-06 elapsed=14.4s
+case 29 profile=exponential surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=4.06135e-09 elapsed=15.3s
+case 30 profile=exponential surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=5.90801e-06 elapsed=16.2s
+case 31 profile=exponential surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=5.93145e-05 elapsed=17.0s
+case 32 profile=exponential surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=1 approxH1=0.000619693 elapsed=17.9s
+case 33 profile=exponential surface=rigid delta=0 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=3.78011e-09 elapsed=19.1s
+case 34 profile=exponential surface=rigid delta=0.001 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.000616972 elapsed=20.2s
+case 35 profile=exponential surface=rigid delta=0.01 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.00620024 elapsed=21.4s
+case 36 profile=exponential surface=rigid delta=0.1 ref=144 qualified=1 warmFlag=0 fallback=0 approxH1=0.0650239 elapsed=22.7s
+case 37 profile=exponential surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.45589e-09 elapsed=25.2s
+case 38 profile=exponential surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.53636e-08 elapsed=26.2s
+case 39 profile=exponential surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.09625e-07 elapsed=27.2s
+case 40 profile=exponential surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.36509e-06 elapsed=28.3s
+case 41 profile=exponential surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.47037e-09 elapsed=29.3s
+case 42 profile=exponential surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.01764e-06 elapsed=30.3s
+case 43 profile=exponential surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=7.04446e-05 elapsed=31.2s
+case 44 profile=exponential surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000735935 elapsed=32.2s
+case 45 profile=exponential surface=free delta=0 ref=144 qualified=0 warmFlag=0 fallback=1 approxH1=5.47225e-09 elapsed=33.4s
+case 46 profile=exponential surface=free delta=0.001 ref=144 qualified=0 warmFlag=0 fallback=1 approxH1=0.000719945 elapsed=34.6s
+case 47 profile=exponential surface=free delta=0.01 ref=144 qualified=0 warmFlag=0 fallback=1 approxH1=0.0072354 elapsed=35.8s
+case 48 profile=exponential surface=free delta=0.1 ref=144 qualified=0 warmFlag=0 fallback=1 approxH1=0.0759026 elapsed=37.0s
+case 49 profile=pycnocline surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00119032 elapsed=38.9s
+case 50 profile=pycnocline surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00119032 elapsed=39.0s
+case 51 profile=pycnocline surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0011903 elapsed=39.2s
+case 52 profile=pycnocline surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00119016 elapsed=39.4s
+case 53 profile=pycnocline surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00118907 elapsed=39.5s
+case 54 profile=pycnocline surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00118892 elapsed=39.7s
+case 55 profile=pycnocline surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00118771 elapsed=39.8s
+case 56 profile=pycnocline surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00118932 elapsed=40.0s
+case 57 profile=pycnocline surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00106313 elapsed=40.1s
+case 58 profile=pycnocline surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00107158 elapsed=40.3s
+case 59 profile=pycnocline surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00514067 elapsed=40.4s
+case 60 profile=pycnocline surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0546025 elapsed=40.6s
+case 61 profile=pycnocline surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000904527 elapsed=42.3s
+case 62 profile=pycnocline surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000904528 elapsed=42.5s
+case 63 profile=pycnocline surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000904538 elapsed=42.7s
+case 64 profile=pycnocline surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000904646 elapsed=42.8s
+case 65 profile=pycnocline surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000902901 elapsed=43.0s
+case 66 profile=pycnocline surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000903014 elapsed=43.1s
+case 67 profile=pycnocline surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000904187 elapsed=43.3s
+case 68 profile=pycnocline surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00108013 elapsed=43.4s
+case 69 profile=pycnocline surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00078404 elapsed=43.6s
+case 70 profile=pycnocline surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.000854722 elapsed=43.8s
+case 71 profile=pycnocline surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.00847947 elapsed=43.9s
+case 72 profile=pycnocline surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0868525 elapsed=44.1s
+case 73 profile=doubleSharp surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.050924 elapsed=45.9s
+case 74 profile=doubleSharp surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.050924 elapsed=46.1s
+case 75 profile=doubleSharp surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.050924 elapsed=46.2s
+case 76 profile=doubleSharp surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0509239 elapsed=46.4s
+case 77 profile=doubleSharp surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0509024 elapsed=46.5s
+case 78 profile=doubleSharp surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0509023 elapsed=46.7s
+case 79 profile=doubleSharp surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0509014 elapsed=46.8s
+case 80 profile=doubleSharp surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.050892 elapsed=47.0s
+case 81 profile=doubleSharp surface=rigid delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0504844 elapsed=47.1s
+case 82 profile=doubleSharp surface=rigid delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0504676 elapsed=47.3s
+case 83 profile=doubleSharp surface=rigid delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0503192 elapsed=47.5s
+case 84 profile=doubleSharp surface=rigid delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0603893 elapsed=47.6s
+case 85 profile=doubleSharp surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647612 elapsed=49.3s
+case 86 profile=doubleSharp surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647612 elapsed=49.5s
+case 87 profile=doubleSharp surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647612 elapsed=49.7s
+case 88 profile=doubleSharp surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.064761 elapsed=49.9s
+case 89 profile=doubleSharp surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647714 elapsed=50.0s
+case 90 profile=doubleSharp surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647713 elapsed=50.2s
+case 91 profile=doubleSharp surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.06477 elapsed=50.4s
+case 92 profile=doubleSharp surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0647568 elapsed=50.5s
+case 93 profile=doubleSharp surface=free delta=0 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0658398 elapsed=50.7s
+case 94 profile=doubleSharp surface=free delta=0.001 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0658294 elapsed=50.9s
+case 95 profile=doubleSharp surface=free delta=0.01 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0657491 elapsed=51.0s
+case 96 profile=doubleSharp surface=free delta=0.1 ref=216 qualified=0 warmFlag=0 fallback=1 approxH1=0.0764479 elapsed=51.2s
+                            completedCaseCount: 96
+                            requestedCaseCount: 96
+                                elapsedSeconds: 52.6173
+                            caseMatrixComplete: 1
+                       productAssessmentStatus: 'deferred pending #19'
+                       productionQualification: 0
+                       referenceQualifiedCount: 32
+                          warmMatchesFullCount: 96
+                                 fallbackCount: 72
+                          medianWarmRawSeconds: 0.0023
+                          medianColdRawSeconds: 0.0022
+                        medianFullSolveSeconds: 0.0037
+    medianWarmWithValidationAndFallbackSeconds: 0.0258
+                medianWarmWithReferenceSeconds: 0.1854
+              medianNeighborAcquisitionSeconds: 0.0055
+                          retainedMatFileBytes: 404124652
+                              retainedMatFiles: [1×10 struct]
+
+========== /Users/jearly/Documents/OceanKitRepositories/internal-modes-nearby-kappa-reuse/tools/nearby-kappa-study/runNeighborKappaStudy.m ==========
+L 126 (C 192-202): MSNU: A Code Analyzer message was once suppressed here, but the message is no longer generated.
+L 152 (C 17-22): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 153 (C 17-27): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 154 (C 17-23): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 155 (C 17-23): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 156 (C 17-27): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 157 (C 17-30): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 158 (C 17-30): AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+L 179 (C 15-20): BDSCA: Unexpected use of 'free' in a scalar context.
+L 319 (C 27-36): BDSCA: Unexpected use of 'constant' in a scalar context.
+========== /Users/jearly/Documents/OceanKitRepositories/internal-modes-nearby-kappa-reuse/tools/nearby-kappa-study/exportNeighborKappaResults.m ==========
