@@ -1,14 +1,19 @@
 # Version History
 
 ## Unreleased
+
+## [2.0.0-beta.2] - 2026-09-08
+
+- Added `IMBasisCollection` and `IMProjection` with hidden basis-owned pairing descriptors, structured assessment results, and separate explicit checking functions. Scientific labels, unequal page counts, supplied samples/weights, signed physical duals, positive error norms, and unsupported capabilities remain explicit.
+- Added exact bulk wave construction with shared preparation, ordered/repeated wavenumber mapping, independent zero-wavenumber inertial counts, and bounded continuous evaluation. The shared scalar/bulk solve preserves equation equilibration and consistent finite-mode filtering.
+- Added `IMProductAssessmentPlan`, factor/output structures, budget reservation before evaluation, independent-reference diagnostics, coverage comparison, and advisory decisions that preserve scientific counts and endpoints.
+- Preserved direct-projection and prefix provenance. The three new public classes replace the unreleased recipe, inventory, and assessment-result classes; released transform APIs remain available.
+
+## V2 development through 2.0.0-beta.1
 - stabilized the analytical negative-APV characteristic determinant for strongly localized endpoint modes by cancelling known Bessel exponential factors before root finding; added independent spectral and endpoint-residual checks
 - equilibrated generalized eigenproblem rows before solving, reducing high-resolution APV mode and endpoint-response errors while preserving the physical matrices for mode classification and diagnostics
 - made spectral stretched-coordinate maps, inverse maps, Jacobians, and second derivatives use one smooth Chebfun representation, removing the inconsistent trapezoidal/PCHIP and endpoint-gradient error floor in WKB and density coordinates
 - corrected solved G-mode normalization and projection to use the canonical EVP interior weight, including `(N2-f0^2)/g` for fixed-wavenumber waves and `(N2-omega^2)/g` for fixed-frequency waves; positive majorants now also take the absolute interior weight
-- added `IMProductAssessmentPlan` with factor/output structures, deterministic sparse selection, evaluation budgets, explicit reference diagnostics, coverage controls, and separate acceptance functions that preserve scientific counts and required endpoints
-- added exact bulk wave basis generation over ordered κ collections, independent zero-κ inertial counts, shared solver preparation, and bounded/streamed continuous evaluation with selected boundary pages
-- added `IMBasisCollection` and `IMProjection` with private basis-owned pairing descriptors, structured fixed-grid assessment results, and separate explicit acceptance functions; preserved unequal page counts, scientific labels, signed physical duals, positive error norms, and unsupported-family capabilities
-- preserved projection provenance through direct construction and prefixes, and retained equation equilibration and finite-mode filtering in the shared scalar/bulk eigensolver
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
 - added the induced Hilbert-majorant APIs `majorantInnerProduct`, `majorantGramMatrix`, `majorantNorm`, and `targetMajorantGramMatrix`; retained signed Pontryagin projection and spectra; and enabled coupled APV quadratic certification with retained negative modes by measuring relative errors in the positive majorant
 - moved singular-pencil rejection into generic eigenpair processing and made zero-norm classification mode-local, preventing near-null generalized eigenvectors and unrelated large columns from corrupting physical mode selection
