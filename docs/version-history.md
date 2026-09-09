@@ -8,6 +8,9 @@ nav_order: 100
 
 ## Unreleased
 
+- Add `assessModeConvergence` for per-mode comparisons of explicitly prepared eigenproblem refinements, with scientific-label matching, common sign alignment, relative equivalent-depth/shape/derivative and joint H¹ measurements, and caller-owned tolerances. No additional solves or automatic mode selection occur during assessment.
+- Allow exact bulk wave construction to request different positive mode counts at each horizontal wavenumber while preserving scalar shorthand, repeated-wavenumber consistency and independent inertial counts. Add a reproducible example plotting mode-convergence and physical-grid limits versus wavenumber.
+
 ## [2.0.0-beta.3] - 2026-09-08
 
 - Scale Chebyshev coefficient unknowns in the V2 spectral eigensolve to reduce derivative-amplified roundoff in long external waves. Recover the original native coefficients before finite-mode filtering and normalization; retain the physical EVP, boundary conditions, requested modes and finite-difference behavior. Add direct and sampled vertical-momentum regressions across coordinate choices and spectral resolutions.

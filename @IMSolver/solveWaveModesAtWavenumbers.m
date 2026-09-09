@@ -11,7 +11,9 @@ function [collection,diagnostics] = solveWaveModesAtWavenumbers(self,kappa,optio
 % IMSolverFiniteDifference classes. Custom solvers must use independent
 % solveEVP calls until they expose a validated preparation-reuse capability.
 %
-% Positive wavenumbers request `nModes` columns. A zero-wavenumber request
+% Positive wavenumbers request `nModes` columns, either a uniform scalar or
+% one count per positive entry of `kappa`, preserving its order and repeats.
+% Repeated wavenumbers must request identical counts. A zero-wavenumber request
 % requires an explicit independent `nInertialModes` count. Both counts are
 % exact requests: an insufficient returned family raises an error. Stored
 % bases retain the same scientific labels, normalization and boundary
@@ -32,7 +34,7 @@ function [collection,diagnostics] = solveWaveModesAtWavenumbers(self,kappa,optio
 % - Parameter options.g: gravitational acceleration
 % - Parameter options.surfaceBoundary: surface condition of the G EVP
 % - Parameter options.bottomBoundary: bottom condition of the G EVP
-% - Parameter options.nModes: uniform count for positive wavenumbers
+% - Parameter options.nModes: scalar or row of positive counts aligned with kappa(kappa>0); empty only for all-zero kappa
 % - Parameter options.nInertialModes: independent count, required when zero is requested
 % - Returns collection: continuous bases and exact requested-page mapping
 % - Returns diagnostics: construction costs and solve provenance, not accuracy qualification
@@ -45,7 +47,7 @@ arguments (Input)
     options.g (1,1) double {mustBeReal,mustBeFinite,mustBePositive} = 9.81
     options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
     options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-    options.nModes (1,1) double {mustBeInteger,mustBePositive} = 100
+    options.nModes (1,:) double {mustBeInteger,mustBePositive,mustBeFinite} = 100
     options.nInertialModes double {mustBeInteger,mustBePositive} = []
 end
 arguments (Output)
@@ -67,8 +69,23 @@ end
 if any(~isfinite(kappa.^2))
     error("IMSolver:InvalidSquaredWavenumber","Every squared wavenumber must remain finite.");
 end
+positive = kappa > 0;
+if isscalar(options.nModes)
+    pageCounts = repmat(options.nModes,size(kappa));
+elseif numel(options.nModes) == sum(positive)
+    pageCounts = zeros(size(kappa));
+    pageCounts(positive) = options.nModes;
+else
+    error("IMSolver:InvalidWaveModeCounts","nModes must be scalar or contain one count per positive entry of kappa.");
+end
+if any(~positive), pageCounts(~positive) = options.nInertialModes; end
+for value = unique(kappa)
+    if numel(unique(pageCounts(kappa == value))) ~= 1
+        error("IMSolver:ConflictingWaveModeCounts","Repeated kappa values must request identical mode counts.");
+    end
+end
 totalTimer = tic;
-[distinctKappa,~,basisIndex] = unique(kappa,"stable");
+[distinctKappa,firstPage,basisIndex] = unique(kappa,"stable");
 basisIndex = reshape(basisIndex,1,[]);
 factoryOptions = rmfield(options,["nModes","nInertialModes"]);
 factoryArguments = namedargs2cell(factoryOptions);
@@ -84,10 +101,7 @@ A2(solver.boundaryIndex("bottom"),:) = 0;
 sharedAssemblySeconds = toc(assemblyTimer);
 assemblyStorage = whos("A0","A2","B","samples");
 bases = cell(1,numel(distinctKappa));
-requestedCount = repmat(options.nModes,size(distinctKappa));
-if any(distinctKappa == 0)
-    requestedCount(distinctKappa == 0) = options.nInertialModes;
-end
+requestedCount = reshape(pageCounts(firstPage),size(distinctKappa));
 pageAssemblySeconds = zeros(size(distinctKappa));
 eigensolveSeconds = zeros(size(distinctKappa));
 finalizationSeconds = zeros(size(distinctKappa));

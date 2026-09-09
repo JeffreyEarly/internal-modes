@@ -26,7 +26,7 @@ Solve continuous wave bases for an ordered collection of wavenumbers.
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface condition of the G EVP
 + `options.bottomBoundary`  bottom condition of the G EVP
-+ `options.nModes`  uniform count for positive wavenumbers
++ `options.nModes`  scalar or row of positive counts aligned with kappa(kappa>0); empty only for all-zero kappa
 + `options.nInertialModes`  independent count, required when zero is requested
 
 ## Returns
@@ -45,7 +45,9 @@ Solve continuous wave bases for an ordered collection of wavenumbers.
   IMSolverFiniteDifference classes. Custom solvers must use independent
   solveEVP calls until they expose a validated preparation-reuse capability.
 
-  Positive wavenumbers request `nModes` columns. A zero-wavenumber request
+  Positive wavenumbers request `nModes` columns, either a uniform scalar or
+  one count per positive entry of `kappa`, preserving its order and repeats.
+  Repeated wavenumbers must request identical counts. A zero-wavenumber request
   requires an explicit independent `nInertialModes` count. Both counts are
   exact requests: an insufficient returned family raises an error. Stored
   bases retain the same scientific labels, normalization and boundary
