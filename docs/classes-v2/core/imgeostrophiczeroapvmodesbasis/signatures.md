@@ -3,7 +3,7 @@ layout: default
 title: signatures
 parent: IMGeostrophicZeroAPVModesBasis
 grand_parent: Core
-nav_order: 25
+nav_order: 24
 mathjax: true
 ---
 

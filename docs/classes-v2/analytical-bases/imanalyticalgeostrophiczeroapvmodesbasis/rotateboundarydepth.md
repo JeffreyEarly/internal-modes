@@ -3,7 +3,7 @@ layout: default
 title: rotateBoundaryDepth
 parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 18
+nav_order: 17
 mathjax: true
 ---
 

@@ -3,7 +3,7 @@ layout: default
 title: rotateSurfaceBuoyancy
 parent: IMAnalyticalGeostrophicZeroAPVModesBasis
 grand_parent: Analytical bases
-nav_order: 19
+nav_order: 18
 mathjax: true
 ---
 

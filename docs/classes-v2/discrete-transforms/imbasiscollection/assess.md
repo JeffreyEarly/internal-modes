@@ -21,6 +21,6 @@ Measure a fixed requested page through the common result contract.
 ## Discussion
 
   Products and leakage are explicit prepared recipes as documented by
-  IMBasisAssessment. This operation neither changes scientific modes nor
+  IMProjection.assess. This operation neither changes scientific modes nor
   creates an independent reference solve. Apply tolerances afterward with
-  assessment.applyPolicy(...).
+  checkBasisAssessment(assessment,...).

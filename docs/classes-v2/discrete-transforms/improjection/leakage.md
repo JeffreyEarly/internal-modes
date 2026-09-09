@@ -3,7 +3,7 @@ layout: default
 title: leakage
 parent: IMProjection
 grand_parent: Discrete transforms
-nav_order: 11
+nav_order: 12
 mathjax: true
 ---
 

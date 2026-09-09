@@ -3,7 +3,7 @@ layout: default
 title: rotateWithPencil
 parent: IMGeostrophicZeroAPVModesBasis
 grand_parent: Core
-nav_order: 20
+nav_order: 19
 mathjax: true
 ---
 

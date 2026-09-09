@@ -3,7 +3,7 @@ layout: default
 title: surfacePressureNormFactor
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 29
+nav_order: 28
 mathjax: true
 ---
 

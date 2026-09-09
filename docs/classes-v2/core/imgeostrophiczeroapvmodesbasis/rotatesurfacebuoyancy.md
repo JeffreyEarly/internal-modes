@@ -3,7 +3,7 @@ layout: default
 title: rotateSurfaceBuoyancy
 parent: IMGeostrophicZeroAPVModesBasis
 grand_parent: Core
-nav_order: 19
+nav_order: 18
 mathjax: true
 ---
 

@@ -3,7 +3,7 @@ layout: default
 title: samplePairingMatrix
 parent: IMProjection
 grand_parent: Discrete transforms
-nav_order: 21
+nav_order: 22
 mathjax: true
 ---
 

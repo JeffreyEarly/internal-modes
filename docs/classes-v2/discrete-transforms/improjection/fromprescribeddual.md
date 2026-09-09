@@ -1,13 +1,13 @@
 ---
 layout: default
-title: fromPairing
+title: fromPrescribedDual
 parent: IMProjection
 grand_parent: Discrete transforms
-nav_order: 6
+nav_order: 7
 mathjax: true
 ---
 
-#  fromPairing
+#  fromPrescribedDual
 
 Construct a prescribed physical source dual without inventing synthesis data.
 
@@ -16,7 +16,7 @@ Construct a prescribed physical source dual without inventing synthesis data.
 
 ## Declaration
 ```matlab
- projection = IMProjection.fromPairing(samplePairingMatrix,sampleGram,targetGram,options)
+ projection = IMProjection.fromPrescribedDual(samplePairingMatrix,sampleGram,targetGram,options)
 ```
 ## Parameters
 + `samplePairingMatrix`  finite real or complex column-by-sample pairing operator

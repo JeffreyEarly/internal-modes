@@ -6,7 +6,7 @@ has_toc: false
 mathjax: true
 parent: Discrete transforms
 grand_parent: Class documentation V2
-nav_order: 3
+nav_order: 2
 ---
 
 #  IMProjection
@@ -28,7 +28,7 @@ Rank-deficient pairings use a pseudoinverse and report infinite Gram
 error. The separately supplied positive majorant measures coefficient
 errors; it never replaces the physical pairing. This object does not
 choose a grid, fit weights, accept tolerances, or select model counts.
-`fromPairing` instead accepts an explicit physical source dual and its
+`fromPrescribedDual` instead accepts an explicit physical source dual and its
 coefficient system. It has no synthesis basis and cannot measure a
 sampled-basis Gram discrepancy or round trip.
 
@@ -43,7 +43,7 @@ coefficients = projection.project(values);
 ## Topics
 + Create projections
   + [`IMProjection`](/internal-modes/classes-v2/discrete-transforms/improjection/improjection.html) Prepare a projection without making acceptance decisions.
-  + [`fromPairing`](/internal-modes/classes-v2/discrete-transforms/improjection/frompairing.html) Construct a prescribed physical source dual without inventing synthesis data.
+  + [`fromPrescribedDual`](/internal-modes/classes-v2/discrete-transforms/improjection/fromprescribeddual.html) Construct a prescribed physical source dual without inventing synthesis data.
   + [`prefix`](/internal-modes/classes-v2/discrete-transforms/improjection/prefix.html) Construct the projection of a leading set of array columns.
 + Inspect projection data
   + [`activeColumnMask`](/internal-modes/classes-v2/discrete-transforms/improjection/activecolumnmask.html) Logical row identifying columns with a direct projection.
@@ -63,6 +63,7 @@ coefficients = projection.project(values);
   + [`targetGramIsPositiveDefinite`](/internal-modes/classes-v2/discrete-transforms/improjection/targetgramispositivedefinite.html) Whether the continuous target is positive definite on active columns.
   + [`targetGramMatrix`](/internal-modes/classes-v2/discrete-transforms/improjection/targetgrammatrix.html) Continuous signed Gram matrix in the supplied column coordinates.
 + Measure projection quality
+  + [`assess`](/internal-modes/classes-v2/discrete-transforms/improjection/assess.html) Measure fixed projection columns without changing them or applying tolerances.
   + [`gramConditionNumber`](/internal-modes/classes-v2/discrete-transforms/improjection/gramconditionnumber.html) Condition number of the active sampled Gram matrix.
   + [`gramError`](/internal-modes/classes-v2/discrete-transforms/improjection/gramerror.html) Magnitude-normalized active Gram operator discrepancy.
   + [`inverseMatrixConditionNumber`](/internal-modes/classes-v2/discrete-transforms/improjection/inversematrixconditionnumber.html) Condition number of the active sampled basis, or NaN without synthesis.

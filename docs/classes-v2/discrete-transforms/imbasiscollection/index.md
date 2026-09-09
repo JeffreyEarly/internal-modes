@@ -51,7 +51,7 @@ G = collection.evaluate(z,variable="G",pages=[3 1]);
 + Assess collections
   + [`assess`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/assess.html) Measure a fixed requested page through the common result contract.
 + Construct projections
-  + [`projection`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/projection.html) Construct a fixed projection for one requested page and variable.
+  + [`projectionOnGrid`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/projectionongrid.html) Construct a projection on the supplied fixed grid and quadrature.
 
 
 ---

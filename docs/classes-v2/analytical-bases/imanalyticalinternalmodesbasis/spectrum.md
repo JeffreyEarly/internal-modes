@@ -3,7 +3,7 @@ layout: default
 title: spectrum
 parent: IMAnalyticalInternalModesBasis
 grand_parent: Analytical bases
-nav_order: 28
+nav_order: 27
 mathjax: true
 ---
 

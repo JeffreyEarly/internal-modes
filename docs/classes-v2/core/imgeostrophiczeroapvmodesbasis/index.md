@@ -72,7 +72,6 @@ customModes = boundaryModes.rotateWithPencil(name="custom",leftMatrix=Hg,rightMa
   + [`F`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/f.html) Evaluate streamfunction structures $$F(z)$$.
   + [`G`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/g.html) Evaluate diagnostic displacement structures $$G(z)$$.
   + [`IMGeostrophicZeroAPVModesBasis`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/imgeostrophiczeroapvmodesbasis.html) Create a canonical boundary-normalized zero-APV basis.
-  + [`projectionRecipe`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/projectionrecipe.html) Report the unavailable scalar F/G projection for boundary-response bases.
 + Inspect geostrophic zero-APV modes
   + [`N2`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/n2.html) Buoyancy frequency squared function.
   + [`endpoints`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodesbasis/endpoints.html) Canonically ordered endpoint-coordinate labels.

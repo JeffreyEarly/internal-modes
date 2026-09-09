@@ -3,7 +3,7 @@ layout: default
 title: columnLabels
 parent: IMProjection
 grand_parent: Discrete transforms
-nav_order: 4
+nav_order: 5
 mathjax: true
 ---
 

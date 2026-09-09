@@ -3,7 +3,7 @@ layout: default
 title: sampledGramRank
 parent: IMProjection
 grand_parent: Discrete transforms
-nav_order: 23
+nav_order: 24
 mathjax: true
 ---
 

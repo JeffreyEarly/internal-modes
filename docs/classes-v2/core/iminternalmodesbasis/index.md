@@ -65,7 +65,6 @@ G = basisSet.G(z);
   + [`certifiedDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/certifieddiscretetransform.html) Select and independently fit a certified aligned F/G family band.
   + [`discreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/discretetransform.html) Build an aligned internal-mode F/G transform through the compatibility API.
   + [`fitDiscreteTransform`](/internal-modes/classes-v2/core/iminternalmodesbasis/fitdiscretetransform.html) Fit and certify one exact aligned F/G family band.
-  + [`projectionRecipe`](/internal-modes/classes-v2/core/iminternalmodesbasis/projectionrecipe.html) Bind one aligned variable to its signed pairing and positive majorant.
   + [`quadratureWeightsForPoints`](/internal-modes/classes-v2/core/iminternalmodesbasis/quadratureweightsforpoints.html) Fit one quadrature rule to aligned internal-mode F/G channels.
 
 
