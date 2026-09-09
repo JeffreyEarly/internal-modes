@@ -1,15 +1,15 @@
 ---
 layout: default
 title: factors
-parent: IMProductInventory
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 4
+nav_order: 3
 mathjax: true
 ---
 
 #  factors
 
-Cell row of factor metadata and explicit evaluation callbacks.
+Deferred continuous factor metadata and evaluators.
 
 
 ---

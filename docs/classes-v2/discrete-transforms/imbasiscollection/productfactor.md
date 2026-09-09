@@ -1,13 +1,13 @@
 ---
 layout: default
-title: collectionFactor
-parent: IMProductInventory
+title: productFactor
+parent: IMBasisCollection
 grand_parent: Discrete transforms
-nav_order: 3
+nav_order: 9
 mathjax: true
 ---
 
-#  collectionFactor
+#  productFactor
 
 Bind one collection page, variable, derivative, and coefficient function.
 

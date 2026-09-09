@@ -1,9 +1,9 @@
 ---
 layout: default
 title: planningSeconds
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 6
+nav_order: 7
 mathjax: true
 ---
 

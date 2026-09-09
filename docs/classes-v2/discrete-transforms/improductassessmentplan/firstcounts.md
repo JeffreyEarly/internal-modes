@@ -1,9 +1,9 @@
 ---
 layout: default
 title: firstCounts
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 3
+nav_order: 4
 mathjax: true
 ---
 

@@ -1,9 +1,9 @@
 ---
 layout: default
 title: reservedProducts
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 9
+nav_order: 10
 mathjax: true
 ---
 

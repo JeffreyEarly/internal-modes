@@ -1,13 +1,13 @@
 ---
 layout: default
-title: prefixCounts
-parent: IMProductPlan
+title: retainedCounts
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 7
+nav_order: 11
 mathjax: true
 ---
 
-#  prefixCounts
+#  retainedCounts
 
 Examined retained-count values, unchanged by assessment decisions.
 

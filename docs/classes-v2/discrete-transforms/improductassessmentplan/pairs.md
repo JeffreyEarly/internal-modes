@@ -1,9 +1,9 @@
 ---
 layout: default
 title: pairs
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
-nav_order: 5
+nav_order: 6
 mathjax: true
 ---
 

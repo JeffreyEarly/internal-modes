@@ -51,6 +51,8 @@ G = collection.evaluate(z,variable="G",pages=[3 1]);
   + [`evaluateChunks`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/evaluatechunks.html) Stream continuous basis values in bounded sample and page chunks.
 + Assess collections
   + [`assess`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/assess.html) Measure a fixed requested page through the common result contract.
++ Assess sampled bases
+  + [`productFactor`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/productfactor.html) Bind one collection page, variable, derivative, and coefficient function.
 + Construct projections
   + [`projectionOnGrid`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/projectionongrid.html) Construct a projection on the supplied fixed grid and quadrature.
 

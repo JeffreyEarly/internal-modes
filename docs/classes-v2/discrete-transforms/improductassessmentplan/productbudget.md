@@ -1,7 +1,7 @@
 ---
 layout: default
 title: productBudget
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
 nav_order: 8
 mathjax: true

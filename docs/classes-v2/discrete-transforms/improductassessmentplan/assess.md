@@ -1,7 +1,7 @@
 ---
 layout: default
 title: assess
-parent: IMProductPlan
+parent: IMProductAssessmentPlan
 grand_parent: Discrete transforms
 nav_order: 2
 mathjax: true
