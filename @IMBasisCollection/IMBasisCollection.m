@@ -119,6 +119,7 @@ classdef IMBasisCollection
         end
 
         values = evaluate(self,z,options)
+        evaluateChunks(self,z,consumer,options)
     end
 
     methods (Static, Access = private)

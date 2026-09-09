@@ -7,6 +7,7 @@ nav_order: 100
 # Version History
 
 ## Unreleased
+- added exact bulk wave basis generation over ordered κ collections, independent zero-κ inertial counts, shared solver preparation, and bounded/streamed continuous evaluation with selected boundary pages
 - added a common continuous basis collection, basis-owned projection recipes, shared signed projection/error kernel, and fixed-grid assessment with separate explicit acceptance policies; preserved scientific counts, page/endpoint labels, and unsupported-family capabilities
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
 - added the induced Hilbert-majorant APIs `majorantInnerProduct`, `majorantGramMatrix`, `majorantNorm`, and `targetMajorantGramMatrix`; retained signed Pontryagin projection and spectra; and enabled coupled APV quadratic certification with retained negative modes by measuring relative errors in the positive majorant

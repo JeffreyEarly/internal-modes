@@ -235,41 +235,50 @@ classdef IMGeostrophicZeroAPVModesBasis
             self.metadata.normalizationConvention = self.normalizationConvention;
         end
 
-        function values = F(self, z)
+        function values = F(self, z, options)
             % Evaluate streamfunction structures $$F(z)$$.
             %
-            % The result has dimensions `nZ x nEndpoints x nK`.
+            % The result has dimensions `nZ x nEndpoints x nSelectedPages`.
             %
             % - Topic: Evaluate geostrophic zero-APV modes
-            % - Declaration: values = F(basisSet,z)
+            % - Declaration: values = F(basisSet,z,options)
             % - Parameter z: physical coordinate
+            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
             % - Returns values: page-shaped `F` values
             arguments
                 self IMGeostrophicZeroAPVModesBasis
                 z (:,1) double {mustBeReal, mustBeFinite}
+                options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
+            end
+            if any(options.pages > numel(self.k))
+                error("IMGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
 
             nEndpoints = numel(self.endpoints);
-            nK = numel(self.k);
-            values = zeros(length(z),nEndpoints,nK);
-            for iK = 1:nK
-                values(:,:,iK) = self.solver.evaluateNativeModes(self.currentNativeModes(:,:,iK),z);
-            end
+            nK = numel(options.pages);
+            native = reshape(self.currentNativeModes(:,:,options.pages),size(self.currentNativeModes,1),nEndpoints*nK);
+            sampled = self.solver.evaluateNativeModes(native,z);
+            values = reshape(sampled,numel(z),nEndpoints,nK);
         end
 
-        function values = G(self, z)
+        function values = G(self, z, options)
             % Evaluate diagnostic displacement structures $$G(z)$$.
             %
-            % The result has dimensions `nZ x nEndpoints x nK` and uses
+            % The result has dimensions `nZ x nEndpoints x nSelectedPages` and uses
             % $$G=-gN^{-2}\partial_zF$$.
             %
             % - Topic: Evaluate geostrophic zero-APV modes
-            % - Declaration: values = G(basisSet,z)
+            % - Declaration: values = G(basisSet,z,options)
             % - Parameter z: physical coordinate
+            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
             % - Returns values: page-shaped `G` values
             arguments
                 self IMGeostrophicZeroAPVModesBasis
                 z (:,1) double {mustBeReal, mustBeFinite}
+                options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
+            end
+            if any(options.pages > numel(self.k))
+                error("IMGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
 
             N2Values = self.N2(z(:));
@@ -278,12 +287,10 @@ classdef IMGeostrophicZeroAPVModesBasis
                 error("IMGeostrophicZeroAPVModesBasis:InvalidStratification", "N2 must return one finite positive value for each z point.");
             end
             nEndpoints = numel(self.endpoints);
-            nK = numel(self.k);
-            values = zeros(length(z),nEndpoints,nK);
-            for iK = 1:nK
-                dFdz = self.solver.evaluatePhysicalDerivative(self.currentNativeModes(:,:,iK),z,1);
-                values(:,:,iK) = -(self.g./N2Values).*dFdz;
-            end
+            nK = numel(options.pages);
+            native = reshape(self.currentNativeModes(:,:,options.pages),size(self.currentNativeModes,1),nEndpoints*nK);
+            dFdz = self.solver.evaluatePhysicalDerivative(native,z,1);
+            values = reshape(-(self.g./N2Values).*dFdz,numel(z),nEndpoints,nK);
         end
 
         function matrix = generalizedEnergyMatrix(self, options)

@@ -35,6 +35,7 @@ base class owns the common generalized-eigenvalue workflow.
   + [`nativeDifferentiationRule`](/internal-modes/classes-v2/solvers/imsolver/nativedifferentiationrule.html) Return one ordered grid for physical quadrature and differentiation.
   + [`nativeQuadratureRule`](/internal-modes/classes-v2/solvers/imsolver/nativequadraturerule.html) Return the solver's native physical quadrature rule.
   + [`solveEVP`](/internal-modes/classes-v2/solvers/imsolver/solveevp.html) Solve an EVP and return a basis set.
+  + [`solveWaveModesAtWavenumbers`](/internal-modes/classes-v2/solvers/imsolver/solvewavemodesatwavenumbers.html) Solve continuous wave bases for an ordered collection of wavenumbers.
 + Solve geostrophic zero-APV modes
   + [`solveGeostrophicZeroAPVModes`](/internal-modes/classes-v2/solvers/imsolver/solvegeostrophiczeroapvmodes.html) Solve canonical geostrophic zero-APV boundary modes.
 + Other

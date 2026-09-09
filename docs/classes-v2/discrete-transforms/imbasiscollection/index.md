@@ -47,7 +47,8 @@ G = collection.evaluate(z,variable="G",pages=[3 1]);
   + [`metadata`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/metadata.html) Scientific column identity and evaluation capabilities per basis.
   + [`sourcePage`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/sourcepage.html) Page within each mapped basis, normally one for scalar solves.
 + Evaluate collections
-  + [`evaluate`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/evaluate.html) continuous structures on selected requested pages.
+  + [`evaluate`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/evaluate.html) continuous structures with bounded intermediate allocations.
+  + [`evaluateChunks`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/evaluatechunks.html) Stream continuous basis values in bounded sample and page chunks.
 + Assess collections
   + [`assess`](/internal-modes/classes-v2/discrete-transforms/imbasiscollection/assess.html) Measure a fixed requested page through the common result contract.
 + Construct projections

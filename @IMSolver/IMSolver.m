@@ -91,31 +91,7 @@ classdef (Abstract) IMSolver
 
             solver = self.configuredForEVP(evp);
             [A, B] = evp.assemble(solver);
-            [V, D] = eig(A, B);
-            eigenvalues = diag(D);
-            valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) ...
-                & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
-            if ~any(valid)
-                error("IMSolver:NoValidEigenvalues", "%s", ...
-                    self.noValidEigenvalueMessage(evp, A, B, eigenvalues, valid));
-            end
-
-            V = real(V(:,valid));
-            eigenvalues = real(eigenvalues(valid));
-            familyValid = evp.finiteGeneralizedEigenpairMask(V,B);
-            V = V(:,familyValid);
-            eigenvalues = eigenvalues(familyValid);
-            if isempty(eigenvalues)
-                error("IMSolver:NoValidEigenvalues", ...
-                    "EVP ""%s"" produced no finite real eigenmode with nonzero metric action; every candidate lies in the numerical null space of B.",evp.name);
-            end
-            selection = evp.selectModes(eigenvalues(:), options.nModes, solver, A);
-            eigenvalues = eigenvalues(selection.sortIndex);
-            eigenvalues(selection.modeNumber == 0) = 0;
-            V = V(:,selection.sortIndex);
-            basisSet = evp.makeBasisSet(solver, V, eigenvalues(:).', ...
-                selection.modeNumber, selection.modeSelectionDiagnostics);
-            basisSet = basisSet.orientModeSigns();
+            basisSet = solver.solveAssembledEVP(evp,A,B,options.nModes);
         end
 
         function zRoots = rootsOfNativeMode(self, nativeMode)
@@ -253,6 +229,47 @@ classdef (Abstract) IMSolver
     end
 
     methods (Access = protected)
+        function [basisSet,costs] = solveAssembledEVP(self,evp,A,B,nModes,diagnostics)
+            % Preserve the shared eigenpair filtering, labels and orientation.
+            arguments (Input)
+                self IMSolver
+                evp IMEigenvalueProblem
+                A (:,:) double
+                B (:,:) double
+                nModes (1,1) double {mustBeInteger,mustBePositive}
+                diagnostics (1,1) struct = struct()
+            end
+            timer = tic;
+            [V, D] = eig(A, B);
+            costs.eigensolveSeconds = toc(timer);
+            timer = tic;
+            eigenvalues = diag(D);
+            valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) ...
+                & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
+            if ~any(valid)
+                error("IMSolver:NoValidEigenvalues", "%s", ...
+                    self.noValidEigenvalueMessage(evp, A, B, eigenvalues, valid));
+            end
+
+            V = real(V(:,valid));
+            eigenvalues = real(eigenvalues(valid));
+            familyValid = evp.finiteGeneralizedEigenpairMask(V,B);
+            V = V(:,familyValid);
+            eigenvalues = eigenvalues(familyValid);
+            if isempty(eigenvalues)
+                error("IMSolver:NoValidEigenvalues", ...
+                    "EVP ""%s"" produced no finite real eigenmode with nonzero metric action; every candidate lies in the numerical null space of B.",evp.name);
+            end
+            selection = evp.selectModes(eigenvalues(:),nModes,self,A,diagnostics=diagnostics);
+            eigenvalues = eigenvalues(selection.sortIndex);
+            eigenvalues(selection.modeNumber == 0) = 0;
+            V = V(:,selection.sortIndex);
+            basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
+                selection.modeNumber, selection.modeSelectionDiagnostics);
+            basisSet = basisSet.orientModeSigns();
+            costs.finalizationSeconds = toc(timer);
+        end
+
         function values = solveBoundaryValueSystems(~, matrix, rightHandSides)
             % Solve one boundary-value matrix for multiple response columns.
             matrixFactorization = decomposition(matrix);

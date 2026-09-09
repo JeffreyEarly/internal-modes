@@ -16,10 +16,11 @@ Evaluate exact streamfunction structures $$F(z)$$.
 
 ## Declaration
 ```matlab
- values = F(basisSet,z)
+ values = F(basisSet,z,options)
 ```
 ## Parameters
 + `z`  physical coordinate
++ `options.pages`  source wavenumber pages, preserving order and repeats
 
 ## Returns
 + `values`  page-shaped exact `F` values

@@ -171,8 +171,8 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             % - Declaration: basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(options)
             % - Parameter options.solution: analytical solution family
             % - Parameter options.problem: canonical zero-APV problem
-            % - Parameter options.FFunction: exact canonical `F` evaluator
-            % - Parameter options.GFunction: exact canonical `G` evaluator
+            % - Parameter options.FFunction: exact canonical `F` evaluator, `(z,pages)` for bounded page evaluation
+            % - Parameter options.GFunction: exact canonical `G` evaluator, `(z,pages)` for bounded page evaluation
             % - Parameter options.metadata: creation metadata
             % - Returns basisSet: exact canonical basis
             % - Developer: true
@@ -217,41 +217,51 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             self.metadata.canonicalEndpointResponseResidual = responseResidual;
         end
 
-        function values = F(self,z)
+        function values = F(self,z,options)
             % Evaluate exact streamfunction structures $$F(z)$$.
             %
             % The result has dimensions `nZ x nEndpoints x nK`.
             %
             % - Topic: Evaluate exact geostrophic zero-APV modes
-            % - Declaration: values = F(basisSet,z)
+            % - Declaration: values = F(basisSet,z,options)
             % - Parameter z: physical coordinate
+            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
             % - Returns values: page-shaped exact `F` values
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
                 z (:,1) double {mustBeReal, mustBeFinite}
+                options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
+            end
+            if any(options.pages > numel(self.k))
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
 
-            values = self.evaluateCanonical(self.canonicalFFunction,z);
-            values = self.applyRotation(values);
+            values = self.evaluateCanonical(self.canonicalFFunction,z,options.pages);
+            values = self.applyRotation(values,options.pages);
         end
 
-        function values = G(self,z)
+        function values = G(self,z,options)
             % Evaluate exact diagnostic displacement structures $$G(z)$$.
             %
             % The evaluator uses the closed-form derivative relation
             % $$G=-gN^{-2}\partial_zF$$ without numerical differentiation.
             %
             % - Topic: Evaluate exact geostrophic zero-APV modes
-            % - Declaration: values = G(basisSet,z)
+            % - Declaration: values = G(basisSet,z,options)
             % - Parameter z: physical coordinate
+            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
             % - Returns values: page-shaped exact `G` values
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
                 z (:,1) double {mustBeReal, mustBeFinite}
+                options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
+            end
+            if any(options.pages > numel(self.k))
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
 
-            values = self.evaluateCanonical(self.canonicalGFunction,z);
-            values = self.applyRotation(values);
+            values = self.evaluateCanonical(self.canonicalGFunction,z,options.pages);
+            values = self.applyRotation(values,options.pages);
         end
 
         function matrix = generalizedEnergyMatrix(self,options)
@@ -383,10 +393,18 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
     end
 
     methods (Access = private)
-        function values = evaluateCanonical(self,evaluator,z)
-            values = evaluator(z(:));
+        function values = evaluateCanonical(self,evaluator,z,pages)
+            if nargin < 4
+                pages = 1:numel(self.k);
+            end
+            if nargin(evaluator) == 1
+                values = evaluator(z(:));
+                values = values(:,:,pages);
+            else
+                values = evaluator(z(:),pages);
+            end
             nEndpoints = numel(self.endpoints);
-            nK = numel(self.k);
+            nK = numel(pages);
             if size(values,1) ~= numel(z) || size(values,2) ~= nEndpoints || size(values,3) ~= nK
                 error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidEvaluatorShape", "Exact evaluators must return nZ x nEndpoints x nK arrays.");
             end
@@ -395,9 +413,9 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             end
         end
 
-        function values = applyRotation(self,values)
-            for iK = 1:numel(self.k)
-                values(:,:,iK) = values(:,:,iK)*self.rotationMatrix(:,:,iK);
+        function values = applyRotation(self,values,pages)
+            for iK = 1:numel(pages)
+                values(:,:,iK) = values(:,:,iK)*self.rotationMatrix(:,:,pages(iK));
             end
         end
 
