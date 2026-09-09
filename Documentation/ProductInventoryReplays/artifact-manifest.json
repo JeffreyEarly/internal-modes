@@ -1,0 +1,338 @@
+{
+  "command": "matlab -batch (from /private/tmp): addpath('/private/tmp'); replayIMProductStudyExtra(\"cal-exponential-17\"); replayIMProductStudyExtra(\"withheld-pycnocline-33\");",
+  "sourceProvenance": "Exact released InternalModes-2.0.0-beta.1 scientific modes configured by frozen WVM configureStudyPath; new provider numerical classes added at end. Actual files hashed below. Pinned solver path is asserted before preparing either case.",
+  "comparisonTolerance": 2e-07,
+  "postRunNumericalChanges": false,
+  "files": [
+    {
+      "path": "/private/tmp/replayIMProductStudyExtra.m",
+      "bytes": 12526,
+      "sha256": "668af05f61a3f32efa002d5de4126d2f273e45fa9321f24e0f8deb9206c4686b"
+    },
+    {
+      "path": "/private/tmp/exportIMProductStudy.m",
+      "bytes": 9783,
+      "sha256": "eb5ac83cb2ef974016a5730c98e2deb31097195ec3d29ce512ec4869ee7177be"
+    },
+    {
+      "path": "/private/tmp/im19-extra-replay.log",
+      "bytes": 8268,
+      "sha256": "7c5cf2553d1c9d9dcf27b5b7210118303cfa1c2d4411ad3f119bf677ab397fdc"
+    },
+    {
+      "path": "/private/tmp/im19-extra-replay/im19-withheld-pycnocline-33-verification.json",
+      "bytes": 575434,
+      "sha256": "e6b8db2404e29ac30f663c5163f25514540555d6624459420d223e63941896de"
+    },
+    {
+      "path": "/private/tmp/im19-extra-replay/im19-cal-exponential-17-verification.json",
+      "bytes": 477163,
+      "sha256": "6470252d2bcdba246a1ffaf4324d9a5c3f8692dbd2b30a41146c77af9dbdd3c4"
+    },
+    {
+      "path": "/private/tmp/im19-extra-replay/im19-withheld-pycnocline-33-fixture.mat",
+      "bytes": 104213632,
+      "sha256": "e189072daec01fbbd56ae2ebf56043fc456ab3f239571c299cde8a9b13cbf1d5"
+    },
+    {
+      "path": "/private/tmp/im19-extra-replay/im19-cal-exponential-17-fixture.mat",
+      "bytes": 27199118,
+      "sha256": "40371312e2e4c083400b80b03d9c83ca00925e55419b23886b68bd7952c68801"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/runReferenceRefinements.m",
+      "bytes": 874,
+      "sha256": "d408d1d351c37d3c4221d87613c2d0bb12aec3242457c28567046426fb902975"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/scoreSourcePolicies.m",
+      "bytes": 5239,
+      "sha256": "12946e386c38f60aa7d10115bd736e5557c2b5dee6f0ff0c55efd9457ae0a922"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/plotStudyComparison.m",
+      "bytes": 2190,
+      "sha256": "15f36233c1d20f73017977e10ab00f0d9b5f77e1c34278ff5cbb08ec5a651777"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/evaluateStudyModes.m",
+      "bytes": 781,
+      "sha256": "3b65e131c9ff93251ff86b3a3ad935935fe445250ea186482e40f239b4dc422f"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/assessWaveQuadraticResolution.m",
+      "bytes": 7862,
+      "sha256": "1a4cb8a0c4d878036f73ff9cd07423ebbea592fb522ae711d37a2058ac1dc0da"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/measureProductProjection.m",
+      "bytes": 3213,
+      "sha256": "5904f71b3452921ca466b119347a5ffc555d86ecc08df52c284f2601a5876407"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/sourceChannelInventory.m",
+      "bytes": 567,
+      "sha256": "b2373f5f0820356a822709f78d615dbb4dcd8f78cfa21c95ee258f145462cf62"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/prepareSourceStudy.m",
+      "bytes": 8667,
+      "sha256": "f765c5a48f8e464c29cadbc47c1e61732bd4c0e2645d25ae8c057342c6cf5f51"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/prepareProductProjection.m",
+      "bytes": 1943,
+      "sha256": "99c17c1a1d1695d4a8e2ace46f7a766321c773e08fa8120967d15c97d9fe044a"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/configureStudyPath.m",
+      "bytes": 1448,
+      "sha256": "25d5d12968d92ad70db0bd251eb094c7e2c9858896331c595fe208db245263c7"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/runStudyCases.m",
+      "bytes": 1365,
+      "sha256": "55b9473de3c6c93ad0c60fb8f5f79fc7e9440c70acb828fa0027bb565fc701b7"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/compareProductReferences.m",
+      "bytes": 679,
+      "sha256": "c8029323bff998e0f6601ef91bf7cfedd1af2ebdddfe107bc605c70763b9330c"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/studyModePairMask.m",
+      "bytes": 973,
+      "sha256": "f2dcafeda996dafd2edbc6861d0710326d02a384457582bd2131c9537ddcfdeb"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/TestWaveQuadraticAdvisory.m",
+      "bytes": 4620,
+      "sha256": "71f7aeaf7f83adee148d98eb48960536373cae1947ea06a8bb8bf067456fd850"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/runPilot.m",
+      "bytes": 9633,
+      "sha256": "64f41b2fc604ea6df388fa2d72be7332d4d0ca0e204c00bebf8f3a24c9aab930"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/resolveStudyCase.m",
+      "bytes": 1170,
+      "sha256": "b351197968f61c9aaef1d7b3d1961b00965259546df21b767a4ad47e42202ad8"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/sourceProjectionContext.m",
+      "bytes": 2473,
+      "sha256": "7bd0a521d7cc2010bb6342a63cd3e0a04870a518e7c5c6a48f5d5b8029751b0d"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/verifyStudyResults.m",
+      "bytes": 1841,
+      "sha256": "5ae25be25f8fab7a6540df7dbece176abb87834ceb1fbf8168bd3e548214f505"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/selectStudyInteractions.m",
+      "bytes": 2211,
+      "sha256": "d3cfc9702e66cf77912b5dc511684c62d14c341bedbfb894e6f29f263be24b04"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/TestSourceProjection.m",
+      "bytes": 4120,
+      "sha256": "afd95fdb065e611b5f6f48a542b7a0cbc51639b379869918cf472eeeddf0c64e"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/TestSparseStudyPolicies.m",
+      "bytes": 3184,
+      "sha256": "278f14482f93c50cc3cb30b3936442c8b66222fdbf72958d7b29d45f8e72bd9c"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/studyProfile.m",
+      "bytes": 798,
+      "sha256": "1a4cd26da92e9a0bd8ff988b45b89a2acd8657f4547a8e1a285747fa37fda081"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/sourceStudyFields.m",
+      "bytes": 1922,
+      "sha256": "a3788db70af08e0b2e7f670d15a66e709fbc404ec158e43518420f8abe6dd598"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/TestProductProjection.m",
+      "bytes": 3724,
+      "sha256": "3988b1fbb66a1f5c15bea7b938936d0cd338d2888e8d3af7fccf1504d2dd053e"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/runCostStudy.m",
+      "bytes": 4571,
+      "sha256": "a5e2dbdd1679b42bb3049f0b0c4b737cb2c0f0a2d5acac8b68bd921242e7db30"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/enumerateStudyInteractions.m",
+      "bytes": 1476,
+      "sha256": "0f01666b462b6469004ef54c81f16069801397fab3f38c8b6d0dbbca789c59a9"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/verifySparseReplay.m",
+      "bytes": 2599,
+      "sha256": "1a6bf4c3f3cdfd1729189435cff2ed4b3a931757dc92d8bbe7ceeed4300087d7"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/measureSourceProducts.m",
+      "bytes": 7661,
+      "sha256": "aa2d45579ad38f0da53a9c15d862576162de1460de60cddc90f3430ec56996ba"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/scoreQuadraticDiagnostics.m",
+      "bytes": 2860,
+      "sha256": "991a86724a5ab7bda4ac763f839fac3177dd4954dd527174ba18c73580ba0776"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wave-vortex-model/tools/aliasing-study/runSourceSurvey.m",
+      "bytes": 1772,
+      "sha256": "aef73f447f3fa17024a98f4f67a07cad3586c1dde847224d0d060c9f7a1315a2"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductInventory/collectionFactor.m",
+      "bytes": 3060,
+      "sha256": "66c60c7c103781b50ca48fe4aa1a05f2c6396506af93b1a335f75cb944741e95"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductInventory/fixedPlan.m",
+      "bytes": 1117,
+      "sha256": "0bb6c7e15df90bf70e49c70c6b2b123033e235f858f0cd7db45b73150b6bb94c"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductInventory/allProductsPlan.m",
+      "bytes": 963,
+      "sha256": "b33f1245222ff2a02ff5d09a85de3e4c49a553e8172796421198f8738172415a"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductInventory/IMProductInventory.m",
+      "bytes": 7971,
+      "sha256": "80bb82b2eb095407bc09dce6bf29db0aab80fc209ea4f2a57bc5d113d6e78240"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductPlan/assess.m",
+      "bytes": 15350,
+      "sha256": "90d490921c2634d599495dcfe3fad29850ed887a537cad8db3e5550156448265"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductPlan/IMProductPlan.m",
+      "bytes": 6906,
+      "sha256": "3af28d3e6c8390a8bf05362b95d01b54a4b078fffd2d5f2cf5ed70a7359ddd44"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProductAssessment/IMProductAssessment.m",
+      "bytes": 14564,
+      "sha256": "981302866e971758e643d5a69711faecb00d9d4e2790a643e5f18279b8c506fd"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/fromPairing.m",
+      "bytes": 2854,
+      "sha256": "416e183fbdf9ddb7381fc7db13a622c4c915af8936cec9b9ecd18180335b0e3c"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/prefix.m",
+      "bytes": 1476,
+      "sha256": "7e98d03b741a17bce23d23c90f1ce1a03736ea728c640137d43b3ca72aa7f9ae"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/project.m",
+      "bytes": 638,
+      "sha256": "a4d07e095e7d3e4a7fb35c8843f4ca4ed4e956e95f8e7856c4a9507d4c1363fb"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/productError.m",
+      "bytes": 2197,
+      "sha256": "0459cc8cf638b3dc726950f19d1c12e2d20bf05aecaf0e430aca2268f689f4a8"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/leakage.m",
+      "bytes": 1498,
+      "sha256": "ca0c7688b064444c69b12abd41aaf4111e7ca49a833b28f8219cea5389844272"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/initializeProjection.m",
+      "bytes": 3515,
+      "sha256": "14b2d01720e40dfe93a49fbd24398dc658f10194618190933ea7d2226cdc4d63"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/relativeCoefficientNorm.m",
+      "bytes": 1754,
+      "sha256": "8b2e0ba5882f2d36bb1e1e6ea656eb538fa144feb9b9976e4c91e90ac7d3509f"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-product-inventories/@IMProjection/IMProjection.m",
+      "bytes": 9199,
+      "sha256": "6e81391fcd7a2294125694ef8196070a915597aee01860433557c0e4b367bf7b"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMInternalModes/IMInternalModes.m",
+      "bytes": 50527,
+      "sha256": "1d0ccb7966fa2c3b9335dc47adb1d388ee3281d1d62408881ad6e871fc0fc3f1"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMInternalModes/summarize.m",
+      "bytes": 7366,
+      "sha256": "1d6963931bf811d1d20f1df00e739e752cf0d9fd99e7651b0f8881e603c57fb2"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMSolver/IMSolver.m",
+      "bytes": 15195,
+      "sha256": "2c99f0ea209ec4a60e7366e0d7e32d9c6b4c40c9acc6afe11f66cec57436a4c5"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMSolverSpectral/IMSolverSpectral.m",
+      "bytes": 30423,
+      "sha256": "4bf8e0db4fce9111c2ef1c95313ed162b7679df795019d5c0708b9fae2e0ffe7"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMEigenvalueProblem/IMEigenvalueProblem.m",
+      "bytes": 38166,
+      "sha256": "3441d6e4c553b8adabcbce1a354fb76388f032b64ebde4317d689f366019a5df"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm400-oceankit/InternalModes-2.0.0-beta.1/@IMEigenvalueProblem/summarize.m",
+      "bytes": 6737,
+      "sha256": "67e81580fbd64c5e32deb38b0d28c731d2ebc07a5d3cae07200d47435ecef373"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/cal-exponential-17--fixed/products.mat",
+      "bytes": 655857,
+      "sha256": "a42de597eba6ae806129c5f8ca6f9cba9b817d67a97e8953c77fb82aacb1497f"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/cal-exponential-17--fixed/configuration.json",
+      "bytes": 424,
+      "sha256": "85826f02bcabb4ff103f3772dff645e66e95672bf19a8a45b8e5784a5756e9d8"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/cal-exponential-17--fixed/sampled-prefixes.csv",
+      "bytes": 388,
+      "sha256": "b6c44b87ce04a676929fc52c0d37f7dfa356a8a95991dfd9e0cf1baecf6b02d0"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/cal-exponential-17--fixed/summary.json",
+      "bytes": 3609,
+      "sha256": "faa132f26ff9d7c2f5deedea041a43d15394288aa9e78d20ee6862285d2e822b"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/withheld-pycnocline-33--fixed/products.mat",
+      "bytes": 2885102,
+      "sha256": "d3f7bd678c26304e052694795cfabbecb03e1a7a8f4ee9af70c088b7e809d3c0"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/withheld-pycnocline-33--fixed/configuration.json",
+      "bytes": 429,
+      "sha256": "f08ca319e1427b1f5bdae4322053ccc943aee24896b5bb4f77697432f09a6fd0"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/withheld-pycnocline-33--fixed/sampled-prefixes.csv",
+      "bytes": 728,
+      "sha256": "26ad025e94ee261ced7506e589340687a907ea0cac13633373ec6f8acf029a2b"
+    },
+    {
+      "path": "/Users/jearly/Documents/OceanKitRepositories/wvm-issue-400/tools/aliasing-study/results/cost-matrix-v1/withheld-pycnocline-33--fixed/summary.json",
+      "bytes": 3844,
+      "sha256": "acd1f793406ad4fc50543151f85b653785d42ece3d7b53614a3aa30a14141682"
+    }
+  ]
+}

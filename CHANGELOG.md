@@ -5,6 +5,7 @@
 - equilibrated generalized eigenproblem rows before solving, reducing high-resolution APV mode and endpoint-response errors while preserving the physical matrices for mode classification and diagnostics
 - made spectral stretched-coordinate maps, inverse maps, Jacobians, and second derivatives use one smooth Chebfun representation, removing the inconsistent trapezoidal/PCHIP and endpoint-gradient error floor in WKB and density coordinates
 - corrected solved G-mode normalization and projection to use the canonical EVP interior weight, including `(N2-f0^2)/g` for fixed-wavenumber waves and `(N2-omega^2)/g` for fixed-frequency waves; positive majorants now also take the absolute interior weight
+- added deferred mixed-product inventories, deterministic sparse selection, evaluation budgets, explicit reference diagnostics, coverage controls, and acceptance policies that preserve scientific counts and required endpoints
 - added exact bulk wave basis generation over ordered κ collections, independent zero-κ inertial counts, shared solver preparation, and bounded/streamed continuous evaluation with selected boundary pages
 - added a common continuous basis collection, basis-owned projection recipes, shared signed projection/error kernel, and fixed-grid assessment with separate explicit acceptance policies; preserved scientific counts, page/endpoint labels, and unsupported-family capabilities
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation
