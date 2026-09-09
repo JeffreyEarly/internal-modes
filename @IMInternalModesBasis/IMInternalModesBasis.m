@@ -46,6 +46,10 @@ classdef IMInternalModesBasis < IMBasisSet
         N2
     end
 
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+    end
+
     methods
         function self = IMInternalModesBasis(options)
             % Create an internal-mode basis set.

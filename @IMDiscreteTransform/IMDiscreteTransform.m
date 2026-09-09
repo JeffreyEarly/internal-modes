@@ -489,25 +489,8 @@ classdef IMDiscreteTransform
                 error("IMDiscreteTransform:InvalidTargetGramMatrix", "targetGramMatrix must have finite, numerically nonzero diagonal entries.");
             end
 
-            metricMatrix = 0.5*(metricMatrix + metricMatrix.');
-            gramMatrix = inverseMatrix.'*metricMatrix*inverseMatrix;
-            gramMatrix = 0.5*(gramMatrix + gramMatrix.');
-            singularValues = svd(gramMatrix);
-            rankTolerance = max(size(gramMatrix))*eps(max(1,norm(gramMatrix,2)));
-            sampledGramRank = sum(singularValues > rankTolerance);
-            pairingMatrix = inverseMatrix.'*metricMatrix;
-            if sampledGramRank < nModes
-                forwardMatrix = pinv(gramMatrix,rankTolerance)*pairingMatrix;
-            else
-                forwardMatrix = gramMatrix \ pairingMatrix;
-            end
-
-            scale = 1./sqrt(abs(targetNorms));
-            scaledDifference = scale.*(gramMatrix - targetGramMatrix).*scale.';
-            relativeGramOperatorError = norm(scaledDifference,2);
-            if sampledGramRank < nModes
-                relativeGramOperatorError = Inf;
-            end
+            projection = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,columnLabels=string(options.modeNumber));
+            metricMatrix = projection.metricMatrix;
 
             self.z = z;
             self.weights = weights;
@@ -515,14 +498,14 @@ classdef IMDiscreteTransform
             self.normalization = string(options.normalization);
             self.inverseMatrix = inverseMatrix;
             self.metricMatrix = metricMatrix;
-            self.forwardMatrix = forwardMatrix;
-            self.gramMatrix = gramMatrix;
+            self.forwardMatrix = projection.forwardMatrix;
+            self.gramMatrix = projection.gramMatrix;
             self.targetGramMatrix = targetGramMatrix;
-            self.relativeGramOperatorError = relativeGramOperatorError;
-            self.roundTripError = norm(forwardMatrix*inverseMatrix - eye(nModes),2);
-            self.inverseMatrixConditionNumber = cond(inverseMatrix);
-            self.sampledGramRank = sampledGramRank;
-            self.gramConditionNumber = cond(gramMatrix);
+            self.relativeGramOperatorError = projection.gramError;
+            self.roundTripError = projection.roundTripError;
+            self.inverseMatrixConditionNumber = projection.inverseMatrixConditionNumber;
+            self.sampledGramRank = projection.sampledGramRank;
+            self.gramConditionNumber = projection.gramConditionNumber;
             self.targetGramIsPositiveDefinite = all(targetNorms > 0);
             self.hasNegativeWeights = any(weights < 0);
         end

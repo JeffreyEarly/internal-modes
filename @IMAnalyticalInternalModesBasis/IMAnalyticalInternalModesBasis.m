@@ -82,6 +82,10 @@ classdef IMAnalyticalInternalModesBasis
         normalizationNameMap
     end
 
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+    end
+
     methods
         function self = IMAnalyticalInternalModesBasis(options)
             % Create an exact internal-mode basis.
