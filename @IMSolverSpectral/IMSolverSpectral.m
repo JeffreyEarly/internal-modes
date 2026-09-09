@@ -612,6 +612,13 @@ classdef IMSolverSpectral < IMSolver
     end
 
     methods (Access = protected)
+        function scale = eigenproblemColumnScale(~,nColumns)
+            % Solve for degree-scaled Chebyshev coefficients. Suppressing
+            % high-degree coefficient roundoff improves derivative accuracy
+            % without removing columns or changing the physical pencil.
+            scale = max(1,0:nColumns-1).^(-2);
+        end
+
         function self = setupCoordinate(self)
             nReference = max(2001, 20*self.nEVP);
             self.zReference = linspace(self.zDomain(1), self.zDomain(2), nReference).';
