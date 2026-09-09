@@ -3,7 +3,7 @@ layout: default
 title: sourcePage
 parent: IMBasisCollection
 grand_parent: Discrete transforms
-nav_order: 10
+nav_order: 11
 mathjax: true
 ---
 
