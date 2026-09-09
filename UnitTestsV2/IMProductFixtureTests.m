@@ -10,8 +10,9 @@ classdef IMProductFixtureTests < matlab.unittest.TestCase
             entries=cellRow(fixture.outputs); outputs=cell(size(entries));
             for j=1:numel(entries), outputs{j}=outputFromFixture(entries{j}); end
             products=struct2table(fixture.products);
-            inventory=IMProductInventory(factors,products,outputs);
-            result=inventory.fixedPlan(prefixCounts=fixture.prefixCounts.',productBudget=6).assess(grids,chunkSize=2,minimumReciprocalCondition=1e-13);
+            result=IMProductAssessmentPlan(factors,products,outputs,retainedCounts=fixture.prefixCounts.',productBudget=6).assess(grids,chunkSize=2,minimumReciprocalCondition=1e-13);
+            testCase.verifyClass(result,"struct")
+            testCase.verifyEqual(result.measurements.retainedCount,fixture.prefixCounts(:))
             errors=cellRow(fixture.expectedErrors);
             for j=1:numel(errors)
                 testCase.verifyEqual(result.evidence{j}.error,unpack(errors{j}),AbsTol=2e-12)
@@ -39,7 +40,7 @@ end
 
 function output=outputFromFixture(output)
 c=output.context; output=rmfield(output,"context");
-projection=IMProjection.fromPairing(unpack(c.samplePairingMatrix),c.sampleGram,c.targetGram,majorantGramMatrix=c.majorantGram,activeColumnMask=reshape(c.active,1,[]),columnLabels=reshape(string(c.labels),1,[]),provenance=c.provenance);
+projection=IMProjection.fromPrescribedDual(unpack(c.samplePairingMatrix),c.sampleGram,c.targetGram,majorantGramMatrix=c.majorantGram,activeColumnMask=reshape(c.active,1,[]),columnLabels=reshape(string(c.labels),1,[]),provenance=c.provenance);
 references=cellRow(c.references);
 for j=1:numel(references)
     reference=references{j};

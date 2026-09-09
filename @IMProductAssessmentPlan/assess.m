@@ -15,25 +15,25 @@ function result = assess(self,grids,options)
 % - Parameter options.minimumReciprocalCondition: explicit coefficient-system guard, default zero
 % - Returns result: measurements, individual evidence, coverage, costs, and separate policies
 arguments (Input)
-    self (1,1) IMProductPlan
+    self (1,1) IMProductAssessmentPlan
     grids (1,:) struct
     options.chunkSize (1,1) double {mustBeInteger,mustBePositive} = 128
     options.minimumReciprocalCondition (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 0
 end
 if isempty(grids) || ~all(isfield(grids,["id","z"]))
-    error("IMProductPlan:InvalidGrids","Supply named sample and reference coordinate grids.");
+    error("IMProductAssessmentPlan:InvalidGrids","Supply named sample and reference coordinate grids.");
 end
 ids=string({grids.id});
 if ids(1)~="sample" || numel(unique(ids))~=numel(ids) || any(ismissing(ids) | strlength(ids)==0)
-    error("IMProductPlan:InvalidGrids","Grid IDs must be distinct and begin with sample.");
+    error("IMProductAssessmentPlan:InvalidGrids","Grid IDs must be distinct and begin with sample.");
 end
 for j=1:numel(grids)
     if ~isnumeric(grids(j).z) || ~isreal(grids(j).z) || size(grids(j).z,2)~=1 || isempty(grids(j).z) || any(~isfinite(grids(j).z))
-        error("IMProductPlan:InvalidGrids","Each grid needs a finite real nonempty coordinate column.");
+        error("IMProductAssessmentPlan:InvalidGrids","Each grid needs a finite real nonempty coordinate column.");
     end
 end
 % The plan's constructor already reserved products, before this first callback.
-started=tic; inventory=self.inventory; counts=self.prefixCounts;
+started=tic; inventory=self; counts=self.retainedCounts;
 outputIndices=unique(inventory.products.output(self.rows),"stable").';
 outputData=cell(size(inventory.outputs)); preparationSeconds=0;
 for index=outputIndices
@@ -42,7 +42,7 @@ for index=outputIndices
     context=validateContext(context,entry,grids,ids);
     context.primary=find(cellfun(@(r) string(r.role)=="primary",context.references));
     if numel(context.primary)~=1
-        error("IMProductPlan:InvalidReferences","Each output requires exactly one primary reference.");
+        error("IMProductAssessmentPlan:InvalidReferences","Each output requires exactly one primary reference.");
     end
     context.prefix=cell(size(counts)); context.referenceSystems=cell(numel(counts),numel(context.references));
     context.conditionAccepted=true(size(counts)); context.sampleConditionAccepted=true(size(counts)); context.referenceConditionAccepted=true(numel(counts),numel(context.references));
@@ -87,7 +87,7 @@ for f=1:size(values,1)
             batch=first:min(first+options.chunkSize-1,numel(columns));
             sampled=inventory.factors{f}.evaluate(grids(g).z,columns(batch),ids(g));
             if ~isnumeric(sampled) || ~isequal(size(sampled),[numel(grids(g).z) numel(batch)]) || any(~isfinite(sampled),"all")
-                error("IMProductPlan:InvalidFactorValues","Factor %s must return finite nZ-by-selected-column values.",inventory.factors{f}.id);
+                error("IMProductAssessmentPlan:InvalidFactorValues","Factor %s must return finite nZ-by-selected-column values.",inventory.factors{f}.id);
             end
             values{f,g}(:,batch)=sampled;
             evaluationCalls=evaluationCalls+1; evaluatedFactorColumns=evaluatedFactorColumns+numel(batch);
@@ -111,7 +111,7 @@ for j=1:numel(self.rows)
             normSquared=real(sum(conj(products).*(reference.normMatrix*products),1));
             zero=all(products==0,1);
             if any(normSquared(~zero)<=0) || any(zero & any(sampled~=0,1))
-                error("IMProductPlan:InvalidReferenceNorm","A nonzero reference product requires a positive norm; an exact zero reference must also be zero on the sampled grid.");
+                error("IMProductAssessmentPlan:InvalidReferenceNorm","A nonzero reference product requires a positive norm; an exact zero reference must also be zero on the sampled grid.");
             end
             refs{r}=struct(pairings=pairings,normSquared=normSquared,isZero=zero,coefficients={cell(size(counts))});
         end
@@ -122,7 +122,7 @@ for j=1:numel(self.rows)
                 system=context.referenceSystems{q,r}; coefficient=zeros(n,numel(batch));
                 pairing=refs{r}.pairings(1:n,:);
                 if any(pairing(~active,:)~=0,"all")
-                    error("IMProductPlan:InactiveReferencePairing","Inactive coordinates require zero signed reference pairings.");
+                    error("IMProductAssessmentPlan:InactiveReferencePairing","Inactive coordinates require zero signed reference pairings.");
                 end
                 if system.accepted && any(active), coefficient(active,:)=system.solver\pairing(active,:); end
                 refs{r}.coefficients{q}=coefficient;
@@ -172,7 +172,7 @@ for index=outputIndices
     outputIdentities{index}=struct(projection=outputData{index}.projection,references={outputData{index}.references});
 end
 identity=struct(grids=grids,outputs={outputIdentities});
-result=IMProductAssessment(self,evidence,costs,identity);
+result=summarizeAssessment(self,evidence,costs,identity);
 
     function products = productsOnGrid(grid,batch)
         [~,ia]=ismember(pairs(1,batch),selectedColumns{row.factorA,grid});
@@ -183,24 +183,24 @@ end
 
 function context = validateContext(context,entry,grids,ids)
 if ~isstruct(context) || ~isscalar(context) || ~all(isfield(context,["projection","references"])) || ~isa(context.projection,"IMProjection") || ~iscell(context.references) || isempty(context.references)
-    error("IMProductPlan:InvalidOutput","Output preparation must return projection and a nonempty reference cell row.");
+    error("IMProductAssessmentPlan:InvalidOutput","Output preparation must return projection and a nonempty reference cell row.");
 end
 p=context.projection; n=numel(entry.labels);
 if p.columnCount~=n || p.sampleCount~=numel(grids(1).z) || ~isequal(p.columnLabels,entry.labels)
-    error("IMProductPlan:InvalidOutput","Output projection must preserve declared sample count and exact scientific column labels.");
+    error("IMProductAssessmentPlan:InvalidOutput","Output projection must preserve declared sample count and exact scientific column labels.");
 end
 for j=1:numel(context.references)
     r=context.references{j}; fields=["gridId","pairingMatrix","normMatrix","targetGramMatrix","majorantGramMatrix","role","status","provenance"];
     if ~isstruct(r) || ~isscalar(r) || ~all(isfield(r,fields))
-        error("IMProductPlan:InvalidReferences","References require explicit grid, signed pairings, positive metric, coefficient systems, role, status, and provenance.");
+        error("IMProductAssessmentPlan:InvalidReferences","References require explicit grid, signed pairings, positive metric, coefficient systems, role, status, and provenance.");
     end
     g=find(ids==string(r.gridId),1);
     if isempty(g) || g==1 || ~ismember(string(r.role),["primary","quadrature","independent"]) || ~ismember(string(r.status),["qualified","unverified","inconclusive"]) || ~isstruct(r.provenance) || isempty(fieldnames(r.provenance))
-        error("IMProductPlan:InvalidReferences","References must identify a separate declared grid, valid role/status, and explicit provenance.");
+        error("IMProductAssessmentPlan:InvalidReferences","References must identify a separate declared grid, valid role/status, and explicit provenance.");
     end
     nz=numel(grids(g).z);
     if ~isnumeric(r.pairingMatrix) || ~isequal(size(r.pairingMatrix),[n nz]) || any(~isfinite(r.pairingMatrix),"all") || ~isequal(size(r.normMatrix),[nz nz]) || ~isreal(r.normMatrix) || any(~isfinite(r.normMatrix),"all") || norm(r.normMatrix-r.normMatrix.',Inf)>100*eps(max(1,norm(r.normMatrix,Inf)))
-        error("IMProductPlan:InvalidReferences","Reference pairings and positive metric must match the output columns and named grid.");
+        error("IMProductAssessmentPlan:InvalidReferences","Reference pairings and positive metric must match the output columns and named grid.");
     end
     % Reference norms may contain unweighted observation coordinates; positive
     % semidefiniteness is required, then each nonzero product is checked.
@@ -209,8 +209,60 @@ for j=1:numel(context.references)
     else
         positive=min(eig(full((r.normMatrix+r.normMatrix.')/2)))>=-100*eps(max(1,norm(r.normMatrix,2)));
     end
-    if ~positive, error("IMProductPlan:InvalidReferenceMetric","Reference error metrics must be positive semidefinite, never an absolute signed quadratic form."); end
+    if ~positive, error("IMProductAssessmentPlan:InvalidReferenceMetric","Reference error metrics must be positive semidefinite, never an absolute signed quadratic form."); end
     % Reuse the projection boundary validation for signed reference systems.
-    IMProjection.fromPairing(zeros(n,0),r.targetGramMatrix,r.targetGramMatrix,majorantGramMatrix=r.majorantGramMatrix,activeColumnMask=p.activeColumnMask,columnLabels=p.columnLabels,provenance=r.provenance);
+    IMProjection.fromPrescribedDual(zeros(n,0),r.targetGramMatrix,r.targetGramMatrix,majorantGramMatrix=r.majorantGramMatrix,activeColumnMask=p.activeColumnMask,columnLabels=p.columnLabels,provenance=r.provenance);
 end
+end
+
+function result = summarizeAssessment(plan,evidence,costs,identity)
+result = struct();
+counts=plan.retainedCounts; n=numel(counts);
+if numel(evidence)~=numel(plan.rows)
+    error("IMProductAssessmentPlan:InvalidEvidence","Evidence must include every reserved product-family row.");
+end
+value=zeros(n,1); referenceError=zeros(n,1); quadratureError=zeros(n,1); independentSolveError=zeros(n,1);
+status=repmat("measured",n,1); referenceStatus=repmat("qualified",n,1);
+examinedCount=zeros(n,1); zeroCount=zeros(n,1); limitingInputI=strings(n,1); limitingInputJ=strings(n,1);
+limitingInteraction=strings(n,1); limitingChannel=strings(n,1); limitingOutput=strings(n,1);
+for q=1:n
+    hasValue=false;
+    for j=1:numel(evidence)
+        e=evidence{j}; selected=e.firstCounts<=counts(q); indices=find(selected);
+        if isempty(indices), continue; end
+        examinedCount(q)=examinedCount(q)+nnz(selected); zeroCount(q)=zeroCount(q)+nnz(e.isZero(selected));
+        [worst,i]=max(e.error(q,selected));
+        if ~hasValue || worst>value(q)
+            value(q)=worst; index=indices(i); limitingInputI(q)=e.inputLabels(1,index); limitingInputJ(q)=e.inputLabels(2,index);
+            limitingInteraction(q)=e.interactionId; limitingChannel(q)=e.channel; limitingOutput(q)=e.outputId; hasValue=true;
+        end
+        referenceError(q)=max(referenceError(q),max(e.referenceError(q,selected)));
+        quadratureError(q)=max(quadratureError(q),max(e.quadratureError(q,selected)));
+        independentSolveError(q)=max(independentSolveError(q),max(e.independentSolveError(q,selected)));
+        if e.referenceStatus~="qualified", referenceStatus(q)="inconclusive"; status(q)="inconclusive"; end
+    end
+    if ~hasValue, value(q)=NaN; status(q)="inconclusive"; end
+end
+retainedCount=counts(:); quantity=repmat("quadraticAliasing",n,1);
+result.measurements=table(retainedCount,quantity,value,status,referenceStatus,referenceError,quadratureError,independentSolveError,examinedCount,zeroCount,limitingInputI,limitingInputJ,limitingInteraction,limitingChannel,limitingOutput);
+products=plan.products; families=strings(numel(evidence),3); productCounts=zeros(numel(evidence),1);
+for j=1:numel(evidence)
+    e=evidence{j}; families(j,:)=[e.inputFamilies e.outputFamily]; productCounts(j)=numel(e.isZero);
+end
+[uniqueFamilies,~,group]=unique(families,"rows","stable");
+examinedFamilies=table(uniqueFamilies(:,1),uniqueFamilies(:,2),uniqueFamilies(:,3),accumarray(group,productCounts),VariableNames=["inputA","inputB","output","productCount"]);
+availableDeclaredProducts=zeros(n,1); selectedFamilyAvailableProducts=zeros(n,1);
+for q=1:n
+    for row=1:height(products)
+        a=plan.factors{products.factorA(row)}; b=plan.factors{products.factorB(row)};
+        na=numel(a.labels); nb=numel(b.labels);
+        if a.countRole=="retained", na=nnz(a.ordinals<=counts(q)); end
+        if b.countRole=="retained", nb=nnz(b.ordinals<=counts(q)); end
+        availableDeclaredProducts(q)=availableDeclaredProducts(q)+na*nb;
+        if ismember(row,plan.rows), selectedFamilyAvailableProducts(q)=selectedFamilyAvailableProducts(q)+na*nb; end
+    end
+end
+prefixCoverage=table(counts(:),availableDeclaredProducts,selectedFamilyAvailableProducts,examinedCount,selectedFamilyAvailableProducts-examinedCount,availableDeclaredProducts-examinedCount,VariableNames=["retainedCount","availableDeclaredProducts","selectedFamilyAvailableProducts","examinedProducts","omittedWithinSelectedFamilies","omittedProducts"]);
+result.coverage=struct(selection=plan.selection,selectedRows=plan.rows,omittedRows=setdiff(1:height(products),plan.rows),selectedInteractions=unique(products.interactionId(plan.rows),"stable"),omittedInteractions=setdiff(unique(products.interactionId,"stable"),unique(products.interactionId(plan.rows),"stable"),"stable"),examinedFamilies=examinedFamilies,prefixCoverage=prefixCoverage,selectedFamilyRowCount=numel(plan.rows),totalFamilyRowCount=height(products),exhaustiveGuarantee=false,superpositionGuarantee=false,scope="Only supplied valid interactions and explicit physical source recipes; no model qualification");
+result.plan=plan; result.evidence=evidence; result.costs=costs; result.assessmentIdentity=identity;
 end

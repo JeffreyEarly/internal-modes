@@ -11,6 +11,8 @@ Each verification JSON includes all per-row differences/counts, all prefix value
 
 The exponential case used EVP orders 128/192 and reference quadrature orders 257/513. The withheld pycnocline case used the documented refinements 192/256 and 513/1025. Neither assessed scientific basis was silently replaced.
 
+These records describe the original API before consolidation. Current callers use `IMProductAssessmentPlan` with factor/output structures, and `checkProductAssessment` and `compareProductAssessmentCoverage` on returned assessment structures. Historical source names and hashes below remain unchanged for reproducibility.
+
 ## Costs and retained reference limitations
 
 Exponential source preparation took 3.2947 s, adapter preparation including inventory/planning 1.5990 s, and the complete generic assessment call 4.7422 s. Pycnocline took 3.6317 s, 2.5088 s, and 16.5512 s respectively. These are one sequential local replay per case, not a controlled performance comparison; inner engine timing is separately retained in JSON. The adapter constructs the full selected-source cache before handing it to the new API, so these timings do not demonstrate deferred physical source preparation. Cached factor array payloads were 184,650,278 and 855,721,984 bytes; these exclude MATLAB process/allocator overhead.

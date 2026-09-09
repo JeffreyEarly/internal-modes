@@ -6,10 +6,9 @@ labels=string(0:n-1);
 factor=struct(id="cosine",family="scalar",labels=labels,ordinals=1:n,frequencySigns=zeros(1,n),countRole="retained",evaluate=@(z,columns,id) cos(z*(columns-1)),provenance=struct(source="analytical cosine basis"));
 output=struct(id="cosine",family="scalar",labels=labels,ordinals=1:n,countRole="retained",prepare=@(grids) prepareCosines(grids,n,labels),provenance=struct(source="positive L2 projection"));
 products=table("supplied-interaction","cosine product",1,1,1,VariableNames=["interactionId","channel","factorA","factorB","output"]);
-inventory=IMProductInventory({factor},products,{output});
-plan=inventory.fixedPlan(prefixCounts=1:n,productBudget=1000);
+plan=IMProductAssessmentPlan({factor},products,{output},retainedCounts=1:n,productBudget=1000);
 assessment=plan.assess(grids,chunkSize=16);
-decision=assessment.applyPolicy(quadraticTolerance=0.1,referenceTolerance=1e-12,requestedCount=n);
+decision=checkProductAssessment(assessment,quadraticTolerance=0.1,referenceTolerance=1e-12,requestedCount=n);
 disp(assessment.measurements)
 disp(decision)
 
