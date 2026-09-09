@@ -1,0 +1,60 @@
+{
+  "completedCaseCount": 96,
+  "requestedCaseCount": 96,
+  "elapsedSeconds": 52.617282083333336,
+  "caseMatrixComplete": true,
+  "productAssessmentStatus": "deferred pending #19",
+  "productionQualification": false,
+  "referenceQualifiedCount": 32,
+  "warmMatchesFullCount": 96,
+  "fallbackCount": 72,
+  "medianWarmRawSeconds": 0.0023171249999999997,
+  "medianColdRawSeconds": 0.002235125,
+  "medianFullSolveSeconds": 0.00369634375,
+  "medianWarmWithValidationAndFallbackSeconds": 0.025842758680555553,
+  "medianWarmWithReferenceSeconds": 0.18535222916666666,
+  "medianNeighborAcquisitionSeconds": 0.0054837847222222215,
+  "retainedMatFileBytes": 4.04124652E+8,
+  "retainedMatFiles": [
+    {
+      "name": "configuration.mat",
+      "bytes": 2474
+    },
+    {
+      "name": "environment-01.mat",
+      "bytes": 4.4151659E+7
+    },
+    {
+      "name": "environment-02.mat",
+      "bytes": 4.653168E+7
+    },
+    {
+      "name": "environment-03.mat",
+      "bytes": 4.8054568E+7
+    },
+    {
+      "name": "environment-04.mat",
+      "bytes": 5.2788857E+7
+    },
+    {
+      "name": "environment-05.mat",
+      "bytes": 5.3551473E+7
+    },
+    {
+      "name": "environment-06.mat",
+      "bytes": 5.3781778E+7
+    },
+    {
+      "name": "environment-07.mat",
+      "bytes": 5.2218518E+7
+    },
+    {
+      "name": "environment-08.mat",
+      "bytes": 5.243975E+7
+    },
+    {
+      "name": "progress.mat",
+      "bytes": 603895
+    }
+  ]
+}
