@@ -8,6 +8,8 @@ nav_order: 100
 
 ## Unreleased
 
+## [2.0.0-beta.4] - 2026-09-09
+
 - Add `assessModeConvergence` for per-mode comparisons of explicitly prepared eigenproblem refinements, with scientific-label matching, common sign alignment, relative equivalent-depth/shape/derivative and joint H¹ measurements, and caller-owned tolerances. No additional solves or automatic mode selection occur during assessment.
 - Allow exact bulk wave construction to request different positive mode counts at each horizontal wavenumber while preserving scalar shorthand, repeated-wavenumber consistency and independent inertial counts. Add a reproducible example plotting mode-convergence and physical-grid limits versus wavenumber.
 
