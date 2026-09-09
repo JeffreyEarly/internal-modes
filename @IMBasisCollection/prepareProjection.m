@@ -1,4 +1,4 @@
-function [projection,recipe] = projection(self,z,weights,options)
+function [projection,recipe] = prepareProjection(self,z,weights,options)
 % Construct a fixed projection for one requested page and variable.
 %
 % This operation preserves the supplied samples, weights, and explicit
@@ -6,7 +6,7 @@ function [projection,recipe] = projection(self,z,weights,options)
 % continuous basis supplies the signed pairing and positive error metric.
 %
 % - Topic: Construct projections
-% - Declaration: [projection,recipe] = projection(collection,z,weights,options)
+% - Declaration: [projection,recipe] = prepareProjection(collection,z,weights,options)
 % - Parameter z: physical sample column
 % - Parameter weights: fixed quadrature weights aligned with z
 % - Parameter options.page: requested-page index, not distinct-solve index
@@ -31,5 +31,5 @@ if options.variable == ""
 else
     recipe = basis.projectionRecipe(variable=options.variable);
 end
-projection = recipe.projection(z,weights,columns=options.columns);
+projection = IMProjection.fromRecipe(recipe,z,weights,columns=options.columns);
 end

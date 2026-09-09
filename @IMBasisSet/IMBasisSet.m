@@ -134,6 +134,10 @@ classdef IMBasisSet
         normalizationVectorRuleMap
     end
 
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+    end
+
     methods
         function self = IMBasisSet(options)
             % Create a solved scalar basis set.

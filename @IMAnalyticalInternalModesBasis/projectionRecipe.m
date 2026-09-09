@@ -11,12 +11,12 @@ arguments (Input)
     options.variable (1,1) string {mustBeMember(options.variable,["F","G"])} = string(self.evp.formulation)
 end
 arguments (Output)
-    recipe (1,1) IMProjectionRecipe
+    recipe (1,1) struct
 end
 spec = self.evp.innerProduct(options.variable);
 provenance = struct("representation","analytical","referenceIntegration","1024-point trapezoidal rule","referencePointCount",1024,"solveAccuracy","unverified","referenceConvergence","unverified");
 if ~spec.hasInnerProduct
-    recipe = IMProjectionRecipe(available=false,reason=string(spec.reason),variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
+    recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
     return;
 end
 context = self.context();
@@ -25,7 +25,7 @@ target = self.gramMatrix(variable=options.variable);
 majorant = self.majorantGramMatrix(variable=options.variable);
 active = abs(diag(target)) > 1e3*eps(max(1,diag(majorant)));
 [~,notPositive] = chol(target(active,active));
-recipe = IMProjectionRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
     supportsLeakage=notPositive==0,supportsQuadratic=true,provenance=provenance,zDomain=self.zDomain, ...
     evaluateFunction=@(z) self.rawVariable(options.variable,z)./factors,weightFunction=@(z) IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context),spec=spec);
 end

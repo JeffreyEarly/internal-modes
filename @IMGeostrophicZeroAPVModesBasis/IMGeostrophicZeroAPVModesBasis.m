@@ -182,6 +182,10 @@ classdef IMGeostrophicZeroAPVModesBasis
         canonicalBottomBuoyancyMatrix
     end
 
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+    end
+
     methods
         function self = IMGeostrophicZeroAPVModesBasis(options)
             % Create a canonical boundary-normalized zero-APV basis.

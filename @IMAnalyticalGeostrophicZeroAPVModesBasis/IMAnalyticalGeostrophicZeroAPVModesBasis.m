@@ -159,6 +159,10 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         canonicalBottomBuoyancyMatrix
     end
 
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+    end
+
     methods
         function self = IMAnalyticalGeostrophicZeroAPVModesBasis(options)
             % Create an exact canonical boundary-normalized basis.

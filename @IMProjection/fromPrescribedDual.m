@@ -1,4 +1,4 @@
-function projection = fromPairing(samplePairingMatrix,sampleGram,targetGram,options)
+function projection = fromPrescribedDual(samplePairingMatrix,sampleGram,targetGram,options)
 % Construct a prescribed physical source dual without inventing synthesis data.
 %
 % `samplePairingMatrix` maps sampled source values into signed coefficient
@@ -13,7 +13,7 @@ function projection = fromPairing(samplePairingMatrix,sampleGram,targetGram,opti
 % basis. Their diagnostics are NaN and capability flags are false.
 %
 % - Topic: Create projections
-% - Declaration: projection = IMProjection.fromPairing(samplePairingMatrix,sampleGram,targetGram,options)
+% - Declaration: projection = IMProjection.fromPrescribedDual(samplePairingMatrix,sampleGram,targetGram,options)
 % - Parameter samplePairingMatrix: finite real or complex column-by-sample pairing operator
 % - Parameter sampleGram: real symmetric signed system for sampled coefficients
 % - Parameter targetGram: real symmetric continuous coefficient system

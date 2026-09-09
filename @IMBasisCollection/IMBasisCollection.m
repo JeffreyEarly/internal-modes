@@ -44,6 +44,10 @@ classdef IMBasisCollection
         metadata (1,:) struct
     end
 
+    methods (Access = private)
+        [projection,recipe] = prepareProjection(self,z,weights,options)
+    end
+
     methods
         function self = IMBasisCollection(bases,options)
             % Construct a collection without solving or resampling modes.

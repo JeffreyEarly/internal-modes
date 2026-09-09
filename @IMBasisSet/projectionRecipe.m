@@ -12,7 +12,7 @@ arguments (Input)
     options.variable (1,1) string {mustBeMember(options.variable,"u")} = "u"
 end
 arguments (Output)
-    recipe (1,1) IMProjectionRecipe
+    recipe (1,1) struct
 end
 spec = self.evp.innerProduct();
 context = self.evp.contextForSolver(self.solver);
@@ -42,6 +42,6 @@ for i = 1:numel(terms)
     isPositiveMetric = isPositiveMetric && terms(i).coefficient >= 0;
 end
 provenance = struct("representation","numerical","referenceIntegration","solver inner-product rule","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
-recipe = IMProjectionRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
     supportsLeakage=isPositiveMetric,supportsQuadratic=isPositiveMetric,provenance=provenance,zDomain=self.zDomain,evaluateFunction=@(z) self.u(z),weightFunction=weightFunction,spec=spec);
 end

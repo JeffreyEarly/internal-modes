@@ -12,9 +12,9 @@ arguments (Input)
     options.variable (1,1) string {mustBeMember(options.variable,["F","G"])} = "F"
 end
 arguments (Output)
-    recipe (1,1) IMProjectionRecipe
+    recipe (1,1) struct
 end
 reason = "Zero-APV coefficient-space response and energy forms do not define a scalar F/G sample projection. Paired endpoint-observation projection is not implemented.";
 provenance = struct("representation","analytical","solveAccuracy","unverified","requestedKappa",self.k);
-recipe = IMProjectionRecipe(available=false,reason=reason,variable=options.variable,columnLabels=self.endpoints,normalization=string(self.normalizationConvention),provenance=provenance,zDomain=self.zDomain);
+recipe = IMProjection.createRecipe(isAvailable=false,reason=reason,variable=options.variable,columnLabels=self.endpoints,normalization=string(self.normalizationConvention),provenance=provenance,zDomain=self.zDomain);
 end

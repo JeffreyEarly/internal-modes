@@ -7,7 +7,7 @@ classdef IMProjection
     % error. The separately supplied positive majorant measures coefficient
     % errors; it never replaces the physical pairing. This object does not
     % choose a grid, fit weights, accept tolerances, or select model counts.
-    % `fromPairing` instead accepts an explicit physical source dual and its
+    % `fromPrescribedDual` instead accepts an explicit physical source dual and its
     % coefficient system. It has no synthesis basis and cannot measure a
     % sampled-basis Gram discrepancy or round trip.
     %
@@ -93,7 +93,7 @@ classdef IMProjection
     end
 
     methods (Static)
-        projection = fromPairing(samplePairingMatrix,sampleGram,targetGram,options)
+        projection = fromPrescribedDual(samplePairingMatrix,sampleGram,targetGram,options)
     end
 
     methods (Access = private)
@@ -101,6 +101,8 @@ classdef IMProjection
     end
 
     methods (Static, Hidden)
+        recipe = createRecipe(options)
+        projection = fromRecipe(recipe,z,weights,options)
         errors = relativeCoefficientNorm(coefficients,majorantGramMatrix,normSquared)
     end
 

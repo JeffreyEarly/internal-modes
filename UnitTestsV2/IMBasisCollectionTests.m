@@ -113,6 +113,22 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             end
         end
 
+        function assessmentsKeepUnequalPerPageCounts(testCase)
+            collection = IMBasisCollection({testCase.scalarBasis(4),testCase.scalarBasis(2)},basisIndex=[2 1 2]);
+            z = linspace(-1,0,17).';
+            weights = [0.5;ones(15,1);0.5]/16;
+            smaller = collection.assess(z,weights,page=1,prefixColumnCounts=1:2);
+            larger = collection.assess(z,weights,page=2,prefixColumnCounts=[2 4]);
+            testCase.verifyClass(smaller,"struct");
+            testCase.verifyEqual(smaller.projection.columnCount,2);
+            testCase.verifyEqual(larger.projection.columnCount,4);
+            testCase.verifyEqual(smaller.identity.basisIndex,2);
+            testCase.verifyEqual(larger.identity.basisIndex,1);
+            checkBasisAssessment(smaller,gramTolerance=0);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=2).columnCount,4);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=3).forwardMatrix,smaller.projection.forwardMatrix);
+        end
+
         function invalidSelectionsAndHeterogeneousCountsAreExplicit(testCase)
             basis3 = testCase.scalarBasis(3);
             basis2 = testCase.scalarBasis(2);

@@ -5,9 +5,9 @@ This is the public contract for [#18](https://github.com/JeffreyEarly/internal-m
 The API separates four operations:
 
 1. `IMBasisCollection` retains continuous value bases and their scientific identity. Generation supplies this collection; a scalar request is one page.
-2. `basis.projectionRecipe(variable=...)` binds the basis mathematics to a sampled projection. `collection.projection(z,weights,...)` constructs `IMProjection` on exactly the supplied rule and columns.
-3. `collection.assess(z,weights,...)` or `IMBasisAssessment(projection,...)` measures numerical errors without applying tolerances or changing the basis.
-4. `assessment.applyPolicy(...)` applies explicit tolerances and returns a separate decision. A rejection or inconclusive reference preserves every requested column.
+2. `collection.projectionOnGrid(z,weights,...)` constructs `IMProjection` on exactly the supplied rule and columns. Family-owned pairing descriptors are hidden implementation details, not public recipe objects.
+3. `collection.assess(z,weights,...)` or `projection.assess(...)` measures numerical errors without applying tolerances or changing the basis.
+4. `checkBasisAssessment(assessment,...)` applies explicit tolerances and returns a separate decision. A rejection or inconclusive reference preserves every requested column.
 
 There is no compatibility constraint on these new interfaces. Existing construction workflows share the numerical projection kernel; their grid design and quadrature fitting remain deliberate operations with separate names. The new fixed-grid entry points do not call fitting or mode selection.
 
@@ -38,7 +38,7 @@ Numerical mode labels, endpoint identities, κ pages, and frequency signs are di
 | Analytical aligned modes | Same continuous evaluation contract | Same basis-owned recipe, with no spectral-solver requirement | Analytical functions do not make numerically integrated target Grams exact |
 | Numerical/analytical zero-APV boundary bases | F/G and F derivative, with endpoint/page/rotation labels | Automatic scalar F/G projection is explicitly unavailable | Coefficient-space energy/response forms are not scalar sampled projection metrics; no endpoint-prefix selection |
 
-`recipe.available` and `reason` describe continuous-pairing availability. `supportsLeakage` and `supportsQuadratic` describe the family/metric capabilities. Construction additionally checks whether the actual grid includes every required endpoint and whether all required functionals are value-only observations of the selected variable. An unavailable capability raises an actionable error; it is never represented by a successful zero error.
+Collection projection and assessment enforce the family capabilities in the table above. Construction checks whether the actual grid includes every required endpoint and whether all required functionals are value-only observations of the selected variable. An unavailable capability raises an actionable error; it is never represented by a successful zero error. Normalization and reference-integration provenance pass into the projection and survive prefix construction.
 
 `IMProjection` is the numerical building block for an explicitly supplied projection recipe, including caller-defined observation spaces. Its basis/metrics are real; projected fields, reference pairings, and coefficient errors may be complex. Physical signed metrics define the sampled Gram solve. The supplied positive majorant defines magnitudes. Gram distortion, round trips, matrix conditioning, and rank have separate meanings; round-trip accuracy alone is not projection or solve qualification.
 
@@ -47,24 +47,24 @@ Numerical mode labels, endpoint identities, κ pages, and frequency signs are di
 Some source projections use a full-state energy normalization rather than the Gram of a single observed component. WVM wave-source channels are one example. The caller supplies this physical dual explicitly:
 
 ```matlab
-projection = IMProjection.fromPairing(samplePairingMatrix,sampleGram,targetGram,majorantGramMatrix=positiveGram,columnLabels=labels,provenance=physicalRecipeProvenance);
-assessment = IMBasisAssessment(projection,products=preparedProducts,identity=interactionIdentity);
+projection = IMProjection.fromPrescribedDual(samplePairingMatrix,sampleGram,targetGram,majorantGramMatrix=positiveGram,columnLabels=labels,provenance=physicalRecipeProvenance);
+assessment = projection.assess(products=preparedProducts,identity=interactionIdentity);
 ```
 
 `samplePairingMatrix` maps sample values to signed pairings; `sampleGram` is the supplied coefficient-space system used to obtain coefficients, and `targetGram` is the independent continuous system. Both Gram systems and the majorant are real symmetric; pairing matrices and source products may be complex. Provenance is mandatory. Each prefix solves its own supplied system. Required endpoint/source observations must already be represented in the pairing operator and supplied product data.
 
 `projectionKind="prescribedDual"` has no scalar synthesis basis or metric (`sampledBasis` and `metricMatrix` are empty). It reports `sampleCount` and `columnCount` explicitly. Scalar sampled-Gram and round-trip assessment are unsupported, rather than falsely reporting zero error because two supplied normalizations agree. Rank and conditioning of the supplied coefficient system remain available. `projectionKind="galerkin"` retains the basis-derived behavior above. Both use the same product-error and result/decision contract.
 
-Frequency signs can accompany repeated mode numbers in `identity`; distinct coefficient labels must remain unique. `prefixCounts` always counts projection columns. Mapping these to physical wave-mode counts belongs to WVM, including retaining both signs of each selected mode.
+Frequency signs can accompany repeated mode numbers in `identity`; distinct coefficient labels must remain unique. `prefixColumnCounts` always counts projection columns. Mapping these to physical wave-mode counts belongs to WVM, including retaining both signs of each selected mode.
 
 ## Assessment and decisions
 
 ```matlab
-assessment = collection.assess(z,weights,page=1,variable="G",columns=1:8,prefixCounts=1:8);
-decision = assessment.applyPolicy(gramTolerance=1e-2);
+assessment = collection.assess(z,weights,page=1,variable="G",columns=1:8,prefixColumnCounts=1:8);
+decision = checkBasisAssessment(assessment,gramTolerance=1e-2);
 ```
 
-`measurements` has rows identified by `columnCount` and `quantity` (`gram`, `leakage`, `quadraticAliasing`), with `value`, `status` (`measured`, `inconclusive`, `notRequested`, or `unsupported`), `limitingInputI/J`, `referenceStatus`, `referenceProvenance`, and `examinedCount`. `identity` records the family, variable, page, mapping, normalization, labels, and projection provenance. `coverage` carries inventory metadata; exhaustive and superposition guarantees are always false. `costs` separates projection construction and assessment elapsed seconds. Neither records an independent solve-quality guarantee.
+Assessments are scalar structs containing `projection`, `identity`, `columnKind`, `prefixColumnCounts`, `measurements`, `coverage`, and `costs`. They carry measurements rather than executing a policy. `measurements` has rows identified by `columnCount` and `quantity` (`gram`, `leakage`, `quadraticAliasing`), with `value`, `status` (`measured`, `inconclusive`, `notRequested`, or `unsupported`), `limitingInputI/J`, `referenceStatus`, `referenceProvenance`, and `examinedCount`. `identity` records the family, variable, page, mapping, normalization, labels, and projection provenance. `coverage` carries inventory metadata; exhaustive and superposition guarantees are always false. `costs` separates projection construction and assessment elapsed seconds. Neither records an independent solve-quality guarantee.
 
 Only requested prefixes are measured. They must increase, stay within the requested band, and include the full requested band. Endpoint-coordinate assessments permit only the complete requested set. Decisions report the unchanged `requestedColumnCount`, raw `requestedBandStatus`, cumulative `status`, and `largestExaminedAcceptedPrefix`. The latter is diagnostic and is not a promise about unexamined prefixes. A previous examined rejection prevents cumulative acceptance; missing or unqualified required measurements are inconclusive. At least one scalar tolerance must be explicitly enabled.
 

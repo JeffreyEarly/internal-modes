@@ -117,7 +117,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             targetGram = [3 0.25;0.25 -2];
             majorant = [4 0.2;0.2 3];
             provenance = struct(source="physical-energy-dual",component="u");
-            projection = IMProjection.fromPairing(pairing,sampleGram,targetGram,majorantGramMatrix=majorant,columnLabels=["mode1+" "mode1-"],provenance=provenance);
+            projection = IMProjection.fromPrescribedDual(pairing,sampleGram,targetGram,majorantGramMatrix=majorant,columnLabels=["mode1+" "mode1-"],provenance=provenance);
             values = [1+2i;3-1i;-2];
             expected = sampleGram \ (pairing*values);
             testCase.verifyEqual(projection.project(values),expected,AbsTol=1e-14)
@@ -145,25 +145,25 @@ classdef IMProjectionTests < matlab.unittest.TestCase
 
         function prescribedDualZeroInactiveAndRankDefectRemainExplicit(testCase)
             provenance = struct(source="test-dual");
-            projection = IMProjection.fromPairing([0 0;1 1i],diag([0 -2]),diag([0 -2]),activeColumnMask=[false true],provenance=provenance);
+            projection = IMProjection.fromPrescribedDual([0 0;1 1i],diag([0 -2]),diag([0 -2]),activeColumnMask=[false true],provenance=provenance);
             testCase.verifyEqual(projection.project([1;1]),[0;-(1+1i)/2],AbsTol=1e-14)
             testCase.verifyEqual(projection.productError(zeros(2,1),zeros(2,1),0),0)
             testCase.verifyEqual(projection.productError([0;1],zeros(2,1),0),Inf)
-            defect = IMProjection.fromPairing(eye(2),ones(2),eye(2),provenance=provenance);
+            defect = IMProjection.fromPrescribedDual(eye(2),ones(2),eye(2),provenance=provenance);
             testCase.verifyEqual(defect.sampledGramRank,1)
             testCase.verifyTrue(isnan(defect.gramError))
             testCase.verifyEqual(defect.forwardMatrix,pinv(ones(2)),AbsTol=1e-14)
-            offDiagonal = IMProjection.fromPairing(eye(2),[0 1;1 0],[0 1;1 0],majorantGramMatrix=eye(2),provenance=provenance);
+            offDiagonal = IMProjection.fromPrescribedDual(eye(2),[0 1;1 0],[0 1;1 0],majorantGramMatrix=eye(2),provenance=provenance);
             testCase.verifyEqual(offDiagonal.project([1;2]),[2;1],AbsTol=0)
         end
 
         function prescribedDualRejectsInvalidContracts(testCase)
             provenance = struct(source="test-dual");
-            testCase.verifyError(@() IMProjection.fromPairing(eye(2),1,eye(2),provenance=provenance),"IMProjection:InvalidShape")
-            testCase.verifyError(@() IMProjection.fromPairing(eye(2),[1 1;0 1],eye(2),provenance=provenance),"IMProjection:NonSymmetricMatrix")
-            testCase.verifyError(@() IMProjection.fromPairing(eye(2),eye(2),eye(2),majorantGramMatrix=diag([1 -1]),provenance=provenance),"IMProjection:InvalidMajorant")
-            testCase.verifyError(@() IMProjection.fromPairing(eye(2),eye(2),eye(2),activeColumnMask=[false true],provenance=provenance),"IMProjection:InvalidInactiveColumn")
-            testCase.verifyError(@() IMProjection.fromPairing(eye(2),eye(2),eye(2),provenance=struct()),"IMProjection:MissingProvenance")
+            testCase.verifyError(@() IMProjection.fromPrescribedDual(eye(2),1,eye(2),provenance=provenance),"IMProjection:InvalidShape")
+            testCase.verifyError(@() IMProjection.fromPrescribedDual(eye(2),[1 1;0 1],eye(2),provenance=provenance),"IMProjection:NonSymmetricMatrix")
+            testCase.verifyError(@() IMProjection.fromPrescribedDual(eye(2),eye(2),eye(2),majorantGramMatrix=diag([1 -1]),provenance=provenance),"IMProjection:InvalidMajorant")
+            testCase.verifyError(@() IMProjection.fromPrescribedDual(eye(2),eye(2),eye(2),activeColumnMask=[false true],provenance=provenance),"IMProjection:InvalidInactiveColumn")
+            testCase.verifyError(@() IMProjection.fromPrescribedDual(eye(2),eye(2),eye(2),provenance=struct()),"IMProjection:MissingProvenance")
         end
 
         function publicInputsRejectInvalidMathematicalData(testCase)

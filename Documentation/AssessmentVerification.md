@@ -25,3 +25,7 @@ InternalModes has a documentation builder but no `buildfile.m` or configured `do
 ## Remaining series boundaries
 
 Mixed-product inventory planning, budget preflight, and WVM frozen-case integration belong to #19. Shared bulk generation and bounded evaluation belong to #20. Nearby-κ reuse belongs to #21 and depends on relevant #10 solve-quality diagnostics. Independent reference evidence is always explicit. The WVM study's physical-residual limitation remains open, and provider release/export must precede a WVM dependency update.
+
+## Simplified API integration
+
+The earlier evidence above records the submitted API names. The simplified API replaces recipe and assessment classes with hidden pairing descriptors and structured results. `IMProjectionOnGridTests` replaces the former recipe suite; `IMBasisCollectionTests` additionally verifies unequal per-page counts. The focused integration run covers projection equivalence, normalization snapshots, signed metrics, provenance through prefixes, and structured acceptance decisions. It does not qualify independent EVP solve accuracy.

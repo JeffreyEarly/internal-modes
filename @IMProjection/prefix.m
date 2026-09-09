@@ -23,7 +23,7 @@ if ~isempty(labels)
     labels = labels(1:count);
 end
 if self.projectionKind == "prescribedDual"
-    projection = IMProjection.fromPairing(self.samplePairingMatrix(1:count,:),self.gramMatrix(1:count,1:count),self.targetGramMatrix(1:count,1:count),majorantGramMatrix=self.majorantGramMatrix(1:count,1:count),activeColumnMask=self.activeColumnMask(1:count),columnLabels=labels,provenance=self.provenance);
+    projection = IMProjection.fromPrescribedDual(self.samplePairingMatrix(1:count,:),self.gramMatrix(1:count,1:count),self.targetGramMatrix(1:count,1:count),majorantGramMatrix=self.majorantGramMatrix(1:count,1:count),activeColumnMask=self.activeColumnMask(1:count),columnLabels=labels,provenance=self.provenance);
     return
 end
 projection = IMProjection(self.sampledBasis(:,1:count),self.metricMatrix,self.targetGramMatrix(1:count,1:count),majorantGramMatrix=self.majorantGramMatrix(1:count,1:count),activeColumnMask=self.activeColumnMask(1:count),columnLabels=labels,provenance=self.provenance);

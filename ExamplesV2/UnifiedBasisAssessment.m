@@ -13,8 +13,8 @@ weights = [0.5;ones(63,1);0.5]*diff(zDomain)/64;
 scalarProblem = IMEigenvalueProblem(zDomain=zDomain,p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.neumann(),bottomBoundary=IMBoundaryCondition.neumann());
 scalar = solver.solveEVP(scalarProblem,nModes=4);
 scalarCollection = IMBasisCollection({scalar});
-scalarAssessment = scalarCollection.assess(z,weights,prefixCounts=1:4);
-scalarDecision = scalarAssessment.applyPolicy(gramTolerance=1e-2);
+scalarAssessment = scalarCollection.assess(z,weights,prefixColumnCounts=1:4);
+scalarDecision = checkBasisAssessment(scalarAssessment,gramTolerance=1e-2);
 assert(scalarDecision.requestedColumnCount == 4);
 
 % Aligned F/G, APV, mean-density-anomaly, waves, and inertial kappa=0.
@@ -59,7 +59,7 @@ for boundary = {numericalBoundary,analyticalBoundary}
     collection = IMBasisCollection(boundary,basisIndex=[1 1],sourcePage=[2 1]);
     boundaryF = collection.evaluate(z,variable="F");
     boundaryFz = collection.evaluate(z,variable="F",derivativeOrder=1);
-    recipe = boundary{1}.projectionRecipe(variable="F");
-    assert(~recipe.available && strlength(recipe.reason) > 0);
+    % Scalar projection is unavailable for boundary coordinates; their physical
+    % source dual must be supplied explicitly when an assessment needs it.
     assert(collection.metadata.columnKind == "endpoint");
 end
