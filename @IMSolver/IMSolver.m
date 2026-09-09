@@ -246,7 +246,11 @@ classdef (Abstract) IMSolver
             rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
             rowScale(rowScale == 0) = 1;
             solveB = B./rowScale;
-            [V, D] = eig(A./rowScale, solveB);
+            columnScale = self.eigenproblemColumnScale(size(A,2));
+            [V, D] = eig((A./rowScale).*columnScale, solveB.*columnScale);
+            % Recover the original native representation before filtering,
+            % normalization, or any physical evaluation: c = S*y.
+            V = columnScale.'.*V;
             costs.eigensolveSeconds = toc(timer);
             timer = tic;
             eigenvalues = diag(D);
@@ -280,6 +284,11 @@ classdef (Abstract) IMSolver
             % Solve one boundary-value matrix for multiple response columns.
             matrixFactorization = decomposition(matrix);
             values = matrixFactorization \ rightHandSides;
+        end
+
+        function scale = eigenproblemColumnScale(~,nColumns)
+            % Grid-value discretizations retain their existing unknowns.
+            scale = ones(1,nColumns);
         end
     end
 

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Scale Chebyshev coefficient unknowns in the V2 spectral eigensolve to reduce derivative-amplified roundoff in long external waves. Recover the original native coefficients before finite-mode filtering and normalization; retain the physical EVP, boundary conditions, requested modes and finite-difference behavior. Add direct and sampled vertical-momentum regressions across coordinate choices and spectral resolutions.
+
 ## [2.0.0-beta.2] - 2026-09-08
 
 - Added `IMBasisCollection` and `IMProjection` with hidden basis-owned pairing descriptors, structured assessment results, and separate explicit checking functions. Scientific labels, unequal page counts, supplied samples/weights, signed physical duals, positive error norms, and unsupported capabilities remain explicit.
