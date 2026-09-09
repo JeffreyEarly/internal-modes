@@ -178,7 +178,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             metadata.surfaceBoundary = problem.surfaceBoundary;
             metadata.responseReciprocalCondition = modeData.responseReciprocalCondition;
             metadata.formulaFamily = "scaledHyperbolic";
-            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self,problem=problem,FFunction=@(z) self.zeroAPVVariable(modeData,problem,"F",z),GFunction=@(z) self.zeroAPVVariable(modeData,problem,"G",z),metadata=metadata);
+            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self,problem=problem,FFunction=@(z,pages) self.zeroAPVVariable(modeData,problem,"F",z,pages),GFunction=@(z,pages) self.zeroAPVVariable(modeData,problem,"G",z,pages),metadata=metadata);
         end
 
         function summarize(self)
@@ -347,17 +347,18 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             modeData = struct(m=m,coefficients=coefficients,responseReciprocalCondition=responseReciprocalCondition);
         end
 
-        function values = zeroAPVVariable(self,modeData,problem,variable,z)
+        function values = zeroAPVVariable(self,modeData,problem,variable,z,pages)
             z = z(:);
-            values = zeros(numel(z),numel(problem.endpoints),numel(problem.k));
-            for iK = 1:numel(problem.k)
-                [fundamental,FzFundamental] = self.zeroAPVFundamental(modeData.m(iK),z);
+            values = zeros(numel(z),numel(problem.endpoints),numel(pages));
+            for iK = 1:numel(pages)
+                sourcePage = pages(iK);
+                [fundamental,FzFundamental] = self.zeroAPVFundamental(modeData.m(sourcePage),z);
                 if string(variable) == "F"
                     raw = fundamental;
                 else
                     raw = -(self.g/(self.N0*self.N0))*FzFundamental;
                 end
-                values(:,:,iK) = raw*modeData.coefficients(:,:,iK);
+                values(:,:,iK) = raw*modeData.coefficients(:,:,sourcePage);
             end
         end
 
