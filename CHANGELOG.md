@@ -1,6 +1,7 @@
 # Version History
 
 ## Unreleased
+- added deferred mixed-product inventories, deterministic sparse selection, evaluation budgets, explicit reference diagnostics, coverage controls, and acceptance policies that preserve scientific counts and required endpoints
 - added exact bulk wave basis generation over ordered κ collections, independent zero-κ inertial counts, shared solver preparation, and bounded/streamed continuous evaluation with selected boundary pages
 - added a common continuous basis collection, basis-owned projection recipes, shared signed projection/error kernel, and fixed-grid assessment with separate explicit acceptance policies; preserved scientific counts, page/endpoint labels, and unsupported-family capabilities
 - removed the obsolete legacy fixed-frequency normalization path from production solvers, analytical helpers, examples, tests, and user documentation

@@ -86,7 +86,7 @@ Pairings are supplied instead of full-band reference coefficients because a dens
 
 Supplied reference data must be expressed in the assessed basis's normalization and column coordinates. Refining a quadrature rule is separate from independently solving the EVP. A different reference solve must be explicitly matched to the assessed scientific modes; it must never replace them silently. Analytical target Grams currently use a 1024-point trapezoidal integration rule, which is provenance rather than convergence evidence.
 
-[Issue #19](https://github.com/JeffreyEarly/internal-modes/issues/19) extends this prepared-data contract with mixed-basis/page/derivative product inventories, deterministic selection and budgets *before* costly evaluation, and richer family-level coverage and costs. The initial validated selection policy is fixed sparse; targeted additions remain research work.
+[Issue #19](https://github.com/JeffreyEarly/internal-modes/issues/19) extends this prepared-data contract with mixed-basis/page/derivative product inventories, deterministic selection and budgets *before* costly evaluation, and richer family-level coverage and costs. The initial validated selection policy is fixed sparse; targeted additions remain research work. See [ProductInventoryAPI.md](ProductInventoryAPI.md) for the implemented inventory, deferred recipe, budget, and coverage contract.
 
 ## Evidence and delivery order
 
