@@ -14,6 +14,23 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
         end
     end
     methods (Test)
+        function repeatedPagesNormalizeEachStoredBasisOnce(testCase)
+            collection = testCase.waveCollection();
+            z = linspace(-1000,0,23).';
+            expected = collection.evaluate(z,variable="F");
+            profile clear
+            profile on
+            cleanup = onCleanup(@() profile('off'));
+            actual = collection.evaluate(z,variable="F",sampleChunkSize=4,pageChunkSize=1);
+            info = profile('info');
+            profile off
+            clear cleanup
+            testCase.verifyEqual(actual,expected,AbsTol=2e-12,RelTol=2e-12);
+            functions = info.FunctionTable;
+            selected = contains(string({functions.FunctionName}),'>IMBasisSet.normalizationFactors');
+            testCase.verifyEqual(sum([functions(selected).NumCalls]),numel(collection.bases));
+        end
+
         function spectralPagesAndDerivativesAgreeWithScalarEvaluation(testCase)
             collection = testCase.waveCollection();
             z = linspace(-1000,0,31).';

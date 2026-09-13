@@ -64,24 +64,38 @@ for iBasis = unique(self.basisIndex(pages),"stable")
         error("IMBasisCollection:OutsideDomain","Evaluation coordinates must lie inside every selected basis domain.");
     end
 end
-for firstPage = 1:options.pageChunkSize:numel(pages)
-    positions = firstPage:min(numel(pages),firstPage+options.pageChunkSize-1);
-    chunkPages = pages(positions);
-    storedIndices = unique(self.basisIndex(chunkPages),"stable");
-    [groups,fallback] = prepareNativeGroups(self,storedIndices,columns,variable,options.derivativeOrder);
-    for firstRow = 1:options.sampleChunkSize:numel(z)
-        rows = firstRow:min(numel(z),firstRow+options.sampleChunkSize-1);
-        zChunk = z(rows);
+% Normalize each immutable stored basis once, including repeated requests.
+[groups,basisGroup,factors] = prepareNativeGroups(self,unique(self.basisIndex(pages),"stable"),columns,variable,options.derivativeOrder);
+% Sample chunks are outermost so evaluation matrices can serve every page
+% chunk without retaining operators for the complete physical grid.
+for firstRow = 1:options.sampleChunkSize:numel(z)
+    rows = firstRow:min(numel(z),firstRow+options.sampleChunkSize-1);
+    zChunk = z(rows);
+    matrices = cell(size(groups));
+    for firstPage = 1:options.pageChunkSize:numel(pages)
+        positions = firstPage:min(numel(pages),firstPage+options.pageChunkSize-1);
+        chunkPages = pages(positions);
+        storedIndices = unique(self.basisIndex(chunkPages),"stable");
         values = zeros(numel(rows),numel(columns),numel(positions));
-        for iGroup = 1:numel(groups)
+        for iGroup = unique(basisGroup(storedIndices))
+            if iGroup == 0, continue; end
             group = groups{iGroup};
-            if group.derivativeOrder == 0
-                sampled = group.solver.evaluateNativeModes(group.nativeColumns,zChunk);
-            else
-                sampled = group.solver.evaluatePhysicalDerivative(group.nativeColumns,zChunk,group.derivativeOrder);
+            members = storedIndices(basisGroup(storedIndices)==iGroup);
+            if isempty(matrices{iGroup})
+                identity = eye(group.nPolynomials);
+                if group.derivativeOrder == 0
+                    matrices{iGroup} = group.solver.evaluateNativeModes(identity,zChunk);
+                else
+                    matrices{iGroup} = group.solver.evaluatePhysicalDerivative(identity,zChunk,group.derivativeOrder);
+                end
             end
-            for iMember = 1:numel(group.basisIndices)
-                iBasis = group.basisIndices(iMember);
+            native = cell(1,numel(members));
+            for iMember = 1:numel(members)
+                native{iMember} = self.bases{members(iMember)}.nativeModes(:,columns);
+            end
+            sampled = matrices{iGroup}*cat(2,native{:});
+            for iMember = 1:numel(members)
+                iBasis = members(iMember);
                 memberColumns = (iMember-1)*numel(columns)+(1:numel(columns));
                 memberValues = sampled(:,memberColumns);
                 basis = self.bases{iBasis};
@@ -93,12 +107,12 @@ for firstPage = 1:options.pageChunkSize:numel(pages)
                         memberValues = basis.evp.GfromFz(zChunk,memberValues,basis.h(columns),context);
                     end
                 end
-                memberValues = memberValues./group.normalizationFactors(memberColumns);
+                memberValues = memberValues./factors{iBasis};
                 selected = find(self.basisIndex(chunkPages) == iBasis);
                 values(:,:,selected) = repmat(memberValues,1,1,numel(selected));
             end
         end
-        for iBasis = fallback
+        for iBasis = storedIndices(basisGroup(storedIndices)==0)
             basis = self.bases{iBasis};
             entry = self.metadata(iBasis);
             selected = find(self.basisIndex(chunkPages) == iBasis);
@@ -131,29 +145,27 @@ for firstPage = 1:options.pageChunkSize:numel(pages)
 end
 end
 
-function [groups,fallback] = prepareNativeGroups(self,indices,columns,variable,derivativeOrder)
+function [groups,basisGroup,factors] = prepareNativeGroups(self,indices,columns,variable,derivativeOrder)
 groups = {};
-fallback = [];
+basisGroup = zeros(1,numel(self.bases));
+factors = cell(size(self.bases));
 for iBasis = indices
     basis = self.bases{iBasis};
-    if ~ismember(string(class(basis)),["IMBasisSet","IMInternalModesBasis"]) || ~isa(basis.solver,"IMSolverSpectral")
-        fallback(end+1) = iBasis; %#ok<AGROW>
+    if ~ismember(string(class(basis)),["IMBasisSet","IMInternalModesBasis"]) || ~strcmp(class(basis.solver),'IMSolverSpectral')
         continue
     end
     nativeOrder = derivativeOrder;
     if isa(basis,"IMInternalModesBasis") && variable ~= string(basis.evp.formulation)
         nativeOrder = 1;
     end
-    factors = basis.normalizationFactors();
-    native = basis.nativeModes(:,columns);
-    iGroup = find(cellfun(@(g) g.derivativeOrder == nativeOrder && size(g.nativeColumns,1) == size(native,1) && isequal(g.solver,basis.solver),groups),1);
+    normalization = basis.normalizationFactors();
+    factors{iBasis} = normalization(columns);
+    nPolynomials = size(basis.nativeModes,1);
+    iGroup = find(cellfun(@(g) g.derivativeOrder == nativeOrder && g.nPolynomials == nPolynomials && isequal(g.solver,basis.solver),groups),1);
     if isempty(iGroup)
-        groups{end+1} = struct("solver",basis.solver,"derivativeOrder",nativeOrder,"nativeColumns",native,"normalizationFactors",factors(columns),"basisIndices",iBasis); %#ok<AGROW>
-    else
-        % Group construction is bounded by pageChunkSize.
-        groups{iGroup}.nativeColumns = [groups{iGroup}.nativeColumns,native]; %#ok<AGROW>
-        groups{iGroup}.normalizationFactors = [groups{iGroup}.normalizationFactors,factors(columns)]; %#ok<AGROW>
-        groups{iGroup}.basisIndices(end+1) = iBasis; %#ok<AGROW>
+        groups{end+1} = struct("solver",basis.solver,"derivativeOrder",nativeOrder,"nPolynomials",nPolynomials); %#ok<AGROW>
+        iGroup = numel(groups);
     end
+    basisGroup(iBasis) = iGroup;
 end
 end
