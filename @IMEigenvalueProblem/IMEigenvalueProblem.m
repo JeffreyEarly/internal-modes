@@ -568,8 +568,8 @@ classdef IMEigenvalueProblem
         function diagnostics = preparedModeSelectionDiagnostics(self,samples,A)
             % Use coefficient samples from the actual requested matrix pencil.
             definiteness = self.definitenessFromSamples(samples.p,samples.q,samples.r);
-            bounds = self.negativeBoundsFromDefiniteness(definiteness,A);
-            diagnostics = self.selectionDiagnosticsFromBounds(bounds,A);
+            [bounds,zeroMode] = self.negativeBoundsFromDefiniteness(definiteness,A);
+            diagnostics = self.selectionDiagnosticsFromBounds(bounds,A,zeroMode);
         end
 
         function mask = finiteGeneralizedEigenpairMask(~,eigenvectors,metricMatrix)
@@ -651,7 +651,7 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function bounds = negativeBoundsFromDefiniteness(self,definiteness,A)
+        function [bounds,zeroMode] = negativeBoundsFromDefiniteness(self,definiteness,A)
             zeroMode = self.zeroModeAssessment(A);
             bounds.assessmentLevel = definiteness.assessmentLevel;
             bounds.negativeEndpointWeightCount = definiteness.negativeEndpointWeightCount;
@@ -689,8 +689,8 @@ classdef IMEigenvalueProblem
             end
         end
 
-        function diagnostics = selectionDiagnosticsFromBounds(self,bounds,A)
-            zeroMode = self.zeroModeAssessment(A);
+        function diagnostics = selectionDiagnosticsFromBounds(self,bounds,A,zeroMode)
+            if nargin < 4, zeroMode = self.zeroModeAssessment(A); end
             diagnostics.assessmentLevel = bounds.assessmentLevel;
             diagnostics.negativeEndpointWeightCount = bounds.negativeEndpointWeightCount;
             diagnostics.minNegativeEigenvalueCount = bounds.minNegativeEigenvalueCount;
