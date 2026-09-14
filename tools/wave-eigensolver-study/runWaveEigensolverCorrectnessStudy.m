@@ -18,7 +18,7 @@ profiles = {
     "strong", @(z) 1e-6+2e-4*exp(z/75)
     };
 
-rows = cell(0,16);
+rows = cell(0,22);
 for iProfile = 1:size(profiles,1)
     profileName = profiles{iProfile,1};
     N2 = profiles{iProfile,2};
@@ -53,18 +53,26 @@ for iProfile = 1:size(profiles,1)
                 rows(end+1,:) = {profileName,candidates{iCandidate,1},nEVP,kappa,metrics.conditionIndicator, ...
                     metrics.metricRank,metrics.finiteCandidateCount,metrics.maximumPencilResidual, ...
                     metrics.minimumAbsoluteEigenvalue,relativeH,relativeG,relativeF,labelsEqual, ...
-                    metrics.generalizedSeconds,metrics.candidateSeconds,metrics.candidateOverGeneralized}; %#ok<AGROW>
+                    metrics.generalizedPreparationSeconds,metrics.generalizedSolveSeconds, ...
+                    metrics.generalizedReconstructionSeconds,metrics.generalizedTotalSeconds, ...
+                    metrics.candidatePreparationSeconds,metrics.candidateSolveSeconds, ...
+                    metrics.candidateReconstructionSeconds,metrics.candidateTotalSeconds, ...
+                    metrics.candidateTotalOverGeneralizedTotal}; %#ok<AGROW>
             end
         end
     end
 end
 results = cell2table(rows,VariableNames=["profile","candidate","nEVP","kappa","conditionIndicator","metricRank", ...
     "finiteCandidateCount","maximumPencilResidual","minimumAbsoluteEigenvalue","maximumRelativeHError", ...
-    "relativeGError","relativeFError","labelsEqual","generalizedSeconds","candidateSeconds", ...
-    "candidateOverGeneralized"]);
+    "relativeGError","relativeFError","labelsEqual","generalizedPreparationSeconds", ...
+    "generalizedSolveSeconds","generalizedReconstructionSeconds","generalizedTotalSeconds", ...
+    "candidatePreparationSeconds","candidateSolveSeconds","candidateReconstructionSeconds", ...
+    "candidateTotalSeconds","candidateTotalOverGeneralizedTotal"]);
 end
 
 function [basis,metrics] = inversePencilSolve(solver,evp,A,B,diagnostics,nModes)
+generalizedRun = measureGeneralizedSolve(A,B);
+preparationTimer = tic;
 rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
 rowScale(rowScale == 0) = 1;
 solveA = A./rowScale;
@@ -72,18 +80,17 @@ solveB = B./rowScale;
 columnScale = max(1,0:size(A,2)-1).^(-2);
 scaledA = solveA.*columnScale;
 scaledB = solveB.*columnScale;
-
-timer = tic;
-[generalizedVectors,generalizedValues] = eig(scaledA,scaledB); %#ok<ASGLU>
-generalizedSeconds = toc(timer);
-timer = tic;
 factorization = decomposition(scaledA);
 inversePencil = factorization\scaledB;
-[vectors,H] = eig(inversePencil);
-inverseSeconds = toc(timer);
+preparationSeconds = toc(preparationTimer);
+solveTimer = tic;
+[scaledVectors,H] = eig(inversePencil);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
+vectors = columnScale.'.*scaledVectors;
+reconstructionSeconds = toc(reconstructionTimer);
 h = diag(H);
 lambda = 1./h;
-vectors = columnScale.'.*vectors;
 valid = isfinite(real(lambda)) & isfinite(imag(lambda)) ...
     & abs(imag(lambda)) < 1e-8*max(1,abs(real(lambda)));
 vectors = real(vectors(:,valid));
@@ -107,13 +114,18 @@ for iMode = 1:size(vectors,2)
     residuals(iMode) = norm(A*vector-lambda(iMode)*B*vector,2)/max(denominator,realmin);
 end
 finiteH = abs(h(isfinite(h) & h ~= 0));
-metrics = struct("conditionIndicator",rcond(scaledA),"metricRank",rank(scaledB), ...
-    "finiteCandidateCount",numel(lambda),"maximumPencilResidual",max(residuals), ...
-    "minimumAbsoluteEigenvalue",min(finiteH),"generalizedSeconds",generalizedSeconds, ...
-    "candidateSeconds",inverseSeconds,"candidateOverGeneralized",inverseSeconds/generalizedSeconds);
+candidateTiming = makeTiming(preparationSeconds,solveSeconds,reconstructionSeconds);
+metrics = comparisonTimingMetrics(generalizedRun.timing,candidateTiming);
+metrics.conditionIndicator = rcond(scaledA);
+metrics.metricRank = rank(scaledB);
+metrics.finiteCandidateCount = numel(lambda);
+metrics.maximumPencilResidual = max(residuals);
+metrics.minimumAbsoluteEigenvalue = min(finiteH);
 end
 
 function [basis,metrics] = reducedMetricSolve(solver,evp,A,B,diagnostics,nModes)
+generalizedRun = measureGeneralizedSolve(A,B);
+preparationTimer = tic;
 rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
 rowScale(rowScale == 0) = 1;
 solveA = A./rowScale;
@@ -121,10 +133,6 @@ solveB = B./rowScale;
 columnScale = max(1,0:size(A,2)-1).^(-2);
 scaledA = solveA.*columnScale;
 scaledB = solveB.*columnScale;
-timer = tic;
-eig(scaledA,scaledB);
-generalizedSeconds = toc(timer);
-
 bottomIndex = solver.boundaryIndex("bottom");
 constraint = scaledA(bottomIndex,:);
 [~,pivot] = max(abs(constraint));
@@ -135,13 +143,16 @@ Z(pivot,:) = -constraint(retainedColumns)/constraint(pivot);
 retainedRows = setdiff(1:size(A,1),bottomIndex,"stable");
 reducedA = scaledA(retainedRows,:)*Z;
 reducedB = scaledB(retainedRows,:)*Z;
-timer = tic;
 metricFactorization = decomposition(reducedB);
 standardMatrix = metricFactorization\reducedA;
+preparationSeconds = toc(preparationTimer);
+solveTimer = tic;
 [reducedVectors,D] = eig(standardMatrix);
-candidateSeconds = toc(timer);
-lambda = diag(D);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
 vectors = columnScale.'.*(Z*reducedVectors);
+reconstructionSeconds = toc(reconstructionTimer);
+lambda = diag(D);
 valid = isfinite(real(lambda)) & isfinite(imag(lambda)) ...
     & abs(imag(lambda)) < 1e-8*max(1,abs(real(lambda)));
 vectors = real(vectors(:,valid));
@@ -165,38 +176,43 @@ for iMode = 1:size(vectors,2)
     residuals(iMode) = norm(A*vector-lambda(iMode)*B*vector,2)/max(denominator,realmin);
 end
 finiteLambda = abs(lambda(isfinite(lambda) & lambda ~= 0));
-metrics = struct("conditionIndicator",rcond(reducedB),"metricRank",rank(reducedB), ...
-    "finiteCandidateCount",numel(lambda),"maximumPencilResidual",max(residuals), ...
-    "minimumAbsoluteEigenvalue",min(finiteLambda),"generalizedSeconds",generalizedSeconds, ...
-    "candidateSeconds",candidateSeconds,"candidateOverGeneralized",candidateSeconds/generalizedSeconds);
+candidateTiming = makeTiming(preparationSeconds,solveSeconds,reconstructionSeconds);
+metrics = comparisonTimingMetrics(generalizedRun.timing,candidateTiming);
+metrics.conditionIndicator = rcond(reducedB);
+metrics.metricRank = rank(reducedB);
+metrics.finiteCandidateCount = numel(lambda);
+metrics.maximumPencilResidual = max(residuals);
+metrics.minimumAbsoluteEigenvalue = min(finiteLambda);
 end
 
 function [basis,metrics] = gridMetricSolve(solver,evp,A,B,diagnostics,nModes)
+generalizedRun = measureGeneralizedSolve(A,B);
+preparationTimer = tic;
 rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
 rowScale(rowScale == 0) = 1;
-columnScale = max(1,0:size(A,2)-1).^(-2);
-timer = tic;
-eig((A./rowScale).*columnScale,(B./rowScale).*columnScale);
-generalizedSeconds = toc(timer);
-
+solveB = B./rowScale;
 bottomIndex = solver.boundaryIndex("bottom");
 retained = setdiff(1:size(A,1),bottomIndex,"stable");
-timer = tic;
 gridA = A/solver.T;
 gridB = B/solver.T;
 reducedA = gridA(retained,retained);
 reducedB = gridB(retained,retained);
-[gridVectors,D] = eig(reducedB\reducedA);
-candidateSeconds = toc(timer);
-lambda = diag(D);
+standardMatrix = reducedB\reducedA;
+preparationSeconds = toc(preparationTimer);
+solveTimer = tic;
+[gridVectors,D] = eig(standardMatrix);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
 gridModes = zeros(size(A,1),size(gridVectors,2));
 gridModes(retained,:) = gridVectors;
 vectors = solver.T\gridModes;
+reconstructionSeconds = toc(reconstructionTimer);
+lambda = diag(D);
 valid = isfinite(real(lambda)) & isfinite(imag(lambda)) ...
     & abs(imag(lambda)) < 1e-8*max(1,abs(real(lambda)));
 vectors = real(vectors(:,valid));
 lambda = real(lambda(valid));
-familyValid = evp.finiteGeneralizedEigenpairMask(vectors,B./rowScale);
+familyValid = evp.finiteGeneralizedEigenpairMask(vectors,solveB);
 vectors = vectors(:,familyValid);
 lambda = lambda(familyValid);
 selection = evp.selectModes(lambda(:),nModes,solver,A,diagnostics=diagnostics);
@@ -215,8 +231,47 @@ for iMode = 1:size(vectors,2)
     residuals(iMode) = norm(A*vector-lambda(iMode)*B*vector,2)/max(denominator,realmin);
 end
 finiteLambda = abs(lambda(isfinite(lambda) & lambda ~= 0));
-metrics = struct("conditionIndicator",rcond(reducedB),"metricRank",rank(reducedB), ...
-    "finiteCandidateCount",numel(lambda),"maximumPencilResidual",max(residuals), ...
-    "minimumAbsoluteEigenvalue",min(finiteLambda),"generalizedSeconds",generalizedSeconds, ...
-    "candidateSeconds",candidateSeconds,"candidateOverGeneralized",candidateSeconds/generalizedSeconds);
+candidateTiming = makeTiming(preparationSeconds,solveSeconds,reconstructionSeconds);
+metrics = comparisonTimingMetrics(generalizedRun.timing,candidateTiming);
+metrics.conditionIndicator = rcond(reducedB);
+metrics.metricRank = rank(reducedB);
+metrics.finiteCandidateCount = numel(lambda);
+metrics.maximumPencilResidual = max(residuals);
+metrics.minimumAbsoluteEigenvalue = min(finiteLambda);
+end
+
+function run = measureGeneralizedSolve(A,B)
+preparationTimer = tic;
+rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
+rowScale(rowScale == 0) = 1;
+columnScale = max(1,0:size(A,2)-1).^(-2);
+scaledA = (A./rowScale).*columnScale;
+scaledB = (B./rowScale).*columnScale;
+preparationSeconds = toc(preparationTimer);
+solveTimer = tic;
+[scaledVectors,D] = eig(scaledA,scaledB);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
+nativeVectors = columnScale.'.*scaledVectors;
+reconstructionSeconds = toc(reconstructionTimer);
+run = struct("nativeVectors",nativeVectors,"D",D, ...
+    "timing",makeTiming(preparationSeconds,solveSeconds,reconstructionSeconds));
+end
+
+function timing = makeTiming(preparationSeconds,solveSeconds,reconstructionSeconds)
+timing = struct("preparationSeconds",preparationSeconds,"solveSeconds",solveSeconds, ...
+    "reconstructionSeconds",reconstructionSeconds, ...
+    "totalSeconds",preparationSeconds+solveSeconds+reconstructionSeconds);
+end
+
+function metrics = comparisonTimingMetrics(generalized,candidate)
+metrics = struct("generalizedPreparationSeconds",generalized.preparationSeconds, ...
+    "generalizedSolveSeconds",generalized.solveSeconds, ...
+    "generalizedReconstructionSeconds",generalized.reconstructionSeconds, ...
+    "generalizedTotalSeconds",generalized.totalSeconds, ...
+    "candidatePreparationSeconds",candidate.preparationSeconds, ...
+    "candidateSolveSeconds",candidate.solveSeconds, ...
+    "candidateReconstructionSeconds",candidate.reconstructionSeconds, ...
+    "candidateTotalSeconds",candidate.totalSeconds, ...
+    "candidateTotalOverGeneralizedTotal",candidate.totalSeconds/generalized.totalSeconds);
 end

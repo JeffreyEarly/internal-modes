@@ -12,7 +12,7 @@ profiles = {
     "strong", @(z) 1e-6+2e-4*exp(z/75)
     };
 surface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
-rows = cell(0,11);
+rows = cell(0,18);
 for iProfile = 1:size(profiles,1)
     for nEVP = options.resolutions
         for kappa = options.kappa
@@ -20,55 +20,103 @@ for iProfile = 1:size(profiles,1)
                 k=kappa,f0=1e-4,surfaceBoundary=surface,bottomBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb").configuredForEVP(evp);
             [A,B] = evp.assembleConfigured(solver);
-            [scaledA,scaledB,reducedA,reducedB,reconstruction] = preparePencils(solver,A,B);
             for nModes = options.modeCounts
-                eigsOptions = deterministicOptions(size(reducedA,1),nModes);
-                eig(scaledA,scaledB);
-                eigs(reducedA,reducedB,nModes,"smallestabs",eigsOptions);
-                fullSeconds = zeros(options.repetitions,1);
-                partialSeconds = zeros(options.repetitions,1);
+                eigsOptions = deterministicOptions(size(A,1)-1,nModes);
+                warmupSolvers(solver,A,B,nModes,eigsOptions);
+                fullSeconds = zeros(options.repetitions,4);
+                partialSeconds = zeros(options.repetitions,5);
                 for repetition = 1:options.repetitions
                     if mod(repetition,2)
-                        fullSeconds(repetition) = measureFull(scaledA,scaledB);
-                        partialSeconds(repetition) = measurePartial(reducedA,reducedB,nModes,eigsOptions);
+                        fullRun = measureFull(A,B);
+                        partialRun = measurePartial(solver,A,B,nModes,eigsOptions);
                     else
-                        partialSeconds(repetition) = measurePartial(reducedA,reducedB,nModes,eigsOptions);
-                        fullSeconds(repetition) = measureFull(scaledA,scaledB);
+                        partialRun = measurePartial(solver,A,B,nModes,eigsOptions);
+                        fullRun = measureFull(A,B);
                     end
+                    fullSeconds(repetition,:) = timingRow(fullRun.timing);
+                    partialSeconds(repetition,:) = timingRow(partialRun.timing);
                 end
-                [~,fullD] = eig(scaledA,scaledB);
-                [partialVectors,partialD,flag] = eigs(reducedA,reducedB,nModes,"smallestabs",eigsOptions);
-                fullLambda = positiveSorted(diag(fullD));
-                partialLambda = positiveSorted(diag(partialD));
+                fullMedian = median(fullSeconds,1);
+                partialMedian = median(partialSeconds,1);
+                fullLambda = positiveSorted(diag(fullRun.D));
+                partialLambda = positiveSorted(diag(partialRun.D));
                 compared = min([nModes,numel(fullLambda),numel(partialLambda)]);
                 relativeError = max(abs(partialLambda(1:compared)-fullLambda(1:compared))./fullLambda(1:compared));
-                nativeVectors = reconstruction*partialVectors;
-                residual = maximumResidual(A,B,nativeVectors,diag(partialD));
-                rows(end+1,:) = {profiles{iProfile,1},nEVP,kappa,nModes,compared,flag,relativeError,residual, ...
-                    median(fullSeconds),median(partialSeconds),median(partialSeconds)/median(fullSeconds)}; %#ok<AGROW>
+                residual = maximumResidual(A,B,partialRun.nativeVectors,diag(partialRun.D));
+                rows(end+1,:) = {profiles{iProfile,1},nEVP,kappa,nModes,compared,partialRun.flag,relativeError,residual, ...
+                    fullMedian(1),fullMedian(2),fullMedian(3),fullMedian(4),partialMedian(1),partialMedian(2), ...
+                    partialMedian(3),partialMedian(4),partialMedian(5),partialMedian(5)/fullMedian(4)}; %#ok<AGROW>
             end
         end
     end
 end
 results = cell2table(rows,VariableNames=["profile","nEVP","kappa","requestedModes","comparedModes", ...
-    "flag","maximumRelativeEigenvalueError","maximumPencilResidual","fullMedianSeconds", ...
-    "partialMedianSeconds","partialOverFull"]);
+    "flag","maximumRelativeEigenvalueError","maximumPencilResidual","fullPreparationMedianSeconds", ...
+    "fullSolveMedianSeconds","fullReconstructionMedianSeconds","fullTotalMedianSeconds", ...
+    "partialPreparationMedianSeconds","partialReductionMedianSeconds","partialSolveMedianSeconds", ...
+    "partialReconstructionMedianSeconds","partialTotalMedianSeconds","partialTotalOverFullTotal"]);
 end
 
-function [scaledA,scaledB,reducedA,reducedB,reconstruction] = preparePencils(solver,A,B)
+function warmupSolvers(solver,A,B,nModes,eigsOptions)
+fullRun = measureFull(A,B);
+partialRun = measurePartial(solver,A,B,nModes,eigsOptions);
+if size(fullRun.nativeVectors,1) ~= size(A,2) || size(partialRun.nativeVectors,1) ~= size(A,2)
+    error("WaveEigensolverStudy:InvalidWarmupOutput", "Warm-up solves did not return native vectors with the expected row count.");
+end
+end
+
+function run = measureFull(A,B)
+preparationTimer = tic;
+[scaledA,scaledB,columnScale] = scalePencil(A,B);
+preparationSeconds = toc(preparationTimer);
+solveTimer = tic;
+[scaledVectors,D] = eig(scaledA,scaledB);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
+nativeVectors = columnScale.'.*scaledVectors;
+reconstructionSeconds = toc(reconstructionTimer);
+run = struct("nativeVectors",nativeVectors,"D",D,"timing",struct( ...
+    "preparationSeconds",preparationSeconds,"solveSeconds",solveSeconds, ...
+    "reconstructionSeconds",reconstructionSeconds, ...
+    "totalSeconds",preparationSeconds+solveSeconds+reconstructionSeconds));
+end
+
+function run = measurePartial(solver,A,B,nModes,eigsOptions)
+preparationTimer = tic;
+[scaledA,scaledB,columnScale] = scalePencil(A,B);
+preparationSeconds = toc(preparationTimer);
+reductionTimer = tic;
+[reducedA,reducedB,reconstruction] = reducePencil(solver,scaledA,scaledB,columnScale);
+reductionSeconds = toc(reductionTimer);
+solveTimer = tic;
+[reducedVectors,D,flag] = eigs(reducedA,reducedB,nModes,"smallestabs",eigsOptions);
+solveSeconds = toc(solveTimer);
+reconstructionTimer = tic;
+nativeVectors = reconstruction*reducedVectors;
+reconstructionSeconds = toc(reconstructionTimer);
+run = struct("nativeVectors",nativeVectors,"D",D,"flag",flag,"timing",struct( ...
+    "preparationSeconds",preparationSeconds,"reductionSeconds",reductionSeconds, ...
+    "solveSeconds",solveSeconds,"reconstructionSeconds",reconstructionSeconds, ...
+    "totalSeconds",preparationSeconds+reductionSeconds+solveSeconds+reconstructionSeconds));
+end
+
+function [scaledA,scaledB,columnScale] = scalePencil(A,B)
 rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
 rowScale(rowScale == 0) = 1;
 columnScale = max(1,0:size(A,2)-1).^(-2);
 scaledA = (A./rowScale).*columnScale;
 scaledB = (B./rowScale).*columnScale;
+end
+
+function [reducedA,reducedB,reconstruction] = reducePencil(solver,scaledA,scaledB,columnScale)
 bottomIndex = solver.boundaryIndex("bottom");
 constraint = scaledA(bottomIndex,:);
 [~,pivot] = max(abs(constraint));
-retainedColumns = setdiff(1:size(A,2),pivot,"stable");
-Z = zeros(size(A,2),size(A,2)-1);
-Z(retainedColumns,:) = eye(size(A,2)-1);
+retainedColumns = setdiff(1:size(scaledA,2),pivot,"stable");
+Z = zeros(size(scaledA,2),size(scaledA,2)-1);
+Z(retainedColumns,:) = eye(size(scaledA,2)-1);
 Z(pivot,:) = -constraint(retainedColumns)/constraint(pivot);
-retainedRows = setdiff(1:size(A,1),bottomIndex,"stable");
+retainedRows = setdiff(1:size(scaledA,1),bottomIndex,"stable");
 reducedA = scaledA(retainedRows,:)*Z;
 reducedB = scaledB(retainedRows,:)*Z;
 reconstruction = columnScale.'.*Z;
@@ -79,16 +127,13 @@ options = struct("Tolerance",1e-12,"MaxIterations",1000,"Display",false, ...
     "StartVector",ones(n,1)/sqrt(n),"SubspaceDimension",min(n,max(2*nModes+1,20)));
 end
 
-function seconds = measureFull(A,B)
-timer = tic;
-eig(A,B);
-seconds = toc(timer);
+function row = timingRow(timing)
+if isfield(timing,"reductionSeconds")
+    row = [timing.preparationSeconds,timing.reductionSeconds,timing.solveSeconds, ...
+        timing.reconstructionSeconds,timing.totalSeconds];
+else
+    row = [timing.preparationSeconds,timing.solveSeconds,timing.reconstructionSeconds,timing.totalSeconds];
 end
-
-function seconds = measurePartial(A,B,nModes,options)
-timer = tic;
-eigs(A,B,nModes,"smallestabs",options);
-seconds = toc(timer);
 end
 
 function values = positiveSorted(values)
