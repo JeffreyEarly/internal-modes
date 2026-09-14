@@ -8,6 +8,11 @@ nav_order: 100
 
 ## Unreleased
 
+## [2.0.0-beta.6] - 2026-09-14
+
+- Skip unused sampled differentiation during built-in spectral G-mode sign orientation when every surface value already determines the sign. Retain the original full-width derivative calculation for derivative-dependent modes and preserve custom basis, custom solver and F-form dispatch.
+- Preserve orientation tolerances and decisions, including floating-point behavior at derivative cutoffs. Add independent legacy-oracle regressions across stratifications, coordinates, boundary conditions and override paths.
+
 ## [2.0.0-beta.5] - 2026-09-14
 
 - Speed up bulk wave-mode construction and convergence assessment by sharing evaluation operators and normalization, batching mode comparisons, and reusing endpoint recipes, spectral differentiation, and zero-mode assessments.
