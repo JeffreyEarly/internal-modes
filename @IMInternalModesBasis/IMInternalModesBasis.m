@@ -478,11 +478,24 @@ classdef IMInternalModesBasis < IMBasisSet
             zNative = self.solver.zNative;
             surfaceIndex = self.solver.boundaryIndex("surface");
             GValues = self.rawVariable("G",zNative);
-            GzValues = self.solver.differentiateGridValues(GValues,1);
+            needsDerivative = true;
+            if string(class(self)) == "IMInternalModesBasis" && string(class(self.solver)) == "IMSolverSpectral" && size(self.nativeModes,1) == self.solver.nEVP && self.evp.formulation == "G"
+                GScale = max(abs(GValues),[],1);
+                surfaceIsResolved = abs(GValues(surfaceIndex,:)) > IMModeOrientationTools.relativeTolerance.*GScale;
+                needsDerivative = ~all(surfaceIsResolved);
+            end
+            if needsDerivative
+                GzValues = self.solver.differentiateGridValues(GValues,1);
+                GzSurface = GzValues(surfaceIndex,:);
+            else
+                % `GzSurface` is ignored when all surface values resolve the orientation.
+                % Keep the original full-grid derivative for every derivative-dependent basis.
+                GzSurface = zeros(1,size(GValues,2));
+            end
             FValues = self.rawVariable("F",zNative);
             allowFFallback = self.evp.formulation == "F" & self.eigenvalues == 0;
             signs = IMModeOrientationTools.shallowInteriorGPositive( ...
-                GValues=GValues,GzSurface=GzValues(surfaceIndex,:),FValues=FValues, ...
+                GValues=GValues,GzSurface=GzSurface,FValues=FValues, ...
                 depth=diff(self.zDomain),surfaceIndex=surfaceIndex,allowFFallback=allowFFallback);
             self.nativeModes = self.nativeModes .* signs;
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
