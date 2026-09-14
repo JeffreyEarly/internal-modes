@@ -214,6 +214,87 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.F(zDomain(2)),zeros(1,4),AbsTol=2e-12)
         end
 
+        function independentColumnScalingPreservesSignedPhysicalModes(testCase)
+            N2 = @(z) 1e-4+0*z;
+            problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-0.08,gd=0.08);
+            original = IMSolverSpectral(nEVP=96).solveEVP(problem,nModes=8);
+            factors = [1e-8 1e8 1e-6 1e6 2 0.5 1e-4 1e4];
+            scaled = problem.makeBasisSet(original.solver,original.nativeModes.*factors,original.eigenvalues,original.modeNumber,struct());
+            z = linspace(-800,0,137).';
+            testCase.verifyEqual(scaled.modeNumber,original.modeNumber);
+            testCase.verifyEqual(scaled.signatures,original.signatures);
+            testCase.verifyEqual(scaled.G(z),original.G(z),RelTol=1e-10,AbsTol=1e-10);
+            testCase.verifyEqual(scaled.F(z),original.F(z),RelTol=1e-10,AbsTol=1e-10);
+            testCase.verifyLessThan(norm(scaled.gramMatrix(variable="G")-diag(original.signatures),2),1e-9);
+        end
+
+        function unrelatedCandidateCannotChangeConstantClassification(testCase)
+            problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08,gd=0.08);
+            basis = IMSolverSpectral(nEVP=96).solveEVP(problem,nModes=5);
+            index = find(basis.modeNumber == 0);
+            alone = problem.makeBasisSet(basis.solver,basis.nativeModes(:,index),0,0,struct());
+            pairIndices = [index 5];
+            pair = problem.makeBasisSet(basis.solver,basis.nativeModes(:,pairIndices).*[1 1e12],basis.eigenvalues(pairIndices),basis.modeNumber(pairIndices),struct());
+            testCase.verifyEqual(pair.signatures(1),alone.signatures);
+            expected = basis.G([-800;0]);
+            testCase.verifyEqual(pair.G([-800;0]),expected(:,pairIndices),AbsTol=1e-10);
+        end
+
+        function exactAndNearNullConstantsRemainRejectedAtEveryScale(testCase)
+            for balanceOffset = [0 1e-14]
+                problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-balanceOffset),gd=0);
+                solver = IMSolverSpectral(nEVP=64).configuredForEVP(problem);
+                for amplitude = [1e-8 1 1e8]
+                    native = [amplitude;zeros(63,1)];
+                    testCase.verifyError(@()problem.makeBasisSet(solver,native,0,0,struct()),"IMMeanDensityAnomalyModesBasis:ZeroNormMode");
+                end
+            end
+        end
+
+        function nonsingularNearBalanceIsStillAllowed(testCase)
+            problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-1e-8),gd=0);
+            solver = IMSolverSpectral(nEVP=64).configuredForEVP(problem);
+            for amplitude = [1e-8 1 1e8]
+                basis = problem.makeBasisSet(solver,[amplitude;zeros(63,1)],0,0,struct());
+                testCase.verifyEqual(basis.signatures,1);
+            end
+        end
+
+        function ordinaryProfilesMeasureGridCutoffAndKeepExplicitCounts(testCase)
+            profiles = {@(z)1e-4+0*z,@(z)1e-4*exp(2*z/700)};
+            for i = 1:numel(profiles)
+                N2 = profiles{i}; columnGravity = integral(N2,-800,0);
+                problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
+                grid = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(problem);
+                [z,w] = grid.nativeQuadratureRule([-800 0]); w = w*(800/sum(w));
+                basis = IMSolverSpectral(nEVP=207).solveEVP(problem,nModes=69);
+                [transform,assessment] = basis.discreteTransform(z=z,weights=w,variables="G");
+                n = numel(transform.h);
+                testCase.verifyLessThan(n,numel(assessment.gramPolicy.error));
+                testCase.verifyLessThanOrEqual(assessment.gramPolicy.error(n),1e-2);
+                testCase.verifyGreaterThan(assessment.gramPolicy.error(n+1),1e-2);
+                strict = basis.discreteTransform(z=z,weights=w,variables="G",nModes=2);
+                testCase.verifyEqual(numel(strict.h),2);
+                testCase.verifyError(@()basis.discreteTransform(z=z,weights=w,variables="G",nModes=n+1),"IMBasisSet:StrictDiscreteModeCountRejected");
+            end
+        end
+
+        function sharpMixedLayerCandidatesReachMeasuredGridCutoff(testCase)
+            S = @(z) 0.5*(1+tanh((z+40)/10));
+            N2 = @(z) S(z)*(8e-4)^2+(1-S(z)).*((5e-4)^2+((3e-3)^2-(5e-4)^2)*exp((z+40)/80));
+            columnGravity = integral(N2,-800,0);
+            problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
+            grid = IMSolverSpectral(nEVP=513,coordinateKind="wkb").configuredForEVP(problem);
+            [z,w] = grid.nativeQuadratureRule([-800 0]);
+            w = w*(800/sum(w));
+            basis = IMSolverSpectral(nEVP=1551).solveEVP(problem,nModes=517);
+            [transform,assessment] = basis.discreteTransform(z=z,weights=w,variables="G");
+            testCase.verifyEqual(numel(basis.h),517);
+            testCase.verifyEqual(numel(transform.h),321);
+            testCase.verifyLessThanOrEqual(assessment.gramPolicy.error(321),1e-2);
+            testCase.verifyGreaterThan(assessment.gramPolicy.error(322),1e-2);
+        end
+
         function singularConstantNullNormIsRejected(testCase)
             [N2,zDomain,g,N0] = testCase.constantProfile();
             singularG0 = -(N0^2*diff(zDomain));

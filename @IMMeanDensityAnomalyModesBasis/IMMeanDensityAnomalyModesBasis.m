@@ -94,8 +94,11 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
 
             rawGram = self.variableGramMatrix("G",self.zDomain,false);
             rawNorms = real(diag(rawGram)).';
-            normScale = max(1,norm(rawGram,2));
-            zeroNorm = abs(rawNorms) <= 1e3*eps(normScale);
+            % Test cancellation relative to each mode's positive majorant.
+            % Eigenvector amplitudes and unrelated candidates cannot set it.
+            rawMajorantGram = self.variableGramMatrix("G",self.zDomain,false,true);
+            normScale = real(diag(rawMajorantGram)).';
+            zeroNorm = ~isfinite(rawNorms) | ~isfinite(normScale) | normScale <= 0 | abs(rawNorms)./normScale <= 1e3*eps;
             if any(zeroNorm)
                 labels = self.modeNumber(zeroNorm);
                 error("IMMeanDensityAnomalyModesBasis:ZeroNormMode", ...

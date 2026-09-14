@@ -2,10 +2,11 @@
 
 ## Unreleased
 
-## [2.0.0-beta.5] - 2026-09-13
+## [2.0.0-beta.5] - 2026-09-14
 
 - Speed up bulk wave-mode construction and convergence assessment by sharing evaluation operators and normalization, batching mode comparisons, and reusing endpoint recipes, spectral differentiation, and zero-mode assessments.
 - Preserve public APIs, scientific tolerances, mode selection, physical normalization, and complete diagnostics. Add regression coverage for shared preparation and bulk evaluation.
+- Classify MDA null norms relative to each mode's positive generalized-energy majorant, removing dependence on arbitrary eigenvector amplitudes and unrelated candidate columns. Preserve signed normalization and reject genuinely null modes; automatic selection can now reach its measured physical-grid Gram cutoff for sharp mixed-layer profiles.
 
 ## [2.0.0-beta.4] - 2026-09-09
 
