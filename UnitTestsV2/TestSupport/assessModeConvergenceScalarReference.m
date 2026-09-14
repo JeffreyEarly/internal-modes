@@ -1,4 +1,4 @@
-function assessment = assessModeConvergence(candidate,reference,z,weights)
+function assessment = assessModeConvergenceScalarReference(candidate,reference,z,weights)
 % Compare explicitly prepared resolved modes without solving or selecting modes.
 %
 % Each input is a scalar struct with identity, values, and provenance. The
@@ -89,49 +89,44 @@ quantity = repmat(quantities,nModes,1);
 variable = repmat(rowVariables,nModes,1);
 value = nan(nModes*rowsPerMode,1);
 status = repmat("inconclusive",size(value));
-% Resolve unique labels once, preserving candidate order and ambiguity rules.
-[~,~,candidateGroup] = unique(labels);
-[~,~,referenceGroup] = unique(reference.identity.columnLabels(:));
-candidateMultiplicity = accumarray(candidateGroup,1);
-referenceMultiplicity = accumarray(referenceGroup,1);
-[found,match] = ismember(labels,reference.identity.columnLabels);
-matched = find(found);
-matched = matched(candidateMultiplicity(candidateGroup(matched)) == 1 & referenceMultiplicity(referenceGroup(match(matched))) == 1);
-match = match(matched);
-referenceColumn(matched) = match;
-matchStatus(matched) = "matched";
-orientation(matched) = commonOrientation(candidate,reference,matched,match,variables,weights);
-rows = (matched(:).'-1)*rowsPerMode;
-for iScalar = 1:2
-    fields = ["eigenvalues","equivalentDepths"];
-    field = fields(iScalar);
-    if isfield(candidate,field) && isfield(reference,field)
-        [value(rows+iScalar),status(rows+iScalar)] = scalarError(candidate.(field)(matched),reference.(field)(match));
-    else
-        status(rows+iScalar) = "notRequested";
+for iMode = 1:nModes
+    match = find(reference.identity.columnLabels == labels(iMode));
+    if nnz(labels == labels(iMode)) ~= 1 || numel(match) ~= 1
+        continue
     end
-end
-for iVariable = 1:numel(variables)
-    field = variables(iVariable);
-    a = candidate.values.(field)(:,matched);
-    b = reference.values.(field)(:,match).*reshape(orientation(matched),1,[]);
-    numerator = sum(weights.*abs(a-b).^2,1);
-    denominator = sum(weights.*abs(b).^2,1);
-    row = rows+3*(iVariable-1)+3;
-    value(row) = normRatio(numerator,denominator);
-    status(row) = "measured";
-    if isfield(candidate.derivatives,field) && isfield(reference.derivatives,field)
-        da = candidate.derivatives.(field)(:,matched);
-        db = reference.derivatives.(field)(:,match).*reshape(orientation(matched),1,[]);
-        derivativeNumerator = sum(weights.*abs(da-db).^2,1);
-        derivativeDenominator = sum(weights.*abs(db).^2,1);
-        value(row+1) = normRatio(derivativeNumerator,derivativeDenominator);
-        value(row+2) = normRatio(numerator+diff(zDomain)^2*derivativeNumerator,denominator+diff(zDomain)^2*derivativeDenominator);
-        status(row+1) = "measured";
-        status(row+2) = "measured";
-    else
-        status(row+1) = "notRequested";
-        status(row+2) = "notRequested";
+    referenceColumn(iMode) = match;
+    matchStatus(iMode) = "matched";
+    orientation(iMode) = commonOrientation(candidate,reference,iMode,match,variables,weights);
+    rows = (iMode-1)*rowsPerMode+(1:rowsPerMode);
+    for iScalar = 1:2
+        fields = ["eigenvalues","equivalentDepths"];
+        field = fields(iScalar);
+        if isfield(candidate,field) && isfield(reference,field)
+            [value(rows(iScalar)),status(rows(iScalar))] = scalarError(candidate.(field)(iMode),reference.(field)(match));
+        else
+            status(rows(iScalar)) = "notRequested";
+        end
+    end
+    for iVariable = 1:numel(variables)
+        field = variables(iVariable);
+        a = candidate.values.(field)(:,iMode);
+        b = reference.values.(field)(:,match)*orientation(iMode);
+        numerator = sum(weights.*abs(a-b).^2);
+        denominator = sum(weights.*abs(b).^2);
+        row = rows(3*(iVariable-1)+3);
+        value(row) = normRatio(numerator,denominator);
+        status(row) = "measured";
+        if isfield(candidate.derivatives,field) && isfield(reference.derivatives,field)
+            da = candidate.derivatives.(field)(:,iMode);
+            db = reference.derivatives.(field)(:,match)*orientation(iMode);
+            derivativeNumerator = sum(weights.*abs(da-db).^2);
+            derivativeDenominator = sum(weights.*abs(db).^2);
+            value(row+1) = normRatio(derivativeNumerator,derivativeDenominator);
+            value(row+2) = normRatio(numerator+diff(zDomain)^2*derivativeNumerator,denominator+diff(zDomain)^2*derivativeDenominator);
+            status(row+(1:2)) = "measured";
+        else
+            status(row+(1:2)) = "notRequested";
+        end
     end
 end
 assessment = struct();
@@ -199,37 +194,50 @@ end
 function orientation = commonOrientation(candidate,reference,iMode,iReference,variables,weights)
 % Choose the strongest normalized overlap, using derivatives only if every
 % shape overlap is zero. One sign then applies to the entire physical mode.
-orientation = ones(1,numel(iMode));
-strongest = zeros(1,numel(iMode));
+orientation = 1;
+strongest = 0;
 for group = ["values","derivatives"]
-    eligible = strongest == 0;
-    if ~any(eligible), break; end
     for field = variables
         if ~isfield(candidate.(group),field) || ~isfield(reference.(group),field)
             continue
         end
         a = candidate.(group).(field)(:,iMode);
         b = reference.(group).(field)(:,iReference);
-        scale = sqrt(sum(weights.*a.^2,1).*sum(weights.*b.^2,1));
-        overlap = sum(weights.*a.*b,1)./scale;
-        update = eligible & scale > 0 & abs(overlap) > strongest;
-        strongest(update) = abs(overlap(update));
-        orientation(update) = sign(overlap(update));
+        scale = sqrt(sum(weights.*a.^2)*sum(weights.*b.^2));
+        if scale > 0
+            overlap = sum(weights.*a.*b)/scale;
+            if abs(overlap) > strongest
+                strongest = abs(overlap);
+                orientation = sign(overlap);
+            end
+        end
+    end
+    if strongest > 0
+        break
     end
 end
 end
 
 function [value,status] = scalarError(a,b)
-status = repmat("measured",size(a));
-value = abs(a-b)./abs(b);
-value(a==b) = 0;
-inconclusive = isnan(a) | isnan(b) | ((~isfinite(a) | ~isfinite(b)) & a~=b);
-value(inconclusive) = NaN;
-status(inconclusive) = "inconclusive";
+status = "measured";
+if isnan(a) || isnan(b) || (~isfinite(a) || ~isfinite(b)) && a ~= b
+    value = NaN;
+    status = "inconclusive";
+elseif a == b
+    value = 0;
+elseif b == 0
+    value = Inf;
+else
+    value = abs(a-b)/abs(b);
+end
 end
 
 function value = normRatio(numerator,denominator)
-value = sqrt(numerator./denominator);
-value(~(denominator>0) & numerator==0) = 0;
-value(~(denominator>0) & numerator~=0) = Inf;
+if denominator > 0
+    value = sqrt(numerator/denominator);
+elseif numerator == 0
+    value = 0;
+else
+    value = Inf;
+end
 end

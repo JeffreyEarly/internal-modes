@@ -463,7 +463,13 @@ classdef IMBasisSet
                 end
 
                 uEndpoint = self.rawU(zEndpoint);
-                uzEndpoint = self.rawUz(zEndpoint);
+                % The built-in spectral value-only endpoint needs no flux.
+                valueOnly = any(strcmp(class(self),{'IMBasisSet','IMInternalModesBasis'})) && strcmp(class(self.solver),'IMSolverSpectral') && endpointWeight.d == 0;
+                if valueOnly
+                    uzEndpoint = zeros(size(uEndpoint));
+                else
+                    uzEndpoint = self.rawUz(zEndpoint);
+                end
                 if options.useNormalized
                     if isempty(normalizationFactors)
                         normalizationFactors = self.normalizationFactors(options.normalization);

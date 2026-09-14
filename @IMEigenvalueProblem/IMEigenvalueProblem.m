@@ -136,6 +136,12 @@ classdef IMEigenvalueProblem
         parameters = struct()
     end
 
+    properties (Access = private)
+        preparedSurfaceWeights_ = []
+        preparedBottomWeights_ = []
+        hasPreparedEndpointWeights_ = false
+    end
+
     methods
         function self = IMEigenvalueProblem(options)
             % Create a canonical scalar EVP.
@@ -170,6 +176,13 @@ classdef IMEigenvalueProblem
             self.surfaceBoundary = options.surfaceBoundary;
             self.bottomBoundary = options.bottomBoundary;
             self.parameters = options.parameters;
+            % Canonical boundaries are immutable. Prepare their full endpoint
+            % recipes once; custom boundary classes keep dynamic dispatch.
+            if strcmp(class(self.surfaceBoundary),'IMBoundaryCondition') && strcmp(class(self.bottomBoundary),'IMBoundaryCondition')
+                self.preparedSurfaceWeights_ = self.weightForBoundary("surface",self.surfaceBoundary);
+                self.preparedBottomWeights_ = self.weightForBoundary("bottom",self.bottomBoundary);
+                self.hasPreparedEndpointWeights_ = true;
+            end
         end
 
         summarize(self, solver)
@@ -315,6 +328,17 @@ classdef IMEigenvalueProblem
                 location {mustBeTextScalar, mustBeMember(location, ["surface", "bottom", "all"])} = "all"
             end
 
+            if self.hasPreparedEndpointWeights_
+                switch string(location)
+                    case "surface"
+                        weights = self.preparedSurfaceWeights_;
+                    case "bottom"
+                        weights = self.preparedBottomWeights_;
+                    case "all"
+                        weights = [self.preparedSurfaceWeights_;self.preparedBottomWeights_];
+                end
+                return
+            end
             switch string(location)
                 case "surface"
                     weights = self.weightForBoundary("surface", self.surfaceBoundary);
