@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [2.0.0-beta.5] - 2026-09-13
+
+- Speed up bulk wave-mode construction and convergence assessment by sharing evaluation operators and normalization, batching mode comparisons, and reusing endpoint recipes, spectral differentiation, and zero-mode assessments.
+- Preserve public APIs, scientific tolerances, mode selection, physical normalization, and complete diagnostics. Add regression coverage for shared preparation and bulk evaluation.
+
 ## [2.0.0-beta.4] - 2026-09-09
 
 - Add `assessModeConvergence` for per-mode comparisons of explicitly prepared eigenproblem refinements, with scientific-label matching, common sign alignment, relative equivalent-depth/shape/derivative and joint H¹ measurements, and caller-owned tolerances. No additional solves or automatic mode selection occur during assessment.
