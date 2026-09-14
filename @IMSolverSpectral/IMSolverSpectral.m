@@ -100,6 +100,9 @@ classdef IMSolverSpectral < IMSolver
     end
 
     properties (Access = private)
+        nativeFactorization_ = []
+        nativeFirstDerivative_ = []
+        nativeSecondDerivative_ = []
         coordinateMap_ = []
         coordinateDerivative_ = []
         coordinateSecondDerivative_ = []
@@ -229,7 +232,7 @@ classdef IMSolverSpectral < IMSolver
             if derivativeOrder == 0
                 return;
             end
-            coefficients = self.T \ values;
+            coefficients = self.nativeFactorization_ \ values;
             values = self.physicalDerivativeMatrix(derivativeOrder)*coefficients;
         end
 
@@ -241,15 +244,13 @@ classdef IMSolverSpectral < IMSolver
             % - Declaration: D = physicalDerivativeMatrix(solver,derivativeOrder)
             % - Parameter derivativeOrder: physical derivative order
             % - Returns D: matrix mapping coefficients to derivative values
-            q = self.qAtZ(self.zNative);
-            qz = self.qzAtZ(self.zNative);
             switch derivativeOrder
                 case 0
                     D = self.T;
                 case 1
-                    D = diag(q)*self.Tx;
+                    D = self.nativeFirstDerivative_;
                 case 2
-                    D = diag(q.*q)*self.Txx + diag(qz)*self.Tx;
+                    D = self.nativeSecondDerivative_;
                 otherwise
                     error("IMSolverSpectral:UnsupportedDerivativeOrder", ...
                         "Derivative order %d is not supported.", derivativeOrder);
@@ -656,6 +657,13 @@ classdef IMSolverSpectral < IMSolver
             self.zNative(1) = self.zDomain(2);
             self.zNative(end) = self.zDomain(1);
             [self.T, self.Tx, self.Txx] = self.chebyshevPolynomialsAtNativePoints(self.xNative);
+            % Value-class copies carry preparation for this exact native grid.
+            % Both configuration factories rebuild these fields together.
+            self.nativeFactorization_ = decomposition(self.T,'lu');
+            q = self.qAtZ(self.zNative);
+            qz = self.qzAtZ(self.zNative);
+            self.nativeFirstDerivative_ = diag(q)*self.Tx;
+            self.nativeSecondDerivative_ = diag(q.*q)*self.Txx + diag(qz)*self.Tx;
         end
 
         function q = qAtZ(self, z)
