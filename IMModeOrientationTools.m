@@ -4,6 +4,9 @@ classdef (Hidden, Sealed) IMModeOrientationTools
     properties (Constant)
         % Stable identifier for the canonical mode-orientation convention.
         convention = "shallowInteriorGPositive-v1"
+
+        % Relative threshold for resolved orientation references.
+        relativeTolerance = 1e-10
     end
 
     methods (Static)
@@ -47,15 +50,14 @@ classdef (Hidden, Sealed) IMModeOrientationTools
                 error("IMModeOrientationTools:InvalidSurfaceIndex", "surfaceIndex must select a row of GValues and FValues.");
             end
 
-            relativeTolerance = 1e-10;
             GScale = max(abs(options.GValues),[],1);
             FScale = max(abs(options.FValues),[],1);
             GSurface = options.GValues(options.surfaceIndex,:);
             inwardDerivative = -options.depth*options.GzSurface;
 
-            GIsAbsent = options.allowFFallback & GScale <= relativeTolerance.*FScale;
-            surfaceIsResolved = ~GIsAbsent & abs(GSurface) > relativeTolerance.*GScale;
-            derivativeIsResolved = ~GIsAbsent & ~surfaceIsResolved & abs(inwardDerivative) > relativeTolerance.*GScale;
+            GIsAbsent = options.allowFFallback & GScale <= IMModeOrientationTools.relativeTolerance.*FScale;
+            surfaceIsResolved = ~GIsAbsent & abs(GSurface) > IMModeOrientationTools.relativeTolerance.*GScale;
+            derivativeIsResolved = ~GIsAbsent & ~surfaceIsResolved & abs(inwardDerivative) > IMModeOrientationTools.relativeTolerance.*GScale;
 
             reference = nan(1,nModes);
             reference(surfaceIsResolved) = GSurface(surfaceIsResolved);
