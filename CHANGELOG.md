@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## [2.0.0-beta.7] - 2026-09-14
+
+- Add `assessQuadraticDealiasing` for inexpensive `none`, `fixedFraction`, and `effectiveBandwidth` policies on common-coordinate F/G samples or Chebyshev coefficients. Return per-mode spectral evidence and masks while leaving model-specific prefix selection to callers.
+- Use independently scaled channel energy and bounded FFT batches without new dependencies, eigenproblems, or pairwise product surveys. Preserve nonzero coefficient tails at full energy coverage and report small tail energies without cancellation.
+- Document the heuristic's coordinate, sampling, and complexity contract; add focused polynomial, scale-invariance, empty-inventory, batching, and tiny-tail regressions.
+
 ## [2.0.0-beta.6] - 2026-09-14
 
 - Skip unused sampled differentiation during built-in spectral G-mode sign orientation when every surface value already determines the sign. Retain the original full-width derivative calculation for derivative-dependent modes and preserve custom basis, custom solver and F-form dispatch.

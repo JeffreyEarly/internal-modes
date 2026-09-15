@@ -1,0 +1,63 @@
+{
+  "matlabVersion": "26.1.0.3346908 (R2026a) Update 5",
+  "threads": 1,
+  "description": "Two dense synthetic polynomial channels, one warmup plus five trials of twenty calls; scoring only, excluding caller basis evaluation",
+  "rows": [
+    {
+      "sampleCount": 129,
+      "modeCount": 32,
+      "batchSize": 128,
+      "medianSeconds": 0.00078615416666666664,
+      "trials": [
+        0.0007908375,
+        0.00078615416666666664,
+        0.0012100916666666667,
+        0.0006773354166666666,
+        0.00065559375
+      ],
+      "callerInputBytes": 66048
+    },
+    {
+      "sampleCount": 313,
+      "modeCount": 64,
+      "batchSize": 128,
+      "medianSeconds": 0.00064931249999999993,
+      "trials": [
+        0.0012528645833333333,
+        0.00083249583333333337,
+        0.00064931249999999993,
+        0.00059647916666666671,
+        0.00060358333333333336
+      ],
+      "callerInputBytes": 320512
+    },
+    {
+      "sampleCount": 625,
+      "modeCount": 128,
+      "batchSize": 128,
+      "medianSeconds": 0.0023008854166666664,
+      "trials": [
+        0.0022990208333333335,
+        0.0023101916666666668,
+        0.0022929875,
+        0.0023404604166666664,
+        0.0023008854166666664
+      ],
+      "callerInputBytes": 1.28E+6
+    },
+    {
+      "sampleCount": 1249,
+      "modeCount": 256,
+      "batchSize": 128,
+      "medianSeconds": 0.009190683333333333,
+      "trials": [
+        0.009190683333333333,
+        0.00905853125,
+        0.00934041875,
+        0.00926516875,
+        0.00908605625
+      ],
+      "callerInputBytes": 5.115904E+6
+    }
+  ]
+}
