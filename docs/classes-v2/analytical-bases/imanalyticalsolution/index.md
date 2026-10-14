@@ -36,6 +36,8 @@ operations by implementing those construction methods directly.
   + [`N2`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/n2.html) Evaluate buoyancy frequency squared $$N^2(z)$$.
   + [`f0`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/f0.html) Coriolis parameter in radians per second.
   + [`g`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/g.html) Gravitational acceleration in meters per second squared.
+  + [`latitude`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/latitude.html) in degrees north.
+  + [`rotationRate`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/rotationrate.html) Planetary rotation rate in radians per second.
   + [`summarize`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/summarize.html) Print common analytical-stratification state.
   + [`zDomain`](/internal-modes/classes-v2/analytical-bases/imanalyticalsolution/zdomain.html) Physical vertical domain.
 

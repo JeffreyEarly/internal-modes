@@ -20,7 +20,8 @@ Initialize common analytical-stratification state.
 ```
 ## Parameters
 + `options.zDomain`  physical vertical domain
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  nonnegative planetary rotation rate in radians per second
++ `options.latitude`  latitude in degrees north, between -90 and 90
 + `options.g`  gravitational acceleration
 
 ## Returns

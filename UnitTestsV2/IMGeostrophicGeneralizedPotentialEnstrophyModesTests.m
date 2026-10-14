@@ -24,7 +24,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
             alpha0 = 2e-11;
             alphaD = 3e-11;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0,g=g,alpha0=alpha0,alphaD=alphaD);
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,alpha0=alpha0,alphaD=alphaD);
             z = linspace(zDomain(1),zDomain(2),7).';
             context = struct("N2",N2,"f0",f0,"k",k);
 
@@ -41,7 +41,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
             testCase.verifyEqual(evp.parameters.alpha0Source,"explicit")
 
             inactiveEVP = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0,g=g,alpha0=Inf,alphaD=Inf);
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,alpha0=Inf,alphaD=Inf);
             testCase.verifyEqual([inactiveEVP.surfaceBoundary.a inactiveEVP.surfaceBoundary.b inactiveEVP.surfaceBoundary.c inactiveEVP.surfaceBoundary.d], ...
                 [-f0*f0/g 1 0 0],RelTol=1e-14,AbsTol=1e-14)
             testCase.verifyEqual([inactiveEVP.bottomBoundary.a inactiveEVP.bottomBoundary.b inactiveEVP.bottomBoundary.c inactiveEVP.bottomBoundary.d], ...
@@ -52,7 +52,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
             [N2,zDomain,f0,~,k] = testCase.profile();
             depth = diff(zDomain);
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0);
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
 
             testCase.verifyEqual(evp.parameters.bEffective,depth/4,RelTol=1e-12)
             testCase.verifyEqual(evp.parameters.alpha0,4*f0*f0/depth,RelTol=1e-12)
@@ -63,13 +63,13 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
         function invalidPhysicalParametersAreRejected(testCase)
             [N2,zDomain,f0,~,k] = testCase.profile();
             testCase.verifyError(@() IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=0,f0=f0),"MATLAB:validators:mustBePositive")
+                N2=N2,zDomain=zDomain,k=0,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0)),"MATLAB:validators:mustBePositive")
             testCase.verifyError(@() IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=0),"IMInternalModes:InvalidCoriolisParameter")
+                N2=N2,zDomain=zDomain,k=k,rotationRate=0,latitude=33),"IMInternalModes:InvalidCoriolisParameter")
             testCase.verifyError(@() IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0,alpha0=0),"IMInternalModes:InvalidSurfaceEnstrophyWeight")
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),alpha0=0),"IMInternalModes:InvalidSurfaceEnstrophyWeight")
             testCase.verifyError(@() IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0,alphaD=-1),"IMInternalModes:InvalidBottomEnstrophyWeight")
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),alphaD=-1),"IMInternalModes:InvalidBottomEnstrophyWeight")
         end
 
         function numericalModesSatisfyBoundaryNormAndEigendepthIdentities(testCase)
@@ -77,7 +77,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
             alpha0 = 2e-11;
             alphaD = 3e-11;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                N2=N2,zDomain=zDomain,k=k,f0=f0,g=g,alpha0=alpha0,alphaD=alphaD);
+                N2=N2,zDomain=zDomain,k=k,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,alpha0=alpha0,alphaD=alphaD);
             basisSet = IMSolverSpectral(nEVP=96,coordinateKind="z").solveEVP(evp,nModes=6);
             z = basisSet.solver.zNative;
             F = basisSet.F(z);
@@ -103,7 +103,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
 
         function existingDepthNormalizationRemainsVolumeOnly(testCase)
             [N2,zDomain] = testCase.profile();
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g0=-0.02,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=-0.02,gd=Inf);
             basisSet = IMSolverSpectral(nEVP=64).solveEVP(evp,nModes=4);
             z = basisSet.solver.innerProductGrid(zDomain);
             F = basisSet.F(z,normalization=Normalization.depth);
@@ -122,7 +122,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
             grids = cell(size(kValues));
             for iK = 1:numel(kValues)
                 evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-                    N2=N2,zDomain=zDomain,k=kValues(iK),f0=f0);
+                    N2=N2,zDomain=zDomain,k=kValues(iK),rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
                 basisSet = IMSolverSpectral(nEVP=96,coordinateKind="wkb").solveEVP(evp,nModes=16);
                 [grids{iK},gridDesign] = basisSet.modeRootGrid(nPoints=12);
                 [weights,weightFit] = basisSet.quadratureWeightsForPoints( ...

@@ -19,7 +19,7 @@ z = linspace(zDomain(1),zDomain(2),301).';
 % surface the surface response is G(0)-F(0); the bottom response is G(-D).
 
 N0 = 5.2e-3;
-constant = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+constant = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
 constantModes = constant.geostrophicZeroAPVModesAtWavenumber(k, ...
     endpoints=["surface" "bottom"],surfaceBoundary="freeSurface");
 
@@ -68,7 +68,7 @@ disp(endpointCheck)
 % their exact derivatives. Its result has the same public contract.
 
 b = 1300;
-exponential = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,f0=f0,g=g);
+exponential = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
 exponentialModes = exponential.geostrophicZeroAPVModesAtWavenumber(k, ...
     endpoints=["surface" "bottom"],surfaceBoundary="freeSurface");
 
@@ -112,7 +112,7 @@ disp(rotationSummary)
 
 N2 = @(zIn) N0*N0*exp(2*zIn/b);
 problem = IMGeostrophicZeroAPVModes.atWavenumber( ...
-    N2=N2,zDomain=zDomain,f0=f0,g=g,k=k, ...
+    N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k, ...
     endpoints=["surface" "bottom"],surfaceBoundary="freeSurface");
 numericalModes = IMSolverSpectral(nEVP=128).solveGeostrophicZeroAPVModes(problem);
 

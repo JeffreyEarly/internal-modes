@@ -27,7 +27,7 @@ nAvailableModes = 24;
 nEVP = 192;
 surfaceBoundary = IMBoundaryCondition.dirichlet();
 bottomBoundary = IMBoundaryCondition.dirichlet();
-evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g, ...
+evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g, ...
     surfaceBoundary=surfaceBoundary,bottomBoundary=bottomBoundary);
 solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);

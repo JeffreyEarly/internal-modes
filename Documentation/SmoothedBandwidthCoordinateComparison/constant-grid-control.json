@@ -1,0 +1,12 @@
+[
+  {
+    "nEVP": 64,
+    "oldRawMaximumGridDifference": 2.4868995751603507E-13,
+    "oldSmoothedMaximumGridDifference": 2.4868995751603507E-13
+  },
+  {
+    "nEVP": 128,
+    "oldRawMaximumGridDifference": 2.4868995751603507E-13,
+    "oldSmoothedMaximumGridDifference": 2.2737367544323206E-13
+  }
+]

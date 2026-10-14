@@ -28,6 +28,8 @@ The pages are organized around the objects that own each part of the calculation
 
 The reference pages use the standard vertical-mode variables:
 
+Rotation inputs are `rotationRate` in radians per second and `latitude` in degrees north, with defaults `7.2921e-5` and `33`. The read-only `f0` is derived from those inputs. Set `rotationRate=0` for a nonrotating problem and the original `wkb` stretch.
+
 | Symbol | Meaning | API name |
 | --- | --- | --- |
 | $$F_j(z)$$ | horizontal-velocity vertical structure function | `F` |
@@ -35,7 +37,10 @@ The reference pages use the standard vertical-mode variables:
 | $$\lambda_j$$ | retained canonical eigenvalue | `eigenvalues` |
 | $$h_j$$ | internal-mode equivalent depth or eigendepth | `h` |
 | $$N^2(z)$$ | buoyancy frequency squared | `N2` |
-| $$f_0$$ | Coriolis parameter | `f0` |
+| $$\Omega$$ | planetary rotation rate in radians per second | `rotationRate` |
+| $$\phi$$ | latitude in degrees north | `latitude` |
+| $$f_0=2\Omega\sin\phi$$ | derived vertical Coriolis parameter | `f0` |
+| $$f_h=2\Omega\cos\phi$$ | horizontal Coriolis parameter used internally for the bandwidth stretch | derived from `rotationRate`, `latitude` |
 | $$K$$ | horizontal wavenumber magnitude | `k` |
 | $$\omega$$ | wave frequency | `omega` |
 | $$z \in [-D, 0]$$ | physical vertical coordinate | `z`, `zDomain` |

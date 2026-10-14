@@ -1,0 +1,51 @@
+{
+  "profile": "neutralSurfaceLayer",
+  "family": "hydrostaticGModes",
+  "rotationRate": 7.2921E-5,
+  "latitude": 45,
+  "g": 9.81,
+  "zDomain": [
+    -1000,
+    0
+  ],
+  "profileFormula": "N2=(5e-3)^2 s(t), t=clip((-z-200)/200,0,1), s=6t^5-15t^4+10t^3",
+  "boundary": "G=0 at both physical endpoints",
+  "candidateCoordinate": "z",
+  "candidateNEVP": [
+    64,
+    128
+  ],
+  "candidateCount": "nEVP-2",
+  "freshReferenceNEVP": 1024,
+  "freshReferenceCount": 126,
+  "convergenceTolerance": 1E-5,
+  "referenceTolerance": 1E-7,
+  "referenceMask": "Original neutral 512/1024 mask reused without refinement or threshold changes",
+  "countRule": "Contiguous prefix; resolvedPrefix applies original mask; candidateOnlyDiagnosticPrefix omits it",
+  "quadrature": "Original saved 1025-point physical-z rule reused exactly",
+  "quadratureConvergence": "unverified",
+  "derivativeRule": "Same normalized sampledModes as primary study: physical Gz and Fz=h*Gzz",
+  "plotRule": "First 30 F H1 candidate errors against z1024; reference mask omitted; physical z added only to error panels",
+  "originalInputFiles": [
+    "convergence-measurements.csv",
+    "reference-validation.csv",
+    "physical-quadrature.csv",
+    "provenance.json"
+  ],
+  "originalCreatedAtUTC": "06-Oct-2026 13:45:38",
+  "smoothing": {
+    "length": 147.77523446738553,
+    "nominalLength": 147.77523446738553,
+    "equation": "Q-Ls^2 Qzz=B; q=sqrt(Q)",
+    "boundary": "Qz=0 at both physical endpoints",
+    "seedEquivalentDepth": 0.224486019760322,
+    "seedGravity": 9.81,
+    "seedOnsetCoefficient": 3.125E-11,
+    "nominalLengthRule": "(g*seedEquivalentDepth/seedOnsetCoefficient)^(1/5)",
+    "selection": "Previously measured first neutral mode; one requested length fixed across all profiles and resolutions; no accuracy tuning"
+  },
+  "matlabVersion": "26.1.0.3312084 (R2026a) Update 4",
+  "createdAtUTC": "06-Oct-2026 14:17:27",
+  "solverPath": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-evp/@IMSolverSpectral/IMSolverSpectral.m",
+  "scope": "Neutral-case supplement only; no new reference certification, full matrix rerun, or change to original results"
+}

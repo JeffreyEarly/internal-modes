@@ -18,7 +18,7 @@ z = linspace(zDomain(1), zDomain(2), 512).';
 
 surfaceBoundary = IMBoundaryCondition(a=0, b=1, c=1, d=0);
 bottomBoundary = IMBoundaryCondition.dirichlet();
-evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, f0=f0, g=g, ...
+evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g, ...
     surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
 
 solver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");

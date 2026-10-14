@@ -16,7 +16,7 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             D = 4000;
             N2 = @(z) (5.2e-3)^2*ones(size(z));
             solver = IMSolverSpectral(nEVP=160);
-            testCase.cosineBasis = solver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]),nModes=30);
+            testCase.cosineBasis = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]),nModes=30);
             testCase.z = linspace(-D,0,13).';
             testCase.weights = [0.5;ones(11,1);0.5]*(D/12);
         end
@@ -87,7 +87,7 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
 
         function signedAPVUsesMajorantForQuadraticErrorsButStillRejectsLeakage(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-4000 0],g0=-1,gd=-1,surfaceBoundary="rigidLid");
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-4000 0],g0=-1,gd=-1,surfaceBoundary="rigidLid");
             solver = IMSolverSpectral(nEVP=160);
             basis = solver.solveEVP(evp,nModes=6);
             sampleZ = linspace(-4000,0,25).';
@@ -113,7 +113,7 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
             solver = IMSolverSpectral(nEVP=192,coordinateKind="wkb");
-            basis = solver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]),nModes=12);
+            basis = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]),nModes=12);
             sampleZ = linspace(-D,0,25).';
             sampleWeights = [0.5;ones(23,1);0.5]*(D/24);
             [~,assessment] = basis.discreteTransform(z=sampleZ,weights=sampleWeights,nModes=6,variables=["F","G"],gramTolerance=1,quadraticAliasingTolerance=1);
@@ -127,7 +127,7 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
             solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
-            basis = solver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]),nModes=10);
+            basis = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]),nModes=10);
             sampleZ = linspace(-D,0,19).';
             sampleWeights = [0.5;ones(17,1);0.5]*(D/18);
             nModes = 5;

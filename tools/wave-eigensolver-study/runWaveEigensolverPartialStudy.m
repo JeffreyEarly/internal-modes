@@ -10,7 +10,7 @@ N2 = @(z) 1e-4*exp(2*z/700);
 surface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
 rows = cell(0,17);
 for nEVP = options.resolutions
-    evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=options.kappa,f0=1e-4, ...
+    evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=options.kappa,rotationRate=1e-4/(2*sind(33)),latitude=33, ...
         surfaceBoundary=surface,bottomBoundary=IMBoundaryCondition.dirichlet());
     solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb").configuredForEVP(evp);
     [A,B] = evp.assembleConfigured(solver);

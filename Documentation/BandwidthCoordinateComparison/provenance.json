@@ -1,0 +1,67 @@
+{
+  "rotationRate": 7.2921E-5,
+  "latitude": 45,
+  "f0": 0.00010312586718180847,
+  "g": 9.81,
+  "zDomain": [
+    -1000,
+    0
+  ],
+  "nEVP": [
+    64,
+    128
+  ],
+  "wavelengths": [
+    10000,
+    1000
+  ],
+  "profileNames": [
+    "constant",
+    "standardExponential",
+    "weakDeepExponential",
+    "neutralSurfaceLayer"
+  ],
+  "profileFormulas": [
+    "N2=1e-4",
+    "N2=1e-4 exp(2z/400)",
+    "N2=9e-6 exp(2z/300)",
+    "N2=(5e-3)^2 s(t), t=clip((-z-200)/200,0,1), s=6t^5-15t^4+10t^3"
+  ],
+  "oldCoordinate": "dx/dz=N; only coordinate rotationRate forced to zero",
+  "newCoordinate": "dx/dz=sqrt(B), B=sqrt((N2+fHorizontal^2-f0^2)^2+4*f0^2*fHorizontal^2), fHorizontal=2*rotationRate*cosd(latitude)",
+  "waveBoundary": "surface Gz=G/h, bottom G=0",
+  "neutralBoundary": "hydrostatic G=0 at both endpoints",
+  "candidateCount": "nEVP-2",
+  "countRule": "contiguous prefix before first failed or unverified mode",
+  "convergenceTolerance": 1E-5,
+  "referenceTolerance": 1E-7,
+  "referenceCount": 126,
+  "referenceRefinements": [
+    [
+      384,
+      512
+    ],
+    [
+      512,
+      1024
+    ]
+  ],
+  "quadrature": "1025-point physical-z Chebyshev-Lobatto rule shared by both coordinates",
+  "quadratureConvergence": "unverified",
+  "referenceAccuracy": "checked by one refinement; no absolute accuracy guarantee",
+  "interpretation": "EVP convergence only; no simulation-grid, nonlinear-aliasing, or nontraditional-EVP qualification",
+  "zeroRotationRecovery": {
+    "nEVP": 64,
+    "profile": "standardExponential",
+    "identicalCoordinate": true
+  },
+  "matlabVersion": "26.1.0.3312084 (R2026a) Update 4",
+  "computer": "MACA64",
+  "createdAtUTC": "06-Oct-2026 12:47:19",
+  "source": {
+    "packageVersion": "2.0.0-beta.7",
+    "revision": "f7f78b59f73c1f6c4052f3c5f0feb5aca7d6aa81",
+    "worktreeStatus": "M @IMAnalyticalGeostrophicZeroAPVModesBasis/IMAnalyticalGeostrophicZeroAPVModesBasis.m\n M @IMAnalyticalSolution/IMAnalyticalSolution.m\n M @IMConstantStratificationSolution/IMConstantStratificationSolution.m\n M @IMExponentialStratificationSolution/IMExponentialStratificationSolution.m\n M @IMGeostrophicZeroAPVModes/IMGeostrophicZeroAPVModes.m\n M @IMInternalModes/IMInternalModes.m\n M @IMInternalModes/summarize.m\n M @IMMeanDensityAnomalyModes/IMMeanDensityAnomalyModes.m\n M @IMSolver/solveWaveModesAtWavenumbers.m\n M @IMSolverSpectral/IMSolverSpectral.m\n M CHANGELOG.md\n M Documentation/BulkWaveBases.md\n M Documentation/ModeConvergenceAssessment.md\n M Documentation/WebsiteDocumentation/classes-v2/analytical-bases/index.md\n M Documentation/WebsiteDocumentation/classes-v2/index.md\n M Documentation/WebsiteDocumentation/classes-v2/solvers/index.md\n M ExamplesV2/AnalyticalGeostrophicZeroAPVModes.m\n M ExamplesV2/DiscreteTransformAlignedFG.m\n M ExamplesV2/DiscreteTransformCoupledProducts.m\n M ExamplesV2/DiscreteTransformCustomObjective.m\n M ExamplesV2/DiscreteTransformFixedPointQuadrature.m\n M ExamplesV2/DiscreteTransformPointLimited.m\n M ExamplesV2/DiscreteTransformProjectionChannels.m\n M ExamplesV2/DiscreteTransformQualityPolicies.m\n M ExamplesV2/FreeSurfaceGravityWaveModesExponentialStratification.m\n M ExamplesV2/GeostrophicGeneralizedPotentialEnstrophyModes.m\n M ExamplesV2/GeostrophicModesExponentialStratification.m\n M ExamplesV2/GeostrophicTransformComposition.m\n M ExamplesV2/GeostrophicZeroAPVModePenetrationDepth.m\n M ExamplesV2/GeostrophicZeroAPVModesExponentialStratification.m\n M ExamplesV2/HydrostaticModesExponentialStratification.m\n M ExamplesV2/MeanDensityAnomalyModes.m\n M ExamplesV2/QuadratureWeightRegularizationSweep.m\n M ExamplesV2/SurfaceGravityWaveModePenetrationDepth.m\n M ExamplesV2/UnifiedBasisAssessment.m\n M ExamplesV2/WaveVortexVerticalGridDesign.m\n M ExamplesV2/waveModeCountsByWavenumber.m\n M UnitTestsV2/IMAnalyticalGeostrophicZeroAPVModesTests.m\n M UnitTestsV2/IMBasisCollectionTests.m\n M UnitTestsV2/IMBulkBasisEvaluationTests.m\n M UnitTestsV2/IMBulkWaveModesTests.m\n M UnitTestsV2/IMConstantGeostrophicAPVAnalyticalTests.m\n M UnitTestsV2/IMConstantStratificationValidationTests.m\n M UnitTestsV2/IMDiscreteTransformAssessmentTests.m\n M UnitTestsV2/IMEigenvalueProblemEndpointCaseTests.m\n M UnitTestsV2/IMEigenvalueProblemRefactorTests.m\n M UnitTestsV2/IMExponentialGeostrophicAPVAnalyticalTests.m\n M UnitTestsV2/IMExponentialStratificationValidationTests.m\n M UnitTestsV2/IMGeostrophicAPVModesTests.m\n M UnitTestsV2/IMGeostrophicAPVTestSupport.m\n M UnitTestsV2/IMGeostrophicGeneralizedPotentialEnstrophyModesTests.m\n M UnitTestsV2/IMGeostrophicTransformSourceTests.m\n M UnitTestsV2/IMGeostrophicTransformTests.m\n M UnitTestsV2/IMGeostrophicZeroAPVModesTests.m\n M UnitTestsV2/IMHighResolutionAPVTests.m\n M UnitTestsV2/IMHydrostaticBoundaryConditionTests.m\n M UnitTestsV2/IMInitializationPreparationTests.m\n M UnitTestsV2/IMInternalModesDiscreteTransformPolicyTests.m\n M UnitTestsV2/IMInternalModesDiscreteTransformTests.m\n M UnitTestsV2/IMInternalModesInnerProductCatalogTests.m\n M UnitTestsV2/IMInternalModesQuadratureWeightFitTests.m\n M UnitTestsV2/IMMeanDensityAnomalyModesTests.m\n M UnitTestsV2/IMModeConvergenceTests.m\n M UnitTestsV2/IMModeOrientationTests.m\n M UnitTestsV2/IMModeRootPointTests.m\n M UnitTestsV2/IMProjectionOnGridTests.m\n M UnitTestsV2/IMProjectionTests.m\n M UnitTestsV2/IMQuadratureWeightFitTests.m\n M UnitTestsV2/IMSolverIntegrationWeightsTests.m\n M UnitTestsV2/IMSpectralCoordinateConsistencyTests.m\n M UnitTestsV2/IMSpectralWaveMomentumTests.m\n M UnitTestsV2/IMVariableWaveCountTests.m\n M UnitTestsV2/IMWaveInnerProductTests.m\n M tools/benchmarkBulkBasisEvaluation.m\n M tools/benchmarkBulkWaveModes.m\n M tools/runModeOrientationStudy.m\n M tools/wave-eigensolver-study/measurePartialWaveEigensolver.m\n M tools/wave-eigensolver-study/runWaveEigensolverCorrectnessStudy.m\n M tools/wave-eigensolver-study/runWaveEigensolverPartialStudy.m\n?? ExamplesV2/+IMBandwidthComparison/\n?? ExamplesV2/bandwidthCoordinateComparison.m\n?? UnitTestsV2/IMRotationParameterTests.m",
+    "solverPath": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-evp/@IMSolverSpectral/IMSolverSpectral.m"
+  }
+}

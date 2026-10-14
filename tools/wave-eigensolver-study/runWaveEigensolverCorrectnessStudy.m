@@ -24,7 +24,7 @@ for iProfile = 1:size(profiles,1)
     N2 = profiles{iProfile,2};
     for nEVP = options.resolutions
         for kappa = options.kappa
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=kappa,f0=f0,g=g, ...
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=kappa,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g, ...
                 surfaceBoundary=surface,bottomBoundary=bottom);
             solver = IMSolverSpectral(nEVP=nEVP,coordinateKind=options.coordinateKind).configuredForEVP(evp);
             [A,B,samples] = evp.assembleConfigured(solver);

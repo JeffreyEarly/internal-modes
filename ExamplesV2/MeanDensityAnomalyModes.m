@@ -20,7 +20,7 @@ N2 = @(z) N0*N0*exp(2*z/b);
 % Both endpoint parameters are finite, so both endpoints are active. The
 % bottom value gd=0 is the Neumann limit. Positive infinity would instead
 % impose G=0 and remove that endpoint from the generalized energy.
-evp = IMInternalModes.meanDensityAnomalyModes( ...
+evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0, ...
     N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
 nAvailableModes = 20;
 solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");

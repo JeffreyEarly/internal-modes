@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMAnalyticalSolution
 grand_parent: Analytical bases
-nav_order: 5
+nav_order: 7
 mathjax: true
 ---
 

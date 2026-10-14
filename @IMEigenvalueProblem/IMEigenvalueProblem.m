@@ -570,6 +570,27 @@ classdef IMEigenvalueProblem
     end
 
     methods (Hidden)
+        function [A,B,map] = prepareSolvePencil(~,~,A,B)
+            % Keep the public pencil unless a descriptor supplies stable solve units.
+            % The map declares native field sizes, coefficient expansion,
+            % and public eigenvalue conversion. A conversion may return
+            % values/qualified fields to preserve unresolved candidate order.
+            % Optional column and eigenvalue scales balance physical units.
+            map = struct("nativeFieldSizes",size(A,2),"hasInverseDepth",false, ...
+                "expandEigenvectors",@(V) V,"publicEigenvalues",@(V,lambda) lambda);
+        end
+
+        function [V,lambda] = prepareGeneralizedEigenpairs(self,~,~,B,V,lambda)
+            % Preserve scalar filtering, including subclass metric-mask dispatch.
+            valid = isfinite(real(lambda)) & isfinite(imag(lambda)) ...
+                & abs(imag(lambda)) < 1e-8*max(1,abs(real(lambda)));
+            V = real(V(:,valid));
+            lambda = real(lambda(valid));
+            valid = self.finiteGeneralizedEigenpairMask(V,B);
+            V = V(:,valid);
+            lambda = lambda(valid);
+        end
+
         function [A,B,samples] = assembleConfigured(self,solver)
             % Assemble using the explicitly supplied configured discretization.
             % Internal callers must configure this solver for the same domain

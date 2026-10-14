@@ -1,0 +1,9 @@
+columnLabel,quantity,variable,value,status
+1,eigenvalue,,0,measured
+1,equivalentDepth,,0,measured
+1,shape,F,2.37608470652828e-15,measured
+1,derivative,F,2.21812656774151e-15,measured
+1,h1,F,2.23165089087928e-15,measured
+1,shape,G,2.60282728995669e-15,measured
+1,derivative,G,2.37764245433091e-15,measured
+1,h1,G,2.3988136351451e-15,measured

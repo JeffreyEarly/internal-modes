@@ -38,7 +38,7 @@ bEffective = zeros(nK,1);
 
 for iK = 1:nK
     evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-        N2=N2,zDomain=zDomain,k=k(iK),f0=f0,g=g);
+        N2=N2,zDomain=zDomain,k=k(iK),rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
     basisSets{iK} = solver.solveEVP(evp,nModes=nAvailableModes);
     [zGrid{iK},gridDesigns{iK}] = basisSets{iK}.modeRootGrid(nPoints=Nz);
     representedModeCount(iK) = gridDesigns{iK}.representedModeCount;

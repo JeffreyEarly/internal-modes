@@ -26,7 +26,8 @@ Solve canonical geostrophic zero-APV boundary modes.
 
 ## Discussion
 
-  The operator is factored once for each distinct requested
-  horizontal wavenumber. Every requested unit endpoint response is solved
-  in the same multiple-right-hand-side operation. No
-  generalized-energy coefficient or rotation enters this solve.
+The operator is factored once for each distinct requested
+horizontal wavenumber. Every requested unit endpoint response is solved
+in the same multiple-right-hand-side operation. No
+generalized-energy coefficient or rotation enters this solve.
+The regular first-order F/G equations permit N2 to vanish.

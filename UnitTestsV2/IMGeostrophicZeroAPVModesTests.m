@@ -22,9 +22,9 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
     methods (Test)
         function constructorOwnsEndpointsRatherThanEnergyWeights(testCase)
             N2 = @(z) ones(size(z));
-            surface = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,endpoints="surface");
-            bottom = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,endpoints="bottom",surfaceBoundary="rigidLid");
-            both = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=[2 3]);
+            surface = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints="surface");
+            bottom = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints="bottom",surfaceBoundary="rigidLid");
+            both = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=[2 3]);
 
             testCase.verifyEqual(surface.endpoints,"surface")
             testCase.verifyEqual(bottom.endpoints,"bottom")
@@ -33,11 +33,11 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(both.modesPerWavenumber(),2)
             testCase.verifyFalse(isprop(surface,"g0"))
             testCase.verifyFalse(isprop(surface,"gd"))
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=0,k=2),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
-            testCase.verifyTrue(testCase.throwsAny(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,k=2,surfaceBoundary="bad")))
+            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=0,latitude=33,k=2),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
+            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
+            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
+            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
+            testCase.verifyTrue(testCase.throwsAny(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,surfaceBoundary="bad")))
         end
 
         function oldPublicNamesAreRemoved(testCase)
@@ -58,7 +58,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             surfaceCases = ["freeSurface" "rigidLid"];
             for iSurface = 1:numel(surfaceCases)
                 for iEndpoints = 1:numel(endpointCases)
-                    problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=[1e-4 2e-4],endpoints=endpointCases{iEndpoints},surfaceBoundary=surfaceCases(iSurface));
+                    problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=[1e-4 2e-4],endpoints=endpointCases{iEndpoints},surfaceBoundary=surfaceCases(iSurface));
                     basisSet = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
                     responses = testCase.endpointResponses(basisSet);
                     selectedRows = testCase.endpointRows(problem.endpoints);
@@ -76,7 +76,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function solverFactorsOncePerWavenumberAndUsesMultipleRightHandSides(testCase)
             N2 = @(z) ones(size(z));
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,g=2,k=[1 2 1 3 2]);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,k=[1 2 1 3 2]);
             counter = IMGeostrophicZeroAPVTestCounter();
             solver = IMInstrumentedGeostrophicZeroAPVSolver(nEVP=32,solveCounter=counter);
             basisSet = solver.solveGeostrophicZeroAPVModes(problem);
@@ -111,7 +111,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             z = linspace(zDomain(1),zDomain(2),101).';
             N2 = @(zIn) N0^2*ones(size(zIn));
             for surfaceBoundary = ["freeSurface" "rigidLid"]
-                problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k,surfaceBoundary=surfaceBoundary);
+                problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k,surfaceBoundary=surfaceBoundary);
                 basisSet = IMSolverSpectral(nEVP=72).solveGeostrophicZeroAPVModes(problem);
                 F = basisSet.F(z);
                 G = basisSet.G(z);
@@ -132,7 +132,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             N2 = @(z) N0^2*ones(size(z));
             z = linspace(zDomain(1),zDomain(2),12001).';
             for surfaceBoundary = ["freeSurface" "rigidLid"]
-                problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k,surfaceBoundary=surfaceBoundary);
+                problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k,surfaceBoundary=surfaceBoundary);
                 basisSet = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
                 F = basisSet.F(z);
                 G = basisSet.G(z);
@@ -182,7 +182,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function absentEndpointCoefficientIsIgnored(testCase)
             N2 = @(z) ones(size(z));
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,g=2,k=1,endpoints="surface");
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,k=1,endpoints="surface");
             basisSet = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(problem);
             testCase.verifyEqual(basisSet.bottomBuoyancyMatrix,zeros(1,1),AbsTol=0)
             testCase.verifyEqual(basisSet.generalizedEnergyMatrix(g0=3,gd=-1e9),basisSet.generalizedEnergyMatrix(g0=3,gd=0),AbsTol=0)
@@ -251,7 +251,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function surfaceRotationRequiresSurfaceEndpoint(testCase)
             N2 = @(z) ones(size(z));
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,g=2,k=1,endpoints="bottom");
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,k=1,endpoints="bottom");
             basisSet = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(problem);
             testCase.verifyError(@() basisSet.rotateSurfaceBuoyancy(),"IMGeostrophicZeroAPVModesBasis:SurfaceEndpointRequired")
         end
@@ -261,7 +261,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             f0 = 1e-4;
             zDomain = [-1000 0];
             N2 = @(z) N0^2*ones(size(z));
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,k=1e-4);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),k=1e-4);
             solver = IMSolverFiniteDifference(z=linspace(zDomain(1),zDomain(2),129).');
             basisSet = solver.solveGeostrophicZeroAPVModes(problem);
             responses = testCase.endpointResponses(basisSet);
@@ -278,7 +278,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             zDomain = [-4000 0];
             k = 2*pi/1e6;
             N2 = @(z) N0^2*exp(2*z/b);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k);
             coarse = IMSolverSpectral(nEVP=96).solveGeostrophicZeroAPVModes(problem);
             refined = IMSolverSpectral(nEVP=192).solveGeostrophicZeroAPVModes(problem);
             z = linspace(zDomain(1),zDomain(2),4001).';
@@ -301,8 +301,8 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
         function surfaceBoundaryMatchesAPVMetadataContract(testCase)
             N2 = @(z) ones(size(z));
             for surfaceBoundary = ["freeSurface" "rigidLid"]
-                zeroProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],f0=1,g=2,k=1,surfaceBoundary=surfaceBoundary);
-                apvProblem = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1 0],g=2,g0=3,gd=4,surfaceBoundary=surfaceBoundary);
+                zeroProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,k=1,surfaceBoundary=surfaceBoundary);
+                apvProblem = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1 0],g=2,g0=3,gd=4,surfaceBoundary=surfaceBoundary);
                 testCase.verifyEqual(zeroProblem.surfaceBoundary,apvProblem.parameters.surfaceBoundary)
             end
         end
@@ -314,7 +314,7 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             f0 = 1e-4;
             zDomain = [-1000 0];
             N2 = @(z) N0^2*ones(size(z));
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=9.81,k=k);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=9.81,k=k);
             basisSet = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
         end
 

@@ -27,7 +27,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     %
     % ```matlab
     % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
-    % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
+    % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain, rotationRate=solution.rotationRate, latitude=solution.latitude);
     % basisSet = solution.internalModes(evp,nModes=4);
     % exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
     % ```
@@ -54,17 +54,19 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             % - Declaration: solution = IMConstantStratificationSolution(options)
             % - Parameter options.N0: constant buoyancy frequency
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: nonnegative planetary rotation rate in radians per second
+            % - Parameter options.latitude: latitude in degrees north, between -90 and 90
             % - Parameter options.g: gravitational acceleration
             % - Returns solution: analytical solution family
             arguments
                 options.N0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 5.2e-3
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite} = [-1 0]
-                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
             end
 
-            self@IMAnalyticalSolution(zDomain=options.zDomain, f0=options.f0, g=options.g);
+            self@IMAnalyticalSolution(zDomain=options.zDomain, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g);
             self.N0 = options.N0;
         end
 
@@ -169,7 +171,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
                 options.metadata struct = struct()
             end
 
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) self.N2(z),zDomain=self.zDomain,f0=self.f0,g=self.g,k=k,endpoints=options.endpoints,surfaceBoundary=options.surfaceBoundary,metadata=options.metadata);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) self.N2(z),zDomain=self.zDomain,rotationRate=self.rotationRate,latitude=self.latitude,g=self.g,k=k,endpoints=options.endpoints,surfaceBoundary=options.surfaceBoundary,metadata=options.metadata);
             modeData = self.zeroAPVModeData(problem);
             metadata = options.metadata;
             metadata.analyticalSolution = "constantStratification";
@@ -199,7 +201,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     methods (Access = private)
         function evp = resolveEVP(self, evp)
             if isempty(evp)
-                evp = IMInternalModes.hydrostaticGModes(N2=@(z) self.N2(z), zDomain=self.zDomain, f0=self.f0, g=self.g);
+                evp = IMInternalModes.hydrostaticGModes(N2=@(z) self.N2(z), zDomain=self.zDomain, rotationRate=self.rotationRate, latitude=self.latitude, g=self.g);
                 return;
             end
             if ~isa(evp, "IMInternalModes")

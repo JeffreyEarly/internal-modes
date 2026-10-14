@@ -151,8 +151,8 @@ classdef IMGeostrophicTransform
             end
             zeroN2Values = zeroAPVModes.N2(apvTransform.z);
             zeroN2Values = zeroN2Values(:);
-            if numel(zeroN2Values) ~= numel(apvTransform.z) || any(~isfinite(zeroN2Values)) || any(zeroN2Values <= 0)
-                error("IMGeostrophicTransform:InvalidStratification", "zeroAPVModes.N2 must return one finite positive value for every APV sample point.");
+            if numel(zeroN2Values) ~= numel(apvTransform.z) || any(~isfinite(zeroN2Values)) || ~isreal(zeroN2Values) || any(zeroN2Values < 0)
+                error("IMGeostrophicTransform:InvalidStratification", "zeroAPVModes.N2 must return one finite real nonnegative value for every APV sample point.");
             end
             stratificationRelativeMismatch = self.relativeMismatch(apvTransform.N2Values,zeroN2Values);
             if stratificationRelativeMismatch > compatibilityTolerance

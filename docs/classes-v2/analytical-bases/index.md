@@ -12,10 +12,10 @@ Reference pages for constant- and exponential-stratification exact solution fami
 
 ## Capability follows the concrete class
 
-`IMAnalyticalSolution` stores the common domain, Coriolis parameter, gravity, and stratification interface. It does not advertise optional solution operations. A concrete analytical family exposes a formula by implementing its construction method directly:
+`IMAnalyticalSolution` stores the common domain, rotation rate, latitude, gravity, and stratification interface. Its `f0` property is derived from the rotation inputs. It does not advertise optional solution operations. A concrete analytical family exposes a formula by implementing its construction method directly:
 
 ```matlab
-solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-4000 0],f0=1e-4);
+solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-4000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
 internalModes = solution.internalModes(evp,nModes=8);
 boundaryModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
 ```

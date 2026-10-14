@@ -1,0 +1,146 @@
+{
+  "study": {
+    "cases": 7,
+    "candidateResolutions": [
+      64,
+      128
+    ],
+    "candidateCoordinateRows": 42,
+    "pairedCountRows": 14,
+    "smoothingLengthMeters": 147.77523446738553,
+    "referenceTolerance": 1e-07,
+    "candidateTolerance": 1e-05,
+    "quadraturePoints": 1025,
+    "quadratureConvergence": "not separately checked",
+    "primaryReferenceProtocolUnchanged": true
+  },
+  "focusedTests": {
+    "passed": 7,
+    "failed": 0,
+    "assertionRepair": "Constant-control expected h row/column shape corrected; only that failed method rerun"
+  },
+  "independentNeutralReference": {
+    "scope": "first mode only",
+    "ODEtolerances": [
+      1e-11,
+      1e-13
+    ],
+    "maximumH1Discrepancy": 2.3988136351451e-15,
+    "primaryCountGateReplaced": false
+  },
+  "codeAnalyzer": {
+    "files": [
+      "ExamplesV2/+IMBandwidthComparison/@SmoothedBandwidthSolver/SmoothedBandwidthSolver.m",
+      "UnitTestsV2/IMSmoothedBandwidthCoordinateTests.m",
+      "ExamplesV2/smoothedNeutralFirstModeCheck.m",
+      "ExamplesV2/bandwidthCoordinateComparison.m"
+    ],
+    "newFindings": 0
+  },
+  "preservation": {
+    "previouslyModifiedFilesAndOriginalArtifactsHashed": 129,
+    "unexpectedChanges": [],
+    "packageManifestUnchanged": true,
+    "productionCodeChangedInFollowup": false,
+    "legacySourceSnapshotsWVMChangedInFollowup": false,
+    "websiteSourcesOrGeneratedDocsChangedInFollowup": false
+  },
+  "whitespace": {
+    "gitDiffCheckPassed": true,
+    "newAndChangedFilesTrailingWhitespace": {
+      "ExamplesV2/+IMBandwidthComparison/@SmoothedBandwidthSolver/SmoothedBandwidthSolver.m": [],
+      "UnitTestsV2/IMSmoothedBandwidthCoordinateTests.m": [],
+      "ExamplesV2/smoothedNeutralFirstModeCheck.m": [],
+      "ExamplesV2/bandwidthCoordinateComparison.m": []
+    }
+  },
+  "reportLinks": {
+    "localCount": 21,
+    "missing": [],
+    "originalStudyForwardLinkChecked": true
+  },
+  "previousFullV2Baseline": {
+    "passed": 414,
+    "failed": 0,
+    "incomplete": 0,
+    "rerunInFollowup": false
+  },
+  "websiteBuild": "not required; API/website sources unchanged",
+  "recommendation": "Keep study-only; neutral first-mode improvement established at nEVP128, full-count gain unestablished and weak-exponential candidate-only prefixes suggest a higher-mode cost",
+  "originalControls": {
+    "paired-coordinate-comparison.csv": true,
+    "reference-validation.csv": true,
+    "physical-quadrature.csv": true,
+    "convergence-measurements.csv": {
+      "identical": true,
+      "originalRowCount": 31568,
+      "reproducedOriginalRowCount": 31568
+    },
+    "mode-matches.csv": {
+      "identical": true,
+      "originalRowCount": 3946,
+      "reproducedOriginalRowCount": 3946
+    }
+  },
+  "independentReadOnlyAudit": {
+    "passed": true,
+    "scope": "Piecewise shooting equations, derivative signs, analytic normalization, recorded numerical claims and first-mode-only qualification"
+  },
+  "visualInspection": {
+    "file": "neutral-coordinate-comparison.png",
+    "passed": true
+  },
+  "constantControlMaximumGridDifferenceMeters": 2.4868995751603507e-13,
+  "physicalZSupplement": {
+    "candidateResolutions": [
+      64,
+      128
+    ],
+    "referenceResolution": 1024,
+    "referenceModeCount": 126,
+    "quadrature": "Reused original 1025-point rule",
+    "referenceMask": "Reused original 512/1024 mask",
+    "summary": [
+      {
+        "profile": "neutralSurfaceLayer",
+        "family": "hydrostaticGModes",
+        "coordinate": "z",
+        "nEVP": "64",
+        "referenceNEVP": "1024",
+        "requestedCount": "62",
+        "returnedCount": "44",
+        "resolvedPrefix": "0",
+        "candidateOnlyDiagnosticPrefix": "0",
+        "referenceValidatedPrefix": "0",
+        "atCandidateCeiling": "0",
+        "inconclusive": "1",
+        "qualification": "original reference uncertainty; incomplete candidate inventory"
+      },
+      {
+        "profile": "neutralSurfaceLayer",
+        "family": "hydrostaticGModes",
+        "coordinate": "z",
+        "nEVP": "128",
+        "referenceNEVP": "1024",
+        "requestedCount": "126",
+        "returnedCount": "89",
+        "resolvedPrefix": "0",
+        "candidateOnlyDiagnosticPrefix": "0",
+        "referenceValidatedPrefix": "0",
+        "atCandidateCeiling": "0",
+        "inconclusive": "1",
+        "qualification": "original reference uncertainty; incomplete candidate inventory"
+      }
+    ],
+    "source": "ExamplesV2/neutralPhysicalZComparison.m",
+    "codeAnalyzerFindings": 0,
+    "existingEvidenceFilesHashed": 15,
+    "existingEvidenceChanged": [],
+    "trailingWhitespaceLines": [],
+    "visualInspectionPassed": [
+      "neutral-coordinate-comparison-with-z.png",
+      "neutral-mode-errors-with-z.png"
+    ],
+    "productionChanged": false
+  }
+}

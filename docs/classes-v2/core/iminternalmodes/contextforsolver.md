@@ -29,4 +29,4 @@ Return the internal-mode coefficient context.
 ## Discussion
 
   The returned context extends the canonical context with `N2`,
-  `f0`, `g`, and `formulation`.
+`rotationRate`, `latitude`, derived `f0`, `g`, and `formulation`.

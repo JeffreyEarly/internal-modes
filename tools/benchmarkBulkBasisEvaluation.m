@@ -14,7 +14,7 @@ nDistinct = 24;
 k = linspace(0.5e-4,5e-4,nDistinct);
 requested = [k fliplr(k)];
 solver = IMSolverSpectral(nEVP=nEVP);
-[collection,construction] = solver.solveWaveModesAtWavenumbers(requested,N2=@(z) 1e-4*(1+0.2*exp(z/300)),zDomain=[-1000 0],f0=1e-4,nModes=nModes);
+[collection,construction] = solver.solveWaveModesAtWavenumbers(requested,N2=@(z) 1e-4*(1+0.2*exp(z/300)),zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=nModes);
 z = linspace(-1000,0,nZ).';
 sampleChunkSize = 256;
 pageChunkSize = 8;

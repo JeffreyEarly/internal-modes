@@ -150,7 +150,7 @@ classdef IMModeConvergenceTests < matlab.unittest.TestCase
                 else
                     N2 = @(z) 1e-4*exp(2*z/700);
                 end
-                evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=kappa,f0=1e-4,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0));
+                evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=kappa,rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0));
                 basis = IMSolverSpectral(nEVP=64,coordinateKind="wkb").solveEVP(evp,nModes=6);
                 refined = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=6);
                 rule = IMSolverSpectral(nEVP=257).configuredForEVP(evp);
@@ -162,7 +162,7 @@ classdef IMModeConvergenceTests < matlab.unittest.TestCase
                 testCase.verifyTrue(all(result.measurements.status(rows)=="measured"));
                 testCase.verifyLessThan(max(result.measurements.value(rows)),1e-7);
                 if profile == "constant"
-                    exact = IMConstantStratificationSolution(N0=.01,zDomain=[-D 0],f0=1e-4).internalModes(evp,nModes=6);
+                    exact = IMConstantStratificationSolution(N0=.01,zDomain=[-D 0],rotationRate=1e-4/(2*sind(33)),latitude=33).internalModes(evp,nModes=6);
                     b = rmfield(b,"derivatives");
                     b.values = struct(F=exact.F(z),G=exact.G(z));
                     b.equivalentDepths = exact.h;

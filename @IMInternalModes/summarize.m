@@ -15,7 +15,9 @@ function summarize(self, solver)
 % ```text
 % Internal-mode context
 %   formulation: G
-%   f0: 0 s^-1
+%   rotationRate: 7.2921e-05 rad s^-1
+%   latitude: 33 degrees north
+%   f0: 7.94312e-05 s^-1
 %   g: 9.81 m s^-2
 %   equivalent depth: h = hFromEigenvalue(lambda)
 %   mode family: hydrostatic
@@ -76,6 +78,8 @@ end
 
 fprintf('\nInternal-mode context\n');
 fprintf('  formulation: %s\n', self.formulation);
+fprintf('  rotationRate: %s rad s^-1\n', formatNumber(self.rotationRate));
+fprintf('  latitude: %s degrees north\n', formatNumber(self.latitude));
 fprintf('  f0: %s s^-1\n', formatNumber(self.f0));
 fprintf('  g: %s m s^-2\n', formatNumber(self.g));
 fprintf('  equivalent depth: h = hFromEigenvalue(lambda)\n');
@@ -96,7 +100,7 @@ printNormalizationSummary(self);
 end
 
 function text = factoryParameterText(parameters)
-names = setdiff(string(fieldnames(parameters)), ["f0", "g", "formulation"], "stable");
+names = setdiff(string(fieldnames(parameters)), ["rotationRate", "latitude", "f0", "g", "formulation"], "stable");
 if isempty(names)
     text = "none";
 else

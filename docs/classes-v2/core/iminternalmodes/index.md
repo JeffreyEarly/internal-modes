@@ -58,11 +58,13 @@ G = basisSet.G(linspace(-4000,0,200).');
   + [`FfromGz`](/internal-modes/classes-v2/core/iminternalmodes/ffromgz.html) Diagnostic relation from `G` derivative to `F`.
   + [`GfromFz`](/internal-modes/classes-v2/core/iminternalmodes/gfromfz.html) Diagnostic relation from `F` derivative to `G`.
   + [`N2`](/internal-modes/classes-v2/core/iminternalmodes/n2.html) Buoyancy frequency squared function.
-  + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Coriolis parameter.
+  + [`f0`](/internal-modes/classes-v2/core/iminternalmodes/f0.html) Derived Coriolis parameter in radians per second.
   + [`formulation`](/internal-modes/classes-v2/core/iminternalmodes/formulation.html) Solved physical variable, `"F"` or `"G"`.
   + [`g`](/internal-modes/classes-v2/core/iminternalmodes/g.html) Gravitational acceleration.
   + [`hFromEigenvalue`](/internal-modes/classes-v2/core/iminternalmodes/hfromeigenvalue.html) Equivalent-depth conversion function.
+  + [`latitude`](/internal-modes/classes-v2/core/iminternalmodes/latitude.html) Central latitude in degrees north.
   + [`modeFamily`](/internal-modes/classes-v2/core/iminternalmodes/modefamily.html) Physical mode-family declaration.
+  + [`rotationRate`](/internal-modes/classes-v2/core/iminternalmodes/rotationrate.html) Planetary rotation rate in radians per second.
 + Inspect internal-mode inner products
   + [`innerProduct`](/internal-modes/classes-v2/core/iminternalmodes/innerproduct.html) Return the signed `F` or `G` inner-product recipe.
   + [`majorantInnerProduct`](/internal-modes/classes-v2/core/iminternalmodes/majorantinnerproduct.html) Return the induced positive Hilbert-majorant recipe.

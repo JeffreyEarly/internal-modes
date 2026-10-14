@@ -53,8 +53,8 @@ classdef IMInitializationPreparationTests < matlab.unittest.TestCase
 
         function preparedDerivativesMatchIndependentEvaluation(testCase)
             for kind=["z","wkb","density"]
-                firstEVP=IMInternalModes.hydrostaticGModes(N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0]);
-                secondEVP=IMInternalModes.hydrostaticGModes(N2=@(z)4e-4+0*z,zDomain=[-500 0]);
+                firstEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0]);
+                secondEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)4e-4+0*z,zDomain=[-500 0]);
                 first=IMSolverSpectral(nEVP=33,coordinateKind=kind).configuredForEVP(firstEVP);
                 original=first.differentiateGridValues(eye(33),2);
                 second=first.configuredForEVP(secondEVP);
@@ -75,7 +75,7 @@ classdef IMInitializationPreparationTests < matlab.unittest.TestCase
         end
 
         function repeatedCallsReusePreparationAndPreserveSubclassFallback(testCase)
-            evp=IMInternalModes.waveModesAtWavenumber(N2=@(z)1e-4+0*z,zDomain=[-1000 0],k=1e-4,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0));
+            evp=IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=@(z)1e-4+0*z,zDomain=[-1000 0],k=1e-4,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0));
             solver=IMSolverSpectral(nEVP=33).configuredForEVP(evp);
             basis=solver.solveEVP(evp,nModes=4);
             custom=IMBulkUnsupportedSpectralSolver(nEVP=33).solveEVP(evp,nModes=4);
@@ -124,7 +124,7 @@ classdef IMInitializationPreparationTests < matlab.unittest.TestCase
                 end
             end
             for boundary=boundaries(2:3)
-                evp=IMInternalModes.waveModesAtWavenumber(N2=@(z)1e-4+0*z,zDomain=[-1000 0],k=1e-4,surfaceBoundary=boundary{1});
+                evp=IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=@(z)1e-4+0*z,zDomain=[-1000 0],k=1e-4,surfaceBoundary=boundary{1});
                 basis=IMSolverSpectral(nEVP=33).solveEVP(evp,nModes=4);
                 for normalized=[false true]
                     terms=basis.endpointGramTerms(useNormalized=normalized);

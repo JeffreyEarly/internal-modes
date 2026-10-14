@@ -20,8 +20,8 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
     methods (Test)
         function analyticalHierarchyAdvertisesConcreteOperations(testCase)
-            constant = IMConstantStratificationSolution(f0=1);
-            exponential = IMExponentialStratificationSolution(f0=1);
+            constant = IMConstantStratificationSolution(rotationRate=1/(2*sind(33)),latitude=33);
+            exponential = IMExponentialStratificationSolution(rotationRate=1/(2*sind(33)),latitude=33);
 
             retiredMethods = ["internalMode"+"Availability", "sqg"+"Availability", "sqgModes"+"AtWavenumber"];
             for methodName = retiredMethods
@@ -39,7 +39,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function constantResponsesCoverEndpointsAndSurfaceConventions(testCase)
             [N0,f0,g,zDomain] = testCase.constantParameters();
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             endpointCases = {"surface","bottom",["surface" "bottom"]};
             for surfaceBoundary = ["freeSurface" "rigidLid"]
                 for iEndpoints = 1:numel(endpointCases)
@@ -58,7 +58,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function exponentialResponsesCoverEndpointsAndSurfaceConventions(testCase)
             [N0,b,f0,g,zDomain] = testCase.exponentialParameters();
-            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,f0=f0,g=g);
+            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             endpointCases = {"surface","bottom",["surface" "bottom"]};
             for surfaceBoundary = ["freeSurface" "rigidLid"]
                 for iEndpoints = 1:numel(endpointCases)
@@ -78,7 +78,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,f0,g,zDomain] = testCase.constantParameters();
             k = [1e-4 2.3e-4];
             z = linspace(zDomain(1),zDomain(2),81).';
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             for surfaceBoundary = ["freeSurface" "rigidLid"]
                 exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary=surfaceBoundary);
                 actualF = exactModes.F(z);
@@ -95,7 +95,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,b,f0,g,zDomain] = testCase.exponentialParameters();
             k = [1e-4 1.8e-4];
             z = linspace(zDomain(1),zDomain(2),81).';
-            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,f0=f0,g=g);
+            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             for surfaceBoundary = ["freeSurface" "rigidLid"]
                 exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary=surfaceBoundary);
                 actualF = exactModes.F(z);
@@ -112,7 +112,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,f0,g,zDomain] = testCase.constantParameters();
             k = 1.4e-4;
             z = linspace(zDomain(1),zDomain(2),41).';
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             exactSurface = solution.geostrophicZeroAPVModesAtWavenumber(k,endpoints="surface",surfaceBoundary="rigidLid");
 
             depth = diff(zDomain);
@@ -127,7 +127,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,f0,g,zDomain] = testCase.constantParameters();
             k = 1.7e-4;
             z = linspace(zDomain(1),zDomain(2),20001).';
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             for surfaceBoundary = ["freeSurface" "rigidLid"]
                 exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary=surfaceBoundary);
                 F = exactModes.F(z);
@@ -154,9 +154,9 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,f0,g,zDomain] = testCase.constantParameters();
             k = [1e-4 2e-4];
             N2 = @(z) N0*N0*ones(size(z));
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=f0,g=g);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k);
             numericalModes = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
             g0 = -0.03;
             gd = 0.01;
@@ -182,9 +182,9 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             [N0,b,f0,g,zDomain] = testCase.exponentialParameters();
             k = [1e-4 2e-4];
             N2 = @(z) N0*N0*exp(2*z/b);
-            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,f0=f0,g=g);
+            solution = IMExponentialStratificationSolution(N0=N0,b=b,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary="freeSurface");
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k,surfaceBoundary="freeSurface");
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k,surfaceBoundary="freeSurface");
             numericalModes = IMSolverSpectral(nEVP=128).solveGeostrophicZeroAPVModes(problem);
             z = linspace(zDomain(1),zDomain(2),101).';
 
@@ -195,8 +195,8 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
 
         function signedCoriolisLeavesStructuresInvariant(testCase)
             [N0,~,g,zDomain] = testCase.constantParameters();
-            positive = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=1e-4,g=g);
-            negative = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=-1e-4,g=g);
+            positive = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=1e-4/(2*sind(33)),latitude=33,g=g);
+            negative = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=1e-4/(2*sind(33)),latitude=-33,g=g);
             z = linspace(zDomain(1),zDomain(2),31).';
             positiveModes = positive.geostrophicZeroAPVModesAtWavenumber(1e-4);
             negativeModes = negative.geostrophicZeroAPVModesAtWavenumber(1e-4);
@@ -206,15 +206,15 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
         end
 
         function invalidRequestsThrowConcreteErrors(testCase)
-            constant = IMConstantStratificationSolution(f0=0);
+            constant = IMConstantStratificationSolution(rotationRate=0,latitude=33);
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
-            constant = IMConstantStratificationSolution(f0=1);
+            constant = IMConstantStratificationSolution(rotationRate=1/(2*sind(33)),latitude=33);
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,surfaceBoundary="other"),"MATLAB:validators:mustBeMember")
 
-            exponential = IMExponentialStratificationSolution(f0=0);
+            exponential = IMExponentialStratificationSolution(rotationRate=0,latitude=33);
             testCase.verifyError(@() exponential.geostrophicZeroAPVModesAtWavenumber(1),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
         end
     end

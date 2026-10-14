@@ -38,9 +38,9 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             N0 = 5e-3;
             zDomain = [-1000 0];
             N2 = @(z) N0^2*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
             numerical = IMSolverSpectral(nEVP=48).solveEVP(evp,nModes=3);
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0,zDomain=zDomain);
             analytical = solution.internalModes(evp,nModes=3);
             collection = IMBasisCollection({numerical,analytical},basisIndex=[2 1 2]);
             z = linspace(-1000,0,19).';
@@ -57,8 +57,8 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
         function waveKappaMappingsRejectApproximateSubstitution(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
             solver = IMSolverSpectral(nEVP=40);
-            basis1 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-4),nModes=3);
-            basis2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=2e-4),nModes=3);
+            basis1 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=1e-4),nModes=3);
+            basis2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=2e-4),nModes=3);
             collection = IMBasisCollection({basis1,basis2},kappa=[2e-4 1e-4 2e-4],basisIndex=[2 1 2]);
             testCase.verifyEqual(collection.kappa,[2e-4 1e-4 2e-4]);
             values = collection.evaluate([-700;-100],variable="F");
@@ -71,9 +71,9 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
 
         function boundaryPagesPreserveEndpointResponsesAndRotations(testCase)
             N0 = 5e-3;
-            solution = IMConstantStratificationSolution(N0=N0,zDomain=[-1000 0],f0=1e-4);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
             analytical = solution.geostrophicZeroAPVModesAtWavenumber([1e-4 2e-4]);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],f0=1e-4,k=[1e-4 2e-4]);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,k=[1e-4 2e-4]);
             numerical = IMSolverSpectral(nEVP=48).solveGeostrophicZeroAPVModes(problem);
             for basis = {analytical,numerical}
                 collection = IMBasisCollection(basis,basisIndex=[1 1 1],sourcePage=[2 1 2]);
@@ -102,8 +102,8 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
         function meanAndAPVBasesRetainTheirFamilyIdentity(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
             solver = IMSolverSpectral(nEVP=48);
-            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
-            mean = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
+            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
+            mean = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
             for basis = {apv,mean}
                 collection = IMBasisCollection(basis);
                 variable = string(basis{1}.evp.formulation);

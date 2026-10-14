@@ -15,7 +15,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
             D = 1000;
             N2 = @(z) 1e-4*ones(size(z));
             solver = IMSolverSpectral(nEVP=96);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]);
             testCase.basisSet = solver.solveEVP(evp,nModes=10);
             testCase.z = linspace(-D,0,21).';
             testCase.weights = [0.5;ones(19,1);0.5]*(D/20);
@@ -55,7 +55,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
         end
 
         function solvedGFormIsThePrimaryTransformVariable(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
             basis = IMSolverSpectral(nEVP=96).solveEVP(evp,nModes=6);
             transform = basis.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=4,variables=["F","G"],gramTolerance=1);
             coefficients = reshape(1:8,4,2);
@@ -124,7 +124,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
         end
 
         function unavailableContinuousAndCompanionEndpointChannelsExplainWhy(testCase)
-            wave = IMInternalModes.waveModesAtFrequency(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],omega=2e-3);
+            wave = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],omega=2e-3);
             waveSolver = IMSolverSpectral(nEVP=96);
             waveBasis = waveSolver.solveEVP(wave,nModes=3);
             testCase.verifyError(@() waveBasis.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=2,variables="F"), ...
@@ -134,7 +134,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifySubstring(waveTransform.forwardTransformReason(variable="F"),"continuous inner product")
             testCase.verifySize(waveTransform.inverseMatrix(variable="F"),[length(testCase.z) 2])
 
-            linked = IMInternalModes.hydrostaticFModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0], ...
+            linked = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0], ...
                 surfaceBoundary=IMBoundaryCondition(a=2,b=4,c=1,d=0));
             linkedSolver = IMSolverSpectral(nEVP=96);
             linkedBasis = linkedSolver.solveEVP(linked,nModes=3);
@@ -150,7 +150,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
         function apvMetadataPreservesEndpointParameters(testCase)
             g0 = -3.2;
             gd = 7.5;
-            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],g0=g0,gd=gd,surfaceBoundary="rigidLid");
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],g0=g0,gd=gd,surfaceBoundary="rigidLid");
             solver = IMSolverSpectral(nEVP=128);
             basis = solver.solveEVP(evp,nModes=4);
             transform = basis.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=3,variables="F",gramTolerance=10);
@@ -162,7 +162,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
         function sameVariableEndpointMetricsAreRepresentedAndDerivativeMetricsAreRejected(testCase)
             N2 = @(z) 1e-4*ones(size(z));
             g = 9.81;
-            sameVariableEVP = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1000 0],g=g, ...
+            sameVariableEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g=g, ...
                 surfaceBoundary=IMBoundaryCondition(a=2,b=3));
             solver = IMSolverSpectral(nEVP=96);
             basis = solver.solveEVP(sameVariableEVP,nModes=3);
@@ -171,7 +171,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
             expectedMetric(end,end) = expectedMetric(end,end)-3/(2*g);
             testCase.verifyEqual(transform.metricMatrix(variable="G"),expectedMetric,AbsTol=1e-13)
 
-            derivativeEVP = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1000 0], ...
+            derivativeEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1000 0], ...
                 surfaceBoundary=IMBoundaryCondition(a=1,b=0,c=0,d=1));
             derivativeBasis = solver.solveEVP(derivativeEVP,nModes=2);
             derivativeBasis.normalization = "unity";

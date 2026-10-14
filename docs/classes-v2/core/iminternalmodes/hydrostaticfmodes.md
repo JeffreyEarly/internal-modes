@@ -21,6 +21,8 @@ Create the hydrostatic `F` internal-mode EVP.
 ## Parameters
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface boundary condition
 + `options.bottomBoundary`  bottom boundary condition
@@ -98,6 +100,5 @@ Create the hydrostatic `F` internal-mode EVP.
   report which bilinear forms are known.
   The barotropic zero mode is inferred from the canonical left
   problem during mode selection.
-  This factory sets `parameters.formulation` and `parameters.g`;
-  `parameters.f0` is supplied by the internal-mode constructor
-  default.
+This factory forwards rotation metadata and sets
+`parameters.formulation`, derived `parameters.f0`, and `parameters.g`.

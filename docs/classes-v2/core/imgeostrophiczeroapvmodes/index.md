@@ -26,12 +26,11 @@ Describe canonical geostrophic zero-APV modes at fixed wavenumber.
 boundary-value problem
 
 $$
-\frac{\partial}{\partial z}\left(\frac{f_0^2}{N^2(z)}\frac{\partial F}{\partial z}\right)-k^2F=0,
-\qquad
-G(z)=-\frac{g}{N^2(z)}\frac{\partial F}{\partial z}.
+F_z=-\frac{N^2}{g}G,\qquad G_z=-\frac{gk^2}{f_0^2}F.
 $$
 
-The canonical response vector contains the requested subset of
+This pair is regular for finite nonnegative N2, including neutral
+intervals. The canonical response vector contains the requested subset of
 
 $$
 B_{\mathrm s}[F]=
@@ -51,7 +50,7 @@ $$
 \qquad
 \eta_d[F]=\frac{f_0}{g}B_{\mathrm d}[F].
 $$
-Equivalently, the physical endpoint functionals are
+For positive endpoint stratification, the same functionals can be written
 
 $$
 \eta_0[F]=
@@ -76,7 +75,7 @@ $$
 $$
 
 ```matlab
-problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],f0=1e-4,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
+problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],rotationRate=7.2921e-5,latitude=33,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
 solver = IMSolverSpectral(nEVP=128);
 boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
 depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0);
@@ -94,11 +93,13 @@ depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0);
 + Inspect geostrophic zero-APV problems
   + [`N2`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/n2.html) Buoyancy frequency squared function.
   + [`endpoints`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/endpoints.html) Canonically ordered endpoint coordinates.
-  + [`f0`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/f0.html) Coriolis parameter.
+  + [`f0`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/f0.html) Coriolis parameter in radians per second.
   + [`g`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/g.html) Gravitational acceleration.
   + [`k`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/k.html) Horizontal wavenumbers.
+  + [`latitude`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/latitude.html) in degrees north.
   + [`metadata`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/metadata.html) Additional creation metadata.
   + [`modesPerWavenumber`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/modesperwavenumber.html) Return the number of canonical modes for each wavenumber.
+  + [`rotationRate`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/rotationrate.html) Planetary rotation rate in radians per second.
   + [`surfaceBoundary`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/surfaceboundary.html) Surface endpoint convention.
   + [`zDomain`](/internal-modes/classes-v2/core/imgeostrophiczeroapvmodes/zdomain.html) Physical vertical domain.
 

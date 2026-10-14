@@ -123,6 +123,7 @@ classdef (Abstract) IMSolver
             % horizontal wavenumber. Every requested unit endpoint response is solved
             % in the same multiple-right-hand-side operation. No
             % generalized-energy coefficient or rotation enters this solve.
+            % The regular first-order F/G equations permit N2 to vanish.
             %
             % - Topic: Solve geostrophic zero-APV modes
             % - Declaration: basisSet = solveGeostrophicZeroAPVModes(solver,problem)
@@ -134,62 +135,85 @@ classdef (Abstract) IMSolver
             end
 
             solver = self.configuredForGeostrophicZeroAPVModes(problem);
+            if isa(solver,"IMSolverFiniteDifference")
+                solveSystems = @(matrix,rhs) solver.solveBoundaryValueSystems(matrix,rhs);
+                basisSet = IMGeostrophicFiniteDifferenceTools.solveZeroAPV(problem,solver,solveSystems);
+                return
+            end
             z = solver.zNative;
             n = length(z);
             D0 = solver.physicalDerivativeMatrix(0);
             D1 = solver.physicalDerivativeMatrix(1);
-            D2 = solver.physicalDerivativeMatrix(2);
             N2Values = problem.N2(z);
             N2Values = N2Values(:);
-            if length(N2Values) ~= n
-                error("IMGeostrophicZeroAPVModes:InvalidStratification", "N2 must return one value for each solver grid point.");
-            end
-            if any(~isfinite(N2Values)) || any(N2Values <= 0)
-                error("IMGeostrophicZeroAPVModes:InvalidStratification", "N2 must be finite and positive on the solver grid.");
+            if length(N2Values) ~= n || ~isreal(N2Values) || any(~isfinite(N2Values)) || any(N2Values < 0)
+                error("IMGeostrophicZeroAPVModes:InvalidStratification", "N2 must return one finite real nonnegative value for each solver grid point.");
             end
 
-            pValues = problem.f0^2 ./ N2Values;
-            pzValues = solver.differentiateGridValues(pValues, 1);
-            baseMatrix = diag(pValues)*D2 + diag(pzValues)*D1;
+            % The regular first-order pair remains valid in neutral layers.
+            % Replace one row per equation with unit endpoint responses.
+            % Keeping all rows of a first derivative is rank deficient when
+            % its coupling coefficient vanishes throughout the domain.
+            baseMatrix = [D1, diag(N2Values/problem.g)*D0; zeros(n), D1];
             surfaceIndex = solver.boundaryIndex("surface");
             bottomIndex = solver.boundaryIndex("bottom");
-            N2Surface = N2Values(surfaceIndex);
-            N2Bottom = N2Values(bottomIndex);
-
-            surfaceRow = D1(surfaceIndex,:);
+            surfaceRow = [zeros(1,n), D0(surfaceIndex,:)];
             if problem.surfaceBoundary == "freeSurface"
-                surfaceRow = surfaceRow + (N2Surface/problem.g)*D0(surfaceIndex,:);
+                surfaceRow(1:n) = -D0(surfaceIndex,:);
             end
-            bottomRow = D1(bottomIndex,:);
-
+            bottomRow = [zeros(1,n), D0(bottomIndex,:)];
             nEndpoints = numel(problem.endpoints);
-            rightHandSides = zeros(n,nEndpoints);
+            rightHandSides = zeros(2*n,nEndpoints);
             for iEndpoint = 1:nEndpoints
                 switch problem.endpoints(iEndpoint)
                     case "surface"
-                        rightHandSides(surfaceIndex,iEndpoint) = -N2Surface/problem.g;
+                        rightHandSides(surfaceIndex,iEndpoint) = 1;
                     case "bottom"
-                        rightHandSides(bottomIndex,iEndpoint) = -N2Bottom/problem.g;
+                        rightHandSides(n+bottomIndex,iEndpoint) = 1;
                 end
             end
 
             nK = numel(problem.k);
             nativeModes = zeros(n,nEndpoints,nK);
+            nativeGModes = zeros(n,nEndpoints,nK);
             solvedWavenumbers = zeros(1,nK);
             solvedModes = cell(1,nK);
             nSolved = 0;
+            degreeScale = solver.eigenproblemColumnScale(n);
             for iK = 1:nK
                 solvedIndex = find(solvedWavenumbers(1:nSolved) == problem.k(iK),1);
                 if isempty(solvedIndex)
-                    matrix = baseMatrix - problem.k(iK)^2*D0;
-                    matrix(surfaceIndex,:) = surfaceRow;
-                    matrix(bottomIndex,:) = bottomRow;
+                    a = problem.g*problem.k(iK)^2/problem.f0^2;
                     nSolved = nSolved + 1;
                     solvedWavenumbers(nSolved) = problem.k(iK);
-                    solvedModes{nSolved} = solver.solveBoundaryValueSystems(matrix,rightHandSides);
+                    if all(N2Values == 0)
+                        % Only constant F and affine G remain. Solve for F
+                        % and G at the bottom, avoiding a redundant pencil.
+                        sigma = double(problem.surfaceBoundary == "freeSurface");
+                        smallMatrix = [-(a*diff(problem.zDomain)+sigma), 1; 0, 1];
+                        smallRHS = rightHandSides([surfaceIndex,n+bottomIndex],:);
+                        response = solver.solveBoundaryValueSystems(smallMatrix,smallRHS);
+                        FValues = ones(n,1)*response(1,:);
+                        GValues = ones(n,1)*response(2,:)-a*(z(:)-problem.zDomain(1))*response(1,:);
+                        solvedModes{nSolved} = [D0\FValues; D0\GValues];
+                    else
+                        matrix = baseMatrix;
+                        matrix(n+(1:n),1:n) = a*D0;
+                        matrix(surfaceIndex,:) = surfaceRow;
+                        matrix(n+bottomIndex,:) = bottomRow;
+                        % Balance the physical F/G amplitudes before the
+                        % polynomial scaling and row equilibration.
+                        FScale = sqrt(max(N2Values)/(problem.g*a));
+                        columnScale = [FScale*degreeScale, degreeScale];
+                        matrix = matrix.*columnScale;
+                        rowScale = max(abs(matrix),[],2);
+                        rowScale(rowScale == 0) = 1;
+                        solvedModes{nSolved} = columnScale.'.*solver.solveBoundaryValueSystems(matrix./rowScale,rightHandSides./rowScale);
+                    end
                     solvedIndex = nSolved;
                 end
-                nativeModes(:,:,iK) = solvedModes{solvedIndex};
+                nativeModes(:,:,iK) = solvedModes{solvedIndex}(1:n,:);
+                nativeGModes(:,:,iK) = solvedModes{solvedIndex}(n+(1:n),:);
             end
 
             metadata = problem.metadata;
@@ -199,7 +223,7 @@ classdef (Abstract) IMSolver
             metadata.surfaceBoundary = problem.surfaceBoundary;
             metadata.modesPerWavenumber = nEndpoints;
             metadata.factorizations = nSolved;
-            basisSet = IMGeostrophicZeroAPVModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, metadata=metadata);
+            basisSet = IMGeostrophicZeroAPVModesBasis(problem=problem, solver=solver, nativeModes=nativeModes, nativeGModes=nativeGModes, metadata=metadata);
         end
     end
 
@@ -243,37 +267,58 @@ classdef (Abstract) IMSolver
             % Equilibrate the equations without changing the physical matrices
             % used for classification and diagnostics. Filter null modes in
             % this same equation scaling for scalar and bulk construction.
-            rowScale = max(max(abs(A),[],2),max(abs(B),[],2));
+            [solveA,solveB,map] = evp.prepareSolvePencil(self,A,B);
+            columnScale = zeros(1,size(solveA,2));
+            offset = 0;
+            for fieldSize = map.nativeFieldSizes
+                columnScale(offset+(1:fieldSize)) = self.eigenproblemColumnScale(fieldSize);
+                offset = offset+fieldSize;
+            end
+            physicalColumnScale = ones(1,size(solveA,2));
+            if isfield(map,"nativeColumnScale"), physicalColumnScale = map.nativeColumnScale; end
+            columnScale = columnScale.*physicalColumnScale;
+            % Equilibrate after balancing physical field units. Otherwise
+            % weak N2 can leave every interior row tiny beside boundary rows.
+            rowScale = max(max(abs(solveA.*physicalColumnScale),[],2),max(abs(solveB.*physicalColumnScale),[],2));
             rowScale(rowScale == 0) = 1;
-            solveB = B./rowScale;
-            columnScale = self.eigenproblemColumnScale(size(A,2));
-            [V, D] = eig((A./rowScale).*columnScale, solveB.*columnScale);
+            solveA = solveA./rowScale;
+            solveB = solveB./rowScale;
+            [V, D] = eig(solveA.*columnScale, solveB.*columnScale);
             % Recover the original native representation before filtering,
             % normalization, or any physical evaluation: c = S*y.
             V = columnScale.'.*V;
             costs.eigensolveSeconds = toc(timer);
             timer = tic;
             eigenvalues = diag(D);
-            valid = isfinite(real(eigenvalues)) & isfinite(imag(eigenvalues)) ...
-                & abs(imag(eigenvalues)) < 1e-8*max(1,abs(real(eigenvalues)));
-            if ~any(valid)
+            [V,solveEigenvalues] = evp.prepareGeneralizedEigenpairs(self,solveA,solveB,V,eigenvalues);
+            if isempty(solveEigenvalues)
                 error("IMSolver:NoValidEigenvalues", "%s", ...
-                    self.noValidEigenvalueMessage(evp, A, B, eigenvalues, valid));
+                    self.noValidEigenvalueMessage(evp, A, B, eigenvalues, false(size(eigenvalues))));
             end
-
-            V = real(V(:,valid));
-            eigenvalues = real(eigenvalues(valid));
-            familyValid = evp.finiteGeneralizedEigenpairMask(V,solveB);
-            V = V(:,familyValid);
-            eigenvalues = eigenvalues(familyValid);
-            if isempty(eigenvalues)
-                error("IMSolver:NoValidEigenvalues", ...
-                    "EVP ""%s"" produced no finite real eigenmode with nonzero metric action; every candidate lies in the numerical null space of B.",evp.name);
+            V = map.expandEigenvectors(V);
+            if isfield(map,"restoreEigenvalues")
+                solveEigenvalues = map.restoreEigenvalues(solveEigenvalues);
+            end
+            mapped = map.publicEigenvalues(V,solveEigenvalues);
+            if isstruct(mapped)
+                eigenvalues = mapped.values;
+                publicValid = mapped.qualified;
+            else
+                eigenvalues = mapped;
+                publicValid = true(size(eigenvalues));
             end
             selection = evp.selectModes(eigenvalues(:),nModes,self,A,diagnostics=diagnostics);
+            if any(~publicValid(selection.sortIndex))
+                first = find(~publicValid(selection.sortIndex),1);
+                error("IMGeostrophicModes:UnresolvedMode", ...
+                    "Requested mode %d failed eigenvalue qualification. Increase nEVP or request fewer modes; higher modes cannot replace it.",selection.modeNumber(first));
+            end
             eigenvalues = eigenvalues(selection.sortIndex);
             eigenvalues(selection.modeNumber == 0) = 0;
             V = V(:,selection.sortIndex);
+            if map.hasInverseDepth
+                selection.modeSelectionDiagnostics.geostrophicInverseDepth = reshape(solveEigenvalues(selection.sortIndex),1,[]);
+            end
             basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
                 selection.modeNumber, selection.modeSelectionDiagnostics);
             basisSet = basisSet.orientModeSigns();

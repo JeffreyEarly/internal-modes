@@ -59,13 +59,22 @@ classdef IMInternalModes < IMEigenvalueProblem
         % - Topic: Inspect internal-mode configuration
         N2
 
-        % Coriolis parameter.
+        % Planetary rotation rate in radians per second.
         %
-        % `f0` is stored in `parameters.f0` and is available to coefficient
-        % handles as `ctx.f0`.
+        % The default is Earth rotation, $$7.2921\times10^{-5}\ \mathrm{rad\,s^{-1}}$$.
+        % Set `rotationRate=0` for a nonrotating problem and the original
+        % `wkb` coordinate $$dx/dz=N$$.
         %
         % - Topic: Inspect internal-mode configuration
-        f0 = 0
+        rotationRate = 7.2921e-5
+
+        % Central latitude in degrees north.
+        %
+        % Southern-hemisphere latitudes are negative. Together with
+        % `rotationRate`, this determines $$f_0=2\Omega\sin\phi$$.
+        %
+        % - Topic: Inspect internal-mode configuration
+        latitude = 33
 
         % Gravitational acceleration.
         %
@@ -107,12 +116,27 @@ classdef IMInternalModes < IMEigenvalueProblem
         GfromFz = @(z,dFdz,h,ctx) -(ctx.g./ctx.N2(z(:))).*dFdz
     end
 
+    properties (Dependent, SetAccess = private)
+        % Derived Coriolis parameter in radians per second.
+        %
+        % $$f_0=2\Omega\sin\phi$$ is retained in `parameters.f0` and
+        % coefficient contexts as `ctx.f0`; it is not an independent input.
+        %
+        % - Topic: Inspect internal-mode configuration
+        f0
+    end
+
     methods
+        function value = get.f0(self)
+            value = 2*self.rotationRate*sind(self.latitude);
+        end
+
         function self = IMInternalModes(options)
             % Create an internal-mode canonical EVP.
             %
             % The constructor copies `options.parameters`, then writes the
-            % internal-mode fields `f0`, `g`, and `formulation` into the
+            % internal-mode fields `rotationRate`, `latitude`, derived
+            % `f0`, `g`, and `formulation` into the
             % parameter struct. These constructor-owned fields override
             % same-named entries in `options.parameters`.
             %
@@ -128,7 +152,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.r: canonical metric coefficient
             % - Parameter options.surfaceBoundary: surface boundary condition
             % - Parameter options.bottomBoundary: bottom boundary condition
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.hFromEigenvalue: equivalent-depth conversion
             % - Parameter options.FfromGz: diagnostic relation from `G` derivative to `F`
@@ -146,7 +171,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.r = @(z,~) ones(size(z))
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.hFromEigenvalue function_handle = @(lambda) 1 ./ lambda
                 options.FfromGz function_handle = @(z,dGdz,h,ctx) dGdz .* reshape(h, 1, [])
@@ -157,7 +183,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             formulation = string(options.formulation);
             modeFamily = string(options.modeFamily);
             parameters = options.parameters;
-            parameters.f0 = options.f0;
+            parameters.rotationRate = options.rotationRate;
+            parameters.latitude = options.latitude;
+            parameters.f0 = 2*options.rotationRate*sind(options.latitude);
             parameters.g = options.g;
             parameters.formulation = formulation;
 
@@ -167,7 +195,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             self.formulation = formulation;
             self.modeFamily = modeFamily;
             self.N2 = options.N2;
-            self.f0 = options.f0;
+            self.rotationRate = options.rotationRate;
+            self.latitude = options.latitude;
             self.g = options.g;
             self.hFromEigenvalue = options.hFromEigenvalue;
             self.FfromGz = options.FfromGz;
@@ -180,7 +209,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % Return the internal-mode coefficient context.
             %
             % The returned context extends the canonical context with `N2`,
-            % `f0`, `g`, and `formulation`.
+            % `rotationRate`, `latitude`, derived `f0`, `g`, and `formulation`.
             %
             % - Topic: Developer topics
             % - Declaration: context = contextForSolver(evp,solver)
@@ -194,6 +223,8 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             context = contextForSolver@IMEigenvalueProblem(self, solver);
             context.N2 = @(z) self.N2(z);
+            context.rotationRate = self.rotationRate;
+            context.latitude = self.latitude;
             context.f0 = self.f0;
             context.g = self.g;
             context.formulation = self.formulation;
@@ -397,7 +428,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Declaration: evp = IMInternalModes.hydrostaticGModes(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface boundary condition
             % - Parameter options.bottomBoundary: bottom boundary condition
@@ -405,7 +437,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
@@ -414,7 +447,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="hydrostatic", ...
                 N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
-                r=@(z,ctx) ctx.N2(z)/ctx.g, f0=options.f0, g=options.g, ...
+                r=@(z,ctx) ctx.N2(z)/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
         end
 
@@ -489,14 +522,15 @@ classdef IMInternalModes < IMEigenvalueProblem
             % report which bilinear forms are known.
             % The barotropic zero mode is inferred from the canonical left
             % problem during mode selection.
-            % This factory sets `parameters.formulation` and `parameters.g`;
-            % `parameters.f0` is supplied by the internal-mode constructor
-            % default.
+            % This factory forwards rotation metadata and sets
+            % `parameters.formulation`, derived `parameters.f0`, and `parameters.g`.
             %
             % - Topic: Create internal-mode EVPs
             % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface boundary condition
             % - Parameter options.bottomBoundary: bottom boundary condition
@@ -504,6 +538,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
@@ -512,17 +548,19 @@ classdef IMInternalModes < IMEigenvalueProblem
             evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="hydrostatic", ...
                 N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
-                r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, ...
+                r=@(z,ctx) ones(size(z))/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
         end
 
         function evp = geostrophicAPVModes(options)
             % Create signed generalized-energy geostrophic APV modes.
             %
-            % This factory creates the hydrostatic `F` problem
-            % $$-\frac{\partial}{\partial z}\left(\frac{1}{N^2}\frac{\partial F_j}{\partial z}\right)=\frac{F_j}{g h_j}$$
-            % with diagnostic relation
-            % $$G_j=-\frac{g}{N^2}\frac{\partial F_j}{\partial z}.$$
+            % Numerical solves use the regular paired problem
+            % $$F_j'=-N^2G_j/g,\qquad G_j'=F_j/h_j,$$
+            % valid for finite real nonnegative N2, including neutral intervals.
+            % The inherited scalar F coefficients describe its equivalent
+            % Sturm--Liouville problem where N2 is positive. Solved bases
+            % store both fields and never divide by N2 to evaluate G.
             % The endpoint accelerations `g0` and `gd` are required and
             % may be signed finite values, zero, or positive infinity.
             % Zero selects Dirichlet; positive infinity selects the
@@ -586,6 +624,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Declaration: evp = IMInternalModes.geostrophicAPVModes(options)
             % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
             % - Parameter options.zDomain: physical vertical domain in meters
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.g0: signed surface acceleration in meters per second squared
             % - Parameter options.gd: signed bottom acceleration in meters per second squared
@@ -594,6 +634,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.g0 (1,1) double {mustBeReal}
                 options.gd (1,1) double {mustBeReal}
@@ -631,28 +673,22 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             parameters = struct("g0", options.g0, "gd", options.gd, "surfaceBoundary", surfaceConvention);
-            evp = IMInternalModes(name="geostrophicAPVModes", formulation="F", modeFamily="hydrostatic", N2=options.N2, zDomain=options.zDomain, p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, g=options.g, surfaceBoundary=surfaceCondition, bottomBoundary=bottomCondition, parameters=parameters);
+            evp = IMGeostrophicModes(name="geostrophicAPVModes", formulation="F", modeFamily="hydrostatic", N2=options.N2, zDomain=options.zDomain, p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, surfaceBoundary=surfaceCondition, bottomBoundary=bottomCondition, parameters=parameters);
         end
 
         function evp = geostrophicGeneralizedPotentialEnstrophyModes(options)
             % Create free-surface generalized-potential-enstrophy modes.
             %
-            % At fixed positive horizontal wavenumber `k`, this factory
-            % creates the `F` problem
-            % $$
-            % -\frac{\partial}{\partial z}\left(\frac{f_0^2}{N^2}\frac{\partial F_j}{\partial z}\right)
-            % +k^2F_j=\Lambda_jF_j.
-            % $$
-            % A finite surface weight applies
-            % $$
-            % \frac{f_0^2}{N_s^2}F_j'(z_s)+\frac{f_0^2}{g}F_j(z_s)
-            % =\Lambda_j\frac{f_0^2}{\alpha_0}F_j(z_s),
-            % $$
-            % while a finite bottom weight applies
-            % $$
-            % \frac{f_0^2}{N_b^2}F_j'(z_b)
-            % =-\Lambda_j\frac{f_0^2}{\alpha_d}F_j(z_b).
-            % $$
+            % At fixed positive horizontal wavenumber `k`, numerical solves
+            % use the regular pair
+            % $$F_j'=-N^2G_j/g,\qquad G_j'=F_j/h_j,$$
+            % with public eigenvalue
+            % $$\Lambda_j=k^2+f_0^2/(g h_j).$$
+            % The endpoint conditions are
+            % $$\alpha_0(G_j(z_s)-F_j(z_s))=-g\Lambda_jF_j(z_s),$$
+            % $$\alpha_DG_j(z_b)=g\Lambda_jF_j(z_b).$$
+            % This formulation allows finite real nonnegative N2. Its
+            % inherited scalar coefficients apply where N2 is positive.
             % Positive infinity removes the corresponding eigenvalue-side
             % endpoint term. The default bottom is inactive. When `alpha0`
             % is omitted, the surface weight is
@@ -668,13 +704,16 @@ classdef IMInternalModes < IMEigenvalueProblem
             % +\frac{f_0^2}{\alpha_0}F_i(z_s)F_j(z_s)
             % +\frac{f_0^2}{\alpha_d}F_i(z_b)F_j(z_b)\right]=\delta_{ij},
             % $$
-            % with inactive terms omitted. The equivalent depth is the
-            % diagnostic quantity
-            % $$h_j=f_0^2/[g(\Lambda_j-k^2)].$$
+            % with inactive terms omitted. The equivalent depth is retained
+            % from the solved inverse depth, avoiding subtraction of nearly
+            % equal public eigenvalues; exact zero gives h=Inf. Public
+            % eigenvalues use a positive Rayleigh quotient. Fully neutral
+            % stratification requires an explicit alpha0 because its default
+            % stratification scale is undefined.
             %
             % ```matlab
             % evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-            %     N2=N2,zDomain=[-4000 0],k=2*pi/100e3,f0=1e-4);
+            %     N2=N2,zDomain=[-4000 0],k=2*pi/100e3,rotationRate=7.2921e-5,latitude=45);
             % basisSet = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=8);
             % ```
             %
@@ -683,7 +722,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
             % - Parameter options.zDomain: physical vertical domain in meters
             % - Parameter options.k: positive horizontal wavenumber in radians per meter
-            % - Parameter options.f0: nonzero Coriolis parameter in radians per second
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.alpha0: optional positive surface generalized-potential-enstrophy weight
             % - Parameter options.alphaD: positive bottom generalized-potential-enstrophy weight or `Inf`
@@ -692,13 +732,15 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.k (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.alpha0 double {mustBeReal} = zeros(0,1)
                 options.alphaD (1,1) double {mustBeReal} = Inf
             end
 
-            if options.f0 == 0
+            f0 = 2*options.rotationRate*sind(options.latitude);
+            if f0 == 0
                 error("IMInternalModes:InvalidCoriolisParameter", "f0 must be nonzero.");
             end
             if ~isempty(options.alpha0) && (~isscalar(options.alpha0) || isnan(options.alpha0) || options.alpha0 <= 0)
@@ -716,20 +758,27 @@ classdef IMInternalModes < IMEigenvalueProblem
                 exception = MException("IMInternalModes:InvalidStratificationScale", "N2 could not be integrated to determine the generalized-potential-enstrophy scale.");
                 throw(addCause(exception,cause))
             end
-            if ~isscalar(I1) || ~isreal(I1) || ~isfinite(I1) || I1 <= 0 ...
-                    || ~isscalar(I2) || ~isreal(I2) || ~isfinite(I2) || I2 <= 0
-                error("IMInternalModes:InvalidStratificationScale", "The integrals of N and N2 must be finite positive real scalars.");
+            if ~isscalar(I1) || ~isreal(I1) || ~isfinite(I1) || I1 < 0 ...
+                    || ~isscalar(I2) || ~isreal(I2) || ~isfinite(I2) || I2 < 0
+                error("IMInternalModes:InvalidStratificationScale", "The integrals of N and N2 must be finite nonnegative real scalars.");
             end
-            bEffective = I1*I1/(4*I2);
+            if I2 == 0
+                if isempty(options.alpha0)
+                    error("IMInternalModes:UndefinedStratificationScale", "Fully neutral stratification requires an explicit alpha0.");
+                end
+                bEffective = NaN;
+            else
+                bEffective = I1*I1/(4*I2);
+            end
             if isempty(options.alpha0)
-                alpha0 = options.f0*options.f0/bEffective;
+                alpha0 = f0*f0/bEffective;
                 alpha0Source = "stratification";
             else
                 alpha0 = options.alpha0;
                 alpha0Source = "explicit";
             end
 
-            f02 = options.f0*options.f0;
+            f02 = f0*f0;
             if isinf(alpha0)
                 surfaceCondition = IMBoundaryCondition(a=-f02/options.g,b=1);
             else
@@ -742,16 +791,15 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
 
             k = options.k;
-            f0 = options.f0;
             g = options.g;
             parameters = struct("k",k,"alpha0",alpha0,"alphaD",options.alphaD, ...
                 "bEffective",bEffective,"alpha0Source",alpha0Source);
-            evp = IMInternalModes(name="geostrophicGeneralizedPotentialEnstrophyModes", ...
+            evp = IMGeostrophicModes(name="geostrophicGeneralizedPotentialEnstrophyModes", ...
                 formulation="F",modeFamily="none",N2=options.N2,zDomain=zDomain, ...
                 p=@(z,ctx) ctx.f0*ctx.f0./ctx.N2(z), ...
                 q=@(z,ctx) ctx.k*ctx.k*ones(size(z)),r=@(z,~) ones(size(z)), ...
                 surfaceBoundary=surfaceCondition,bottomBoundary=bottomCondition, ...
-                f0=f0,g=g,hFromEigenvalue=@(lambda) f0*f0./(g*(lambda-k*k)),parameters=parameters);
+                rotationRate=options.rotationRate,latitude=options.latitude,g=g,hFromEigenvalue=@(lambda) f0*f0./(g*(lambda-k*k)),parameters=parameters);
         end
 
         function evp = meanDensityAnomalyModes(options)
@@ -814,6 +862,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Declaration: evp = IMInternalModes.meanDensityAnomalyModes(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.g0: signed finite surface acceleration, zero, or positive infinity
             % - Parameter options.gd: signed finite bottom acceleration, zero, or positive infinity
@@ -821,12 +871,14 @@ classdef IMInternalModes < IMEigenvalueProblem
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.g0 (1,1) double {mustBeReal}
                 options.gd (1,1) double {mustBeReal}
             end
 
-            evp = IMMeanDensityAnomalyModes(N2=options.N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd);
+            evp = IMMeanDensityAnomalyModes(N2=options.N2,zDomain=options.zDomain,rotationRate=options.rotationRate, latitude=options.latitude, g=options.g,g0=options.g0,gd=options.gd);
         end
 
         function evp = waveModesAtWavenumber(options)
@@ -893,7 +945,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.k: horizontal wavenumber
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface boundary condition
             % - Parameter options.bottomBoundary: bottom boundary condition
@@ -902,7 +955,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.k (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
@@ -914,7 +968,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
-                f0=options.f0, g=options.g, ...
+                rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 GfromFz=GfromFz, parameters=parameters);
         end
@@ -984,7 +1038,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.omega: wave frequency
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.surfaceBoundary: surface boundary condition
             % - Parameter options.bottomBoundary: bottom boundary condition
@@ -993,7 +1048,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.omega (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
@@ -1005,7 +1061,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g, ...
-                f0=options.f0, g=options.g, ...
+                rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
                 GfromFz=GfromFz, parameters=parameters);
         end

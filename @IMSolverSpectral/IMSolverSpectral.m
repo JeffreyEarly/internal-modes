@@ -37,6 +37,12 @@ classdef IMSolverSpectral < IMSolver
         % Native coordinate kind.
         %
         % `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
+        % stretch uses $$dx/dz=\sqrt{B}$$, where
+        % $$B=\sqrt{(N^2+\tilde f^2-f_0^2)^2+4f_0^2\tilde f^2}$$
+        % and $$\tilde f=2\Omega\cos\phi$$ uses the full horizontal
+        % rotation component. At `rotationRate=0` this reduces to $$dx/dz=N$$.
+        % This numerical monitor does not add nontraditional wave dynamics.
+        % The `"wkb"`
         % and `"density"` coordinates require an `IMInternalModes` EVP or
         % `IMGeostrophicZeroAPVModes` problem because their coordinate maps
         % use the problem-owned `N2` profile.
@@ -114,6 +120,10 @@ classdef IMSolverSpectral < IMSolver
         % - Topic: Developer topics
         % - Developer: true
         N2Function = []
+
+        % Rotation metadata used to construct the native coordinate.
+        coordinateRotationRate = 0
+        coordinateLatitude = 33
     end
 
     methods
@@ -155,6 +165,12 @@ classdef IMSolverSpectral < IMSolver
 
             solver = self;
             solver.zDomain = evp.zDomain;
+            solver.coordinateRotationRate = 0;
+            solver.coordinateLatitude = 33;
+            if isa(evp,"IMInternalModes")
+                solver.coordinateRotationRate = evp.rotationRate;
+                solver.coordinateLatitude = evp.latitude;
+            end
             if solver.coordinateKind == "z"
                 solver.N2Function = [];
             elseif isa(evp, "IMInternalModes")
@@ -184,6 +200,8 @@ classdef IMSolverSpectral < IMSolver
             solver = self;
             solver.zDomain = problem.zDomain;
             solver.N2Function = @(z) problem.N2(z);
+            solver.coordinateRotationRate = problem.rotationRate;
+            solver.coordinateLatitude = problem.latitude;
             solver = solver.setupCoordinate();
             solver = solver.setupNativeGrid();
         end
@@ -626,7 +644,18 @@ classdef IMSolverSpectral < IMSolver
             profileFunction = self.N2Function;
             switch self.coordinateKind
                 case "z", derivativeFunction = @(z) ones(size(z));
-                case "wkb", derivativeFunction = @(z) sqrt(profileFunction(z));
+                case "wkb"
+                    N2Reference = profileFunction(self.zReference);
+                    if ~isreal(N2Reference) || any(~isfinite(N2Reference)) || any(N2Reference < 0)
+                        error("IMSolverSpectral:InvalidCoordinate","The wkb coordinate requires finite real nonnegative N2.");
+                    end
+                    if self.coordinateRotationRate == 0
+                        derivativeFunction = @(z) sqrt(profileFunction(z));
+                    else
+                        f0 = 2*self.coordinateRotationRate*sind(self.coordinateLatitude);
+                        horizontalCoriolis = 2*self.coordinateRotationRate*cosd(self.coordinateLatitude);
+                        derivativeFunction = @(z) sqrt(hypot(profileFunction(z)+horizontalCoriolis^2-f0^2,2*f0*horizontalCoriolis));
+                    end
                 case "density", derivativeFunction = profileFunction;
             end
             self.qReference = derivativeFunction(self.zReference);

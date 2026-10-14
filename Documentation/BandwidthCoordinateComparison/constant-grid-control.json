@@ -1,0 +1,14 @@
+[
+  {
+    "nEVP": 64,
+    "maxPhysicalGridDifference": 2.4868995751603507E-13,
+    "tolerance": 1E-10,
+    "passed": true
+  },
+  {
+    "nEVP": 128,
+    "maxPhysicalGridDifference": 2.4868995751603507E-13,
+    "tolerance": 1E-10,
+    "passed": true
+  }
+]

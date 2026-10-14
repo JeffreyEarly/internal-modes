@@ -86,8 +86,8 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             zNative = options.solver.zNative;
             N2Values = options.evp.N2(zNative);
             N2Values = N2Values(:);
-            if numel(N2Values) ~= numel(zNative) || any(~isfinite(N2Values)) || any(N2Values <= 0)
-                error("IMMeanDensityAnomalyModesBasis:InvalidStratification", "N2 must return one finite positive value for each solver grid point.");
+            if numel(N2Values) ~= numel(zNative) || any(~isfinite(N2Values)) || ~isreal(N2Values) || any(N2Values < 0)
+                error("IMMeanDensityAnomalyModesBasis:InvalidStratification", "N2 must return one finite real nonnegative value for each solver grid point.");
             end
             GNativeValues = options.solver.evaluateNativeModes(options.nativeModes,zNative);
             self.nativeFModes = options.solver.integrateGridValuesFromSurface((N2Values/options.evp.g).*GNativeValues);

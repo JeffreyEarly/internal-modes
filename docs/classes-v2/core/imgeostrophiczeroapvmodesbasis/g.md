@@ -27,5 +27,5 @@ Evaluate diagnostic displacement structures $$G(z)$$.
 
 ## Discussion
 
-  The result has dimensions `nZ x nEndpoints x nSelectedPages` and uses
-  $$G=-gN^{-2}\partial_zF$$.
+The result has dimensions `nZ x nEndpoints x nSelectedPages`.
+G is stored with F and remains regular where N2 is zero.

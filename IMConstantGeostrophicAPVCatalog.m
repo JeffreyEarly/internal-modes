@@ -200,22 +200,8 @@ classdef (Sealed, Hidden) IMConstantGeostrophicAPVCatalog
         end
 
         function [negativeCount, zeroPresent, matrix] = endpointInertia(endpoint)
-            if endpoint.surfaceKind == "active" && endpoint.bottomKind == "active"
-                matrix = [1 + endpoint.IN*endpoint.betaSurface, -1; -1, 1 + endpoint.IN*endpoint.betaBottom];
-                eigenvalues = eig(matrix);
-            elseif endpoint.surfaceKind == "dirichlet" && endpoint.bottomKind == "active"
-                matrix = 1 + endpoint.IN*endpoint.betaBottom;
-                eigenvalues = matrix;
-            elseif endpoint.surfaceKind == "active" && endpoint.bottomKind == "dirichlet"
-                matrix = 1 + endpoint.IN*endpoint.betaSurface;
-                eigenvalues = matrix;
-            else
-                matrix = zeros(0,0);
-                eigenvalues = zeros(0,1);
-            end
-            tolerance = 1e3*eps(max([1; abs(eigenvalues(:))]));
-            negativeCount = nnz(eigenvalues < -tolerance);
-            zeroPresent = any(abs(eigenvalues) <= tolerance);
+            [negativeCount,zeroPresent,matrix] = IMGeostrophicAPVEndpointInertia(endpoint.IN, ...
+                endpoint.betaSurface,endpoint.betaBottom,endpoint.surfaceKind=="active",endpoint.bottomKind=="active");
         end
 
         function coefficients = zeroCoefficients(endpoint)

@@ -3,7 +3,7 @@ layout: default
 title: summarize
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 19
+nav_order: 21
 mathjax: true
 ---
 
@@ -37,7 +37,9 @@ Print a readable internal-mode EVP summary.
   ```text
   Internal-mode context
     formulation: G
-    f0: 0 s^-1
+  rotationRate: 7.2921e-05 rad s^-1
+  latitude: 33 degrees north
+  f0: 7.94312e-05 s^-1
     g: 9.81 m s^-2
     equivalent depth: h = hFromEigenvalue(lambda)
     mode family: hydrostatic

@@ -27,9 +27,9 @@ N2 = @(z) 1e-4*(1+0.2*exp(z/300));
 distinctKappa = linspace(1e-4,1e-3,8);
 kappa = repmat(distinctKappa,1,2);
 solver = IMSolverSpectral(nEVP=options.nEVP,coordinateKind=options.coordinateKind);
-factory = @(k) IMInternalModes.waveModesAtWavenumber(k=k,N2=N2,zDomain=[-1000 0],f0=1e-4);
+factory = @(k) IMInternalModes.waveModesAtWavenumber(k=k,N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
 solver.solveEVP(factory(kappa(1)),nModes=options.nModes);
-solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],f0=1e-4,nModes=options.nModes);
+solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=options.nModes);
 scalarSeconds = zeros(options.repetitions,1);
 scalarDistinctSeconds = scalarSeconds;
 bulkSeconds = scalarSeconds;
@@ -46,7 +46,7 @@ for i = 1:options.repetitions
     end
     scalarDistinctSeconds(i) = toc(timer);
     timer = tic;
-    [~,bulkDiagnostics{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],f0=1e-4,nModes=options.nModes);
+    [~,bulkDiagnostics{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=options.nModes);
     bulkSeconds(i) = toc(timer);
 end
 report = struct("nEVP",options.nEVP,"nModes",options.nModes,"coordinateKind",options.coordinateKind,"kappa",kappa, ...

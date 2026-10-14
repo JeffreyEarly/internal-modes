@@ -24,9 +24,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 24).';
 
@@ -44,9 +44,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
             freeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
 
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
 
             testCase.verifyEqual(basisSet.modeNumber(1), -1)
@@ -58,9 +58,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
@@ -77,8 +77,8 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
@@ -92,8 +92,8 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
@@ -110,8 +110,8 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3);
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
 
             basisSet = solution.internalModes(evp, nModes=2);
 
@@ -124,9 +124,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=[-4000 0]);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=[-4000 0]);
 
             testCase.verifyError(@() solution.internalModes(evp, nModes=2), "IMExponentialStratificationSolution:DomainMismatch")
         end
@@ -136,9 +136,9 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, bottomBoundary=IMBoundaryCondition.neumann());
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, bottomBoundary=IMBoundaryCondition.neumann());
 
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
 
             testCase.verifyError(@() solution.internalModes(evp, nModes=2), "IMExponentialStratificationSolution:UnsupportedBoundary")
         end
@@ -150,7 +150,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             k = [1e-4 2e-4];
             z = linspace(zDomain(1), zDomain(2), 9).';
-            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain, f0=f0);
+            solution = IMExponentialStratificationSolution(N0=N0, b=b, zDomain=zDomain, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
 
             exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary="rigidLid");
 

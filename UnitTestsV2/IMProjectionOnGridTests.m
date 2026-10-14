@@ -20,7 +20,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.metricMatrix,old.metricMatrix,AbsTol=1e-12)
             testCase.verifyEqual(projection.targetGramMatrix,old.targetGramMatrix,AbsTol=1e-12)
             testCase.verifyEqual(projection.forwardMatrix,old.forwardMatrix,AbsTol=1e-11)
-            evp = IMInternalModes.hydrostaticFModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             aligned = solver.solveEVP(evp,nModes=4);
             old = aligned.discreteTransform(z=z,weights=weights,nModes=4,gramTolerance=1);
             for variable = ["F","G"]
@@ -31,8 +31,8 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             end
         end
         function analyticalRecipesRetainNormalizationAndReferenceProvenance(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
-            basis = IMConstantStratificationSolution(N0=0.01,zDomain=[-1000 0]).internalModes(evp,nModes=4);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
+            basis = IMConstantStratificationSolution(rotationRate=0,N0=0.01,zDomain=[-1000 0]).internalModes(evp,nModes=4);
             collection = IMBasisCollection({basis});
             z = linspace(-1000,0,21).';
             weights = [0.5;ones(19,1);0.5]*50;
@@ -64,10 +64,10 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
         end
         function signedAlignedAndMDAKeepDistinctCapabilities(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=-0.04,gd=0.03);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=-0.04,gd=0.03);
             solver = IMSolverSpectral(nEVP=64);
             numerical = solver.solveEVP(evp,nModes=4);
-            analytical = IMConstantStratificationSolution(N0=0.01,zDomain=[-1000 0]).internalModes(evp,nModes=4);
+            analytical = IMConstantStratificationSolution(rotationRate=0,N0=0.01,zDomain=[-1000 0]).internalModes(evp,nModes=4);
             for basis = {numerical,analytical}
                 recipe = basis{1}.projectionRecipe(variable="G");
                 testCase.verifyTrue(recipe.isAvailable)
@@ -76,7 +76,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
                 testCase.verifyEqual(recipe.targetGramMatrix,basis{1}.gramMatrix(variable="G"),AbsTol=1e-12)
                 testCase.verifyEqual(recipe.majorantGramMatrix,basis{1}.majorantGramMatrix(variable="G"),AbsTol=1e-12)
             end
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-1000 0],g0=-0.04,gd=0.03);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=-0.04,gd=0.03);
             basis = solver.solveEVP(evp,nModes=4);
             recipe = basis.projectionRecipe(variable="G");
             testCase.verifyTrue(recipe.isAvailable)
@@ -84,10 +84,10 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             testCase.verifyFalse(basis.projectionRecipe(variable="F").isAvailable)
         end
         function zeroAPVRecipesPreserveEndpointLabelsAndRejectScalarProjection(testCase)
-            options = namedargs2cell(struct("N2",@(z) 1e-4*ones(size(z)),"zDomain",[-1000 0],"f0",1e-4,"k",[1e-4 2e-4],"endpoints",["surface","bottom"]));
+            options = namedargs2cell(struct("N2",@(z) 1e-4*ones(size(z)),"zDomain",[-1000 0],"rotationRate",1e-4/(2*sind(33)),"latitude",33,"k",[1e-4 2e-4],"endpoints",["surface","bottom"]));
             problem = IMGeostrophicZeroAPVModes.atWavenumber(options{:});
             numerical = IMSolverSpectral(nEVP=48).solveGeostrophicZeroAPVModes(problem);
-            analytical = IMConstantStratificationSolution(N0=0.01,zDomain=[-1000 0],f0=1e-4).geostrophicZeroAPVModesAtWavenumber([1e-4 2e-4],endpoints=["surface","bottom"]);
+            analytical = IMConstantStratificationSolution(N0=0.01,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33).geostrophicZeroAPVModesAtWavenumber([1e-4 2e-4],endpoints=["surface","bottom"]);
             for basis = {numerical,analytical}
                 recipe = basis{1}.projectionRecipe(variable="F");
                 testCase.verifyFalse(recipe.isAvailable)

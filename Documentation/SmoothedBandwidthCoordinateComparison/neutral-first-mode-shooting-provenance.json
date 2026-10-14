@@ -1,0 +1,20 @@
+{
+  "smoothingLength": 147.77523446738553,
+  "method": "Exact linear neutral cap and constant-N deep solution; ode113 on quintic ramp; bracketed first-mode shooting in c=sqrt(g*h)",
+  "cBracket": [
+    1.4,
+    1.6
+  ],
+  "relativeTolerances": [
+    1E-11,
+    1E-13
+  ],
+  "shootingH": 0.22448601977595919,
+  "derivativeRule": "Gz from integrated state; F=h*Gz; Fz=-N2*G/g exactly",
+  "normalization": "geostrophic: integral N2*G^2/g=1, augmented ODE on ramp and analytic integral in deep layer",
+  "referenceIndependent": "No spectral eigenvalues or eigenvectors used to compute shooting mode; bracket chosen for the first positive mode, checked for no interior zeros",
+  "noInteriorZeros": true,
+  "bottomResidual": -2.6974661480834928E-12,
+  "quadrature": "Same 1025-point physical-z rule as primary study; quadrature convergence unverified",
+  "scope": "Supplemental first-mode diagnostic only; does not replace primary 384/512 then 512/1024 reference gate or certify a complete mode count"
+}

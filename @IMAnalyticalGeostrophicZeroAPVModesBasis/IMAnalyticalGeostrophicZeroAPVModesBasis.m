@@ -22,7 +22,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
     % the same pagewise column map to both exact variables.
     %
     % ```matlab
-    % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-4000 0],f0=1e-4);
+    % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-4000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
     % exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
     % depthModes = exactModes.rotateBoundaryDepth(g0=-0.03,gd=0.01);
     % ```

@@ -8,6 +8,20 @@ nav_order: 100
 
 ## Unreleased
 
+- Solve V2 generalized-energy/APV and generalized-potential-enstrophy modes as regular paired F/G problems for nonnegative stratification, including neutral intervals. Preserve public eigenvalue units and F projection; retain solved inverse depths for stable equivalent depths and use a positive Rayleigh quotient for enstrophy eigenvalues.
+- Extend numerical zero-APV endpoint responses, mean-density-anomaly modes, and composed geostrophic transforms to neutral stratification. Reduce fully neutral finite families explicitly and retain signed modes and physical null-space exclusions without introducing a stratification floor.
+- Use conservative staggered F/G finite differences for the paired geostrophic problems and zero-APV responses, avoiding alternating-grid eigenmodes while preserving the discrete Rayleigh identity.
+- Add independent regular-equation references and a neutral-layer readiness report. Independent zero-energy neutral-label states and the coordinate-grid comparison rerun remain outside this change.
+- Replace V2 public `f0` inputs with `rotationRate` and `latitude`, matching the WaveVortexModel base defaults of Earth rotation and 33 degrees north. Retain derived read-only `f0` in physical coefficient contexts; use `rotationRate=0` for the former nonrotating default.
+- Use the square root of the local squared-frequency bandwidth for the V2 `wkb` coordinate. Retain one consistent Chebfun map and calculus, recover the original N stretch at zero rotation, and support neutral layers when the monitor remains positive without changing the physical EVP.
+- Add a bounded legacy-versus-bandwidth coordinate study reporting independently qualified consecutive resolved-mode counts before broader adoption.
+
+## [2.0.0-beta.7] - 2026-09-14
+
+- Add `assessQuadraticDealiasing` for inexpensive `none`, `fixedFraction`, and `effectiveBandwidth` policies on common-coordinate F/G samples or Chebyshev coefficients. Return per-mode spectral evidence and masks while leaving model-specific prefix selection to callers.
+- Use independently scaled channel energy and bounded FFT batches without new dependencies, eigenproblems, or pairwise product surveys. Preserve nonzero coefficient tails at full energy coverage and report small tail energies without cancellation.
+- Document the heuristic's coordinate, sampling, and complexity contract; add focused polynomial, scale-invariance, empty-inventory, batching, and tiny-tail regressions.
+
 ## [2.0.0-beta.6] - 2026-09-14
 
 - Skip unused sampled differentiation during built-in spectral G-mode sign orientation when every surface value already determines the sign. Retain the original full-width derivative calculation for derivative-dependent modes and preserve custom basis, custom solver and F-form dispatch.

@@ -21,7 +21,7 @@ classdef IMSpectralWaveMomentumTests < matlab.unittest.TestCase
             kappa = [2*pi/1e5 2*pi/1e3];
             surface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
             solver = IMSolverSpectral(nEVP=nEVP,coordinateKind=coordinateKind);
-            collection = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-D 0],f0=f,g=g,surfaceBoundary=surface,nModes=nModes);
+            collection = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-D 0],rotationRate=abs(f)/(2*sind(33)),latitude=33*sign(f),g=g,surfaceBoundary=surface,nModes=nModes);
             for page = 1:numel(kappa)
                 basis = collection.bases{page};
                 testCase.verifyEqual(basis.modeNumber,1:nModes)
@@ -40,7 +40,7 @@ classdef IMSpectralWaveMomentumTests < matlab.unittest.TestCase
                 testCase.verifyLessThan(abs(G(end,:)-F(end,:))./(max(abs(G),[],1)+max(abs(F),[],1)),1e-8)
                 testCase.verifyLessThan(abs(G(1,:))./max(abs(G),[],1),1e-8)
                 if profile == "constant"
-                    exact = IMConstantStratificationSolution(N0=.01,zDomain=[-D 0],f0=f,g=g).internalModes(basis.evp,nModes=nModes);
+                    exact = IMConstantStratificationSolution(N0=.01,zDomain=[-D 0],rotationRate=abs(f)/(2*sind(33)),latitude=33*sign(f),g=g).internalModes(basis.evp,nModes=nModes);
                     testCase.verifyEqual(h,exact.h,RelTol=1e-8)
                     exactG = exact.G(z); exactF = exact.F(z);
                     orientation = sign(sum(weights.*G.*exactG,1));

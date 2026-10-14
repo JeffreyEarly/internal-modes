@@ -5,12 +5,11 @@ classdef IMGeostrophicZeroAPVModes
     % boundary-value problem
     %
     % $$
-    % \frac{\partial}{\partial z}\left(\frac{f_0^2}{N^2(z)}\frac{\partial F}{\partial z}\right)-k^2F=0,
-    % \qquad
-    % G(z)=-\frac{g}{N^2(z)}\frac{\partial F}{\partial z}.
+    % F_z=-\frac{N^2}{g}G,\qquad G_z=-\frac{gk^2}{f_0^2}F.
     % $$
     %
-    % The canonical response vector contains the requested subset of
+    % This pair is regular for finite nonnegative N2, including neutral
+    % intervals. The canonical response vector contains the requested subset of
     %
     % $$
     % B_{\mathrm s}[F]=
@@ -30,7 +29,7 @@ classdef IMGeostrophicZeroAPVModes
     % \qquad
     % \eta_d[F]=\frac{f_0}{g}B_{\mathrm d}[F].
     % $$
-    % Equivalently, the physical endpoint functionals are
+    % For positive endpoint stratification, the same functionals can be written
     %
     % $$
     % \eta_0[F]=
@@ -55,7 +54,7 @@ classdef IMGeostrophicZeroAPVModes
     % $$
     %
     % ```matlab
-    % problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],f0=1e-4,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
+    % problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],rotationRate=7.2921e-5,latitude=33,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
     % solver = IMSolverSpectral(nEVP=128);
     % boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
     % depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0);
@@ -80,10 +79,15 @@ classdef IMGeostrophicZeroAPVModes
         % - Topic: Inspect geostrophic zero-APV problems
         zDomain
 
-        % Coriolis parameter.
+        % Planetary rotation rate in radians per second.
         %
         % - Topic: Inspect geostrophic zero-APV problems
-        f0
+        rotationRate
+
+        % Latitude in degrees north.
+        %
+        % - Topic: Inspect geostrophic zero-APV problems
+        latitude
 
         % Gravitational acceleration.
         %
@@ -116,6 +120,16 @@ classdef IMGeostrophicZeroAPVModes
         metadata
     end
 
+    properties (Dependent, SetAccess = private)
+        % Coriolis parameter in radians per second.
+        %
+        % $$f_0=2\Omega\sin\varphi$$ is derived from `rotationRate` and
+        % `latitude` and must be nonzero for this problem.
+        %
+        % - Topic: Inspect geostrophic zero-APV problems
+        f0
+    end
+
     methods
         function self = IMGeostrophicZeroAPVModes(options)
             % Create a canonical geostrophic zero-APV problem.
@@ -124,7 +138,8 @@ classdef IMGeostrophicZeroAPVModes
             % - Declaration: problem = IMGeostrophicZeroAPVModes(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: nonnegative planetary rotation rate in radians per second
+            % - Parameter options.latitude: latitude in degrees north, between -90 and 90
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.k: horizontal wavenumbers
             % - Parameter options.endpoints: requested endpoint coordinates
@@ -134,7 +149,8 @@ classdef IMGeostrophicZeroAPVModes
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.k double {mustBeReal, mustBeFinite, mustBePositive}
                 options.endpoints {mustBeText} = ["surface", "bottom"]
@@ -142,8 +158,8 @@ classdef IMGeostrophicZeroAPVModes
                 options.metadata struct = struct()
             end
 
-            if options.f0 == 0
-                error("IMGeostrophicZeroAPVModes:InvalidCoriolis", "f0 must be nonzero for geostrophic zero-APV modes.");
+            if 2*options.rotationRate*sind(options.latitude) == 0
+                error("IMGeostrophicZeroAPVModes:InvalidCoriolis", "Rotation rate and latitude must give a nonzero f0 for geostrophic zero-APV modes.");
             end
             if isempty(options.k)
                 error("IMGeostrophicZeroAPVModes:EmptyWavenumber", "k must contain at least one positive horizontal wavenumber.");
@@ -162,12 +178,17 @@ classdef IMGeostrophicZeroAPVModes
 
             self.N2 = options.N2;
             self.zDomain = sort(options.zDomain);
-            self.f0 = options.f0;
+            self.rotationRate = options.rotationRate;
+            self.latitude = options.latitude;
             self.g = options.g;
             self.k = reshape(options.k, 1, []);
             self.endpoints = canonicalEndpoints(ismember(canonicalEndpoints, endpoints));
             self.surfaceBoundary = string(options.surfaceBoundary);
             self.metadata = options.metadata;
+        end
+
+        function value = get.f0(self)
+            value = 2*self.rotationRate*sind(self.latitude);
         end
 
         function summarize(self)
@@ -181,6 +202,8 @@ classdef IMGeostrophicZeroAPVModes
 
             fprintf("%s\n", class(self));
             fprintf("  zDomain: [%g, %g]\n", self.zDomain(1), self.zDomain(2));
+            fprintf("  rotationRate: %g rad/s\n", self.rotationRate);
+            fprintf("  latitude: %g degrees north\n", self.latitude);
             fprintf("  f0: %g\n", self.f0);
             fprintf("  g: %g\n", self.g);
             fprintf("  endpoints: %s\n", join(self.endpoints, ", "));
@@ -211,7 +234,8 @@ classdef IMGeostrophicZeroAPVModes
             % - Declaration: problem = IMGeostrophicZeroAPVModes.atWavenumber(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.f0: Coriolis parameter
+            % - Parameter options.rotationRate: nonnegative planetary rotation rate in radians per second
+            % - Parameter options.latitude: latitude in degrees north, between -90 and 90
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.k: horizontal wavenumbers
             % - Parameter options.endpoints: requested endpoint coordinates
@@ -221,7 +245,8 @@ classdef IMGeostrophicZeroAPVModes
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.f0 (1,1) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.k double {mustBeReal, mustBeFinite, mustBePositive}
                 options.endpoints {mustBeText} = ["surface", "bottom"]
@@ -229,7 +254,8 @@ classdef IMGeostrophicZeroAPVModes
                 options.metadata struct = struct()
             end
 
-            problem = IMGeostrophicZeroAPVModes(N2=options.N2, zDomain=options.zDomain, f0=options.f0, g=options.g, k=options.k, endpoints=options.endpoints, surfaceBoundary=options.surfaceBoundary, metadata=options.metadata);
+            factoryArguments = namedargs2cell(options);
+            problem = IMGeostrophicZeroAPVModes(factoryArguments{:});
         end
     end
 end

@@ -22,7 +22,8 @@ Solve continuous wave bases for an ordered collection of wavenumbers.
 + `kappa`  nonempty row of requested nonnegative wavenumbers, in radians per meter
 + `options.N2`  buoyancy frequency squared evaluator
 + `options.zDomain`  increasing physical vertical bounds
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface condition of the G EVP
 + `options.bottomBoundary`  bottom condition of the G EVP

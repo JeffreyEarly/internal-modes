@@ -25,9 +25,9 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             coordinateKinds = ["z" "wkb" "density"];
             constantN2 = @(z) N0*N0*ones(size(z));
             exponentialN2 = @(z) N0*N0*exp(2*z/1300);
-            evps = [IMInternalModes.hydrostaticFModes(N2=constantN2,zDomain=zDomain), ...
-                IMInternalModes.hydrostaticFModes(N2=exponentialN2,zDomain=zDomain), ...
-                IMInternalModes.hydrostaticGModes(N2=exponentialN2,zDomain=zDomain)];
+            evps = [IMInternalModes.hydrostaticFModes(rotationRate=0,N2=constantN2,zDomain=zDomain), ...
+                IMInternalModes.hydrostaticFModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain), ...
+                IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain)];
 
             for iEVP = 1:length(evps)
                 for iCoordinate = 1:length(coordinateKinds)
@@ -155,7 +155,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             zDomain = [-D 0];
             g0 = -integral(N2,zDomain(1),zDomain(2));
             solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g0=g0,gd=Inf,surfaceBoundary="freeSurface");
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=g0,gd=Inf,surfaceBoundary="freeSurface");
             basisSet = solver.solveEVP(evp,nModes=16);
             [z,gridDesign] = basisSet.modeRootGrid(nPoints=16);
             [~,assessment] = basisSet.certifiedDiscreteTransform(z=z,gridDesign=gridDesign,variables=["F","G"],gramTolerance=1e-2);
@@ -182,7 +182,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             k = 2*pi./[200e3 20e3];
 
             for iK = 1:length(k)
-                evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=k(iK),f0=1e-4,surfaceBoundary=surfaceBoundary);
+                evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=k(iK),rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceBoundary=surfaceBoundary);
                 basisSet = solver.solveEVP(evp,nModes=16);
                 [transform,assessment] = basisSet.certifiedDiscreteTransform(z=z,variables="G",gramTolerance=1e-2);
 
@@ -237,7 +237,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             zDomain = [-4000 0];
             N2 = @(z) N0*N0*ones(size(z));
             solver = IMSolverSpectral(nEVP=128);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
             basisSet = solver.solveEVP(evp,nModes=nModes);
         end
 

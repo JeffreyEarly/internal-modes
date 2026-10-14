@@ -29,7 +29,8 @@ Create an internal-mode canonical EVP.
 + `options.r`  canonical metric coefficient
 + `options.surfaceBoundary`  surface boundary condition
 + `options.bottomBoundary`  bottom boundary condition
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.hFromEigenvalue`  equivalent-depth conversion
 + `options.FfromGz`  diagnostic relation from `G` derivative to `F`
@@ -42,6 +43,7 @@ Create an internal-mode canonical EVP.
 ## Discussion
 
   The constructor copies `options.parameters`, then writes the
-  internal-mode fields `f0`, `g`, and `formulation` into the
+internal-mode fields `rotationRate`, `latitude`, derived
+`f0`, `g`, and `formulation` into the
   parameter struct. These constructor-owned fields override
   same-named entries in `options.parameters`.

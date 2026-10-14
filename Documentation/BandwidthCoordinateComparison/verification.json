@@ -1,0 +1,62 @@
+{
+  "rotationCoordinateTests": {
+    "passed": 9,
+    "failed": 0,
+    "incomplete": 0
+  },
+  "v2Suite": {
+    "passed": 414,
+    "failed": 0,
+    "incomplete": 0,
+    "fullRunCount": 1
+  },
+  "study": {
+    "pairedCases": 14,
+    "scientificCases": 7,
+    "candidateResolutions": [
+      64,
+      128
+    ],
+    "referenceTolerance": 1e-07,
+    "candidateTolerance": 1e-05,
+    "quadraturePoints": 1025,
+    "quadratureConvergence": "not separately verified",
+    "broaderAdoption": "hold; no demonstrated certified gain; neutral candidates inaccurate"
+  },
+  "codeAnalyzer": {
+    "changedMatlabFiles": 76,
+    "baselineFindings": 28,
+    "newFindingsRemaining": 0,
+    "note": "16 bounded-growth annotations in study only; affected file rechecked clean; no numerical changes after suite/study"
+  },
+  "documentation": {
+    "rebuilds": 1,
+    "configuredDocsCheckTask": false,
+    "markdownFilesScanned": 891,
+    "localLinksChecked": 897,
+    "siteLinksChecked": 829,
+    "siteLinksMissing": 0,
+    "affectedPages": 47,
+    "affectedLocalLinksChecked": 116,
+    "affectedLinksMissing": 0,
+    "preExistingBrokenRelativeLinks": [
+      "tutorials/internal-modes-basics.md -> ../classes/numerical-solvers/internalmodesspectral/modesatfrequency",
+      "tutorials/internal-modes-basics.md -> ../classes/numerical-solvers/internalmodesspectral/modesatwavenumber"
+    ],
+    "renderedSiteVerified": false,
+    "note": "Unrelated generated formatting and seven unrelated pages restored; legacy tutorial issues left unchanged"
+  },
+  "scope": {
+    "authoringCheckout": "/Users/jearly/Documents/OceanKitRepositories/internal-modes-evp",
+    "packageManifestChanged": false,
+    "legacyV1SourceChanged": false,
+    "legacyV1GeneratedDocsChanged": false,
+    "WVMPackagesChanged": false,
+    "packageSnapshotsChanged": false,
+    "publicationPerformed": false
+  },
+  "whitespace": {
+    "trackedDiffCheck": "passed",
+    "newSourceAndDocsTrailingWhitespace": "passed"
+  }
+}

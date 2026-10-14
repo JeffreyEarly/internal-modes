@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Solve V2 generalized-energy/APV and generalized-potential-enstrophy modes as regular paired F/G problems for nonnegative stratification, including neutral intervals. Preserve public eigenvalue units and F projection; retain solved inverse depths for stable equivalent depths and use a positive Rayleigh quotient for enstrophy eigenvalues.
+- Extend numerical zero-APV endpoint responses, mean-density-anomaly modes, and composed geostrophic transforms to neutral stratification. Reduce fully neutral finite families explicitly and retain signed modes and physical null-space exclusions without introducing a stratification floor.
+- Use conservative staggered F/G finite differences for the paired geostrophic problems and zero-APV responses, avoiding alternating-grid eigenmodes while preserving the discrete Rayleigh identity.
+- Add independent regular-equation references and a neutral-layer readiness report. Independent zero-energy neutral-label states and the coordinate-grid comparison rerun remain outside this change.
+- Replace V2 public `f0` inputs with `rotationRate` and `latitude`, matching the WaveVortexModel base defaults of Earth rotation and 33 degrees north. Retain derived read-only `f0` in physical coefficient contexts; use `rotationRate=0` for the former nonrotating default.
+- Use the square root of the local squared-frequency bandwidth for the V2 `wkb` coordinate. Retain one consistent Chebfun map and calculus, recover the original N stretch at zero rotation, and support neutral layers when the monitor remains positive without changing the physical EVP.
+- Add a bounded legacy-versus-bandwidth coordinate study reporting independently qualified consecutive resolved-mode counts before broader adoption.
+
 ## [2.0.0-beta.7] - 2026-09-14
 
 - Add `assessQuadraticDealiasing` for inexpensive `none`, `fixedFraction`, and `effectiveBandwidth` policies on common-coordinate F/G samples or Chebyshev coefficients. Return per-mode spectral evidence and masks while leaving model-specific prefix selection to callers.

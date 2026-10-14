@@ -21,7 +21,8 @@ Create a canonical geostrophic zero-APV problem.
 ## Parameters
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  nonnegative planetary rotation rate in radians per second
++ `options.latitude`  latitude in degrees north, between -90 and 90
 + `options.g`  gravitational acceleration
 + `options.k`  horizontal wavenumbers
 + `options.endpoints`  requested endpoint coordinates

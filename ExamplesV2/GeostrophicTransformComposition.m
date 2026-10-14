@@ -22,7 +22,7 @@ N2 = @(z) N0*N0*exp(2*z/b);
 nModes = 12;
 nEVP = 192;
 solver = IMSolverSpectral(nEVP=nEVP);
-evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
+evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
 basisSet = solver.solveEVP(evp,nModes=nModes+3);
 
 z = linspace(zDomain(1),zDomain(2),97).';
@@ -33,7 +33,7 @@ apvTransform = basisSet.discreteTransform(z=z,nModes=nModes,variables=["F","G"])
 % contains a surface-response column and a bottom-response column for each
 % positive horizontal wavenumber.
 k = [8e-6 1.6e-5 3.2e-5];
-zeroProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=f0,g=g,k=k,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
+zeroProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
 zeroAPVModes = solver.solveGeostrophicZeroAPVModes(zeroProblem);
 
 transform = IMGeostrophicTransform(apvTransform=apvTransform,zeroAPVModes=zeroAPVModes,g0=g0,gd=gd);

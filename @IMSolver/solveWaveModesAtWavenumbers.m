@@ -30,7 +30,8 @@ function [collection,diagnostics] = solveWaveModesAtWavenumbers(self,kappa,optio
 % - Parameter kappa: nonempty row of requested nonnegative wavenumbers, in radians per meter
 % - Parameter options.N2: buoyancy frequency squared evaluator
 % - Parameter options.zDomain: increasing physical vertical bounds
-% - Parameter options.f0: Coriolis parameter
+% - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+% - Parameter options.latitude: central latitude in degrees north; default 33
 % - Parameter options.g: gravitational acceleration
 % - Parameter options.surfaceBoundary: surface condition of the G EVP
 % - Parameter options.bottomBoundary: bottom condition of the G EVP
@@ -43,7 +44,8 @@ arguments (Input)
     kappa (1,:) double {mustBeReal,mustBeFinite,mustBeNonnegative}
     options.N2 (1,1) function_handle
     options.zDomain (1,2) double {mustBeReal,mustBeFinite}
-    options.f0 (1,1) double {mustBeReal,mustBeFinite} = 0
+    options.rotationRate (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 7.2921e-5
+    options.latitude (1,1) double {mustBeReal,mustBeFinite,mustBeGreaterThanOrEqual(options.latitude,-90),mustBeLessThanOrEqual(options.latitude,90)} = 33
     options.g (1,1) double {mustBeReal,mustBeFinite,mustBePositive} = 9.81
     options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
     options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()

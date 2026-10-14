@@ -77,12 +77,12 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
             gd = Inf;
             k = 1e-4;
             solver = IMSolverSpectral(nEVP=112);
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd);
             basis = solver.solveEVP(evp,nModes=8);
             z = linspace(-D,-D/64,64).';
             weights = ones(size(z))*(D/numel(z));
             apvTransform = basis.discreteTransform(z=z,weights=weights,nModes=5,variables=["F","G"],gramTolerance=100);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-D 0],f0=1e-4,g=g,k=k,endpoints="surface");
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-D 0],rotationRate=1e-4/(2*sind(33)),latitude=33,g=g,k=k,endpoints="surface");
             zeroAPVModes = solver.solveGeostrophicZeroAPVModes(problem);
             transform = IMGeostrophicTransform(apvTransform=apvTransform,zeroAPVModes=zeroAPVModes,g0=g0,gd=gd);
             testCase.verifyError(@() transform.transformSourceForward(vorticitySource=ones(numel(z),1),displacementSource=ones(numel(z),1)),"IMGeostrophicTransform:MissingSourceEndpointSample")
@@ -111,7 +111,7 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
                 N2 = options.N2;
             end
             solver = IMSolverSpectral(nEVP=options.nEVP);
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd);
             basis = solver.solveEVP(evp,nModes=options.nModes+3);
             z = linspace(options.zDomain(1),options.zDomain(2),options.nGrid).';
             depth = diff(options.zDomain);
@@ -120,7 +120,7 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
             weights = weights.*weightVariation;
             weights = weights*(depth/sum(weights));
             apvTransform = basis.discreteTransform(z=z,weights=weights,nModes=options.nModes,variables=options.variables,gramTolerance=100);
-            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=options.zDomain,f0=options.f0,g=options.g,k=options.k);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=options.zDomain,rotationRate=abs(options.f0)/(2*sind(33)),latitude=33*sign(options.f0),g=options.g,k=options.k);
             zeroAPVModes = solver.solveGeostrophicZeroAPVModes(problem);
             transform = IMGeostrophicTransform(apvTransform=apvTransform,zeroAPVModes=zeroAPVModes,g0=options.g0,gd=options.gd);
             data = struct(N2=N2,zDomain=options.zDomain,g=options.g,f0=options.f0,g0=options.g0,gd=options.gd,k=reshape(options.k,1,[]), ...

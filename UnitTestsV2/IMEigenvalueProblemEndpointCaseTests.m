@@ -275,7 +275,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*(1 + 0*z);
             solver = IMSolverSpectral(nEVP=32);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
             removedZeroProperty = "has" + "ZeroMode";
 
             basisSet = solver.solveEVP(evp, nModes=3);
@@ -298,7 +298,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             r = @(z,ctx) ones(size(z))/ctx.g;
             surfaceBoundary = IMBoundaryCondition(a=-1/g, b=1);
             bottomBoundary = IMBoundaryCondition.neumann();
-            evp = IMInternalModes(name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
+            evp = IMInternalModes(rotationRate=0,name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
                 p=p, q=q, r=r, g=g, surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
             solver = IMSolverSpectral(nEVP=128, coordinateKind="wkb");
 
@@ -369,7 +369,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             surfaceBoundary = IMBoundaryCondition(a=-(1/g + 1/g0), b=1);
             bottomBoundary = IMBoundaryCondition(a=1/gd, b=1);
 
-            evp = IMInternalModes(name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
+            evp = IMInternalModes(rotationRate=0,name="unforced-APV-modes", formulation="F", N2=N2, zDomain=zDomain, ...
                 p=p, q=q, r=r, g=g, surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
             solver = IMSolverSpectral(nEVP=128, coordinateKind="wkb");
         end

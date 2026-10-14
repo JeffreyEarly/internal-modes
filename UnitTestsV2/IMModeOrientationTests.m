@@ -22,7 +22,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         function numericalOrientationIsInvariantToRawEigenvectorSigns(testCase)
             z = linspace(-1,0,65).';
             N2 = @(z) ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1 0]);
             solver = IMSolverFiniteDifference(z=z).configuredForEVP(evp);
             GValues = [-ones(size(solver.zNative)), solver.zNative];
 
@@ -42,7 +42,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         function FFormNullModeUsesDeterministicFallback(testCase)
             z = linspace(-1,0,65).';
             N2 = @(z) ones(size(z));
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0]);
             solver = IMSolverFiniteDifference(z=z).configuredForEVP(evp);
             basisSet = IMInternalModesBasis(solver=solver,evp=evp,nativeModes=-ones(size(z)), ...
                 eigenvalues=0,modeNumber=0);
@@ -58,8 +58,8 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*ones(size(z));
             solver = IMSolverSpectral(nEVP=128);
-            apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-D 0],g0=0.02,gd=0.03);
-            mdaEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-D 0],g0=0.02,gd=0.03);
+            apvEVP = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g0=0.02,gd=0.03);
+            mdaEVP = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-D 0],g0=0.02,gd=0.03);
 
             apvBasis = solver.solveEVP(apvEVP,nModes=6);
             mdaBasis = solver.solveEVP(mdaEVP,nModes=6);
@@ -75,8 +75,8 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
             D = 3000;
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0]);
-            analytical = IMConstantStratificationSolution(N0=N0,zDomain=[-D 0]).internalModes(evp,nModes=4);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-D 0]);
+            analytical = IMConstantStratificationSolution(rotationRate=0,N0=N0,zDomain=[-D 0]).internalModes(evp,nModes=4);
             numerical = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=4);
             z = linspace(-D,0,2001).';
             analyticalG = analytical.G(z,normalization="wMax");
@@ -100,7 +100,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
 
             for iProfile = 1:numel(profiles)
                 for iSurface = 1:numel(surfaceBoundaries)
-                    evp = IMInternalModes.hydrostaticGModes(N2=profiles{iProfile},zDomain=[-D 0],surfaceBoundary=surfaceBoundaries{iSurface});
+                    evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=profiles{iProfile},zDomain=[-D 0],surfaceBoundary=surfaceBoundaries{iSurface});
                     source = IMSolverSpectral(nEVP=96,coordinateKind=coordinateKinds(iProfile)).solveEVP(evp,nModes=6);
                     scale = (-1).^(1:numel(source.eigenvalues)).*10.^linspace(-8,8,numel(source.eigenvalues));
                     testCase.verifyLegacyEquivalentOrientation(testCase.scaledCopy(source,scale));
@@ -114,9 +114,9 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
             f0 = 1e-4;
             N2 = @(z) 1e-4*exp(2*z/1400);
             freeSurface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
-            longExternal = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=2*pi/1e7,f0=f0,surfaceBoundary=freeSurface);
-            zeroWavenumber = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=0,f0=f0,surfaceBoundary=freeSurface);
-            nearInertial = IMInternalModes.waveModesAtFrequency(N2=N2,zDomain=[-D 0],omega=1.01*f0,f0=f0);
+            longExternal = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=2*pi/1e7,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=freeSurface);
+            zeroWavenumber = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=0,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=freeSurface);
+            nearInertial = IMInternalModes.waveModesAtFrequency(N2=N2,zDomain=[-D 0],omega=1.01*f0,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
             problems = {longExternal,zeroWavenumber,nearInertial};
 
             for iProblem = 1:numel(problems)
@@ -129,7 +129,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
 
         function spectralSurfaceAndDerivativeThresholdsMatchLegacyDecisions(testCase)
             relativeTolerance = 1e-10;
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             solver = IMSolverSpectral(nEVP=33).configuredForEVP(evp);
             coefficients = zeros(solver.nEVP,4);
             resolvedSurface = 2*relativeTolerance;
@@ -152,7 +152,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         function unresolvedSurfaceAndDerivativeRemainIndeterminate(testCase)
             relativeTolerance = 1e-10;
             derivative = 0.5*relativeTolerance;
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             solver = IMSolverSpectral(nEVP=33).configuredForEVP(evp);
             coefficients = zeros(solver.nEVP,1);
             coefficients(1:3) = [3/8-derivative/2;-0.5+derivative/2;1/8];
@@ -165,7 +165,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         function nearDerivativeCutoffMatchesSampledLegacyOutcome(testCase)
             relativeTolerance = 1e-10;
             derivativeFactors = 1+[-1e-3 -1e-4 0 1e-4 1e-3];
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             solver = IMSolverSpectral(nEVP=33).configuredForEVP(evp);
 
             for derivativeFactor = derivativeFactors
@@ -188,7 +188,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         function spectralFFormNearZeroGUsesLegacyBarotropicFallback(testCase)
             relativeTolerance = 1e-10;
             g = 9.81;
-            evp = IMInternalModes.hydrostaticFModes(N2=@(z) ones(size(z)),zDomain=[-1 0],g=g);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0],g=g);
             solver = IMSolverSpectral(nEVP=33).configuredForEVP(evp);
             lowSlope = 0.5*relativeTolerance/g;
             highSlope = 2*relativeTolerance/g;
@@ -207,7 +207,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         end
 
         function customSolverAndBasisOverridesRetainLegacyDispatch(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             customSolver = IMOrientationDerivativeOverrideSolver(nEVP=33).configuredForEVP(evp);
             coefficients = zeros(customSolver.nEVP,1);
             coefficients(1:2) = [-0.5;0.5];
@@ -223,7 +223,7 @@ classdef IMModeOrientationTests < matlab.unittest.TestCase
         end
 
         function overResolvedNativeCoefficientsRetainLegacyAliasedDerivative(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)),zDomain=[-1 0]);
             solver = IMSolverSpectral(nEVP=4).configuredForEVP(evp);
             coefficients = [1;0;-2;0;1];
             basisSet = IMInternalModesBasis(solver=solver,evp=evp,nativeModes=coefficients,eigenvalues=1,modeNumber=1);

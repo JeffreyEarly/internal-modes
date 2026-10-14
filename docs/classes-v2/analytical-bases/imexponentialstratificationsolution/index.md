@@ -50,7 +50,7 @@ normalization shared with the numerical zero-APV basis.
 
 ```matlab
 solution = IMExponentialStratificationSolution(N0=5.2e-3,b=1300,zDomain=[-5000 0]);
-evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain);
+evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain, rotationRate=solution.rotationRate, latitude=solution.latitude);
 basisSet = solution.internalModes(evp,nModes=4);
 exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
 ```

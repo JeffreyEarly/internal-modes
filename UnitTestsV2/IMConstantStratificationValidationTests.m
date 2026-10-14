@@ -25,9 +25,9 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             nModes = 4;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
 
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain, g=g);
             basisSet = solution.internalModes(evp, nModes=nModes);
             D = diff(zDomain);
             expectedH = (N0*N0)./(g*((1:nModes)*pi/D).^2);
@@ -44,9 +44,9 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*ones(size(z));
             freeSurface = IMBoundaryCondition(a=0, b=1, c=1, d=0);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, surfaceBoundary=freeSurface);
 
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
 
             testCase.verifyEqual(basisSet.modeNumber(1), -1)
@@ -58,9 +58,9 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             zDomain = [-4000 0];
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=4);
             z = linspace(zDomain(1), zDomain(2), 10).';
 
@@ -79,8 +79,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             nModes = 3;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain, g=g);
             basisSet = solution.internalModes(evp, nModes=nModes);
             z = linspace(zDomain(1), zDomain(2), 11).';
             s = z - zDomain(1);
@@ -101,8 +101,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-4000 0];
             nModes = 4;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=nModes);
             z = linspace(zDomain(1), zDomain(2), 11).';
             s = z - zDomain(1);
@@ -124,8 +124,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-3000 0];
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            evp = IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2, zDomain=zDomain, k=1e-4);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain);
 
             basisSet = solution.internalModes(evp, nModes=2);
 
@@ -136,7 +136,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
         function solutionCreatesMatchingDefaultEVP(testCase)
             N0 = 5.2e-3;
             zDomain = [-3000 0];
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain);
 
             basisSet = solution.internalModes(nModes=2);
 
@@ -153,8 +153,8 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             nModes = 2;
             nEVP = 48;
             N2 = @(z) N0*N0*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g);
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, g=g);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
+            solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain, g=g);
             analytical = solution.internalModes(evp, nModes=nModes);
 
             coordinateKinds = ["z", "wkb", "density"];
@@ -171,7 +171,7 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             k = [1e-4 2e-4];
             z = linspace(zDomain(1), zDomain(2), 9).';
-            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, f0=f0);
+            solution = IMConstantStratificationSolution(N0=N0, zDomain=zDomain, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
 
             exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k,surfaceBoundary="rigidLid");
 

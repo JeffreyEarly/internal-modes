@@ -14,7 +14,7 @@ bases = cell(1,2);
 resolutions = [104 156];
 for index = 1:2
     collection = IMSolverSpectral(nEVP=resolutions(index),coordinateKind="wkb").solveWaveModesAtWavenumbers(kappa, ...
-        N2=N2,zDomain=[-1000 0],f0=2*7.2921e-5*sind(30),g=9.81,surfaceBoundary=surface,nModes=64,nInertialModes=64);
+        N2=N2,zDomain=[-1000 0],rotationRate=7.2921e-5,latitude=30,g=9.81,surfaceBoundary=surface,nModes=64,nInertialModes=64);
     bases{index} = collection.bases;
 end
 bases = [bases{:}];

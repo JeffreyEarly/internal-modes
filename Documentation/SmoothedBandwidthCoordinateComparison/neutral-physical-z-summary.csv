@@ -1,0 +1,3 @@
+profile,family,coordinate,nEVP,referenceNEVP,requestedCount,returnedCount,resolvedPrefix,candidateOnlyDiagnosticPrefix,referenceValidatedPrefix,atCandidateCeiling,inconclusive,qualification
+neutralSurfaceLayer,hydrostaticGModes,z,64,1024,62,44,0,0,0,0,1,original reference uncertainty; incomplete candidate inventory
+neutralSurfaceLayer,hydrostaticGModes,z,128,1024,126,89,0,0,0,0,1,original reference uncertainty; incomplete candidate inventory

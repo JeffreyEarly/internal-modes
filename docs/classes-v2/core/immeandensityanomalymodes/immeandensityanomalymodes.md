@@ -21,6 +21,8 @@ Create a generalized-energy mean-density-anomaly EVP.
 ## Parameters
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.g0`  signed finite surface acceleration, zero, or positive infinity
 + `options.gd`  signed finite bottom acceleration, zero, or positive infinity

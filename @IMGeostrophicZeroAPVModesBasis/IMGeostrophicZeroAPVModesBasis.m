@@ -6,7 +6,7 @@ classdef IMGeostrophicZeroAPVModesBasis
     % diagnostic structure is
     %
     % $$
-    % G(z)=-\frac{g}{N^2(z)}\frac{\partial F}{\partial z}(z).
+    % F_z=-\frac{N^2}{g}G,\qquad G_z=-\frac{gk^2}{f_0^2}F.
     % $$
     %
     % `F(z)` and `G(z)` have dimensions `nZ x nEndpoints x nK`. The four
@@ -176,6 +176,9 @@ classdef IMGeostrophicZeroAPVModesBasis
     properties (Access = private)
         canonicalNativeModes
         currentNativeModes
+        canonicalNativeGModes
+        currentNativeGModes
+        gSolver
         canonicalEndpointResponseMetric
         canonicalEnergyMatrix
         canonicalSurfaceBuoyancyMatrix
@@ -194,13 +197,17 @@ classdef IMGeostrophicZeroAPVModesBasis
             % - Declaration: basisSet = IMGeostrophicZeroAPVModesBasis(options)
             % - Parameter options.problem: geostrophic zero-APV problem
             % - Parameter options.solver: configured numerical solver
-            % - Parameter options.nativeModes: canonical native structures
+            % - Parameter options.nativeModes: canonical native F structures
+            % - Parameter options.nativeGModes: optional aligned native G structures
+            % - Parameter options.companionSolver: optional G discretization; requires nativeGModes
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: canonical boundary-normalized basis
             arguments
                 options.problem IMGeostrophicZeroAPVModes
                 options.solver IMSolver
                 options.nativeModes double {mustBeReal, mustBeFinite}
+                options.nativeGModes double {mustBeReal, mustBeFinite} = []
+                options.companionSolver = []
                 options.metadata struct = struct()
             end
 
@@ -212,6 +219,13 @@ classdef IMGeostrophicZeroAPVModesBasis
 
             self.problem = options.problem;
             self.solver = options.solver;
+            if isempty(options.companionSolver)
+                self.gSolver = options.solver;
+            elseif isa(options.companionSolver,"IMSolver")
+                self.gSolver = options.companionSolver;
+            else
+                error("IMGeostrophicZeroAPVModesBasis:InvalidCompanionSolver","companionSolver must be an IMSolver.");
+            end
             self.k = options.problem.k;
             self.endpoints = options.problem.endpoints;
             self.f0 = options.problem.f0;
@@ -221,6 +235,34 @@ classdef IMGeostrophicZeroAPVModesBasis
             self.N2 = options.problem.N2;
             self.canonicalNativeModes = options.nativeModes;
             self.currentNativeModes = options.nativeModes;
+            if isempty(options.nativeGModes)
+                if ~isempty(options.companionSolver)
+                    error("IMGeostrophicZeroAPVModesBasis:MissingCompanionModes","An explicit companionSolver requires aligned nativeGModes.");
+                end
+                % Compatibility for callers supplying only F: integrate the
+                % regular G equation from its known canonical surface value.
+                zNative = self.solver.zNative;
+                FValues = self.solver.evaluateNativeModes(reshape(options.nativeModes,size(options.nativeModes,1),[]),zNative);
+                constantNative = self.solver.physicalDerivativeMatrix(0)\ones(numel(zNative),1);
+                for iK = 1:nK
+                    columns = (iK-1)*nEndpoints+(1:nEndpoints);
+                    GIntegral = self.solver.integrateGridValuesFromSurface((self.g*self.k(iK)^2/self.f0^2)*FValues(:,columns));
+                    surfaceValues = zeros(1,nEndpoints);
+                    surfaceValues(self.endpoints == "surface") = 1;
+                    if self.surfaceBoundary == "freeSurface"
+                        surfaceValues = surfaceValues+self.solver.evaluateNativeModes(options.nativeModes(:,:,iK),self.zDomain(2));
+                    end
+                    constant = zeros(size(GIntegral,1),1);
+                    constant(1:numel(constantNative)) = constantNative;
+                    self.canonicalNativeGModes(:,:,iK) = GIntegral+constant*surfaceValues;
+                end
+            else
+                if size(options.nativeGModes,2) ~= nEndpoints || size(options.nativeGModes,3) ~= nK
+                    error("IMGeostrophicZeroAPVModesBasis:InvalidModeShape", "nativeGModes must have dimensions nNativeG x nEndpoints x nK.");
+                end
+                self.canonicalNativeGModes = options.nativeGModes;
+            end
+            self.currentNativeGModes = self.canonicalNativeGModes;
 
             [self.canonicalEndpointResponseMetric, self.canonicalEnergyMatrix, self.canonicalSurfaceBuoyancyMatrix, self.canonicalBottomBuoyancyMatrix] = self.formCanonicalQuadraticMatrices();
             self.endpointResponseMetric = self.canonicalEndpointResponseMetric;
@@ -268,8 +310,8 @@ classdef IMGeostrophicZeroAPVModesBasis
         function values = G(self, z, options)
             % Evaluate diagnostic displacement structures $$G(z)$$.
             %
-            % The result has dimensions `nZ x nEndpoints x nSelectedPages` and uses
-            % $$G=-gN^{-2}\partial_zF$$.
+            % The result has dimensions `nZ x nEndpoints x nSelectedPages`.
+            % G is stored with F and remains regular where N2 is zero.
             %
             % - Topic: Evaluate geostrophic zero-APV modes
             % - Declaration: values = G(basisSet,z,options)
@@ -285,16 +327,11 @@ classdef IMGeostrophicZeroAPVModesBasis
                 error("IMGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
 
-            N2Values = self.N2(z(:));
-            N2Values = N2Values(:);
-            if numel(N2Values) ~= numel(z) || any(~isfinite(N2Values)) || any(N2Values <= 0)
-                error("IMGeostrophicZeroAPVModesBasis:InvalidStratification", "N2 must return one finite positive value for each z point.");
-            end
             nEndpoints = numel(self.endpoints);
             nK = numel(options.pages);
-            native = reshape(self.currentNativeModes(:,:,options.pages),size(self.currentNativeModes,1),nEndpoints*nK);
-            dFdz = self.solver.evaluatePhysicalDerivative(native,z,1);
-            values = reshape(-(self.g./N2Values).*dFdz,numel(z),nEndpoints,nK);
+            native = reshape(self.currentNativeGModes(:,:,options.pages),size(self.currentNativeGModes,1),nEndpoints*nK);
+            sampled = self.gSolver.evaluateNativeModes(native,z);
+            values = reshape(sampled,numel(z),nEndpoints,nK);
         end
 
         function matrix = generalizedEnergyMatrix(self, options)
@@ -464,6 +501,7 @@ classdef IMGeostrophicZeroAPVModesBasis
             end
 
             tf = isequal(self.canonicalNativeModes,other.canonicalNativeModes) ...
+                && isequal(self.canonicalNativeGModes,other.canonicalNativeGModes) ...
                 && isequal(self.k,other.k) ...
                 && isequal(self.endpoints,other.endpoints) ...
                 && isequal(self.zDomain,other.zDomain) ...
@@ -491,12 +529,8 @@ classdef IMGeostrophicZeroAPVModesBasis
                 nativeModes = self.canonicalNativeModes(:,:,iK);
                 FSurface = self.solver.evaluateNativeModes(nativeModes,zSurface);
                 FBottom = self.solver.evaluateNativeModes(nativeModes,zBottom);
-                dFSurface = self.solver.evaluatePhysicalDerivative(nativeModes,zSurface,1);
-                dFBottom = self.solver.evaluatePhysicalDerivative(nativeModes,zBottom,1);
-                N2Surface = self.N2(zSurface);
-                N2Bottom = self.N2(zBottom);
-                GSurface = -(self.g/N2Surface)*dFSurface;
-                GBottom = -(self.g/N2Bottom)*dFBottom;
+                GSurface = self.gSolver.evaluateNativeModes(self.canonicalNativeGModes(:,:,iK),zSurface);
+                GBottom = self.gSolver.evaluateNativeModes(self.canonicalNativeGModes(:,:,iK),zBottom);
                 surfaceResponse = GSurface;
                 if self.surfaceBoundary == "freeSurface"
                     surfaceResponse = surfaceResponse - FSurface;
@@ -526,11 +560,12 @@ classdef IMGeostrophicZeroAPVModesBasis
 
         function basisSet = basisWithRotation(self,name,rotationMatrix,eigenvalues,signatures,h0Values,normalizationConvention,residuals)
             IMGeostrophicZeroAPVFormTools.validateRotationPages(rotationMatrix,numel(self.endpoints),numel(self.k),"IMGeostrophicZeroAPVModesBasis");
-            basisSet = IMGeostrophicZeroAPVModesBasis(problem=self.problem,solver=self.solver,nativeModes=self.canonicalNativeModes,metadata=self.metadata);
+            basisSet = IMGeostrophicZeroAPVModesBasis(problem=self.problem,solver=self.solver,nativeModes=self.canonicalNativeModes,nativeGModes=self.canonicalNativeGModes,companionSolver=self.gSolver,metadata=self.metadata);
             nK = numel(self.k);
             for iK = 1:nK
                 C = rotationMatrix(:,:,iK);
                 basisSet.currentNativeModes(:,:,iK) = self.canonicalNativeModes(:,:,iK)*C;
+                basisSet.currentNativeGModes(:,:,iK) = self.canonicalNativeGModes(:,:,iK)*C;
                 basisSet.endpointResponseMetric(:,:,iK) = self.symmetrize(C.'*self.canonicalEndpointResponseMetric(:,:,iK)*C);
                 basisSet.energyMatrix(:,:,iK) = self.symmetrize(C.'*self.canonicalEnergyMatrix(:,:,iK)*C);
                 basisSet.surfaceBuoyancyMatrix(:,:,iK) = self.symmetrize(C.'*self.canonicalSurfaceBuoyancyMatrix(:,:,iK)*C);

@@ -18,7 +18,8 @@ arguments (Input)
     options.D (1,1) double {mustBePositive,mustBeFinite} = 1000
     options.N0 (1,1) double {mustBePositive,mustBeFinite} = 1e-2
     options.scaleDepth (1,1) double {mustBePositive,mustBeFinite} = 400
-    options.f0 (1,1) double {mustBeReal,mustBeFinite} = 1e-4
+    options.rotationRate (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 1e-4/(2*sind(33))
+    options.latitude (1,1) double {mustBeReal,mustBeFinite,mustBeGreaterThanOrEqual(options.latitude,-90),mustBeLessThanOrEqual(options.latitude,90)} = 33
     options.g (1,1) double {mustBePositive,mustBeFinite} = 9.81
     options.Nz (1,1) double {mustBeInteger,mustBePositive} = 25
     options.candidateCount (1,1) double {mustBeInteger,mustBePositive} = 24
@@ -42,13 +43,14 @@ if isfolder(outputDirectory) || isfile(outputDirectory)
 end
 N2 = @(z) options.N0^2*exp(2*z/options.scaleDepth);
 zDomain = [-options.D 0];
-if N2(-options.D) <= options.f0^2
+f0 = 2*options.rotationRate*sind(options.latitude);
+if N2(-options.D) <= f0^2
     error("IMExample:UnsupportedStratification","Require N2 > f0^2 throughout this example's domain.");
 end
 [nx,ny] = ndgrid(-options.Nxy(1)/2:options.Nxy(1)/2-1,-options.Nxy(2)/2:options.Nxy(2)/2-1);
 kappa = unique(2*pi*sqrt((nx(:)/options.Lxy(1)).^2+(ny(:)/options.Lxy(2)).^2)).';
 surface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
-evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,f0=options.f0,g=options.g,k=0,surfaceBoundary=surface);
+evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,rotationRate=options.rotationRate,latitude=options.latitude,g=options.g,k=0,surfaceBoundary=surface);
 gridSolver = IMSolverSpectral(nEVP=options.Nz,coordinateKind="wkb").configuredForEVP(evp);
 [z,weights] = gridSolver.nativeQuadratureRule(zDomain);
 weights = weights*options.D/sum(weights);
@@ -58,7 +60,7 @@ collections = cell(1,2);
 costs = cell(1,2);
 for i = 1:2
     solver = IMSolverSpectral(nEVP=options.nEVP(i),coordinateKind="wkb");
-    [collections{i},costs{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=zDomain,f0=options.f0,g=options.g, ...
+    [collections{i},costs{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=zDomain,rotationRate=options.rotationRate,latitude=options.latitude,g=options.g, ...
         surfaceBoundary=surface,nModes=options.candidateCount,nInertialModes=options.inertialCount);
 end
 counts = table(kappa(:),zeros(numel(kappa),1),zeros(numel(kappa),1),zeros(numel(kappa),1),false(numel(kappa),1),false(numel(kappa),1), ...

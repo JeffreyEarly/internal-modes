@@ -14,7 +14,7 @@ classdef IMInternalModesQuadratureWeightFitTests < matlab.unittest.TestCase
             D = 1200;
             N2 = @(z) 1e-4*exp(z/2000);
             solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
-            testCase.basisSet = solver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]),nModes=8);
+            testCase.basisSet = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]),nModes=8);
             sigma = linspace(0,1,19).';
             testCase.z = -D+D*(1-(1-sigma).^2);
         end

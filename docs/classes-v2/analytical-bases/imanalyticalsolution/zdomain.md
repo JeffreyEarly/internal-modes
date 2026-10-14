@@ -3,7 +3,7 @@ layout: default
 title: zDomain
 parent: IMAnalyticalSolution
 grand_parent: Analytical bases
-nav_order: 6
+nav_order: 8
 mathjax: true
 ---
 

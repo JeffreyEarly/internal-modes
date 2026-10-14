@@ -3,7 +3,7 @@ layout: default
 title: waveModesAtWavenumber
 parent: IMInternalModes
 grand_parent: Core
-nav_order: 21
+nav_order: 23
 mathjax: true
 ---
 
@@ -22,7 +22,8 @@ Create the fixed-wavenumber wave-mode EVP.
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
 + `options.k`  horizontal wavenumber
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface boundary condition
 + `options.bottomBoundary`  bottom boundary condition

@@ -150,7 +150,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             g = 9.81;
             zDomain = [-D 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g, ...
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g, ...
                 surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
             basisSet = solver.solveEVP(evp,nModes=8);
@@ -234,7 +234,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             zDomain = [-D 0];
             N2 = @(z) N0*N0*exp(2*z/b);
             fSolver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
-            fBasis = fSolver.solveEVP(IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain,g=g),nModes=6);
+            fBasis = fSolver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g),nModes=6);
             sigma = linspace(0,1,18).';
             fZ = zDomain(1) + D*(1-(1-sigma).^2);
             fObjective = @(context) testCase.dimensionNormalizedRegularizedObjective(context,lambda,4);
@@ -363,7 +363,7 @@ classdef IMQuadratureWeightFitTests < matlab.unittest.TestCase
             g = 9.81;
             zDomain = [-D 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
             basisSet = solver.solveEVP(evp,nModes=12);
             basisSet.normalization = "geostrophic";

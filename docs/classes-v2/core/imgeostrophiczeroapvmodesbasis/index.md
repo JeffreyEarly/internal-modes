@@ -27,7 +27,7 @@ wavenumber page, the selected response matrix is the identity. The
 diagnostic structure is
 
 $$
-G(z)=-\frac{g}{N^2(z)}\frac{\partial F}{\partial z}(z).
+F_z=-\frac{N^2}{g}G,\qquad G_z=-\frac{gk^2}{f_0^2}F.
 $$
 
 `F(z)` and `G(z)` have dimensions `nZ x nEndpoints x nK`. The four

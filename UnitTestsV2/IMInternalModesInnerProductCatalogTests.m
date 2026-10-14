@@ -21,8 +21,8 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
     methods (Test)
         function simpleHydrostaticDiagnosticRowsAreKnown(testCase)
             [N2, zDomain] = testCase.profile();
-            gEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
-            fEVP = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            gEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            fEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
             fSpec = gEVP.innerProduct("F");
             gSpec = fEVP.innerProduct("G");
@@ -38,11 +38,11 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function diagnosticEndpointValueRowsAreKnown(testCase)
             [N2, zDomain, ~, g] = testCase.profile();
-            gEVP = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=3));
-            fRobinEVP = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, ...
+            fRobinEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=3));
-            fLinkedEVP = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, ...
+            fLinkedEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=4, c=1, d=0));
 
             fSpec = gEVP.innerProduct("F");
@@ -65,11 +65,11 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function majorantRecipeUsesAbsoluteSolvedAndCatalogEndpointCoefficients(testCase)
             [N2,zDomain,~,g] = testCase.profile();
-            catalogEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain, ...
+            catalogEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=2,b=3));
             signedCatalog = catalogEVP.innerProduct("F");
             majorantCatalog = catalogEVP.majorantInnerProduct("F");
-            apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g, ...
+            apvEVP = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g, ...
                 g0=-0.02,gd=-0.03,surfaceBoundary="rigidLid");
             signedAPV = apvEVP.innerProduct("F");
             majorantAPV = apvEVP.majorantInnerProduct("F");
@@ -88,11 +88,11 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function diagnosticInteriorRowsMatchCatalog(testCase)
             [N2, zDomain] = testCase.profile();
-            fP6 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+            fP6 = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=3, d=0));
-            gP2 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gP2 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=3, d=0));
-            gP4 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gP4 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=0, b=2, c=0, d=3));
 
             testCase.verifyInteriorOnly(fP6.innerProduct("G"))
@@ -103,7 +103,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function gFormGEqualsAFBoundaryHasDiagnosticFInnerProduct(testCase)
             [N2, zDomain] = testCase.profile();
             A = 7;
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=0, b=A, c=1, d=0));
 
             testCase.verifyInteriorOnly(evp.innerProduct("F"))
@@ -112,7 +112,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function endpointInnerProductTermsEnterGramMatrix(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=3));
             basisSet = solver.solveEVP(evp, nModes=2);
             spec = evp.innerProduct("F");
@@ -160,7 +160,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function linkedEndpointInnerProductTermsEnterGramMatrix(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, ...
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=4, c=1, d=0));
             basisSet = solver.solveEVP(evp, nModes=2);
             spec = evp.innerProduct("G");
@@ -184,21 +184,21 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
 
         function unsupportedHydrostaticRowsHaveNoInnerProduct(testCase)
             [N2, zDomain] = testCase.profile();
-            fP5 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+            fP5 = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
-            fT3 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+            fT3 = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=0, d=1));
-            fT2 = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, ...
+            fT2 = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=1, d=1));
-            gP1 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gP1 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
-            gT1 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gT1 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=1, d=1));
-            gT2 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gT2 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=0, d=1));
-            gT3 = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            gT3 = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=1, d=0));
-            allFour = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            allFour = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=1, c=1, d=1));
 
             testCase.verifyUnavailable(fP5.innerProduct("G"), "mixed identity")
@@ -214,7 +214,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function unavailableDiagnosticGramMatrixThrows(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, ...
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
             basisSet = solver.solveEVP(evp, nModes=2);
 
@@ -224,7 +224,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function waveDiagnosticInnerProductsRemainUnavailable(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, g=g);
+            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3, g=g);
             basisSet = solver.solveEVP(evp, nModes=2);
             spec = evp.innerProduct("F");
 
@@ -237,7 +237,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             [N2, zDomain, ~, g] = testCase.profile();
             surface = IMBoundaryCondition(a=2, b=3);
             bottom = IMBoundaryCondition(a=-4, b=5);
-            evp = IMInternalModes(name="unforced-APV-modes", formulation="F", ...
+            evp = IMInternalModes(rotationRate=0,name="unforced-APV-modes", formulation="F", ...
                 modeFamily="hydrostatic", N2=N2, zDomain=zDomain, ...
                 p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) ones(size(z))/ctx.g, g=g, ...
@@ -256,7 +256,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function geostrophicNormalizationCouplesFAndGForGFormulatedModes(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
             basisSet = solver.solveEVP(evp, nModes=2);
             basisSet.normalization = "geostrophic";
 
@@ -266,7 +266,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function geostrophicNormalizationCouplesFAndGForFFormulatedModes(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
             basisSet = solver.solveEVP(evp, nModes=3);
             basisSet.normalization = "geostrophic";
 
@@ -276,7 +276,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function geostrophicNormalizationUsesEndpointValueDiagnosticTerms(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, ...
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, ...
                 surfaceBoundary=IMBoundaryCondition(a=2, b=3));
             basisSet = solver.solveEVP(evp, nModes=2);
             basisSet = basisSet.addNormalization("raw", @(~,~) 1);

@@ -30,7 +30,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 g0 = cases{iCase,1};
                 gd = cases{iCase,2};
                 activeEndpoints = cases{iCase,3};
-                evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
+                evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
 
                 testCase.verifyClass(evp,"IMMeanDensityAnomalyModes")
                 testCase.verifyEqual(string(evp.name),"meanDensityAnomalyModes")
@@ -49,23 +49,23 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function endpointAccelerationsAreValidatedAndUnrelatedOptionsAreAbsent(testCase)
             [N2,zDomain] = testCase.constantProfile();
-            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=NaN,gd=1), ...
+            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=NaN,gd=1), ...
                 "IMMeanDensityAnomalyModes:InvalidSurfaceAcceleration")
-            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=-Inf,gd=1), ...
+            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=-Inf,gd=1), ...
                 "IMMeanDensityAnomalyModes:InvalidSurfaceAcceleration")
-            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=1,gd=NaN), ...
+            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=1,gd=NaN), ...
                 "IMMeanDensityAnomalyModes:InvalidBottomAcceleration")
-            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=1,gd=-Inf), ...
+            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=1,gd=-Inf), ...
                 "IMMeanDensityAnomalyModes:InvalidBottomAcceleration")
             testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=1,gd=1,f0=1e-4), ...
                 "MATLAB:TooManyInputs")
-            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=1,gd=1,surfaceBoundary="freeSurface"), ...
+            testCase.verifyError(@() IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=1,gd=1,surfaceBoundary="freeSurface"), ...
                 "MATLAB:TooManyInputs")
         end
 
         function generalizedEnergySpecificationIsExact(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=-0.04,gd=0.03);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=-0.04,gd=0.03);
             GSpec = evp.innerProduct("G");
             FSpec = evp.innerProduct("F");
             z = linspace(zDomain(1),zDomain(2),7).';
@@ -85,7 +85,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             z = linspace(zDomain(1),zDomain(2),401).';
             y = z-zDomain(1);
             for coordinateKind = ["z","wkb","density"]
-                evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
+                evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
                 basis = IMSolverSpectral(nEVP=80,coordinateKind=coordinateKind).solveEVP(evp,nModes=5);
                 G = basis.G(z);
                 F = basis.F(z);
@@ -118,7 +118,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 g0 = cases{iCase,1};
                 gd = cases{iCase,2};
                 expectNull = cases{iCase,3};
-                evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
+                evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
                 basis = IMSolverSpectral(nEVP=96).solveEVP(evp,nModes=6);
                 lambda = basis.eigenvalues;
                 GSurface = basis.G(zDomain(2));
@@ -157,7 +157,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function signedNormalizationAndOrderingAreDeterministic(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=-0.05,gd=0);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=-0.05,gd=0);
             solver = IMSolverSpectral(nEVP=96);
             first = solver.solveEVP(evp,nModes=6);
             second = solver.solveEVP(evp,nModes=6);
@@ -176,7 +176,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function effectivelyInfinitePencilModeDoesNotDisplacePhysicalMode(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=Inf,gd=-0.01);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=Inf,gd=-0.01);
             basis = IMSolverSpectral(nEVP=96).solveEVP(evp,nModes=4);
 
             testCase.verifyEqual(basis.modeNumber,[-1 1 2 3],AbsTol=0)
@@ -190,7 +190,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             b = 1300;
             N2 = @(z) N0^2*exp(2*z/b);
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=Inf);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=Inf);
             basis = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=8);
             z = linspace(-D,0,32001).';
             G = basis.G(z);
@@ -205,7 +205,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
         function finiteDifferencePressureUsesTheSameIntegralConvention(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
             z = linspace(zDomain(1),zDomain(2),321).';
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
             basis = IMSolverFiniteDifference(z=z).solveEVP(evp,nModes=4);
             G = basis.G(z);
             expectedF = -flip(cumtrapz(flip(z),flip((N2(z)/g).*G),1),1);
@@ -216,7 +216,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function independentColumnScalingPreservesSignedPhysicalModes(testCase)
             N2 = @(z) 1e-4+0*z;
-            problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-0.08,gd=0.08);
+            problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-800 0],g0=-0.08,gd=0.08);
             original = IMSolverSpectral(nEVP=96).solveEVP(problem,nModes=8);
             factors = [1e-8 1e8 1e-6 1e6 2 0.5 1e-4 1e4];
             scaled = problem.makeBasisSet(original.solver,original.nativeModes.*factors,original.eigenvalues,original.modeNumber,struct());
@@ -229,7 +229,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
         end
 
         function unrelatedCandidateCannotChangeConstantClassification(testCase)
-            problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08,gd=0.08);
+            problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08,gd=0.08);
             basis = IMSolverSpectral(nEVP=96).solveEVP(problem,nModes=5);
             index = find(basis.modeNumber == 0);
             alone = problem.makeBasisSet(basis.solver,basis.nativeModes(:,index),0,0,struct());
@@ -242,7 +242,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function exactAndNearNullConstantsRemainRejectedAtEveryScale(testCase)
             for balanceOffset = [0 1e-14]
-                problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-balanceOffset),gd=0);
+                problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-balanceOffset),gd=0);
                 solver = IMSolverSpectral(nEVP=64).configuredForEVP(problem);
                 for amplitude = [1e-8 1 1e8]
                     native = [amplitude;zeros(63,1)];
@@ -252,7 +252,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
         end
 
         function nonsingularNearBalanceIsStillAllowed(testCase)
-            problem = IMInternalModes.meanDensityAnomalyModes(N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-1e-8),gd=0);
+            problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=@(z)1e-4+0*z,zDomain=[-800 0],g0=-0.08*(1-1e-8),gd=0);
             solver = IMSolverSpectral(nEVP=64).configuredForEVP(problem);
             for amplitude = [1e-8 1 1e8]
                 basis = problem.makeBasisSet(solver,[amplitude;zeros(63,1)],0,0,struct());
@@ -264,7 +264,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             profiles = {@(z)1e-4+0*z,@(z)1e-4*exp(2*z/700)};
             for i = 1:numel(profiles)
                 N2 = profiles{i}; columnGravity = integral(N2,-800,0);
-                problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
+                problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
                 grid = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(problem);
                 [z,w] = grid.nativeQuadratureRule([-800 0]); w = w*(800/sum(w));
                 basis = IMSolverSpectral(nEVP=207).solveEVP(problem,nModes=69);
@@ -283,7 +283,7 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             S = @(z) 0.5*(1+tanh((z+40)/10));
             N2 = @(z) S(z)*(8e-4)^2+(1-S(z)).*((5e-4)^2+((3e-3)^2-(5e-4)^2)*exp((z+40)/80));
             columnGravity = integral(N2,-800,0);
-            problem = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
+            problem = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-800 0],g0=-columnGravity,gd=columnGravity);
             grid = IMSolverSpectral(nEVP=513,coordinateKind="wkb").configuredForEVP(problem);
             [z,w] = grid.nativeQuadratureRule([-800 0]);
             w = w*(800/sum(w));
@@ -298,14 +298,14 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
         function singularConstantNullNormIsRejected(testCase)
             [N2,zDomain,g,N0] = testCase.constantProfile();
             singularG0 = -(N0^2*diff(zDomain));
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=singularG0,gd=0);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=singularG0,gd=0);
             testCase.verifyError(@() IMSolverSpectral(nEVP=64).solveEVP(evp,nModes=4), ...
                 "IMMeanDensityAnomalyModesBasis:ZeroNormMode")
         end
 
         function discreteTransformProjectsGAndSynthesizesAlignedF(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
-            evp = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
+            evp = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
             basis = IMSolverSpectral(nEVP=96).solveEVP(evp,nModes=18);
             [transform,assessment] = basis.discreteTransform(nPoints=16);
             coefficients = reshape(sin(1:(2*numel(transform.modeNumber))),numel(transform.modeNumber),2);
@@ -339,9 +339,9 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
             Nz = 64;
             N2 = @(z) N0*N0*exp(2*z/b);
             solver = IMSolverSpectral(nEVP=256,coordinateKind="wkb");
-            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes( ...
+            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes(rotationRate=0, ...
                 N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=0.03,surfaceBoundary="freeSurface"),nModes=Nz+8);
-            mda = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes( ...
+            mda = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(rotationRate=0, ...
                 N2=N2,zDomain=[-D 0],g=g,g0=0.02,gd=0.03),nModes=Nz+8);
             [z,apvGridDesign] = apv.modeRootGrid(nPoints=Nz);
 
@@ -364,12 +364,12 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
 
         function retainedPoliciesRespectSignedTargetsAndUndefinedProducts(testCase)
             [N2,zDomain,g] = testCase.constantProfile();
-            positiveEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
+            positiveEVP = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=0,gd=0);
             positiveBasis = IMSolverSpectral(nEVP=96).solveEVP(positiveEVP,nModes=12);
             testCase.verifyError(@() positiveBasis.discreteTransform(nPoints=10,quadraticAliasingTolerance=0.1), ...
                 "IMMeanDensityAnomalyModesBasis:UnavailableQuadraticAliasingPolicy")
 
-            signedEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=-0.05,gd=0);
+            signedEVP = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=-0.05,gd=0);
             signedBasis = IMSolverSpectral(nEVP=96).solveEVP(signedEVP,nModes=12);
             testCase.verifyError(@() signedBasis.discreteTransform(nPoints=10,leakageTolerance=0.1,nCheckModes=11), ...
                 "IMBasisSet:UnavailableDiscreteTransformPolicy")

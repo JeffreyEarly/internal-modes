@@ -1,0 +1,15 @@
+profile,wavelength,kappa,nEVP,oldResolvedCount,newResolvedCount,difference,qualification
+constant,10000,0.000628318530717959,64,29,29,0,assessed
+constant,10000,0.000628318530717959,128,67,67,0,assessed
+constant,1000,0.00628318530717959,64,29,29,0,assessed
+constant,1000,0.00628318530717959,128,67,67,0,assessed
+standardExponential,10000,0.000628318530717959,64,29,29,0,inconclusive evidence; reference uncertainty
+standardExponential,10000,0.000628318530717959,128,45,45,0,inconclusive evidence; reference uncertainty
+standardExponential,1000,0.00628318530717959,64,29,29,0,inconclusive evidence; reference uncertainty
+standardExponential,1000,0.00628318530717959,128,36,36,0,inconclusive evidence; reference uncertainty
+weakDeepExponential,10000,0.000628318530717959,64,9,9,0,inconclusive evidence; reference uncertainty
+weakDeepExponential,10000,0.000628318530717959,128,9,9,0,inconclusive evidence; reference uncertainty
+weakDeepExponential,1000,0.00628318530717959,64,6,6,0,inconclusive evidence; reference uncertainty
+weakDeepExponential,1000,0.00628318530717959,128,6,6,0,inconclusive evidence; reference uncertainty
+neutralSurfaceLayer,NaN,NaN,64,NaN,0,NaN,legacy unsupported; inconclusive evidence; reference uncertainty; incomplete candidate inventory
+neutralSurfaceLayer,NaN,NaN,128,NaN,0,NaN,legacy unsupported; inconclusive evidence; reference uncertainty; incomplete candidate inventory

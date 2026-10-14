@@ -19,11 +19,11 @@ assert(scalarDecision.requestedColumnCount == 4);
 
 % Aligned F/G, APV, mean-density-anomaly, waves, and inertial kappa=0.
 % Each uses its own metric and independently requested scientific count.
-problems = {IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain), ...
-    IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g0=0,gd=0), ...
-    IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g0=0,gd=0), ...
-    IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=1e-4), ...
-    IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=0)};
+problems = {IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain), ...
+    IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=0,gd=0), ...
+    IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=0,gd=0), ...
+    IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=zDomain,k=1e-4), ...
+    IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=zDomain,k=0)};
 counts = [4 4 4 4 3]; % Inertial count is independent of the wave count.
 familyAssessments = cell(size(problems));
 for iFamily = 1:numel(problems)
@@ -37,7 +37,7 @@ for iFamily = 1:numel(problems)
 end
 
 % Closed-form bases use the same assessment entry without a spectral solver.
-solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain);
+solution = IMConstantStratificationSolution(rotationRate=0,N0=N0,zDomain=zDomain);
 analytical = solution.internalModes(problems{1},nModes=4);
 analyticalCollection = IMBasisCollection({analytical});
 analyticalAssessment = analyticalCollection.assess(z,weights,variable="G");
@@ -46,15 +46,15 @@ analyticalProvenance = analyticalAssessment.identity.projectionProvenance;
 
 % Repeated wave requests share the same continuous stored basis exactly.
 wave1 = solver.solveEVP(problems{4},nModes=4);
-wave2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=2e-4),nModes=4);
+wave2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=zDomain,k=2e-4),nModes=4);
 waves = IMBasisCollection({wave1,wave2},kappa=[2e-4 1e-4 2e-4],basisIndex=[2 1 2]);
 waveG = waves.evaluate(z,variable="G",pages=[3 1]);
 assert(isequal(waveG(:,:,1),waveG(:,:,2)));
 
 % Numerical and analytical zero-APV bases preserve endpoint/page identity.
-boundaryProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,f0=1e-4,k=[1e-4 2e-4]);
+boundaryProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=1e-4/(2*sind(33)),latitude=33,k=[1e-4 2e-4]);
 numericalBoundary = solver.solveGeostrophicZeroAPVModes(boundaryProblem);
-analyticalBoundary = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,f0=1e-4).geostrophicZeroAPVModesAtWavenumber([1e-4 2e-4]);
+analyticalBoundary = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=1e-4/(2*sind(33)),latitude=33).geostrophicZeroAPVModesAtWavenumber([1e-4 2e-4]);
 for boundary = {numericalBoundary,analyticalBoundary}
     collection = IMBasisCollection(boundary,basisIndex=[1 1],sourcePage=[2 1]);
     boundaryF = collection.evaluate(z,variable="F");

@@ -131,9 +131,9 @@ classdef IMHydrostaticBoundaryConditionTests < matlab.unittest.TestCase
     methods (Static, Access = private)
         function evp = evpFor(formulation, boundary, N2, zDomain, g)
             if string(formulation) == "F"
-                evp = IMInternalModes.hydrostaticFModes(N2=N2, zDomain=zDomain, g=g, surfaceBoundary=boundary);
+                evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, surfaceBoundary=boundary);
             else
-                evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, g=g, surfaceBoundary=boundary);
+                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, surfaceBoundary=boundary);
             end
         end
 

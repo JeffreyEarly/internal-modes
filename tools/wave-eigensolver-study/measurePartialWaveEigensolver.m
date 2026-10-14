@@ -17,7 +17,7 @@ for iProfile = 1:size(profiles,1)
     for nEVP = options.resolutions
         for kappa = options.kappa
             evp = IMInternalModes.waveModesAtWavenumber(N2=profiles{iProfile,2},zDomain=[-1000 0], ...
-                k=kappa,f0=1e-4,surfaceBoundary=surface,bottomBoundary=IMBoundaryCondition.dirichlet());
+                k=kappa,rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceBoundary=surface,bottomBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb").configuredForEVP(evp);
             [A,B] = evp.assembleConfigured(solver);
             for nModes = options.modeCounts

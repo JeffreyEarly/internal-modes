@@ -14,7 +14,7 @@ N0 = 5.2e-3;
 zDomain = [-D 0];
 N2 = @(z) N0*N0*ones(size(z));
 
-evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
 solver = IMSolverSpectral(nEVP=160);
 basisSet = solver.solveEVP(evp,nModes=30);
 basisSet.normalization = "geostrophic";

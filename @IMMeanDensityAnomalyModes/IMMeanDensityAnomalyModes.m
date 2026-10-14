@@ -69,12 +69,16 @@ classdef IMMeanDensityAnomalyModes < IMInternalModes
             % - Declaration: evp = IMMeanDensityAnomalyModes(options)
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
             % - Parameter options.g0: signed finite surface acceleration, zero, or positive infinity
             % - Parameter options.gd: signed finite bottom acceleration, zero, or positive infinity
             % - Returns evp: mean-density-anomaly EVP descriptor
             arguments
                 options.N2 function_handle
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.g0 (1,1) double {mustBeReal}
@@ -105,7 +109,7 @@ classdef IMMeanDensityAnomalyModes < IMInternalModes
             parameters = struct("g0",options.g0,"gd",options.gd,"activeEndpoints",activeEndpoints);
             self@IMInternalModes(name="meanDensityAnomalyModes",formulation="G",modeFamily="meanDensityAnomaly", ...
                 N2=options.N2,zDomain=options.zDomain,p=@(z,~) ones(size(z)),q=@(z,~) zeros(size(z)), ...
-                r=@(z,ctx) ctx.N2(z)/ctx.g,g=options.g,surfaceBoundary=surfaceCondition, ...
+                r=@(z,ctx) ctx.N2(z)/ctx.g,rotationRate=options.rotationRate,latitude=options.latitude,g=options.g,surfaceBoundary=surfaceCondition, ...
                 bottomBoundary=bottomCondition,parameters=parameters);
             self.g0 = options.g0;
             self.gd = options.gd;

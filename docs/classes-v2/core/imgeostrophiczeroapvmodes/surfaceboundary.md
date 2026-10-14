@@ -3,7 +3,7 @@ layout: default
 title: surfaceBoundary
 parent: IMGeostrophicZeroAPVModes
 grand_parent: Core
-nav_order: 11
+nav_order: 13
 mathjax: true
 ---
 

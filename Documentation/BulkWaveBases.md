@@ -7,7 +7,7 @@
 ```matlab
 N2 = @(z) 1e-4*(1+0.2*exp(z/300));
 solver = IMSolverSpectral(nEVP=96);
-[collection,costs] = solver.solveWaveModesAtWavenumbers([2e-4 0 1e-4 2e-4],N2=N2,zDomain=[-1000 0],f0=1e-4,nModes=16,nInertialModes=8);
+[collection,costs] = solver.solveWaveModesAtWavenumbers([2e-4 0 1e-4 2e-4],N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=16,nInertialModes=8);
 z = linspace(-1000,0,2048).';
 F = collection.evaluate(z,variable="F",pages=[4 1 3]);
 Gz = collection.evaluate(z,variable="G",derivativeOrder=1,pages=[1 3]);

@@ -25,8 +25,8 @@ quadraticAliasingTolerance = 0.1;
 nAvailableModes = Nz+4;
 nEVP = max(96,3*nAvailableModes);
 modeSolver = IMSolverSpectral(nEVP=nEVP);
-apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
-mdaEVP = IMInternalModes.meanDensityAnomalyModes(N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
+apvEVP = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
+mdaEVP = IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=g0,gd=gd);
 apvBasis = modeSolver.solveEVP(apvEVP,nModes=nAvailableModes);
 mdaBasis = modeSolver.solveEVP(mdaEVP,nModes=nAvailableModes);
 

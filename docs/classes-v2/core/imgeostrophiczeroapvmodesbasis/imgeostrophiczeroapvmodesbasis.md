@@ -21,7 +21,9 @@ Create a canonical boundary-normalized zero-APV basis.
 ## Parameters
 + `options.problem`  geostrophic zero-APV problem
 + `options.solver`  configured numerical solver
-+ `options.nativeModes`  canonical native structures
++ `options.nativeModes`  canonical native F structures
++ `options.nativeGModes`  optional aligned native G structures
++ `options.companionSolver`  optional G discretization; requires nativeGModes
 + `options.metadata`  additional metadata
 
 ## Returns

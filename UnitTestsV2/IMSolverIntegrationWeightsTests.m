@@ -24,7 +24,7 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]);
             basis = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=4);
             solver = basis.solver;
             z = solver.innerProductGrid(evp.zDomain);
@@ -42,7 +42,7 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-D 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-D 0]);
             solver = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
             [z,weights] = solver.nativeQuadratureRule(evp.zDomain);
             values = [ones(size(z)) sin(z/317) exp(z/2300).*cos(z/411)];
@@ -80,7 +80,7 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
             zDomain = [-D 0];
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
             solver = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
             [z,weights,Dz] = solver.nativeDifferentiationRule(zDomain);
             [quadratureZ,quadratureWeights] = solver.nativeQuadratureRule(zDomain);

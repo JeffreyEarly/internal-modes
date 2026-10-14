@@ -478,8 +478,14 @@ classdef IMBasisSet
                     uzEndpoint = uzEndpoint ./ normalizationFactors;
                 end
 
-                pEndpoint = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
-                values = endpointWeight.c*uEndpoint - endpointWeight.d*pEndpoint*uzEndpoint;
+                if endpointWeight.d == 0
+                    % A value-only trace has no flux coefficient to sample.
+                    % In particular, 0*(f0^2/N2) is undefined at neutral endpoints.
+                    values = endpointWeight.c*uEndpoint;
+                else
+                    pEndpoint = IMEigenvalueProblem.evaluateCoefficient(self.evp.p, zEndpoint, context);
+                    values = endpointWeight.c*uEndpoint - endpointWeight.d*pEndpoint*uzEndpoint;
+                end
                 terms(end+1) = struct("location", string(endpointWeight.location), "coefficient", endpointWeight.coefficient, "values", values, "kind", "endpointWeight");
             end
         end

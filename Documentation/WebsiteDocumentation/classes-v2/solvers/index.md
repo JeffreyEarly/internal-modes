@@ -20,7 +20,9 @@ solver = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
 The returned `z` values are increasing and `weights` are in the same order. For the WKB spectral coordinate, the points are the Chebyshev--Lobatto values in
 
 $$
-x(z)=\int_{z_b}^{z}N(s)\,ds
+x(z)=\int_{z_b}^{z}\sqrt{B(s)}\,ds,\qquad B(z)=\sqrt{\left(N^2(z)+f_h^2-f_0^2\right)^2+4f_0^2f_h^2}
 $$
 
-mapped back to physical depth. The weights are the corresponding Clenshaw--Curtis value weights after the physical Jacobian $$dz/dx=1/N(z)$$ is applied. Thus `weights.'*values` evaluates the solver's native approximation to $$\int_{z_b}^{z_s}f(z)\,dz$$ for `values = f(z)`. Keep the returned points and weights together; no additional fit is implied by this API.
+mapped back to physical depth. Here $$f_0=2\Omega\sin\phi$$ and $$f_h=2\Omega\cos\phi$$ are derived from `rotationRate` in radians per second and `latitude` in degrees north. The bandwidth stretch reduces to the original $$N(z)$$ stretch when `rotationRate=0`. It changes the numerical coordinate while preserving the configured EVP.
+
+The weights are the corresponding Clenshaw--Curtis value weights after the physical Jacobian $$dz/dx=1/\sqrt{B(z)}$$ is applied. The stretch must be strictly positive throughout the domain. Thus `weights.'*values` evaluates the solver's native approximation to $$\int_{z_b}^{z_s}f(z)\,dz$$ for `values = f(z)`. Keep the returned points and weights together; no additional fit is implied by this API.

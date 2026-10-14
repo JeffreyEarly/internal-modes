@@ -13,7 +13,7 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
             kappa = [3e-4 0 1e-4 3e-4 0];
             for coordinateKind = ["z","wkb","density"]
                 solver = IMSolverSpectral(nEVP=64,coordinateKind=coordinateKind);
-                [collection,diagnostics] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],f0=1e-4,nModes=5,nInertialModes=3);
+                [collection,diagnostics] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=5,nInertialModes=3);
                 testCase.verifyEqual(collection.kappa,kappa)
                 testCase.verifyEqual(collection.basisIndex,[1 2 3 1 2])
                 testCase.verifyEqual(diagnostics.solvedKappa,[3e-4 0 1e-4])
@@ -27,7 +27,7 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
                 z = linspace(-1000,0,31).';
                 for i = 1:3
                     basis = collection.bases{i};
-                    evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],f0=1e-4,k=diagnostics.solvedKappa(i));
+                    evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,k=diagnostics.solvedKappa(i));
                     scalar = solver.solveEVP(evp,nModes=diagnostics.solves.requestedColumnCount(i));
                     testCase.verifyEqual(basis.evp.parameters.k,diagnostics.solvedKappa(i))
                     testCase.verifyEqual(basis.modeNumber,scalar.modeNumber)
@@ -47,8 +47,8 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
             solver = IMSolverSpectral(nEVP=64);
             surface = IMBoundaryCondition(a=0,b=1,c=1,d=0);
             bottom = IMBoundaryCondition(a=1,b=0.1,c=0,d=0);
-            [collection,~] = solver.solveWaveModesAtWavenumbers([1e-4 4e-4],N2=N2,zDomain=[-1000 0],f0=1e-4,surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
-            base = IMInternalModes.waveModesAtWavenumber(k=0,N2=N2,zDomain=[-1000 0],f0=1e-4,surfaceBoundary=surface,bottomBoundary=bottom);
+            [collection,~] = solver.solveWaveModesAtWavenumbers([1e-4 4e-4],N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
+            base = IMInternalModes.waveModesAtWavenumber(k=0,N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceBoundary=surface,bottomBoundary=bottom);
             prepared = solver.configuredForEVP(base);
             [A0,B0,samples] = base.assembleConfigured(prepared);
             A2 = prepared.physicalDerivativeMatrix(0);
@@ -74,7 +74,7 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
         function sharedStratificationIsActuallySampledOnceForZCoordinates(testCase)
             sampleCalls = 0;
             solver = IMSolverSpectral(nEVP=40);
-            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers([2e-4 1e-4 2e-4 3e-4],N2=@profile,zDomain=[-1000 0],nModes=3);
+            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers([2e-4 1e-4 2e-4 3e-4],rotationRate=0,N2=@profile,zDomain=[-1000 0],nModes=3);
             testCase.verifyEqual(sampleCalls,1)
             testCase.verifyEqual(numel(collection.bases),3)
             testCase.verifyEqual(diagnostics.preparationCount,1)
@@ -85,12 +85,12 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
         end
         function customSolversCannotSilentlySharePreparation(testCase)
             solver = IMBulkUnsupportedSpectralSolver();
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([1e-4 2e-4],N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],nModes=3),"IMSolver:UnsupportedBulkSolver")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([1e-4 2e-4],rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],nModes=3),"IMSolver:UnsupportedBulkSolver")
         end
         function finiteDifferenceBulkMatchesItsOwnScalarDiscretization(testCase)
             solver = IMSolverFiniteDifference(z=linspace(-1000,0,41).');
             N2 = @(z) 1e-4*(1+0.1*exp(z/300));
-            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers([2e-4 1e-4 2e-4],N2=N2,zDomain=[-1000 0],nModes=4);
+            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers([2e-4 1e-4 2e-4],rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=4);
             testCase.verifyEqual(diagnostics.solveCount,2)
             for basis = collection.bases
                 scalar = solver.solveEVP(basis{1}.evp,nModes=4);
@@ -102,11 +102,11 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
         function explicitCountsAndInputIdentityAreEnforced(testCase)
             solver = IMSolverSpectral(nEVP=16);
             N2 = @(z) 1e-4*ones(size(z));
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([1e-4 0],N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:MissingInertialModeCount")
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([],N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:EmptyWavenumberCollection")
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(1e-4,N2=N2,zDomain=[-1000 0],nModes=30),"IMSolver:InsufficientWaveModes")
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(0,N2=N2,zDomain=[-1000 0],nModes=3,nInertialModes=30),"IMSolver:InsufficientWaveModes")
-            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers(1e-4,N2=N2,zDomain=[-1000 0],nModes=3);
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([1e-4 0],rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:MissingInertialModeCount")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([],rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:EmptyWavenumberCollection")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(1e-4,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=30),"IMSolver:InsufficientWaveModes")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(0,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3,nInertialModes=30),"IMSolver:InsufficientWaveModes")
+            [collection,diagnostics] = solver.solveWaveModesAtWavenumbers(1e-4,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3);
             testCase.verifyEqual(numel(collection.bases),1)
             testCase.verifyEqual(diagnostics.solveCount,1)
         end
@@ -115,7 +115,7 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
             N2 = @(z) ones(size(z));
             surface = IMBoundaryCondition(a=2,b=1);
             bottom = IMBoundaryCondition.neumann();
-            [collection,~] = solver.solveWaveModesAtWavenumbers([0.2 0.1],N2=N2,zDomain=[-1 0],surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
+            [collection,~] = solver.solveWaveModesAtWavenumbers([0.2 0.1],rotationRate=0,N2=N2,zDomain=[-1 0],surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
             for i = 1:2
                 basis = collection.bases{i};
                 scalar = solver.solveEVP(basis.evp,nModes=4);
@@ -123,7 +123,7 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
                 testCase.verifyEqual(basis.modeNumber,scalar.modeNumber)
                 testCase.verifyEqual(basis.eigenvalues,scalar.eigenvalues,RelTol=1e-8,AbsTol=1e-10)
             end
-            zeroEVP = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1 0]);
+            zeroEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0]);
             scalar = solver.solveEVP(zeroEVP,nModes=4);
             testCase.verifyEqual(scalar.modeNumber,0:3)
             testCase.verifyEqual(scalar.eigenvalues(1),0)

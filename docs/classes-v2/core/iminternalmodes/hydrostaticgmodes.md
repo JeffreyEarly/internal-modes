@@ -21,7 +21,8 @@ Create the hydrostatic `G` internal-mode EVP.
 ## Parameters
 + `options.N2`  buoyancy frequency squared function
 + `options.zDomain`  physical vertical domain
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  planetary rotation rate in radians per second; default Earth rotation
++ `options.latitude`  central latitude in degrees north; default 33
 + `options.g`  gravitational acceleration
 + `options.surfaceBoundary`  surface boundary condition
 + `options.bottomBoundary`  bottom boundary condition

@@ -22,7 +22,8 @@ Create an exponential-stratification analytical solution family.
 + `options.N0`  surface buoyancy frequency
 + `options.b`  exponential e-folding depth
 + `options.zDomain`  physical vertical domain with surface at zero
-+ `options.f0`  Coriolis parameter
++ `options.rotationRate`  nonnegative planetary rotation rate in radians per second
++ `options.latitude`  latitude in degrees north, between -90 and 90
 + `options.g`  gravitational acceleration
 
 ## Returns

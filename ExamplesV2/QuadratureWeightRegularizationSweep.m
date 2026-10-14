@@ -109,12 +109,12 @@ configurations = repmat(struct("name","","family","","zDomain",[0 1],"coordinate
 configurations(end+1) = configuration("canonicalConstant","canonical",unitDomain,"z",192,false,@() IMEigenvalueProblem(zDomain=unitDomain,p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet()));
 configurations(end+1) = configuration("canonicalVariableMetric","canonical",unitDomain,"z",192,false,@() IMEigenvalueProblem(zDomain=unitDomain,p=1,q=0,r=@(z) exp(2*z),surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet()));
 configurations(end+1) = configuration("canonicalSurfaceEndpointMetric","endpointMetric",unitDomain,"z",192,false,@() IMEigenvalueProblem(zDomain=unitDomain,p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition(a=0,b=1,c=1,d=0),bottomBoundary=IMBoundaryCondition.dirichlet()));
-configurations(end+1) = configuration("hydrostaticGConstant","hydrostaticG",zDomain,"z",192,false,@() IMInternalModes.hydrostaticGModes(N2=constantN2,zDomain=zDomain,g=g));
-configurations(end+1) = configuration("hydrostaticGExponentialZ","hydrostaticG",zDomain,"z",256,false,@() IMInternalModes.hydrostaticGModes(N2=exponentialN2,zDomain=zDomain,g=g));
-configurations(end+1) = configuration("hydrostaticGExponentialWKB","hydrostaticG",zDomain,"wkb",256,false,@() IMInternalModes.hydrostaticGModes(N2=exponentialN2,zDomain=zDomain,g=g));
-configurations(end+1) = configuration("hydrostaticGExponentialDensity","hydrostaticG",zDomain,"density",256,false,@() IMInternalModes.hydrostaticGModes(N2=exponentialN2,zDomain=zDomain,g=g));
-configurations(end+1) = configuration("hydrostaticFExponential","hydrostaticF",zDomain,"wkb",256,false,@() IMInternalModes.hydrostaticFModes(N2=exponentialN2,zDomain=zDomain,g=g));
-configurations(end+1) = configuration("fixedWavenumberWaveSignedMetric","waveSignedMetric",zDomain,"wkb",256,true,@() IMInternalModes.waveModesAtWavenumber(N2=exponentialN2,zDomain=zDomain,k=2*pi/1e5,f0=8e-4,g=g));
+configurations(end+1) = configuration("hydrostaticGConstant","hydrostaticG",zDomain,"z",192,false,@() IMInternalModes.hydrostaticGModes(rotationRate=0,N2=constantN2,zDomain=zDomain,g=g));
+configurations(end+1) = configuration("hydrostaticGExponentialZ","hydrostaticG",zDomain,"z",256,false,@() IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,g=g));
+configurations(end+1) = configuration("hydrostaticGExponentialWKB","hydrostaticG",zDomain,"wkb",256,false,@() IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,g=g));
+configurations(end+1) = configuration("hydrostaticGExponentialDensity","hydrostaticG",zDomain,"density",256,false,@() IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,g=g));
+configurations(end+1) = configuration("hydrostaticFExponential","hydrostaticF",zDomain,"wkb",256,false,@() IMInternalModes.hydrostaticFModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,g=g));
+configurations(end+1) = configuration("fixedWavenumberWaveSignedMetric","waveSignedMetric",zDomain,"wkb",256,true,@() IMInternalModes.waveModesAtWavenumber(N2=exponentialN2,zDomain=zDomain,k=2*pi/1e5,rotationRate=8e-4/(2*sind(33)),latitude=33,g=g));
 end
 
 function value = configuration(name,family,zDomain,coordinateKind,nEVP,isStressCase,factory)

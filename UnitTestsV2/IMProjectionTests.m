@@ -100,7 +100,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.forwardMatrix,oldScalar.forwardMatrix,AbsTol=2e-13)
             testCase.verifyEqual(projection.gramError,oldScalar.relativeGramOperatorError,AbsTol=2e-13)
             testCase.verifyEqual(projection.roundTripError,oldScalar.roundTripError,AbsTol=2e-13)
-            family = solver.solveEVP(IMInternalModes.hydrostaticFModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]),nModes=4);
+            family = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]),nModes=4);
             oldAligned = family.discreteTransform(z=z,weights=weights,nModes=4,variables=["F" "G"]);
             for variable = ["F" "G"]
                 data = oldAligned.channelDiagnostics(variable=variable);

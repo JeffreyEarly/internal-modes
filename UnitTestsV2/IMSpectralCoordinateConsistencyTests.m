@@ -3,7 +3,7 @@ classdef IMSpectralCoordinateConsistencyTests < matlab.unittest.TestCase
         function stretchedMapsAndDerivativesAgreeWithExactExponential(testCase)
             D = 1000; b = 700; N0 = .01;
             N2 = @(z)N0^2*exp(2*z/b);
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=1e-3,f0=1e-4);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-D 0],k=1e-3,rotationRate=0,latitude=33);
             for kind = ["wkb" "density"]
                 if kind == "wkb", scale = N0; rate = 1/b; else, scale = N0^2; rate = 2/b; end
                 solver = IMSolverSpectral(nEVP=65,coordinateKind=kind).configuredForEVP(evp);
@@ -24,8 +24,8 @@ classdef IMSpectralCoordinateConsistencyTests < matlab.unittest.TestCase
         end
 
         function reconfigurationRebuildsMapsWithoutChangingTheOriginal(testCase)
-            firstEVP = IMInternalModes.hydrostaticGModes(N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0]);
-            secondEVP = IMInternalModes.hydrostaticGModes(N2=@(z)4e-4*ones(size(z)),zDomain=[-1000 0]);
+            firstEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0]);
+            secondEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)4e-4*ones(size(z)),zDomain=[-1000 0]);
             first = IMSolverSpectral(nEVP=33,coordinateKind="wkb").configuredForEVP(firstEVP);
             z = [-1000;-500;0];
             original = first.xOfZ(z);
