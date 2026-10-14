@@ -21,6 +21,8 @@ basisSet.normalization = "geostrophic";
 
 The V2 guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate the current API; the stable `InternalModes` quick start below remains unchanged.
 
+Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicitly specified neutral intervals and projection from labeled APV with the manuscript's continuous normalization.
+
 If you use these classes to compute the vertical modes, please cite the following paper,
 - J. Early, M. P. Lelong, and K. S. Smith. Fast and Accurate Coputation of Vertical Modes. Journal of Advances in Modeling Earth Systems. 2020. [doi](https://doi.org/10.1029/2019MS001939)
 

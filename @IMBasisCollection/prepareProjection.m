@@ -31,5 +31,9 @@ if options.variable == ""
 else
     recipe = basis.projectionRecipe(variable=options.variable);
 end
-projection = IMProjection.fromRecipe(recipe,z,weights,columns=options.columns);
+if isa(basis,"IMNeutralLabelModesBasis")
+    projection = basis.projectionOnGrid(z,weights,columns=options.columns);
+else
+    projection = IMProjection.fromRecipe(recipe,z,weights,columns=options.columns);
+end
 end

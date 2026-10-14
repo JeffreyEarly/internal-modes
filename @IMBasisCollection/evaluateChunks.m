@@ -10,6 +10,8 @@ function evaluateChunks(self,z,consumer,options)
 % analytical bases and custom subclasses retain their own evaluators.
 % Custom evaluators control their internal allocations; chunk bounds apply
 % to callbacks and the built-in evaluation paths, not arbitrary user code.
+% Neutral-label G derivatives are interval-interior derivatives with inside
+% endpoint traces. In particular, order 2 omits distributional interface terms.
 %
 % - Topic: Evaluate collections
 % - Parameter z: physical coordinate column
@@ -125,7 +127,13 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
                 end
                 sampled = sampled(:,columns,:);
             else
-                if options.derivativeOrder == 0
+                if isa(basis,"IMNeutralLabelModesBasis") && options.derivativeOrder > 0
+                    if options.derivativeOrder == 1
+                        sampled = basis.Gz(zChunk);
+                    else
+                        sampled = basis.Gzz(zChunk);
+                    end
+                elseif options.derivativeOrder == 0
                     sampled = basis.(variable)(zChunk);
                 else
                     sampled = basis.uz(zChunk);

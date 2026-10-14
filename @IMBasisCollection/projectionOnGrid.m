@@ -3,6 +3,8 @@ function projection = projectionOnGrid(self,z,weights,options)
 %
 % Preserve explicit columns, physical signed pairing, and reference provenance.
 % No quadrature fitting, acceptance policy, or mode selection is performed.
+% Neutral labels accept APV samples and use their prescribed continuous
+% dual, with an identity row-scaled target; supplied quadrature errors remain.
 % - Topic: Construct projections
 % - Parameter z: physical sample column
 % - Parameter weights: quadrature weights aligned with z

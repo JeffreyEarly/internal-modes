@@ -73,7 +73,7 @@ classdef IMBasisCollection
             end
             for iBasis = 1:numel(bases)
                 basis = bases{iBasis};
-                supported = isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+                supported = isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis");
                 if ~supported || ~isscalar(basis) || isa(basis,"handle")
                     error("IMBasisCollection:UnsupportedBasis","Entry %d must be a supported scalar continuous value basis.",iBasis);
                 end
@@ -129,7 +129,14 @@ classdef IMBasisCollection
     methods (Static, Access = private)
         function entry = describeBasis(basis)
             entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"rotationName","","rotationMatrix",[]);
-            if isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
+            if isa(basis,"IMNeutralLabelModesBasis")
+                entry.family = "neutralLabelModes";
+                entry.columnKind = "mode";
+                entry.columnLabels = basis.columnLabels;
+                entry.normalization = basis.normalization;
+                entry.variables = ["G" "APV"];
+                entry.derivativeOrders = {0:2,0};
+            elseif isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
                 entry.family = "geostrophicZeroAPVModes";
                 entry.columnKind = "endpoint";
                 entry.columnLabels = reshape(string(basis.endpoints),1,[]);
