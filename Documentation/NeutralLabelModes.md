@@ -2,6 +2,8 @@
 
 `IMNeutralLabelModesBasis` represents independent stationary displacement labels supported on exact neutral intervals. They have zero physical and generalized energy under the selected endpoint conditions. Their amplitudes carry units of length; they have no equivalent depth and are separate from the paired geostrophic F/G families. The implementation follows the manuscript's neutral-label vertical structure, generalized-energy endpoint conditions and APV projection equations.
 
+The shared-background creation interface is `IMModes.neutralLabelModes(background,neutralIntervals=...,energyBoundary=...,nModesPerInterval=...)`; it returns an `IMModeBasis` with the same profiles and prescribed APV projector. See the [mode-creation guide](ModeCreationAPI.md) for common identities and normalization names. The direct constructor below remains available.
+
 ```matlab
 basis = IMNeutralLabelModesBasis([-1000 -850; -700 -400; -250 0],zDomain=[-1000 0],nModes=[2 3 4],g0=0,gd=0);
 G = basis.G(z);
@@ -10,7 +12,7 @@ projection = basis.projectionOnGrid(z,weights);
 amplitudes = projection.project(APV);
 ```
 
-The caller must provide ordered, strictly separated maximal intervals where the reference stratification is exactly neutral. The class neither samples nor infers neutral intervals from density or N2. Merge touching intervals before construction. `nModes` is a positive scalar count for every interval or one positive count per interval. Columns are ordered by interval, then by the positive `localModeNumber`; `intervalIndex` and `columnLabels` preserve that identity independently of array indices.
+The caller must provide ordered, strictly separated maximal intervals where the reference stratification is exactly neutral. The class neither samples nor infers neutral intervals from density or N2. Merge touching intervals before construction. `nModes` is a nonnegative count of positive-wavenumber modes, scalar for every interval or one count per interval. An admissible constant label is additional and does not consume that count. Columns are ordered by interval, then by `localModeNumber`, with zero denoting a constant; `intervalIndex` and `columnLabels` preserve that identity independently of array indices. The direct basis reports the normalization name `"depthRMSG"`.
 
 With $$D = z_\mathrm{surface} - z_\mathrm{bottom}$$ and $$I = [a,b]$$ of length $$L$$, the dimensionless profiles obey
 
@@ -25,13 +27,26 @@ The lower/upper boundary types and analytical profiles are:
 | ND | $$\sqrt{2D/L}\cos(m_{\mathrm n}(z-a))$$ | $$(j-1/2)\pi/L$$ |
 | NN | $$\sqrt{2D/L}\cos(m_{\mathrm n}(z-a))$$ | $$j\pi/L$$ |
 
-Every join to stratified water is Dirichlet. A neutral physical surface is Neumann only when `g0==0`; a neutral physical bottom is Neumann only when `gd==0`. All finite nonzero and infinite accelerations select Dirichlet at the corresponding endpoint, enforcing zero generalized-energy coupling. Thus NN occurs only in a fully neutral column with both accelerations zero. That case requires `constantLabelPolicy="exclude"` explicitly: the constant label is fixed to zero because its APV vanishes and the APV projector cannot recover it. Only the positive NN cosine modes are retained.
+Every join to stratified water is Dirichlet. A neutral physical surface is Neumann only when `g0==0`; a neutral physical bottom is Neumann only when `gd==0`. All finite nonzero and infinite accelerations select Dirichlet at the corresponding endpoint, enforcing zero generalized-energy coupling. Thus NN occurs only in a fully neutral column with both accelerations zero. That case automatically includes the normalized constant label $$G=1$$, with `m_n=0`, `localModeNumber=0` and label `"interval1:mode0"`, before the positive NN cosine modes. `nModes=0` returns that constant alone. The default is `constantLabelPolicy="include"`; explicit legacy `"reject"` and `"exclude"` policies respectively reject its presence or fix its amplitude to zero.
 
 `G`, `Gz`, `Gzz` and `APV` return sample-by-mode matrices, with every profile zero outside its interval. `Gz` and `Gzz` use the trace from inside the neutral interval at interval endpoints. `Gzz` is the classical piecewise second derivative; it omits the distributional interface terms of the zero extension. The zero-extended continuous `G` has APV $$q_j = -f_0 G_{j,z}$$, with no interface delta term. `rotationRate` and `latitude` follow the other V2 APIs, with read-only $$f_0 = 2\Omega\sin\phi$$.
 
 `gramMatrix()` returns the exact depth-normalized G Gram, the identity. `gramMatrix(variable="APV")` returns the exact unscaled potential-enstrophy pairing, without a factor of one half:
 
 $$H_{Z,ij} = \int_I q_i^* q_j\,dz = f_0^2 D(m_{\mathrm n}^j)^2\delta_{ij}.$$
+
+The constant label has unit G norm and zero APV norm. Its amplitude cannot be recovered from APV. Projecting any set containing it throws `IMNeutralLabelModesBasis:UnobservableConstantLabel`; select only positive-wavenumber columns and determine the constant amplitude from independent particle-label information:
+
+```matlab
+basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3);
+z = -1000+((1:256).'-0.5)*(1000/256);
+weights = (1000/256)*ones(size(z));
+columns = find(basis.m_n > 0);
+projection = basis.projectionOnGrid(z,weights,columns=columns);
+amplitudes = projection.project(basis.APV(z)*[5;1;-2;.5]);
+```
+
+This recovers the three positive-mode amplitudes and does not assign an amplitude to the constant.
 
 The projector accepts sampled APV or an APV source directly. For a source state, assemble $$ik\mathcal S_v - i\ell\mathcal S_u - f_0\partial_z\mathcal S_\eta$$ before projection. For an ocean state, provide its labeled APV. The formula is independent of horizontal wavenumber and also applies at zero horizontal wavenumber:
 
@@ -41,6 +56,6 @@ Supply weights for integration in physical `dz`. Interval-local quadrature shoul
 
 The projector divides each pairing by its exact analytical APV norm. It does not fit a sampled Gram inverse, so inaccurate or aliased quadrature remains visible in recovered coefficients. It returns an `IMProjection` prescribed dual with a row-scaled identity coefficient system, the physical APV Gram as `majorantGramMatrix`, and the physical Gram recorded in `provenance.continuousAPVGramMatrix`. Its rank and conditioning describe the identity coefficient system, not grid recoverability; Gram and round-trip assessment capabilities are false. Assess modal recovery explicitly with `projection.forwardMatrix*basis.APV(z)` against the appropriate identity columns. At `f0==0`, APV vanishes for all labels and projection throws `IMNeutralLabelModesBasis:ZeroRotationProjection`; evaluation and exact G normalization remain available.
 
-`IMBasisCollection` accepts this value basis and preserves its label columns. It evaluates `variable="G"` with `derivativeOrder=0,1,2`, and `variable="APV"` at order zero. `collection.projectionOnGrid(z,weights)` defaults to APV for neutral labels and delegates to the same continuous projector; `variable="APV"` and explicit `columns` are supported. Generic Galerkin recipes, generalized-energy projection and automatic collection leakage/product assessment are unavailable for this family. The returned `IMProjection` retains its generic error methods for callers supplying explicit reference coefficients and norms.
+`IMBasisCollection` accepts this value basis and preserves its label columns. It evaluates `variable="G"` with `derivativeOrder=0,1,2`, and `variable="APV"` at order zero. `collection.projectionOnGrid(z,weights)` defaults to APV for neutral labels and delegates to the same continuous projector; `variable="APV"` and explicit `columns` are supported. A basis containing the constant requires an observable-column selection through this collection path too. Generic Galerkin recipes, generalized-energy projection and automatic collection leakage/product assessment are unavailable for this family. The returned `IMProjection` retains its generic error methods for callers supplying explicit reference coefficients and norms.
 
 Neutral-label amplitudes require independent particle-label information. Velocity and density observations alone do not determine them. The zero-energy statement concerns the fixed linear neutral sector: deleting one of its components from a finite-amplitude displacement can change the reconstructed density when parcel labels cross a plateau boundary. This API does not perform joint state recovery or replace the transport of a chosen label field.

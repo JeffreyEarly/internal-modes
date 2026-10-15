@@ -110,7 +110,7 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
         end
 
         function constantLabelKernelIsExplicit(testCase)
-            testCase.verifyError(@() IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0]),"IMNeutralLabelModesBasis:ConstantLabelKernel")
+            testCase.verifyError(@() IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],constantLabelPolicy="reject"),"IMNeutralLabelModesBasis:ConstantLabelKernel")
             basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3,constantLabelPolicy="exclude");
             testCase.verifyEqual(basis.m_n,pi*(1:3)/1000,AbsTol=1e-16)
             z = linspace(-1000,0,1001).';
@@ -120,6 +120,52 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             % A nonzero surface acceleration removes the constant kernel.
             fixed = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],g0=9.81,nModes=1);
             testCase.verifyEqual(fixed.boundaryTypes,["N","D"])
+        end
+
+        function constantLabelIsAutomaticAndDoesNotConsumeCount(testCase)
+            basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=0);
+            z = linspace(-1000,0,17).';
+            testCase.verifyEqual(basis.constantLabelPolicy,"include")
+            testCase.verifyEqual(basis.normalization,"depthRMSG")
+            testCase.verifyEqual(basis.nModes,0)
+            testCase.verifyEqual(basis.intervalIndex,1)
+            testCase.verifyEqual(basis.localModeNumber,0)
+            testCase.verifyEqual(basis.columnLabels,"interval1:mode0")
+            testCase.verifyEqual(basis.m_n,0)
+            testCase.verifyEqual(basis.G(z),ones(size(z)))
+            testCase.verifyEqual(basis.Gz(z),zeros(size(z)))
+            testCase.verifyEqual(basis.Gzz(z),zeros(size(z)))
+            testCase.verifyEqual(basis.APV(z),zeros(size(z)))
+            testCase.verifyEqual(basis.gramMatrix(),1)
+            testCase.verifyEqual(basis.gramMatrix(variable="APV"),0)
+            testCase.verifyError(@() basis.projectionOnGrid(z,ones(size(z))),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            regular = IMNeutralLabelModesBasis([-500 -400;-200 0],zDomain=[-1000 0],nModes=[0 2]);
+            testCase.verifyEqual(regular.intervalIndex,[2 2])
+            testCase.verifyEqual(regular.localModeNumber,[1 2])
+        end
+
+        function constantLabelPositiveSubsetHasIndependentAPVDual(testCase)
+            basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3);
+            testCase.verifyEqual(basis.localModeNumber,[0 1 2 3])
+            testCase.verifyEqual(basis.m_n,pi*(0:3)/1000,AbsTol=1e-16)
+            [z,w] = intervalMidpoints([-1000 0],101);
+            testCase.verifyError(@() basis.projectionOnGrid(z,w),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            testCase.verifyError(@() basis.projectionOnGrid(z,w,columns=[2 1]),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            columns = [4 2 3];
+            projection = basis.projectionOnGrid(z,w,columns=columns);
+            m = pi*(1:3)/1000;
+            q = basis.f0*sqrt(2)*m.*sin((z+1000)*m);
+            coefficients = [1+2i;-3i;2];
+            testCase.verifyEqual(projection.project(q*coefficients),coefficients(columns-1),AbsTol=2e-13)
+            testCase.verifyEqual(projection.targetGramMatrix,eye(3))
+            testCase.verifyEqual(projection.majorantGramMatrix,diag(basis.f0^2*1000*basis.m_n(columns).^2))
+            testCase.verifyEqual(projection.provenance.unobservableColumns,1)
+            testCase.verifyEqual(projection.columnLabels,basis.columnLabels(columns))
+            collection = IMBasisCollection({basis});
+            testCase.verifyEqual(collection.evaluate(z,variable="G",columns=1),ones(size(z)))
+            testCase.verifyError(@() collection.projectionOnGrid(z,w,variable="APV"),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            selected = collection.projectionOnGrid(z,w,variable="APV",columns=columns);
+            testCase.verifyEqual(selected.project(q*coefficients),coefficients(columns-1),AbsTol=2e-13)
         end
 
         function complexAPVProjectionAcrossIntervals(testCase)

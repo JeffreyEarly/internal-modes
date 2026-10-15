@@ -118,7 +118,13 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
             basis = self.bases{iBasis};
             entry = self.metadata(iBasis);
             selected = find(self.basisIndex(chunkPages) == iBasis);
-            if entry.columnKind == "endpoint"
+            if isa(basis,"IMModeBasis")
+                sampled = basis.evaluate(zChunk,variable,options.derivativeOrder);
+                if size(sampled,2) ~= numel(entry.columnLabels)
+                    error("IMBasisCollection:InvalidEvaluationShape","Basis evaluation must return one column per scientific label.");
+                end
+                sampled = repmat(sampled(:,columns),1,1,numel(selected));
+            elseif entry.columnKind == "endpoint"
                 sourcePages = self.sourcePage(chunkPages(selected));
                 if options.derivativeOrder == 0
                     sampled = basis.(variable)(zChunk,pages=sourcePages);

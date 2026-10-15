@@ -17,6 +17,8 @@ function projection = projectionOnGrid(self,z,weights,options)
 % supplied samples resolve APV. Check forwardMatrix*basis.APV(z) directly
 % against the identity on the retained columns to assess modal recovery.
 % Zero rotation is rejected because APV cannot identify any neutral label.
+% A constant label is also APV-invisible. Select only positive-wavenumber
+% columns to project their amplitudes in a basis containing that label.
 %
 % - Topic: Project APV
 % - Parameter z: strictly increasing physical sample column within zDomain
@@ -47,8 +49,12 @@ if isempty(columns)
 elseif any(columns > numel(self.m_n)) || numel(unique(columns)) ~= numel(columns)
     error("IMProjection:InvalidColumns","Select distinct existing neutral-label columns.");
 end
+if any(self.m_n(columns) == 0)
+    error("IMNeutralLabelModesBasis:UnobservableConstantLabel","APV cannot determine the constant-label amplitude. Supply particle-label information for that amplitude and select positive-wavenumber columns with columns=find(basis.m_n>0) for APV projection.");
+end
 % Cancel one factor of f0 analytically rather than forming 1/f0^2.
-pairing = (-self.Gz(z).'./(self.f0*diff(self.zDomain)*self.m_n(:).^2)).*weights.';
+derivatives = self.Gz(z);
+pairing = (-derivatives(:,columns).'./(self.f0*diff(self.zDomain)*self.m_n(columns).'.^2)).*weights.';
 if any(~isfinite(pairing(:)))
     error("IMNeutralLabelModesBasis:UnrepresentableProjection","The APV dual exceeds floating-point range for this rotation and geometry.");
 end
@@ -57,5 +63,5 @@ majorant = recipe.majorantGramMatrix(columns,columns);
 if any(diag(majorant) <= 0) || any(~isfinite(majorant(:)))
     error("IMNeutralLabelModesBasis:UnrepresentableProjection","The physical APV norm is outside floating-point range for this rotation and geometry.");
 end
-projection = IMProjection.fromPrescribedDual(pairing(columns,:),eye(numel(columns)),eye(numel(columns)),majorantGramMatrix=majorant,columnLabels=self.columnLabels(columns),provenance=recipe.provenance);
+projection = IMProjection.fromPrescribedDual(pairing,eye(numel(columns)),eye(numel(columns)),majorantGramMatrix=majorant,columnLabels=self.columnLabels(columns),provenance=recipe.provenance);
 end

@@ -36,14 +36,15 @@ classdef IMSolverSpectral < IMSolver
 
         % Native coordinate kind.
         %
-        % `coordinateKind` is `"z"`, `"wkb"`, or `"density"`. The `"wkb"`
-        % stretch uses $$dx/dz=\sqrt{B}$$, where
+        % `coordinateKind` is `"z"`, `"wkb"`, `"bandwidth"`, or `"density"`.
+        % The classical `"wkb"` stretch uses $$dx/dz=N$$ independently of
+        % physical rotation and requires strictly positive stratification.
+        % The `"bandwidth"` stretch uses $$dx/dz=\sqrt{B}$$, where
         % $$B=\sqrt{(N^2+\tilde f^2-f_0^2)^2+4f_0^2\tilde f^2}$$
         % and $$\tilde f=2\Omega\cos\phi$$ uses the full horizontal
         % rotation component. At `rotationRate=0` this reduces to $$dx/dz=N$$.
         % This numerical monitor does not add nontraditional wave dynamics.
-        % The `"wkb"`
-        % and `"density"` coordinates require an `IMInternalModes` EVP or
+        % The `"wkb"`, `"bandwidth"`, and `"density"` coordinates require an `IMInternalModes` EVP or
         % `IMGeostrophicZeroAPVModes` problem because their coordinate maps
         % use the problem-owned `N2` profile.
         %
@@ -130,8 +131,8 @@ classdef IMSolverSpectral < IMSolver
         function self = IMSolverSpectral(options)
             % Create a coordinate-aware spectral solver.
             %
-            % The `"z"` coordinate works for any canonical EVP. The `"wkb"`
-            % and `"density"` coordinates use the problem stratification
+            % The `"z"` coordinate works for any canonical EVP. The `"wkb"`,
+            % `"bandwidth"`, and `"density"` coordinates use the problem stratification
             % `N2`, so they can only be configured with `IMInternalModes`
             % EVPs or `IMGeostrophicZeroAPVModes` problems.
             %
@@ -142,7 +143,7 @@ classdef IMSolverSpectral < IMSolver
             % - Returns solver: initialized spectral solver
             arguments
                 options.nEVP (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(options.nEVP, 4)} = 64
-                options.coordinateKind {mustBeTextScalar, mustBeMember(options.coordinateKind, ["z", "wkb", "density"])} = "z"
+                options.coordinateKind {mustBeTextScalar, mustBeMember(options.coordinateKind, ["z", "wkb", "bandwidth", "density"])} = "z"
             end
 
             self.nEVP = options.nEVP;
@@ -644,12 +645,12 @@ classdef IMSolverSpectral < IMSolver
             profileFunction = self.N2Function;
             switch self.coordinateKind
                 case "z", derivativeFunction = @(z) ones(size(z));
-                case "wkb"
+                case {"wkb", "bandwidth"}
                     N2Reference = profileFunction(self.zReference);
                     if ~isreal(N2Reference) || any(~isfinite(N2Reference)) || any(N2Reference < 0)
-                        error("IMSolverSpectral:InvalidCoordinate","The wkb coordinate requires finite real nonnegative N2.");
+                        error("IMSolverSpectral:InvalidCoordinate","The %s coordinate requires finite real nonnegative N2.",self.coordinateKind);
                     end
-                    if self.coordinateRotationRate == 0
+                    if self.coordinateKind == "wkb" || self.coordinateRotationRate == 0
                         derivativeFunction = @(z) sqrt(profileFunction(z));
                     else
                         f0 = 2*self.coordinateRotationRate*sind(self.coordinateLatitude);

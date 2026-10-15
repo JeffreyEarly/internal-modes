@@ -11,8 +11,10 @@ classdef IMNeutralLabelModesBasis
     % Dirichlet. These modes have no equivalent depth or energy norm.
     %
     % A fully neutral Neumann-Neumann column has an APV-invisible constant
-    % label. Construction requires constantLabelPolicy="exclude" to fix
-    % that independent label to zero and retain only positive wavenumbers.
+    % label, included automatically before the positive-wavenumber modes.
+    % APV alone cannot recover its amplitude; explicitly select positive
+    % columns when projecting APV. The legacy constantLabelPolicy="exclude"
+    % fixes that independent label to zero.
     % Amplitudes have units of length and require particle-label information
     % in addition to velocity and density. At finite amplitude, deleting a
     % component in this fixed linear basis need not preserve physical density.
@@ -43,13 +45,13 @@ classdef IMNeutralLabelModesBasis
         % Interval index for each retained column.
         % - Topic: Inspect neutral labels
         intervalIndex (1,:) double
-        % Positive local mode number within each interval.
+        % Local mode number within each interval, zero for a constant label.
         % - Topic: Inspect neutral labels
         localModeNumber (1,:) double
         % Distinct interval/local-mode identities in retained-column order.
         % - Topic: Inspect neutral labels
         columnLabels (1,:) string
-        % Positive vertical wavenumbers, in inverse meters.
+        % Nonnegative vertical wavenumbers, in inverse meters.
         % - Topic: Inspect neutral labels
         m_n (1,:) double
         % Lower/upper boundary types for each interval: D or N.
@@ -72,7 +74,7 @@ classdef IMNeutralLabelModesBasis
         constantLabelPolicy (1,1) string
         % Fixed depth normalization: integral G_i G_j / D equals delta_ij.
         % - Topic: Inspect neutral labels
-        normalization (1,1) string = "depth"
+        normalization (1,1) string = "depthRMSG"
     end
 
     properties (Dependent, SetAccess = private)
@@ -87,27 +89,28 @@ classdef IMNeutralLabelModesBasis
             %
             % Intervals must be nonempty, strictly separated, increasing and
             % contained in zDomain. Merge touching intervals before calling.
-            % Counts retain modes 1:nModes per interval, in interval order.
+            % Counts retain positive modes 1:nModes per interval, in
+            % interval order. An admissible constant label is additional.
             %
             % - Topic: Create neutral labels
             % - Parameter neutralIntervals: exact neutral intervals, one [lower upper] row each
             % - Parameter options.zDomain: physical [bottom surface] domain in meters
-            % - Parameter options.nModes: positive scalar count or one count per interval
+            % - Parameter options.nModes: nonnegative positive-mode count, scalar or one per interval
             % - Parameter options.rotationRate: nonnegative planetary rotation rate
             % - Parameter options.latitude: central latitude in degrees north
             % - Parameter options.g0: surface generalized-energy acceleration, zero by default
             % - Parameter options.gd: bottom generalized-energy acceleration, zero by default
-            % - Parameter options.constantLabelPolicy: reject (default) or explicitly exclude the NN constant label
+            % - Parameter options.constantLabelPolicy: include (default), reject, or exclude the NN constant label
             % - Returns self: continuous neutral-label value basis
             arguments (Input)
                 neutralIntervals (:,2) double {mustBeReal,mustBeFinite}
                 options.zDomain (1,2) double {mustBeReal,mustBeFinite}
-                options.nModes (1,:) double {mustBeInteger,mustBePositive,mustBeFinite} = 8
+                options.nModes (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = 8
                 options.rotationRate (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal,mustBeFinite,mustBeGreaterThanOrEqual(options.latitude,-90),mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g0 (1,1) double {mustBeReal} = 0
                 options.gd (1,1) double {mustBeReal} = 0
-                options.constantLabelPolicy (1,1) string {mustBeMember(options.constantLabelPolicy,["reject","exclude"])} = "reject"
+                options.constantLabelPolicy (1,1) string {mustBeMember(options.constantLabelPolicy,["include","reject","exclude"])} = "include"
             end
             arguments (Output)
                 self (1,1) IMNeutralLabelModesBasis
@@ -128,10 +131,10 @@ classdef IMNeutralLabelModesBasis
             if isscalar(counts)
                 counts = repmat(counts,1,size(neutralIntervals,1));
             elseif numel(counts) ~= size(neutralIntervals,1)
-                error("IMNeutralLabelModesBasis:InvalidModeCounts","nModes must be scalar or contain one positive count per neutral interval.");
+                error("IMNeutralLabelModesBasis:InvalidModeCounts","nModes must be scalar or contain one nonnegative count per neutral interval.");
             end
             if isempty(counts)
-                error("IMNeutralLabelModesBasis:InvalidModeCounts","Supply at least one positive mode count.");
+                error("IMNeutralLabelModesBasis:InvalidModeCounts","Supply at least one nonnegative positive-mode count.");
             end
             self.zDomain = options.zDomain;
             self.neutralIntervals = neutralIntervals;
@@ -144,15 +147,18 @@ classdef IMNeutralLabelModesBasis
             self.boundaryTypes = repmat("D",size(neutralIntervals));
             self.boundaryTypes(neutralIntervals(:,1) == self.zDomain(1) & self.gd == 0,1) = "N";
             self.boundaryTypes(neutralIntervals(:,2) == self.zDomain(2) & self.g0 == 0,2) = "N";
-            if any(all(self.boundaryTypes == "N",2)) && self.constantLabelPolicy ~= "exclude"
-                error("IMNeutralLabelModesBasis:ConstantLabelKernel","A fully neutral NN column has an APV-invisible constant label. Set constantLabelPolicy=""exclude"" to fix that label to zero.");
+            hasConstantLabel = all(self.boundaryTypes == "N",2);
+            if any(hasConstantLabel) && self.constantLabelPolicy == "reject"
+                error("IMNeutralLabelModesBasis:ConstantLabelKernel","A fully neutral NN column has an APV-invisible constant label. Use constantLabelPolicy=""include"" to retain it or ""exclude"" to fix its amplitude to zero.");
             end
-            self.intervalIndex = repelem(1:numel(counts),counts);
-            self.localModeNumber = zeros(1,sum(counts));
-            self.m_n = zeros(1,sum(counts));
+            includeConstantLabel = hasConstantLabel.' & self.constantLabelPolicy == "include";
+            totalCounts = counts + includeConstantLabel;
+            self.intervalIndex = repelem(1:numel(counts),totalCounts);
+            self.localModeNumber = zeros(1,sum(totalCounts));
+            self.m_n = zeros(1,sum(totalCounts));
             for iInterval = 1:numel(counts)
                 columns = self.intervalIndex == iInterval;
-                local = 1:counts(iInterval);
+                local = (1-includeConstantLabel(iInterval)):counts(iInterval);
                 self.localModeNumber(columns) = local;
                 if sum(self.boundaryTypes(iInterval,:) == "N") == 1
                     local = local-0.5;
@@ -240,7 +246,8 @@ classdef IMNeutralLabelModesBasis
             %
             % G uses integral G_i G_j / D = delta_ij. APV uses the
             % unscaled integral q_i q_j = f0^2 D m_n^2 delta_ij, with no
-            % factor of one half. APV is degenerate when f0 is zero.
+            % factor of one half. APV is degenerate on the constant label
+            % and on every column when f0 is zero.
             %
             % - Topic: Inspect neutral labels
             % - Parameter options.variable: G (default) or APV
@@ -288,6 +295,12 @@ classdef IMNeutralLabelModesBasis
                     shape = cos(phase + order*pi/2);
                 end
                 values(rows,columns) = amplitude*(m.^order).*shape;
+                constantColumns = columns & self.m_n == 0;
+                if order == 0
+                    values(rows,constantColumns) = sqrt(diff(self.zDomain)/diff(bounds));
+                else
+                    values(rows,constantColumns) = 0;
+                end
             end
         end
     end

@@ -228,6 +228,18 @@ classdef (Abstract) IMSolver
     end
 
     methods (Hidden)
+        function [basisSet,selection] = solveRequestedEVP(self,evp,request)
+            % Build a family request before qualifying retained eigenpairs.
+            arguments (Input)
+                self IMSolver
+                evp IMEigenvalueProblem
+                request (1,1) struct
+            end
+            solver = self.configuredForEVP(evp);
+            [A,B] = evp.assemble(solver);
+            [basisSet,~,selection] = solver.solveAssembledEVP(evp,A,B,1,struct(),request);
+        end
+
         function weights = innerProductWeights(self, z, zBounds)
             % Return the linear weights used by integrateInnerProduct.
             %
@@ -253,7 +265,7 @@ classdef (Abstract) IMSolver
     end
 
     methods (Access = protected)
-        function [basisSet,costs] = solveAssembledEVP(self,evp,A,B,nModes,diagnostics)
+        function [basisSet,costs,selection] = solveAssembledEVP(self,evp,A,B,nModes,diagnostics,request)
             % Preserve the shared eigenpair filtering, labels and orientation.
             arguments (Input)
                 self IMSolver
@@ -262,6 +274,7 @@ classdef (Abstract) IMSolver
                 B (:,:) double
                 nModes (1,1) double {mustBeInteger,mustBePositive}
                 diagnostics (1,1) struct = struct()
+                request (1,1) struct = struct()
             end
             timer = tic;
             % Equilibrate the equations without changing the physical matrices
@@ -292,6 +305,12 @@ classdef (Abstract) IMSolver
             eigenvalues = diag(D);
             [V,solveEigenvalues] = evp.prepareGeneralizedEigenpairs(self,solveA,solveB,V,eigenvalues);
             if isempty(solveEigenvalues)
+                if ~isempty(fieldnames(request)) && ismember(request.kind,["wave","inertial","frequency"])
+                    selection = IMModeSelection.select(evp,zeros(0,1),request);
+                    basisSet = [];
+                    costs.finalizationSeconds = toc(timer);
+                    return
+                end
                 error("IMSolver:NoValidEigenvalues", "%s", ...
                     self.noValidEigenvalueMessage(evp, A, B, eigenvalues, false(size(eigenvalues))));
             end
@@ -307,7 +326,11 @@ classdef (Abstract) IMSolver
                 eigenvalues = mapped;
                 publicValid = true(size(eigenvalues));
             end
-            selection = evp.selectModes(eigenvalues(:),nModes,self,A,diagnostics=diagnostics);
+            if isempty(fieldnames(request))
+                selection = evp.selectModes(eigenvalues(:),nModes,self,A,diagnostics=diagnostics);
+            else
+                selection = IMModeSelection.select(evp,eigenvalues(:),request,solver=self,A=A,diagnostics=diagnostics);
+            end
             if any(~publicValid(selection.sortIndex))
                 first = find(~publicValid(selection.sortIndex),1);
                 error("IMGeostrophicModes:UnresolvedMode", ...
@@ -319,9 +342,13 @@ classdef (Abstract) IMSolver
             if map.hasInverseDepth
                 selection.modeSelectionDiagnostics.geostrophicInverseDepth = reshape(solveEigenvalues(selection.sortIndex),1,[]);
             end
-            basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
-                selection.modeNumber, selection.modeSelectionDiagnostics);
-            basisSet = basisSet.orientModeSigns();
+            if isempty(selection.sortIndex) && ~isempty(fieldnames(request))
+                basisSet = [];
+            else
+                basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
+                    selection.modeNumber, selection.modeSelectionDiagnostics);
+                basisSet = basisSet.orientModeSigns();
+            end
             costs.finalizationSeconds = toc(timer);
         end
 

@@ -73,7 +73,7 @@ classdef IMBasisCollection
             end
             for iBasis = 1:numel(bases)
                 basis = bases{iBasis};
-                supported = isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis");
+                supported = isa(basis,"IMModeBasis") || isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis");
                 if ~supported || ~isscalar(basis) || isa(basis,"handle")
                     error("IMBasisCollection:UnsupportedBasis","Entry %d must be a supported scalar continuous value basis.",iBasis);
                 end
@@ -129,7 +129,25 @@ classdef IMBasisCollection
     methods (Static, Access = private)
         function entry = describeBasis(basis)
             entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"rotationName","","rotationMatrix",[]);
-            if isa(basis,"IMNeutralLabelModesBasis")
+            if isa(basis,"IMModeBasis")
+                entry.family = basis.family;
+                entry.columnLabels = basis.columnLabels;
+                entry.normalization = basis.normalization;
+                entry.variables = ["F", "G", "APV"];
+                entry.variables = entry.variables(ismember(entry.variables,basis.capabilities));
+                entry.derivativeOrders = repmat({0},1,numel(entry.variables));
+                iG = find(entry.variables == "G",1);
+                if ~isempty(iG)
+                    entry.derivativeOrders{iG} = find(ismember(["G", "Gz", "Gzz"],basis.capabilities))-1;
+                end
+                if basis.family == "geostrophicZeroAPV"
+                    entry.columnKind = "endpoint";
+                    entry.endpointLabels = entry.columnLabels;
+                end
+                if numel(entry.columnLabels) ~= basis.nColumns
+                    error("IMBasisCollection:InvalidColumnLabels","Mode labels must match the facade column count.");
+                end
+            elseif isa(basis,"IMNeutralLabelModesBasis")
                 entry.family = "neutralLabelModes";
                 entry.columnKind = "mode";
                 entry.columnLabels = basis.columnLabels;
@@ -163,7 +181,7 @@ classdef IMBasisCollection
                     entry.derivativeOrders{entry.variables == basis.evp.formulation} = [0 1];
                 end
             end
-            if isempty(entry.columnLabels) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
+            if (isempty(entry.columnLabels) && ~isa(basis,"IMModeBasis")) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
                 error("IMBasisCollection:InvalidColumnLabels","Each basis must have nonempty, distinct scientific column labels.");
             end
         end

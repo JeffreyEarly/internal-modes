@@ -9,19 +9,22 @@ The classes contain many options, but also try to remain simple to use. Use `hel
 
 ## V2 prerelease API
 
-The repository also contains the parallel V2 API under active prerelease development. V2 separates the physical eigenvalue problem, numerical solver, continuous basis, and sampled transform:
+The repository also contains the parallel V2 API under active prerelease development. The [mode-creation API](Documentation/ModeCreationAPI.md) uses one shared physical background and returns continuous bases with explicit family identities:
 
 ```matlab
-N2 = @(z) 1e-4*exp(z/1000);
-evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-4000 0]);
-basisSet = IMSolverSpectral(nEVP=256,coordinateKind="wkb").solveEVP(evp,nModes=72);
-basisSet.normalization = "geostrophic";
-[transform,assessment] = basisSet.discreteTransform(nPoints=64,variables=["F","G"]);
+background = IMModeBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0]);
+solver = IMSolverSpectral(nEVP=128,coordinateKind="bandwidth");
+basis = IMModes.waveModesAtWavenumber(background,2e-4,solver=solver,nInternalModes=12,nSubinertialModes=0);
+z = linspace(-1000,0,201).';
+F = basis.F(z);
+G = basis.G(z);
 ```
 
-The V2 guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate the current API; the stable `InternalModes` quick start below remains unchanged.
+Regular ladder counts exclude automatically returned special modes. Waves use `F=D*Gz`, independent internal/subinertial counts and `"waveEnergy"` normalization. The same factory namespace covers hydrostatic, inertial, APV, mean-density, generalized-potential-enstrophy, zero-APV, neutral-label and exact zero-depth wave families. Read the creation guide for common normalization names, analytical backends, endpoint coefficients and count-zero requests.
 
-Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicitly specified neutral intervals and projection from labeled APV with the manuscript's continuous normalization.
+The existing lower-level V2 APIs retain their original equations, normalizations, mode-count contracts and sampled transforms. Their guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate those APIs; the stable `InternalModes` quick start below remains unchanged.
+
+Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicit neutral intervals, automatically retain the admissible constant label, and project observable amplitudes from labeled APV with continuous normalization. APV cannot identify the constant-label amplitude.
 
 If you use these classes to compute the vertical modes, please cite the following paper,
 - J. Early, M. P. Lelong, and K. S. Smith. Fast and Accurate Coputation of Vertical Modes. Journal of Advances in Modeling Earth Systems. 2020. [doi](https://doi.org/10.1029/2019MS001939)
