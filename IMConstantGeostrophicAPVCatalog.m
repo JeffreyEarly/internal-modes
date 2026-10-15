@@ -41,12 +41,6 @@ classdef (Sealed, Hidden) IMConstantGeostrophicAPVCatalog
 
             z = linspace(zDomain(1), zDomain(2), 5).';
             expectedN2 = N0*N0*ones(size(z));
-            actualN2 = evp.N2(z);
-            tolerance = 1e4*eps(max([1; abs(expectedN2(:)); abs(actualN2(:))]));
-            if max(abs(actualN2(:) - expectedN2(:))) > tolerance
-                error("IMConstantStratificationSolution:UnsupportedStratification", "The APV EVP N2 function does not match this constant analytical solution.");
-            end
-
             context = IMConstantGeostrophicAPVCatalog.context(evp);
             p = IMEigenvalueProblem.evaluateCoefficient(evp.p, z, context);
             q = IMEigenvalueProblem.evaluateCoefficient(evp.q, z, context);

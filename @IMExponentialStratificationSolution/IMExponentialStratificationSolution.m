@@ -109,6 +109,12 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
             % factors remain real and positive for every retained branch;
             % `depth` is the APV default.
             %
+            % A supplied EVP must have the same domain and stratification
+            % as this solution. Profile compatibility is checked at 129
+            % Chebyshev depths, including both endpoints, with a pointwise
+            % relative tolerance of 1e-12. The EVP supplies gravity and
+            % rotation for the solve. Omitting it creates a matching EVP.
+            %
             % - Topic: Compute internal modes
             % - Declaration: basisSet = internalModes(solution,evp,options)
             % - Parameter evp: internal-mode EVP
@@ -235,6 +241,7 @@ classdef IMExponentialStratificationSolution < IMAnalyticalSolution
                 error("IMExponentialStratificationSolution:InvalidEVP", "The EVP must be an IMInternalModes instance.");
             end
             IMExponentialStratificationSolution.validateEVPDomain(evp, self.zDomain);
+            self.validateEVPStratification(evp);
         end
 
         function values = rawVariable(self, modeData, evp, variable, z)

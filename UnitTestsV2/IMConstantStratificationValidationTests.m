@@ -146,6 +146,85 @@ classdef IMConstantStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.modeSelectionDiagnostics, struct())
         end
 
+        function suppliedEVPRejectsDifferentStratification(testCase)
+            zDomain = [-1000 0];
+            for N0 = [0.01 1e-10]
+                solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=0);
+                N2 = @(z) 4*N0^2*ones(size(z));
+                waveEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,rotationRate=0);
+                apvEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=zDomain,rotationRate=0,g0=Inf,gd=Inf);
+
+                testCase.verifyError(@() solution.internalModes(waveEVP,nModes=2),"IMConstantStratificationSolution:StratificationMismatch")
+                testCase.verifyError(@() solution.internalModes(apvEVP,nModes=2),"IMConstantStratificationSolution:StratificationMismatch")
+            end
+        end
+
+        function suppliedEVPRejectsInteriorProfileMismatch(testCase)
+            N0 = 0.01;
+            zDomain = [-1000 0];
+            N2 = @(z) N0^2*(1+0.1*sin(pi*(z-zDomain(1))/diff(zDomain)).^2);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,rotationRate=0);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=0);
+
+            testCase.verifyEqual(N2(zDomain),solution.N2(zDomain),RelTol=1e-12)
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2),"IMConstantStratificationSolution:StratificationMismatch")
+        end
+
+        function suppliedEVPAcceptsEquivalentIndependentProfile(testCase)
+            N0 = 0.01;
+            zDomain = [-1000 0];
+            N2 = @(z) exp(2*log(N0))*ones(size(z));
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,rotationRate=0);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=0);
+
+            basisSet = solution.internalModes(evp,nModes=2);
+            z = linspace(zDomain(1),zDomain(2),31).';
+
+            testCase.verifyEqual(basisSet.N2(z),basisSet.evp.N2(z),RelTol=1e-12)
+            expectedH = N0^2./(evp.g*((1:2)*pi/diff(zDomain)).^2);
+            testCase.verifyEqual(basisSet.h,expectedH,RelTol=1e-12)
+        end
+
+        function suppliedEVPRejectsMalformedStratification(testCase)
+            zDomain = [-1000 0];
+            solution = IMConstantStratificationSolution(N0=0.01,zDomain=zDomain,rotationRate=0);
+            profiles = {@(z) NaN(size(z)),@(z) 1e-4*(1+1i)*ones(size(z)),@(z) 1e-4,@(z) zeros(numel(z),2),@(z) error("IMTest:ProfileFailure","The profile could not be evaluated.")};
+            for iProfile = 1:numel(profiles)
+                evp = IMInternalModes.hydrostaticGModes(N2=profiles{iProfile},zDomain=zDomain,rotationRate=0);
+
+                testCase.verifyError(@() solution.internalModes(evp,nModes=2),"IMConstantStratificationSolution:InvalidStratification")
+            end
+        end
+
+        function integerProfileUsesStructuredMismatchError(testCase)
+            zDomain = [-1000 0];
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z),"uint8"),zDomain=zDomain,rotationRate=0);
+            solution = IMConstantStratificationSolution(N0=0.01,zDomain=zDomain,rotationRate=0);
+
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2),"IMConstantStratificationSolution:StratificationMismatch")
+        end
+
+        function suppliedEVPDomainMismatchTakesPrecedence(testCase)
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) 4e-4*ones(size(z)),zDomain=[-1000 0],rotationRate=0);
+            solution = IMConstantStratificationSolution(N0=0.01,zDomain=[-2000 0],rotationRate=0);
+
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2),"IMConstantStratificationSolution:DomainMismatch")
+        end
+
+        function suppliedEVPOwnsGravityAndRotation(testCase)
+            N0 = 0.01;
+            zDomain = [-1000 0];
+            k = 1e-3;
+            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) N0^2*ones(size(z)),zDomain=zDomain,k=k,g=10,rotationRate=1e-4,latitude=30);
+            solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,g=9.81,rotationRate=0);
+
+            basisSet = solution.internalModes(evp,nModes=2);
+            expectedH = (N0^2-evp.f0^2)./(evp.g*(((1:2)*pi/diff(zDomain)).^2+k^2));
+
+            testCase.verifyEqual(basisSet.evp,evp)
+            testCase.verifyEqual(basisSet.h,expectedH,RelTol=1e-12)
+        end
+
         function coordinateKindSolversAgreeWithRigidAnalyticalDepths(testCase)
             N0 = 5.2e-3;
             g = 9.81;

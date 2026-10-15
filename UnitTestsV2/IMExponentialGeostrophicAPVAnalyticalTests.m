@@ -257,7 +257,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             solution = IMExponentialStratificationSolution(rotationRate=0, ...
                 N0=N0, b=b, zDomain=zDomain, g=g);
 
-            testCase.verifyError(@() solution.internalModes(evp,nModes=4),"IMExponentialStratificationSolution:UnsupportedStratification")
+            testCase.verifyError(@() solution.internalModes(evp,nModes=4),"IMExponentialStratificationSolution:StratificationMismatch")
         end
     end
 

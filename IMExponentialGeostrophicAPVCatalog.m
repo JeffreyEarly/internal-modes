@@ -50,13 +50,6 @@ classdef (Sealed, Hidden) IMExponentialGeostrophicAPVCatalog
 
             z = linspace(zDomain(1), zDomain(2), 5).';
             expectedN2 = N0*N0*exp(2*z/b);
-            actualN2 = evp.N2(z);
-            tolerance = 1e4*eps(max([1; abs(expectedN2(:)); abs(actualN2(:))]));
-            if max(abs(actualN2(:) - expectedN2(:))) > tolerance
-                error("IMExponentialStratificationSolution:UnsupportedStratification", ...
-                    "The APV EVP N2 function does not match this exponential analytical solution.");
-            end
-
             context = IMExponentialGeostrophicAPVCatalog.context(evp);
             p = IMEigenvalueProblem.evaluateCoefficient(evp.p, z, context);
             q = IMEigenvalueProblem.evaluateCoefficient(evp.q, z, context);

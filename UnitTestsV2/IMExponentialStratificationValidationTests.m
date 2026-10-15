@@ -119,11 +119,111 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.evp.parameters.omega, 1e-3, AbsTol=0)
         end
 
+        function providedEVPAmplitudeMustMatchAnalyticalProfile(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) (2*N0)^2*exp(2*z/b);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
+        end
+
+        function providedEVPDecayScaleMustMatchAnalyticalProfile(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) N0^2*exp(2*z/(2*b));
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
+        end
+
+        function providedEVPInteriorMustMatchAnalyticalProfile(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            D = diff(zDomain);
+            N2 = @(z) N0^2*exp(2*z/b).*(1 + 0.1*(z-zDomain(1)).*(zDomain(2)-z)/D^2);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            testCase.verifyEqual(evp.N2(zDomain),solution.N2(zDomain),AbsTol=0)
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
+        end
+
+        function deepWeakStratificationUsesItsLocalScale(testCase)
+            N0 = 5.2e-3;
+            b = 100;
+            zDomain = [-5000 0];
+            N2 = @(z) N0^2*exp(2*z/b).*(1+(z < -4000));
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            testCase.verifyEqual(evp.N2(0),solution.N2(0),AbsTol=0)
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2),"IMExponentialStratificationSolution:StratificationMismatch")
+        end
+
+        function equivalentIndependentProfileIsAccepted(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) (N0*exp(z/b)).^2;
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            basisSet = solution.internalModes(evp,nModes=2);
+            z = linspace(zDomain(1),zDomain(2),37).';
+
+            testCase.verifyClass(basisSet,"IMAnalyticalInternalModesBasis")
+            testCase.verifyEqual(basisSet.N2(z),basisSet.evp.N2(z),RelTol=1e-12)
+        end
+
+        function malformedProvidedEVPProfilesAreRejected(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+            profiles = {@(z) NaN(size(z)), @(z) N0^2*exp(2*z/b) + 1i*ones(size(z)), @(z) N0^2};
+
+            for iProfile = 1:numel(profiles)
+                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=profiles{iProfile},zDomain=zDomain);
+                testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:InvalidStratification")
+            end
+        end
+
+        function apvProfileMismatchIsRejectedBeforeCatalogSolve(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            N2 = @(z) (2*N0)^2*exp(2*z/b);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=Inf,gd=Inf,surfaceBoundary="rigidLid");
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
+        end
+
+        function solutionCreatesMatchingDefaultEVP(testCase)
+            N0 = 5.2e-3;
+            b = 1300;
+            zDomain = [-5000 0];
+            solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
+
+            basisSet = solution.internalModes(nModes=2);
+            z = linspace(zDomain(1),zDomain(2),37).';
+
+            testCase.verifyClass(basisSet.evp,"IMInternalModes")
+            testCase.verifyEqual(basisSet.evp.zDomain,zDomain)
+            testCase.verifyEqual(basisSet.N2(z),basisSet.evp.N2(z),AbsTol=0)
+        end
+
         function providedEVPDomainMustMatchAnalyticalDomain(testCase)
             N0 = 5.2e-3;
             b = 1300;
             zDomain = [-5000 0];
-            N2 = @(z) N0*N0*exp(2*z/b);
+            N2 = @(z) (2*N0)^2*exp(2*z/b);
             evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
 
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=[-4000 0]);

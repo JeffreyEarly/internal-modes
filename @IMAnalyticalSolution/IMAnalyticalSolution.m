@@ -92,6 +92,36 @@ classdef (Abstract) IMAnalyticalSolution
         end
     end
 
+    methods (Access = protected)
+        function validateEVPStratification(self,evp)
+            % Check profile compatibility at endpoints and interior depths.
+            % Function handles cannot establish equality everywhere; use a
+            % fixed Chebyshev grid and a pointwise relative tolerance so
+            % weak stratification is checked on its own physical scale.
+            zFraction = (1-cos(pi*(0:128).'/128))/2;
+            z = self.zDomain(1)+diff(self.zDomain)*zFraction;
+            expectedN2 = self.N2(z);
+            invalidIdentifier = class(self)+":InvalidStratification";
+            try
+                actualN2 = evp.N2(z);
+            catch cause
+                exception = MException(invalidIdentifier,"evp.N2 must evaluate at physical depths throughout zDomain. Supply a profile matching this analytical solution.");
+                exception = addCause(exception,cause);
+                throw(exception);
+            end
+            if ~isnumeric(actualN2) || ~isreal(actualN2) || ~isvector(actualN2) || numel(actualN2) ~= numel(z) || any(~isfinite(actualN2(:)))
+                error(invalidIdentifier,"evp.N2 must return one finite real numeric value per input depth. Supply a vectorized profile matching this analytical solution.");
+            end
+
+            actualN2 = double(actualN2(:));
+            relativeTolerance = 1e-12;
+            tolerance = relativeTolerance*max(abs(expectedN2),abs(actualN2));
+            if any(abs(actualN2-expectedN2) > tolerance)
+                error(class(self)+":StratificationMismatch","evp.N2 must match this analytical solution throughout zDomain (sampled relative tolerance 1e-12). Use matching analytical parameters or a numerical solver for this EVP.");
+            end
+        end
+    end
+
     methods (Abstract)
         % Evaluate buoyancy frequency squared $$N^2(z)$$.
         %

@@ -94,6 +94,12 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
             % `h=Inf`, then trigonometric positive branches. The same
             % positive depth-normalization factor scales exact `F` and `G`.
             %
+            % A supplied EVP must have the same domain and stratification
+            % as this solution. Profile compatibility is checked at 129
+            % Chebyshev depths, including both endpoints, with a pointwise
+            % relative tolerance of 1e-12. The EVP supplies gravity and
+            % rotation for the solve. Omitting it creates a matching EVP.
+            %
             % - Topic: Compute internal modes
             % - Declaration: basisSet = internalModes(solution,evp,options)
             % - Parameter evp: internal-mode EVP
@@ -208,6 +214,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
                 error("IMConstantStratificationSolution:InvalidEVP", "The EVP must be an IMInternalModes instance.");
             end
             IMConstantStratificationSolution.validateEVPDomain(evp, self.zDomain);
+            self.validateEVPStratification(evp);
         end
 
         function values = rawVariable(self, modeData, evp, variable, z)
