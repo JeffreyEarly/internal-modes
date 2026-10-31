@@ -71,7 +71,7 @@ classdef IMVerticalGrid
             %
             % - Topic: Create a vertical grid
             % - Declaration: grid = IMVerticalGrid(options)
-            % - Parameter options.z: strictly increasing points spanning zDomain
+            % - Parameter options.z: strictly increasing points whose first and last values are the domain endpoints
             % - Parameter options.weights: nonnegative weights summing to the depth
             % - Parameter options.zDomain: increasing `[bottom surface]`; defaults to the point range
             % - Parameter options.kind: rule name, default `"custom"`
@@ -92,8 +92,12 @@ classdef IMVerticalGrid
             if numel(z) < 2 || any(diff(z) <= 0)
                 error("IMVerticalGrid:InvalidPoints","Grid points must be strictly increasing, with at least two points.");
             end
-            if zDomain(2) <= zDomain(1) || z(1) < zDomain(1) || z(end) > zDomain(2)
-                error("IMVerticalGrid:InvalidDomain","zDomain must be increasing and contain every grid point.");
+            if zDomain(2) <= zDomain(1)
+                error("IMVerticalGrid:InvalidDomain","zDomain must be strictly increasing.");
+            end
+            endpointTolerance = 1e-10*diff(zDomain);
+            if abs(z(1)-zDomain(1)) > endpointTolerance || abs(z(end)-zDomain(2)) > endpointTolerance
+                error("IMVerticalGrid:MissingEndpoint","The first and last points must be the domain endpoints zDomain(1) and zDomain(2).");
             end
             if numel(options.weights) ~= numel(z) || any(options.weights < 0)
                 error("IMVerticalGrid:InvalidWeights","Supply one nonnegative weight per point.");
@@ -136,10 +140,12 @@ classdef IMVerticalGrid
             % Return the provisional default smoothing length 2.5*D/(nPoints-1).
             %
             % The rule scales with the mean grid spacing. Joint-recovery
-            % comparisons for a neutral surface layer found the best global
-            % grids near 2.4-3.4 spacings at 33 points and a recovery plateau
-            % of 2-4.7 spacings at 65 points, with mandatory boundary modes
-            % failing below about 1.2 spacings.
+            % comparisons (study joint correction, retained-mode data, one
+            % 1000 m column with a neutral surface layer, 10 km wavelength)
+            % found a recovery plateau of 2-4.7 spacings at 65 points and the
+            % smallest tested boundary errors near 2.4-3.4 spacings at 33
+            % points, with mandatory boundary modes failing at 65 points
+            % below about 1.2 spacings. This is provisional.
             %
             % - Topic: Create a vertical grid
             % - Declaration: Ls = IMVerticalGrid.defaultSmoothingLength(D,nPoints)
@@ -213,14 +219,19 @@ classdef IMVerticalGrid
             end
             B = chebfun(BFunction,breaks,'splitting','on');
             meanB = sum(B)/D;
+            % Residuals are evaluated one-sided at interior breakpoints: at a
+            % jump in N2, Q_zz jumps and a two-sided evaluation would mix the
+            % averaged Chebfun value with one side of the source.
+            zResidual = IMVerticalGrid.oneSidedCheckPoints(domain,interior,2001);
+            BResidual = BFunction(zResidual);
             [valueQ,derivativeQ,secondQ,conditioning] = IMVerticalGrid.neumannFilter(B,breaks,Ls,D,"direct");
-            filterResidual = max(abs(valueQ(zCheck)-Ls^2*secondQ(zCheck)-BCheck))/max(BCheck);
+            filterResidual = max(abs(valueQ(zResidual)-Ls^2*secondQ(zResidual)-BResidual))/max(BCheck);
             neumannResidual = D*max(abs(derivativeQ(domain)))/max(abs(valueQ(zCheck)));
             if filterResidual > 1e-9 || neumannResidual > 1e-9
                 % A nearly constant Q can lose small curvature when simplified;
                 % solve for its variation about the preserved mean instead.
                 [valueQ,derivativeQ,secondQ,conditioning] = IMVerticalGrid.neumannFilter(B-meanB,breaks,Ls,D,"centered",meanB);
-                filterResidual = max(abs(valueQ(zCheck)-Ls^2*secondQ(zCheck)-BCheck))/max(BCheck);
+                filterResidual = max(abs(valueQ(zResidual)-Ls^2*secondQ(zResidual)-BResidual))/max(BCheck);
                 neumannResidual = D*max(abs(derivativeQ(domain)))/max(abs(valueQ(zCheck)));
             end
             QCheck = valueQ(zCheck);
@@ -315,6 +326,18 @@ classdef IMVerticalGrid
             z = flipud(halfLength*cos(theta)+mean(domain));
             z([1 end]) = domain(:);
             w = halfLength*flipud(weights);
+        end
+
+        function z = oneSidedCheckPoints(domain,interiorBreaks,nPoints)
+            % Uniform check points with each interior breakpoint replaced by
+            % points just inside its two adjacent pieces.
+            offset = 1e-8*diff(domain);
+            z = linspace(domain(1),domain(2),nPoints);
+            for breakpoint = interiorBreaks
+                z = z(abs(z-breakpoint) > offset);
+                z = [z breakpoint-offset breakpoint+offset]; %#ok<AGROW>
+            end
+            z = sort(z);
         end
 
         function [valueQ,derivativeQ,secondQ,conditioning] = neumannFilter(source,breaks,Ls,D,form,meanB)

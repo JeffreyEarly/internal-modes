@@ -104,8 +104,21 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
             testCase.verifyError(@() IMVerticalGrid(z=[0;-1],weights=[0.5;0.5]),"IMVerticalGrid:InvalidPoints")
             testCase.verifyError(@() IMVerticalGrid(z=[-1;0],weights=[1.5;-0.5]),"IMVerticalGrid:InvalidWeights")
             testCase.verifyError(@() IMVerticalGrid(z=[-1;0],weights=[0.4;0.4]),"IMVerticalGrid:InvalidWeights")
+            testCase.verifyError(@() IMVerticalGrid(z=[-.75;-.25],weights=[.5;.5],zDomain=[-1 0]),"IMVerticalGrid:MissingEndpoint")
+            testCase.verifyError(@() IMVerticalGrid(z=[-1;-.25],weights=[.5;.25],zDomain=[-1 0]),"IMVerticalGrid:MissingEndpoint")
             background = IMVerticalGridTests.neutralBackground();
             testCase.verifyError(@() IMVerticalGrid.smoothedBandwidth(background,33,smoothingLength=-1),"IMVerticalGrid:InvalidSmoothingLength")
+        end
+
+        function stratificationJumpWithBreakpointIsAccepted(testCase)
+            % A step in N2 makes Q_zz jump; residuals must be one-sided there.
+            background = IMModeBackground(N2=@(z) 2.5e-5*(z < -200),zDomain=[-1000 0]);
+            grid = IMVerticalGrid.smoothedBandwidth(background,65,breakpoints=-200);
+            testCase.verifyEqual(grid.nPoints,65)
+            testCase.verifyLessThan(grid.design.filterRelativeResidual,1e-9)
+            testCase.verifyGreaterThan(min(grid.weights),0)
+            testCase.verifyEqual(sum(grid.weights),1000,RelTol=1e-12)
+            testCase.verifyLessThan(grid.design.mapResidual,1e-10)
         end
     end
 
