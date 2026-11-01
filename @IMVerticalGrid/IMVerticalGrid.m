@@ -26,6 +26,10 @@ classdef IMVerticalGrid
     properties (SetAccess = private)
         % Strictly increasing physical sample points, including both endpoints.
         %
+        % `z(1)` and `z(end)` equal `zDomain` exactly. The constructor
+        % accepts boundary samples within 1e-10*D of the domain endpoints
+        % and stores them snapped to those endpoints.
+        %
         % - Topic: Inspect a vertical grid
         z
 
@@ -71,7 +75,7 @@ classdef IMVerticalGrid
             %
             % - Topic: Create a vertical grid
             % - Declaration: grid = IMVerticalGrid(options)
-            % - Parameter options.z: strictly increasing points whose first and last values are the domain endpoints
+            % - Parameter options.z: strictly increasing points whose first and last values are the domain endpoints, within 1e-10*D; they are stored exactly as `zDomain`
             % - Parameter options.weights: nonnegative weights summing to the depth
             % - Parameter options.zDomain: increasing `[bottom surface]`; defaults to the point range
             % - Parameter options.kind: rule name, default `"custom"`
@@ -98,6 +102,12 @@ classdef IMVerticalGrid
             endpointTolerance = 1e-10*diff(zDomain);
             if abs(z(1)-zDomain(1)) > endpointTolerance || abs(z(end)-zDomain(2)) > endpointTolerance
                 error("IMVerticalGrid:MissingEndpoint","The first and last points must be the domain endpoints zDomain(1) and zDomain(2).");
+            end
+            % Store the boundary samples exactly: endpoint-trace consumers
+            % match zDomain to machine precision, not to this tolerance.
+            z([1 end]) = zDomain;
+            if any(diff(z) <= 0)
+                error("IMVerticalGrid:InvalidPoints","Grid points must remain strictly increasing after snapping the endpoints to zDomain.");
             end
             if numel(options.weights) ~= numel(z) || any(options.weights < 0)
                 error("IMVerticalGrid:InvalidWeights","Supply one nonnegative weight per point.");

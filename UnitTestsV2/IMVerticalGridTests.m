@@ -110,6 +110,24 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
             testCase.verifyError(@() IMVerticalGrid.smoothedBandwidth(background,33,smoothingLength=-1),"IMVerticalGrid:InvalidSmoothingLength")
         end
 
+        function nearEndpointsAreStoredExactly(testCase)
+            % Downstream endpoint traces match zDomain to machine precision.
+            grid = IMVerticalGrid(z=[-1000+1e-8;-500;-1e-8],weights=[250;500;250],zDomain=[-1000 0]);
+            testCase.verifyTrue(grid.z(1) == -1000)
+            testCase.verifyTrue(grid.z(end) == 0)
+            testCase.verifyEqual(grid.z(2),-500)
+            endpointTolerance = 100*eps(max(1,max(abs(grid.zDomain))));
+            testCase.verifyNotEmpty(find(abs(grid.z-grid.zDomain(1)) <= endpointTolerance,1))
+            testCase.verifyNotEmpty(find(abs(grid.z-grid.zDomain(2)) <= endpointTolerance,1))
+            % Every constructor returns exact endpoints.
+            background = IMVerticalGridTests.neutralBackground();
+            grids = {IMVerticalGrid.physicalDepth(background,33), ...
+                IMVerticalGrid.smoothedBandwidth(background,33,breakpoints=[-400 -200])};
+            for j = 1:numel(grids)
+                testCase.verifyTrue(isequal(grids{j}.z([1 end]).',background.zDomain))
+            end
+        end
+
         function stratificationJumpWithBreakpointIsAccepted(testCase)
             % A step in N2 makes Q_zz jump; residuals must be one-sided there.
             background = IMModeBackground(N2=@(z) 2.5e-5*(z < -200),zDomain=[-1000 0]);
