@@ -285,6 +285,10 @@ classdef (Sealed) IMModes
         end
     end
 
+    methods (Static)
+        [transform,grid,assessment] = classicalRootTransform(background,nPoints,options)
+    end
+
     methods (Static, Access = private)
         function argumentsCell = physicalArguments(background)
             options = struct("N2",background.N2,"zDomain",background.zDomain,"rotationRate",background.rotationRate,"latitude",background.latitude,"g",background.g);

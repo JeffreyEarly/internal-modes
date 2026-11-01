@@ -3,8 +3,9 @@ classdef IMProjection
     %
     % The signed sampled pairing defines coefficients through
     % $$A = (\Phi^T W\Phi)^{-1}\Phi^T W.$$
-    % Rank-deficient pairings use a pseudoinverse and report infinite Gram
-    % error. The separately supplied positive majorant measures coefficient
+    % A nonnegative diagonal metric is solved by weighted QR rather than the
+    % normal equations. Rank-deficient pairings use a pseudoinverse and
+    % report infinite Gram error. The separately supplied positive majorant measures coefficient
     % errors; it never replaces the physical pairing. This object does not
     % choose a grid, fit weights, accept tolerances, or select model counts.
     % `fromPrescribedDual` instead accepts an explicit physical source dual and its
@@ -153,6 +154,17 @@ classdef IMProjection
             sampleGram = 0.5*(sampledBasis.'*metricMatrix*sampledBasis + sampledBasis.'*metricMatrix.'*sampledBasis);
             self = self.initializeProjection(sampledBasis.'*metricMatrix,sampleGram,targetGramMatrix,options.majorantGramMatrix,options.activeColumnMask,options.columnLabels);
             active = find(self.activeColumnMask);
+            % A nonnegative diagonal metric W admits a weighted QR solve of the
+            % same least-squares problem, A = R^{-1}Q^T W^{1/2} with
+            % QR = W^{1/2}Phi, avoiding the squared conditioning of the
+            % normal equations. Rank-deficient pairings keep the pseudoinverse.
+            metricDiagonal = diag(metricMatrix);
+            if ~isempty(active) && self.sampledGramRank == numel(active) ...
+                    && isequal(metricMatrix,diag(metricDiagonal)) && all(metricDiagonal >= 0)
+                rootWeights = sqrt(metricDiagonal);
+                [Q,R] = qr(rootWeights.*sampledBasis(:,active),0);
+                self.forwardMatrix(active,:) = R\(Q.'.*rootWeights.');
+            end
             for iColumn = find(~self.activeColumnMask)
                 values = sampledBasis(:,iColumn);
                 if norm(values,2) > 1e3*eps(max(1,norm(values,2)))
