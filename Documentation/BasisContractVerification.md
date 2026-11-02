@@ -29,9 +29,17 @@ The review found and corrected an empty-basis normalization regression: inspecti
 
 Related source changes were batched; failing and affected author controls were rerun selectively. Three initial horizontal-test failures came from test fixtures/assertions (unsupported analytical MDA, expected spectrum ordering and 0-by-0 versus 1-by-0 empty shape); their corrections are covered by the final integration run.
 
-Final full V2 integration result: **645 of 647 methods passed**. All 25 new methods passed, including all six horizontal-identity controls; all 40 distinct affected focused methods passed. Production source was frozen before this run and before the consolidated Code Analyzer pass.
+Full V2 integration at `61981d7`: **645 of 647 methods passed**. All 25 new methods passed, including all six horizontal-identity controls; all 40 distinct affected focused methods passed. Production source was frozen before this run and before the consolidated Code Analyzer pass. The subsequent test-fixture cleanup below resolves the two failures.
 
-The predecessor's full run passed 620 of 622 methods. The final run has the same two known baseline failures: `IMEigenvalueProblemRefactorTests/developerBasisMethodsArePublicAndCallable` (analytical/EVP stratification mismatch; this method is also incomplete) and `IMSmoothedBandwidthCoordinateTests/constantControlKeepsTheGridAndPhysicalSpectrum` (smoothed-bandwidth reference tolerance). Their implementations and fixtures are unchanged. No new full-suite failure was introduced.
+The predecessor's full run passed 620 of 622 methods. The `61981d7` run had the same two known baseline failures: `IMEigenvalueProblemRefactorTests/developerBasisMethodsArePublicAndCallable` (analytical/EVP stratification mismatch; this method was also incomplete) and `IMSmoothedBandwidthCoordinateTests/constantControlKeepsTheGridAndPhysicalSpectrum` (an incorrect classical-WKB monitor comparison). Their implementations and fixtures were unchanged at that revision. No new full-suite failure was introduced.
+
+## Baseline test-fixture cleanup
+
+The developer-method test now gives the analytical solution a matching constant-stratification EVP, retaining the varying-stratification numerical fixture and all existing method checks. The rotating constant-monitor test now compares smoothed bandwidth with unsmoothed bandwidth, and independently checks the exact monitor at latitude 45 degrees. Grid, physical-stratification and eigenvalue checks are preserved, with unchanged tolerances. Production code is unchanged.
+
+Independent mathematical/framework review found no actionable issue. Both corrected methods passed, together with the rotating filter-residual control and the constant-solution tests that reject different/interior-mismatched stratification: **5 of 5 methods passed**, none incomplete. These passing results resolve both failures in the earlier full run. The full suite was not repeated for this test-only cleanup.
+
+Cleanup Code Analyzer checks found no new messages: the smoothed-bandwidth test file has none, and all 14 advisories in the developer-method test file match the preceding revision. The latter file was compared with its baseline to establish that the reported messages were pre-existing. Source documentation and scope checks passed; test-only changes require no API-documentation regeneration.
 
 ## Static, documentation and scope gates
 
