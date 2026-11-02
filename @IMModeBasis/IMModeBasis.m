@@ -97,6 +97,8 @@ classdef IMModeBasis
         scaleFactors_ (1,:) double
         sourceUnityFactors_ (1,:) double
         integrationIntervals_ (:,2) double
+        % Original source inventory fixes the normalization integration budget.
+        normalizationColumnCount_ (1,1) double
     end
 
     methods
@@ -232,6 +234,7 @@ classdef IMModeBasis
                 end
                 nSource = nSource+1;
             end
+            self.normalizationColumnCount_ = nSource;
             self.columns = options.columns;
             if isempty(self.columns)
                 self.columns = 1:nSource;
@@ -449,6 +452,7 @@ classdef IMModeBasis
 
     methods
         basis = selectColumns(self,columns)
+        basis = withNormalization(self,name)
         transform = discreteTransform(self,grid)
         [z,design] = modeRootPoints(self,generatingMode)
     end
@@ -736,7 +740,10 @@ classdef IMModeBasis
             else
                 bounds = self.zDomain;
             end
-            n = max(128,4*self.nColumns+32);
+            % Keep the original construction rule after selecting columns.
+            % This preserves the rule's numerical meaning without claiming
+            % that an arbitrary intrinsic evaluator is resolved by it.
+            n = max(128,4*self.normalizationColumnCount_+32);
             offDiagonal = (1:n-1)./sqrt(4*(1:n-1).^2-1);
             [vectors,points] = eig(diag(offDiagonal,1)+diag(offDiagonal,-1),"vector");
             [points,index] = sort(points);
