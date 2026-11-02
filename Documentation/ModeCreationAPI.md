@@ -105,6 +105,8 @@ The names have the same meaning wherever the required profiles or pairing exist.
 
 `waveEnergy` reduces to `depthRMSF` at zero horizontal wavenumber. Fixed-frequency creation defaults to `depthRMSF`, because each returned root has its own horizontal dispersion. The new factory interface does not reinterpret legacy names such as `"kConstant"` or `"geostrophic"` as these different definitions.
 
+Use `changed = basis.withNormalization(name)` to apply another admissible rule to the existing continuous representation without repeating the EVP solve or fitting sampling weights. The original basis and construction evidence are preserved. See [changing common-basis normalization](BasisNormalization.md) for signed/null rules and coordinate covariance.
+
 ## Neutral labels with fixed endpoint labels
 
 Neutral intervals are explicit declarations of exact $$N^2 = 0$$, ordered and strictly separated. They are never inferred from sampled stratification. Merge touching intervals first. Profiles vanish at both ends of each interval, including a physical surface or bottom, independently of generalized-energy coefficients. Independent boundary anomalies belong to other mode families.
