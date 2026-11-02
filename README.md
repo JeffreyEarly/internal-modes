@@ -24,9 +24,9 @@ Regular ladder counts exclude automatically returned special modes. Waves use `F
 
 The existing lower-level V2 APIs retain their original equations, normalizations, mode-count contracts and sampled transforms. Their guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate those APIs; the stable `InternalModes` quick start below remains unchanged.
 
-For the classical rigid-lid problem, `IMModes.classicalRootTransform(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/ClassicalRootTransform.md): root grid, fitted weights, aligned Galerkin operators and an explicit retained-band assessment.
+For the rigid-lid hydrostatic problem, `IMModes.hydrostaticRootTransform(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/HydrostaticRootTransform.md): root grid, fitted weights, aligned Galerkin operators and an explicit retained-band assessment.
 
-A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies the fixed points and weights used by all families and wavenumbers. The provisional default is the smoothed-bandwidth grid, `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the classical mode-root grid remains available.
+A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies the fixed points and weights used by all families and wavenumbers. The provisional default is the smoothed-bandwidth grid, `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the mode-root grid remains available.
 
 Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicit neutral intervals, automatically retain the admissible constant label, and project observable amplitudes from labeled APV with continuous normalization. APV cannot identify the constant-label amplitude.
 

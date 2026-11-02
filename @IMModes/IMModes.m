@@ -286,7 +286,7 @@ classdef (Sealed) IMModes
     end
 
     methods (Static)
-        [transform,grid,assessment] = classicalRootTransform(background,nPoints,options)
+        [transform,grid,assessment] = hydrostaticRootTransform(background,nPoints,options)
     end
 
     methods (Static, Access = private)

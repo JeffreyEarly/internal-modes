@@ -1,5 +1,5 @@
-classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
-    % Independent checks of IMModes.classicalRootTransform (issue #55).
+classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
+    % Independent checks of IMModes.hydrostaticRootTransform (issue #55).
 
     properties (Access = private)
         originalPath
@@ -24,7 +24,7 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
             N0 = 5e-3; D = 1000;
             background = IMModeBackground.constantStratification(N0=N0,zDomain=[-D 0],surfaceCondition="rigidLid");
             for nPoints = [17 33]
-                [transform,grid,assessment] = IMModes.classicalRootTransform(background,nPoints);
+                [transform,grid,assessment] = IMModes.hydrostaticRootTransform(background,nPoints);
                 r = nPoints-2;
                 dz = D/(nPoints-1);
                 % Uniform root points and trapezoid weights.
@@ -61,7 +61,7 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
 
         function exponentialStratificationMatchesAnalyticalModes(testCase)
             background = IMModeBackground.exponentialStratification(N0=5.2e-3,b=1300,zDomain=[-4000 0],surfaceCondition="rigidLid");
-            [transform,grid,assessment] = IMModes.classicalRootTransform(background,33);
+            [transform,grid,assessment] = IMModes.hydrostaticRootTransform(background,33);
             r = assessment.retainedInternalModeCount;
             solution = background.analyticalSolution();
             evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z),zDomain=background.zDomain, ...
@@ -78,13 +78,13 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
         end
 
         function rootPointsReproduceV4Grids(testCase)
-            fixture = readtable(fullfile(fileparts(mfilename("fullpath")),"Fixtures","IMClassicalRootTransformV4Points.csv"),TextType="string");
+            fixture = readtable(fullfile(fileparts(mfilename("fullpath")),"Fixtures","IMHydrostaticRootTransformV4Points.csv"),TextType="string");
             profiles = struct(gmExponential=@(z) (5.2e-3)^2*exp(2*z/1300),pycnocline=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2));
             cases = unique(fixture(:,["profile","depth","nPoints"]),"rows");
             for k = 1:height(cases)
                 rows = sortrows(fixture(fixture.profile==cases.profile(k) & fixture.nPoints==cases.nPoints(k),:),"node");
                 background = IMModeBackground(N2=profiles.(cases.profile(k)),zDomain=[-cases.depth(k) 0],latitude=33,surfaceCondition="rigidLid");
-                [~,grid] = IMModes.classicalRootTransform(background,cases.nPoints(k));
+                [~,grid] = IMModes.hydrostaticRootTransform(background,cases.nPoints(k));
                 % v4 roots carry their own unqualified resolution error, so
                 % agreement is required to the declared root tolerance.
                 testCase.verifyEqual(grid.z,rows.z,cases.profile(k)+" "+cases.nPoints(k),AbsTol=1e-6*cases.depth(k))
@@ -93,11 +93,11 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
 
         function stronglyVaryingProfileIsIndependentOfResolution(testCase)
             background = IMModeBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
-            [T1,grid1,A1] = IMModes.classicalRootTransform(background,33);
+            [T1,grid1,A1] = IMModes.hydrostaticRootTransform(background,33);
             % The default path raises resolution until an independent refinement agrees.
             testCase.verifyGreaterThan(height(A1.convergence.attempts),1)
             testCase.verifyEqual(A1.convergence.attempts.nEVP(end),A1.convergence.candidateNEVP)
-            [T2,grid2,A2] = IMModes.classicalRootTransform(background,33, ...
+            [T2,grid2,A2] = IMModes.hydrostaticRootTransform(background,33, ...
                 solver=IMSolverSpectral(nEVP=2*A1.convergence.candidateNEVP,coordinateKind="wkb"));
             testCase.verifyEqual(height(A2.convergence.attempts),1)
             testCase.verifyEqual(A2.retainedInternalModeCount,A1.retainedInternalModeCount)
@@ -107,13 +107,13 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
             testCase.verifyLessThanOrEqual(A1.convergence.maximumShapeError,A1.convergence.tolerance)
             testCase.verifyLessThanOrEqual(A1.convergence.rootDisplacement,A1.convergence.tolerance)
             % A supplied solver is used as given and must pass the check itself.
-            testCase.verifyError(@() IMModes.classicalRootTransform(background,33,solver=IMSolverSpectral(nEVP=128,coordinateKind="wkb")), ...
-                "IMModes:UnconvergedClassicalModes")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(background,33,solver=IMSolverSpectral(nEVP=128,coordinateKind="wkb")), ...
+                "IMModes:UnconvergedHydrostaticRootModes")
         end
 
         function automaticSelectionRecordsSearchAndLimit(testCase)
             background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
-            [transform,grid,assessment] = IMModes.classicalRootTransform(background,33);
+            [transform,grid,assessment] = IMModes.hydrostaticRootTransform(background,33);
             search = assessment.search;
             r = assessment.retainedInternalModeCount;
             testCase.verifyEqual(assessment.selection,"automatic")
@@ -135,18 +135,19 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
 
         function strictRequestsAreExact(testCase)
             background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
-            [transform,~,assessment] = IMModes.classicalRootTransform(background,33,nInternalModes=20);
+            [transform,~,assessment] = IMModes.hydrostaticRootTransform(background,33,nInternalModes=20);
             testCase.verifyEqual(assessment.selection,"strict")
             testCase.verifyEqual(assessment.retainedInternalModeCount,20)
             testCase.verifyEqual(height(assessment.search),1)
             testCase.verifyEqual(transform.modeNumber,0:20)
-            testCase.verifyError(@() IMModes.classicalRootTransform(background,33,nInternalModes=31),"IMModes:ClassicalBandRejected")
-            testCase.verifyError(@() IMModes.classicalRootTransform(background,33,nInternalModes=32),"IMModes:InvalidClassicalBand")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(background,33,nInternalModes=31),"IMModes:HydrostaticRootBandRejected")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(background,33,nInternalModes=32),"IMModes:InvalidHydrostaticRootBand")
         end
 
         function galerkinRecoveryDiffersFromPrescribedDual(testCase)
             background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
-            [transform,grid] = IMModes.classicalRootTransform(background,33);
+            [transform,grid] = IMModes.hydrostaticRootTransform(background,33,forwardOperator="galerkin");
+            testCase.verifyEqual(transform.forwardOperator(variable="F"),"galerkin")
             Phi = transform.inverseMatrix(variable="F");
             coefficients = linspace(1,-1,size(Phi,2)).';
             values = Phi*coefficients;
@@ -160,13 +161,54 @@ classdef IMClassicalRootTransformTests < matlab.unittest.TestCase
             testCase.verifyGreaterThan(norm(transform.transformForward(x,variable="F")-transform.modeProjectionFunctional(x,variable="F")./H),0)
         end
 
+        function truncatedCollocationRejectsModesWithinTheRootSpan(testCase)
+            background = IMModeBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
+            nPoints = 33;
+            [collocation,grid,assessment] = IMModes.hydrostaticRootTransform(background,nPoints);
+            galerkin = IMModes.hydrostaticRootTransform(background,nPoints,forwardOperator="galerkin");
+            r = assessment.retainedInternalModeCount;
+            testCase.verifyEqual(assessment.forwardOperator,"truncatedCollocation")
+            testCase.verifyEqual(collocation.forwardOperator(variable="F"),"truncatedCollocation")
+            testCase.verifyEqual(collocation.forwardOperator(variable="G"),"truncatedCollocation")
+            % Same band, weights and energy diagnostics; only the operator differs.
+            testCase.verifyEqual(galerkin.weights,collocation.weights)
+            testCase.verifyEqual(collocation.relativeGramOperatorError(variable="F"),galerkin.relativeGramOperatorError(variable="F"),RelTol=1e-12)
+            % Independent modes over the whole span, at the converged resolution.
+            solver = IMSolverSpectral(nEVP=assessment.convergence.candidateNEVP,coordinateKind="wkb");
+            evp = IMInternalModes.hydrostaticGModes(N2=background.N2,zDomain=background.zDomain,latitude=33);
+            basis = solver.solveEVP(evp,nModes=nPoints-1);
+            F = basis.F(grid.z,normalization="geostrophic");
+            G = basis.G(grid.z,normalization="geostrophic"); G([1 end],:) = 0;
+            withinSpanF = F(:,r+1:nPoints-1);
+            withinSpanG = G(:,r+1:nPoints-2);
+            HF = [2000 collocation.h(2:end)].';
+            leakF = @(T) norm(sqrt(HF).*(T.transformForward(withinSpanF,variable="F"))./sqrt(basis.h(r+1:nPoints-1)),2);
+            leakG = @(T) norm(T.transformForward(withinSpanG,variable="G"),2);
+            testCase.verifyLessThan(leakF(collocation),1e-9)
+            testCase.verifyLessThan(leakG(collocation),1e-9)
+            testCase.verifyGreaterThan(leakF(galerkin),1e-3)
+            % Retained modes round-trip exactly under both operators.
+            retained = [ones(nPoints,1) F(:,1:r)];
+            testCase.verifyEqual(collocation.transformForward(retained,variable="F"),eye(r+1),AbsTol=1e-9)
+            testCase.verifyEqual(galerkin.transformForward(retained,variable="F"),eye(r+1),AbsTol=1e-9)
+            testCase.verifyLessThan(collocation.roundTripError(variable="G"),1e-9)
+            % Recorded diagnostics use the selected operator.
+            testCase.verifyLessThan(assessment.final.omittedGainF,1e-9)
+            testCase.verifyGreaterThan(assessment.collocation.conditionG,1)
+            % Prefixes keep the leading collocation rows.
+            prefix = collocation.prefixTransform(3);
+            testCase.verifyEqual(prefix.forwardOperator(variable="F"),"truncatedCollocation")
+            fullForward = collocation.forwardMatrix(variable="F");
+            testCase.verifyEqual(prefix.forwardMatrix(variable="F"),fullForward(1:3,:))
+        end
+
         function invalidRequestsAreRejected(testCase)
             free = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
-            testCase.verifyError(@() IMModes.classicalRootTransform(free,17),"IMModes:ClassicalRequiresRigidLid")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(free,17),"IMModes:HydrostaticRootRequiresRigidLid")
             neutral = IMModeBackground(N2=@(z) 1e-5*(z < -200),zDomain=[-1000 0],surfaceCondition="rigidLid");
-            testCase.verifyError(@() IMModes.classicalRootTransform(neutral,17),"IMModes:ClassicalRequiresPositiveStratification")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(neutral,17),"IMModes:HydrostaticRootRequiresPositiveStratification")
             rigid = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            testCase.verifyError(@() IMModes.classicalRootTransform(rigid,17,solver=IMSolverFiniteDifference(z=linspace(-1000,0,129).')),"IMModes:ClassicalRequiresSpectralSolver")
+            testCase.verifyError(@() IMModes.hydrostaticRootTransform(rigid,17,solver=IMSolverFiniteDifference(z=linspace(-1000,0,129).')),"IMModes:HydrostaticRootRequiresSpectralSolver")
         end
 
         function diagonalMetricForwardUsesEquivalentWeightedQR(testCase)
