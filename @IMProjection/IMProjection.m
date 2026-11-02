@@ -3,12 +3,14 @@ classdef IMProjection
     %
     % The signed sampled pairing defines coefficients through
     % $$A = (\Phi^T W\Phi)^{-1}\Phi^T W.$$
-    % A nonnegative diagonal metric is solved by weighted QR rather than the
-    % normal equations. Rank-deficient pairings use a pseudoinverse in
-    % positive-majorant coordinates and
-    % report infinite Gram error. The separately supplied positive majorant measures coefficient
+    % A positive semidefinite metric uses the shared sampled-recovery engine
+    % before any Gram-rank decision. Signed pairings use the same engine's
+    % preconditioned physical-test recovery. Deficient recovery is explicitly
+    % unavailable, while the continuous physical dual remains separate.
+    % The separately supplied positive majorant measures coefficient
     % errors; it never replaces the physical pairing. This object does not
-    % choose a grid, fit weights, accept tolerances, or select model counts.
+    % choose a grid, fit weights, apply physical acceptance tolerances, or
+    % select model counts.
     % `fromPrescribedDual` instead accepts an explicit physical source dual and its
     % coefficient system. It has no synthesis basis and cannot measure a
     % sampled-basis Gram discrepancy or round trip.
@@ -73,8 +75,9 @@ classdef IMProjection
         % Magnitude-normalized active Gram operator discrepancy.
         %
         % Scaling uses the absolute diagonal of the target Gram matrix.
-        % A rank-deficient active sampled Gram reports infinity. A prescribed
-        % dual reports NaN because its system is not a component Gram.
+        % This remains the actual discrepancy when the sampled Gram
+        % is deficient; its rank is a separate physical diagnostic. A
+        % prescribed dual reports NaN because its system is not a component Gram.
         % - Topic: Measure projection quality
         gramError
         % Operator norm of the active round-trip error, or NaN without synthesis.
@@ -92,6 +95,24 @@ classdef IMProjection
         % Whether the continuous target is positive definite on active columns.
         % - Topic: Inspect projection data
         targetGramIsPositiveDefinite
+        % Prepared sample recovery, separate from physical pairing data.
+        % - Topic: Inspect projection data
+        recovery
+        % Continuous-normalization physical coefficient dual on these samples.
+        %
+        % A prescribed source uses its explicitly supplied coefficient
+        % system. A Galerkin record instead uses the continuous target form,
+        % without correcting its physical quadrature error.
+        % - Topic: Inspect projection data
+        physicalDualMatrix
+        % Availability of the physical coefficient functional.
+        % - Topic: Inspect projection data
+        physicalDualStatus
+    end
+
+    properties (Access = private)
+        coefficientScale_ = zeros(0)
+        recoveryOptions_ = struct(prepareRecovery=true,failureMode="diagnostic",rankTolerance=1e-12)
     end
 
     methods (Static)
@@ -106,6 +127,7 @@ classdef IMProjection
         recipe = createRecipe(options)
         projection = fromRecipe(recipe,z,weights,options)
         errors = relativeCoefficientNorm(coefficients,majorantGramMatrix,normSquared)
+        [factor,isPositive] = positiveFitFactor(metric)
     end
 
     methods
@@ -115,8 +137,9 @@ classdef IMProjection
             % A diagonal target defaults to its absolute diagonal majorant.
             % A general target requires an explicit positive majorant. Active
             % target diagonal entries must be nonzero for Gram normalization.
-            % Inactive columns must be numerically zero in sampled and target
-            % data; their forward rows remain zero. Empty active sets are valid.
+            % Inactive synthesis columns must be exactly zero. Their physical
+            % forms must be numerically zero and their forward rows stay zero.
+            % Empty active sets are valid.
             % With no arguments, construct the canonical empty Galerkin projection.
             %
             % - Topic: Create projections
@@ -128,6 +151,9 @@ classdef IMProjection
             % - Parameter options.activeColumnMask: logical row, default all columns
             % - Parameter options.columnLabels: string row of scientific labels; default positional labels
             % - Parameter options.provenance: construction identity and numerical evidence
+            % - Parameter options.prepareRecovery: prepare sample recovery as well as the physical record
+            % - Parameter options.failureMode: error or diagnostic for unresolved sample recovery
+            % - Parameter options.rankTolerance: relative rank cutoff in the declared scaled recovery coordinates
             % - Returns self: fixed projection and numerical diagnostics
             arguments (Input)
                 sampledBasis (:,:) double {mustBeReal,mustBeFinite} = []
@@ -137,11 +163,17 @@ classdef IMProjection
                 options.activeColumnMask (1,:) logical = true(1,size(sampledBasis,2))
                 options.columnLabels (1,:) string = string(1:size(sampledBasis,2))
                 options.provenance (1,1) struct = struct(kind="sampledBasis")
+                options.prepareRecovery (1,1) logical = true
+                options.failureMode (1,1) string {mustBeMember(options.failureMode,["error","diagnostic"])} = "diagnostic"
+                options.rankTolerance (1,1) double {mustBeFinite,mustBePositive} = 1e-12
             end
             arguments (Output)
                 self IMProjection
             end
             [nSamples,nColumns] = size(sampledBasis);
+            if options.rankTolerance >= 1
+                error("IMProjection:InvalidRankTolerance","rankTolerance must be strictly between zero and one.");
+            end
             if ~isequal(size(metricMatrix),[nSamples nSamples]) || ~isequal(size(targetGramMatrix),[nColumns nColumns])
                 error("IMProjection:InvalidShape","The sample pairing and target Gram dimensions must match sampledBasis.");
             end
@@ -152,45 +184,54 @@ classdef IMProjection
             self.supportsGramAssessment = true;
             self.supportsRoundTripAssessment = true;
             self.provenance = options.provenance;
+            self.recoveryOptions_ = struct(prepareRecovery=options.prepareRecovery, ...
+                failureMode=options.failureMode,rankTolerance=options.rankTolerance);
             sampleGram = 0.5*(sampledBasis.'*metricMatrix*sampledBasis + sampledBasis.'*metricMatrix.'*sampledBasis);
             self = self.initializeProjection(sampledBasis.'*metricMatrix,sampleGram,targetGramMatrix,options.majorantGramMatrix,options.activeColumnMask,options.columnLabels);
             active = find(self.activeColumnMask);
-            % A nonnegative diagonal metric W admits a weighted QR solve of the
-            % same least-squares problem. Scale columns by the positive
-            % coefficient metric before QR, then map back to the supplied
-            % coordinates. Rank-deficient pairings keep the pseudoinverse.
-            metricDiagonal = diag(metricMatrix);
-            if ~isempty(active) && self.sampledGramRank == numel(active) ...
-                    && isequal(metricMatrix,diag(metricDiagonal)) && all(metricDiagonal >= 0)
-                rootWeights = sqrt(metricDiagonal);
-                coefficientScale = sqrt(diag(self.majorantGramMatrix(active,active)));
-                normalizedMajorant = (self.majorantGramMatrix(active,active)./coefficientScale)./coefficientScale.';
-                majorantFactor = chol(normalizedMajorant);
-                normalizedBasis = ((rootWeights.*sampledBasis(:,active))./coefficientScale.')/majorantFactor;
-                [Q,R] = qr(normalizedBasis,0);
-                self.forwardMatrix(active,:) = (majorantFactor\(R\(Q.'.*rootWeights.')))./coefficientScale;
-            end
             for iColumn = find(~self.activeColumnMask)
                 values = sampledBasis(:,iColumn);
-                if norm(values,2) > 1e3*eps(max(1,norm(values,2)))
-                    error("IMProjection:InvalidInactiveColumn","Inactive Galerkin columns must have numerically zero sampled values.");
+                if any(values ~= 0)
+                    error("IMProjection:InvalidInactiveColumn","Inactive Galerkin synthesis columns must be exactly zero; declare activity from the scientific family rather than sample magnitude.");
                 end
             end
+            self.roundTripError = NaN;
+            self.inverseMatrixConditionNumber = NaN;
             if isempty(active)
                 self.gramError = 0;
-                self.roundTripError = 0;
-                self.inverseMatrixConditionNumber = NaN;
-                return
+            else
+                targetActive = self.targetGramMatrix(active,active);
+                gramActive = self.gramMatrix(active,active);
+                scale = 1./sqrt(abs(diag(targetActive)));
+                self.gramError = norm(scale.*(gramActive-targetActive).*scale.',2);
+                self.inverseMatrixConditionNumber = cond(sampledBasis(:,active));
             end
-            targetActive = self.targetGramMatrix(active,active);
-            gramActive = self.gramMatrix(active,active);
-            scale = 1./sqrt(abs(diag(targetActive)));
-            self.gramError = norm(scale.*(gramActive-targetActive).*scale.',2);
-            if self.sampledGramRank < numel(active)
-                self.gramError = Inf;
+            self.supportsRoundTripAssessment = options.prepareRecovery;
+            if options.prepareRecovery
+                [fitFactor,positiveFit] = IMProjection.positiveFitFactor(metricMatrix);
+                if positiveFit
+                    prepared = prepareIMRecovery(sampledBasis,fitFactor=fitFactor, ...
+                        coefficientScale=self.coefficientScale_,physicalDual=self.physicalDualMatrix, ...
+                        activeColumnMask=self.activeColumnMask,columnLabels=self.columnLabels, ...
+                        rankTolerance=options.rankTolerance,failureMode=options.failureMode);
+                else
+                    if self.physicalDualStatus ~= "available"
+                        error("IMProjection:UnavailablePhysicalDual","Corrected physical recovery requires a representable normalized physical dual (%s). Use prepareRecovery=false to inspect the physical record, or change the declared coefficient units.",self.physicalDualStatus);
+                    end
+                    prepared = prepareIMRecovery(sampledBasis,policy="correctedPhysicalDual", ...
+                        physicalDual=self.physicalDualMatrix,coefficientScale=self.coefficientScale_, ...
+                        activeColumnMask=self.activeColumnMask,columnLabels=self.columnLabels, ...
+                        rankTolerance=options.rankTolerance,failureMode=options.failureMode);
+                end
+                self.recovery = IMDiscreteTransform.fromPreparedRecovery(sampledBasis,prepared, ...
+                    metadata=struct(construction="IMProjection",projectionProvenance=self.provenance));
+                self.forwardMatrix = prepared.forwardMatrix;
+                if prepared.success
+                    self.roundTripError = prepared.diagnostics.roundTripError;
+                else
+                    self.roundTripError = Inf;
+                end
             end
-            self.roundTripError = norm(self.forwardMatrix*sampledBasis-diag(double(options.activeColumnMask)),2);
-            self.inverseMatrixConditionNumber = cond(sampledBasis(:,active));
 
         end
     end

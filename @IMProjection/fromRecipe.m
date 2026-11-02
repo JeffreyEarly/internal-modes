@@ -19,7 +19,9 @@ function projection = fromRecipe(self,z,weights,options)
     matrix = metric(self,z,weights);
     target = self.targetGramMatrix(columns,columns);
     majorant = self.majorantGramMatrix(columns,columns);
-    zeroTarget = abs(diag(target).') <= 1e3*eps(max(1,diag(majorant).'));
+    % Inactivity is declared by the physical zero-norm sector, not by a
+    % dimensional magnitude threshold or a column vanishing on these nodes.
+    zeroTarget = diag(target).' == 0;
     columnNorms = vecnorm(sampled,2,1);
     zeroSample = columnNorms <= 1e3*eps(max(1,columnNorms));
     if any(zeroTarget & ~zeroSample)

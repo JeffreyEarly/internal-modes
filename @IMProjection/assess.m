@@ -97,12 +97,20 @@ for iPrefix = 1:numel(counts)
     status(row) = "measured";
     if ~p.supportsGramAssessment
         status(row) = "unsupported";
+    elseif p.sampledGramRank < nnz(p.activeColumnMask)
+        status(row) = "inconclusive";
+    end
+    canApply = p.projectionKind == "prescribedDual" && p.physicalDualStatus == "available";
+    if p.projectionKind == "galerkin"
+        canApply = ~isempty(p.recovery) && p.recovery.success;
     end
     examinedCount(row) = count;
     if ~isempty(leakage)
         rejected = ~ismember(leakage.columnLabels,p.columnLabels);
         examinedCount(row+1) = nnz(rejected);
-        if any(rejected)
+        if any(rejected) && ~canApply
+            status(row+1) = "inconclusive";
+        elseif any(rejected)
             errors = p.leakage(leakage.sampledValues(:,rejected),leakage.normSquared(rejected));
             [value(row+1),limiting] = max(errors);
             labels = leakage.columnLabels(rejected);
@@ -117,18 +125,22 @@ for iPrefix = 1:numel(counts)
         examinedCount(row+2) = nnz(selected);
         referenceStatus(row+2) = products.referenceStatus;
         referenceProvenance(row+2) = string(products.referenceProvenance);
-        if any(selected)
+        if any(selected) && ~canApply
+            status(row+2) = "inconclusive";
+        elseif any(selected)
             active = p.activeColumnMask;
             coefficients = zeros(count,nnz(selected));
             pairings = products.referencePairings(1:count,selected);
             if any(pairings(~active,:) ~= 0,"all")
                 error("IMProjection:InactiveReferencePairing","Inactive output columns require zero reference pairings; supplied reference data are inconsistent with the projection.");
             end
-            target = p.targetGramMatrix(active,active);
-            if rank(target) < nnz(active)
+            scale = p.coefficientScale_;
+            target = scale.'*p.targetGramMatrix(active,active)*scale;
+            rankTolerance = max(size(target))*eps(norm(target,2));
+            if sum(svd(target) > rankTolerance) < nnz(active)
                 error("IMProjection:SingularReferenceTarget","Continuous reference projection requires a nonsingular target on active columns.");
             end
-            coefficients(active,:) = target \ pairings(active,:);
+            coefficients(active,:) = scale*(target\(scale.'*pairings(active,:)));
             errors = p.productError(products.sampledValues(:,selected),coefficients,products.normSquared(selected));
             [value(row+2),limiting] = max(errors);
             labels = products.inputLabels(:,selected);

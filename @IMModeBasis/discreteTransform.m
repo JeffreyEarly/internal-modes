@@ -1,4 +1,4 @@
-function transform = discreteTransform(self,grid)
+function transform = discreteTransform(self,grid,options)
 % Build aligned sampled Galerkin operators from a continuous hydrostatic family.
 %
 % This fixed-grid bridge evaluates the existing basis without another EVP
@@ -11,10 +11,16 @@ function transform = discreteTransform(self,grid)
 %
 % - Topic: Project modes
 % - Parameter grid: IMVerticalGrid with final physical points and weights
+% - Parameter options.recoveryF: optional engine-prepared F recovery with exactly matching synthesis, scientific labels and activity
+% - Parameter options.recoveryG: optional engine-prepared G recovery with exactly matching synthesis, scientific labels and activity
+% - Parameter options.forwardOperator: optional descriptive domain specialization; otherwise inferred from the prepared recovery
 % - Returns transform: aligned IMInternalModesDiscreteTransform owning this basis
 arguments
     self (1,1) IMModeBasis
     grid (1,1) IMVerticalGrid
+    options.recoveryF = []
+    options.recoveryG = []
+    options.forwardOperator (1,1) string = ""
 end
 if self.family ~= "hydrostaticF" || self.background.surfaceCondition ~= "rigidLid"
     error("IMModeBasis:UnavailableDiscreteTransform","The common fixed-grid transform bridge currently supports rigid-lid hydrostatic F/G modes only.");
@@ -34,6 +40,12 @@ channel = @(interior,target,active) struct(available=true,reason="",activeModeMa
     interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights), ...
     targetGramMatrix=diag(target),targetMajorantGramMatrix=diag(target));
 channels = struct(F=channel(interiorF,HF,true(1,self.nColumns)),G=channel(interiorG,HG,activeG));
+if ~isempty(options.recoveryF), channels.F.recovery = options.recoveryF; end
+if ~isempty(options.recoveryG), channels.G.recovery = options.recoveryG; end
+if strlength(options.forwardOperator) > 0
+    channels.F.forwardOperator = options.forwardOperator;
+    channels.G.forwardOperator = options.forwardOperator;
+end
 metadata = struct(construction="IMModeBasis.discreteTransform",background=self.background,surfaceCondition="rigidLid", ...
     columnLabels=self.columnLabels,relation="F = h dG/dz");
 transform = IMInternalModesDiscreteTransform(z=grid.z,weights=grid.weights,modeNumber=self.modeInfo.branchIndex.',h=self.h, ...
