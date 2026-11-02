@@ -136,7 +136,7 @@ classdef IMModeBasisProvenanceTests < matlab.unittest.TestCase
             energy = IMGeneralizedEnergyBoundary(g0=.03,gd=Inf);
             endpoint = IMModes.geostrophicZeroAPVModesAtWavenumber(background,1e-3,energyBoundary=energy,solver=IMSolverSpectral(nEVP=48));
             testCase.verifyEqual(endpoint.scientificSpecification.resolved.endpoints,"surface")
-            testCase.verifyEqual(endpoint.scientificSpecification.resolved.energyBoundaryRole,"selectsEndpointCoordinatesOnly")
+            testCase.verifyEqual(endpoint.scientificSpecification.resolved.energyBoundaryRole,"definesPairingAndEndpointCoordinates")
             empty = IMModes.geostrophicZeroAPVModesAtWavenumber(background,1e-3,energyBoundary=IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf));
             testCase.verifyEmpty(empty.scientificSpecification.resolved.endpoints)
             testCase.verifyEqual(empty.scientificSpecification.resolved.energyBoundary.g0,Inf)

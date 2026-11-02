@@ -26,6 +26,8 @@ The common basis exposes [scientific and construction records, horizontal identi
 
 Use `basis.withNormalization(name)` to [change normalization](Documentation/BasisNormalization.md) immutably, reusing the existing continuous modes and preserving scientific identities and original construction evidence.
 
+Zero-APV common bases expose [physical forms and immutable basis rotations](Documentation/BasisRotations.md). Canonical endpoint identities, current column labels and an explicit source-coordinate map keep normalization, selection and signed-pencil rotations consistent.
+
 The lower-level V2 APIs preserve their scientific equations, normalizations and mode-count contracts. Their guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md) and [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md). The [shared recovery API](Documentation/SharedRecovery.md) separates continuous modes, physical projection and prepared numerical recovery. This is a deliberate prerelease API change: scalar sampled transforms now use `IMScalarDiscreteTransform`, while `IMDiscreteTransform.fromObservationMatrices` accepts caller-assembled observation matrices without requiring a provider-designed grid. Developer-facing scripts in `ExamplesV2` demonstrate the APIs; the stable `InternalModes` quick start below remains unchanged.
 
 For the rigid-lid hydrostatic problem, `IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/HydrostaticRootTransform.md): root grid, fitted weights, cached collocation or Galerkin operators, a reusable common continuous basis and an explicit retained-band assessment.

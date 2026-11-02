@@ -101,7 +101,7 @@ Normalization multiplies every field in a column by the same positive factor and
 | `"maxAbsF"` | $$\max_z |F_j(z)| = 1$$ |
 | `"maxAbsG"` | $$\max_z |G_j(z)| = 1$$ |
 
-The names have the same meaning wherever the required profiles or pairing exist. Unsupported names or family pairings produce an explicit error. Signed normalization preserves its signs in `basis.normSignatures`. A genuinely null generalized-energy mode cannot be assigned unit generalized energy; construction reports the null normalization rather than dropping the mode. Endpoint rotations remain coordinate changes in the existing lower-level zero-APV API.
+The names have the same meaning wherever the required profiles or pairing exist. Unsupported names or family pairings produce an explicit error. Signed normalization preserves its signs in `basis.normSignatures`. A genuinely null generalized-energy mode cannot be assigned unit generalized energy; construction reports the null normalization rather than dropping the mode. Zero-APV common bases expose [physical forms and immutable coordinate rotations](BasisRotations.md), with explicit canonical endpoint maps and separate rotation spectra. Their immediate `"rotationRightMetric"` normalization records the selected pencil's signed right metric; it is distinct from canonical unit endpoint response and from a positive profile-RMS rule.
 
 `waveEnergy` reduces to `depthRMSF` at zero horizontal wavenumber. Fixed-frequency creation defaults to `depthRMSF`, because each returned root has its own horizontal dispersion. The new factory interface does not reinterpret legacy names such as `"kConstant"` or `"geostrophic"` as these different definitions.
 

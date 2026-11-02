@@ -139,7 +139,7 @@ classdef IMBasisCollection
 
     methods (Static, Access = private)
         function entry = describeBasis(basis)
-            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"capabilities",struct(),"horizontalIdentity",struct(),"scientificSpecification",struct(),"constructionRecord",struct(),"rotationName","","rotationMatrix",[]);
+            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"capabilities",struct(),"horizontalIdentity",struct(),"scientificSpecification",struct(),"constructionRecord",struct(),"rotationName","","rotationMatrix",[],"sourceCoordinateMap",[],"rotationMetadata",struct());
             if isa(basis,"IMModeBasis")
                 entry.family = basis.family;
                 entry.columnLabels = basis.columnLabels;
@@ -152,7 +152,10 @@ classdef IMBasisCollection
                 entry.derivativeOrders = entry.capabilities.derivativeOrders;
                 if basis.family == "geostrophicZeroAPV"
                     entry.columnKind = "endpoint";
-                    entry.endpointLabels = entry.columnLabels;
+                    entry.endpointLabels = basis.canonicalEndpointLabels;
+                    entry.sourceCoordinateMap = basis.sourceCoordinateMap;
+                    entry.rotationMetadata = basis.rotationMetadata;
+                    entry.rotationName = basis.rotationMetadata.name;
                 end
                 if numel(entry.columnLabels) ~= basis.nColumns
                     error("IMBasisCollection:InvalidColumnLabels","Mode labels must match the facade column count.");
@@ -171,7 +174,8 @@ classdef IMBasisCollection
                 entry.endpointLabels = entry.columnLabels;
                 entry.rotationName = string(basis.rotationName);
                 entry.rotationMatrix = basis.rotationMatrix;
-                if entry.rotationName ~= "boundaryNormalized"
+                entry.sourceCoordinateMap = basis.rotationMatrix;
+                if basis.normalizationConvention ~= "unitEndpointResponse"
                     entry.columnLabels = entry.rotationName + string(1:numel(entry.endpointLabels));
                 end
                 entry.normalization = string(basis.normalizationConvention);
