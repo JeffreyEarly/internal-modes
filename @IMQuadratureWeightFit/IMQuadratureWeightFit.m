@@ -397,8 +397,8 @@ classdef IMQuadratureWeightFit
             % - Returns weightFit: initialized quadrature-weight fit diagnostics
             % - Developer: true
             arguments
-                options.transform (1,1) IMDiscreteTransform
-                options.geometricTransform (1,1) IMDiscreteTransform
+                options.transform (1,1) IMScalarDiscreteTransform
+                options.geometricTransform (1,1) IMScalarDiscreteTransform
                 options.objectiveName {mustBeTextScalar}
                 options.objectiveMatrix (:,:) double {mustBeReal, mustBeFinite}
                 options.objectiveTarget (:,1) double {mustBeReal, mustBeFinite}

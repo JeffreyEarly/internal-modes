@@ -31,12 +31,12 @@ function [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,
 % retained modes:
 %
 % - `"truncatedCollocation"` (default) inverts the square systems over the
-%   whole root-grid span, $$F_0,\ldots,F_{N_z-1}$$ on all points and
+%   whole root-grid span through the shared extended-span recovery, $$F_0,\ldots,F_{N_z-1}$$ on all points and
 %   $$G_1,\ldots,G_{N_z-2}$$ on the interior points, and keeps the rows
 %   $$0,\ldots,r$$. Modes $$r+1,\ldots,N_z-1$$ (F) and $$r+1,\ldots,N_z-2$$ (G)
 %   then produce no retained coefficients.
 % - `"galerkin"` applies $$A_V=(\Phi_V^\mathsf{T}W_V\Phi_V)^{-1}\Phi_V^\mathsf{T}W_V$$,
-%   computed by weighted QR, which lets those intermediate modes leak into
+%   computed by the shared sampled least-squares engine, which lets those intermediate modes leak into
 %   the retained band.
 %
 % Modes beyond the span alias under either operator. The search, its
@@ -189,7 +189,7 @@ geometricWeights = diff([zDomain(1);0.5*(z(1:end-1)+z(2:end));zDomain(2)]);
 % Square collocation over the full root-grid span: F0..F_{Nz-1} on all
 % points and G_1..G_{Nz-2} on the interior points, where G vanishes at both
 % endpoints. Rows are truncated to the retained band afterwards.
-[collocationF,collocationG,collocationDiagnostics] = collocationInverses(FSampled(:,1:nPoints),GSampled(2:end-1,2:nPoints-1));
+[collocationF,collocationG,collocationDiagnostics] = collocationRecoveries(FSampled(:,1:nPoints),GSampled(:,1:nPoints-1),solvedBasis.columnLabels,solvedBasis.normalization,z);
 
 searchRows = cell(numel(candidates),1);
 accepted = [];
@@ -233,10 +233,12 @@ gridDesign = struct(rule="hydrostaticRoot",generatingMode=nPoints-1,rootDesign=r
     retainedInternalModeCount=r,weightRule="Nonnegative full-depth fit of stacked normalized F/G Gram errors for the retained band");
 grid = IMVerticalGrid(z=z,weights=w,zDomain=zDomain,kind="modeRoots",design=gridDesign);
 basis = solvedBasis.selectColumns(1:r+1);
-transform = basis.discreteTransform(grid);
 if options.forwardOperator == "truncatedCollocation"
-    [forwardF,forwardG] = truncatedCollocation(r,collocationF,collocationG);
-    transform = transform.transformWithForwardOperators(forwardF,forwardG,"truncatedCollocation");
+    recoveryF = collocationF.selectOutputs(1:r+1);
+    recoveryG = collocationG.selectOutputs(1:r+1);
+    transform = basis.discreteTransform(grid,recoveryF=recoveryF,recoveryG=recoveryG,forwardOperator="truncatedCollocation");
+else
+    transform = basis.discreteTransform(grid);
 end
 assessment = IMHydrostaticRootTransformAssessment(selection=selection,nPoints=nPoints,retainedInternalModeCount=r, ...
     gramTolerance=options.gramTolerance,limitingCriterion=limitingCriterion,search=search,convergence=convergence, ...
@@ -305,6 +307,8 @@ end
 omitted = r+2:min(size(F,2),r+1+nOmitted);
 if isempty(omitted)
     gainF = NaN; gainG = NaN;
+elseif rankF < numel(retainedF) || rankG < numel(retainedG)
+    gainF = Inf; gainG = Inf;
 else
     gainF = norm(sqrt(HF(retainedF)).'.*(AF*F(:,omitted))./sqrt(HF(omitted)),2);
     gainG = norm(sqrt(HG(retainedG)).'.*(AG*G(:,omitted))./sqrt(HG(omitted)),2);
@@ -327,27 +331,26 @@ row = struct(internalModeCount=r,energyErrorF=epsF,energyErrorG=epsG,rankF=rankF
     omittedGainF=gainF,omittedGainG=gainG,fitResidual=fitResidual,accepted=acceptedBand,rejectionReason=reason);
 end
 
-function [inverseF,inverseG,diagnostics] = collocationInverses(F,G)
-% Column-equilibrated square inverses, without forming an explicit inverse
-% of the unscaled matrices.
-scaleF = max(abs(F),[],1);
-scaleG = max(abs(G),[],1);
-rcondF = rcond(F./scaleF);
-rcondG = rcond(G./scaleG);
-if ~(rcondF > 1e3*eps) || ~(rcondG > 1e3*eps)
-    error("IMInternalModesDiscreteTransform:SingularHydrostaticRootCollocation","The square root-grid collocation system is numerically singular (reciprocal condition F %.3g, G %.3g).",rcondF,rcondG);
+function [recoveryF,recoveryG,diagnostics] = collocationRecoveries(F,G,labels,normalization,z)
+% Both root collocation systems use the common sample-recovery engine.
+nPoints = size(F,1);
+activeG = [false true(1,size(G,2)-1)];
+scalesF = diag(1./max(abs(F),[],1));
+scalesG = diag(1./max(abs(G(:,activeG)),[],1));
+interior = [zeros(nPoints-2,1) eye(nPoints-2) zeros(nPoints-2,1)];
+metadataF = struct(construction="hydrostatic root full-span collocation",variable="F",normalization=normalization,z=z,observationLayout="all physical points",observationNorm="not declared");
+metadataG = struct(construction="hydrostatic root full-span collocation",variable="G",normalization=normalization,z=z,observationLayout="interior point selector; endpoint input columns remain explicit",observationNorm="not declared");
+recoveryF = IMDiscreteTransform.fromObservationMatrices(F,columnLabels=labels(1:size(F,2)),policy="sampledLeastSquares",coefficientScale=scalesF,fitFactor=eye(nPoints),failureMode="diagnostic",metadata=metadataF);
+recoveryG = IMDiscreteTransform.fromObservationMatrices(G,columnLabels=labels(1:size(G,2)),activeColumnMask=activeG,policy="sampledLeastSquares",coefficientScale=scalesG,fitFactor=interior,failureMode="diagnostic",metadata=metadataG);
+if ~recoveryF.success || ~recoveryG.success
+    error("IMInternalModesDiscreteTransform:SingularHydrostaticRootCollocation","The full root-grid span is not recoverable (F: %s; G: %s). Increase the continuous solve resolution or change the point budget.",recoveryF.status,recoveryG.status);
 end
-inverseF = ((F./scaleF)\eye(size(F,1)))./scaleF.';
-inverseG = ((G./scaleG)\eye(size(G,1)))./scaleG.';
-diagnostics = struct(conditionF=cond(F./scaleF),conditionG=cond(G./scaleG),columnScaling="maximum absolute value", ...
-    spanF="F_0..F_{Nz-1} on all points",spanG="G_1..G_{Nz-2} on interior points");
+diagnostics = struct(conditionF=recoveryF.diagnostics.fit.conditionNumber,conditionG=recoveryG.diagnostics.fit.conditionNumber,columnScaling="maximum absolute value",spanF="F_0..F_{Nz-1} on all points",spanG="G_1..G_{Nz-2} on interior points",recoveryF=recoveryF.diagnostics,recoveryG=recoveryG.diagnostics);
 end
 
-function [forwardF,forwardG] = truncatedCollocation(r,inverseF,inverseG)
-nPoints = size(inverseF,2);
-forwardF = inverseF(1:r+1,:);
-forwardG = zeros(r+1,nPoints);
-forwardG(2:r+1,2:end-1) = inverseG(1:r,:);
+function [forwardF,forwardG] = truncatedCollocation(r,recoveryF,recoveryG)
+forwardF = recoveryF.forwardMatrix(1:r+1,:);
+forwardG = recoveryG.forwardMatrix(1:r+1,:);
 end
 
 function [epsilon,rankValue,conditionNumber,forward] = channelError(Phi,metric,H)
@@ -356,17 +359,12 @@ if isempty(H)
     return
 end
 scale = 1./sqrt(H(:));
-B = sqrt(metric).*Phi.*scale.';
-Gamma = B.'*B;
+weighted = sqrt(metric).*Phi.*scale.';
+Gamma = weighted.'*weighted;
 Gamma = 0.5*(Gamma+Gamma.');
 epsilon = norm(Gamma-eye(numel(H)),2);
-singularValues = svd(B);
-rankValue = sum(singularValues > max(size(B))*eps(max(singularValues)));
 conditionNumber = cond(Gamma);
-if rankValue < numel(H)
-    forward = zeros(numel(H),size(Phi,1));
-else
-    [Q,R] = qr(B,0);
-    forward = scale.*(R\(Q.'.*sqrt(metric).'));
-end
+recovery = IMDiscreteTransform.fromObservationMatrices(Phi,columnLabels="internal:"+string(1:numel(H)),policy="sampledLeastSquares",coefficientScale=diag(scale),fitFactor=diag(sqrt(metric)),failureMode="diagnostic");
+rankValue = recovery.diagnostics.fit.rank;
+forward = recovery.forwardMatrix;
 end

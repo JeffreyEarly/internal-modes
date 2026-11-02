@@ -33,7 +33,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             scale = 1./sqrt(abs(diag(expectedTarget)));
             expectedRelativeError = norm(scale.*(expectedGram - expectedTarget).*scale.',2);
 
-            testCase.verifyClass(transform, "IMDiscreteTransform")
+            testCase.verifyClass(transform, "IMScalarDiscreteTransform")
             testCase.verifyEqual(transform.z, z, AbsTol=0)
             testCase.verifyEqual(transform.weights, dz, AbsTol=0)
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:3), AbsTol=0)
@@ -135,7 +135,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
         function indefiniteTargetsUseAbsoluteNormScaling(testCase)
             targetGram = diag([-1 2]);
-            transform = IMDiscreteTransform(z=[-1; 0], weights=[-1; 1], modeNumber=[-1 1], normalization="unity", ...
+            transform = IMScalarDiscreteTransform(z=[-1; 0], weights=[-1; 1], modeNumber=[-1 1], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=diag([-2 3]), targetGramMatrix=targetGram);
             scale = 1./sqrt(abs(diag(targetGram)));
             expected = norm(scale.*(transform.gramMatrix - targetGram).*scale.',2);
@@ -160,16 +160,29 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
         end
 
         function matrixObjectDiagnosesSingularAndRejectsMalformedOperations(testCase)
-            singular = IMDiscreteTransform(z=[-1; -0.5; 0],weights=ones(3,1),modeNumber=[1 2],normalization="unity", ...
+            singular = IMScalarDiscreteTransform(z=[-1; -0.5; 0],weights=ones(3,1),modeNumber=[1 2],normalization="unity", ...
                 inverseMatrix=ones(3,2),metricMatrix=eye(3),targetGramMatrix=eye(2));
             testCase.verifyEqual(singular.sampledGramRank,1)
-            testCase.verifyEqual(singular.relativeGramOperatorError,Inf)
-            testCase.verifyGreaterThan(singular.roundTripError,0.9)
+            testCase.verifyEqual(singular.relativeGramOperatorError,norm(singular.gramMatrix-eye(2),2),AbsTol=1e-14)
+            testCase.verifyEqual(singular.roundTripError,Inf)
+            testCase.verifyEmpty(singular.forwardMatrix)
+            testCase.verifyError(@() singular.transformForward(ones(3,1)),"IMDiscreteTransform:UnavailableRecovery")
 
-            transform = IMDiscreteTransform(z=[-1; 0], weights=ones(2,1), modeNumber=[1 2], normalization="unity", ...
+            transform = IMScalarDiscreteTransform(z=[-1; 0], weights=ones(2,1), modeNumber=[1 2], normalization="unity", ...
                 inverseMatrix=eye(2), metricMatrix=eye(2), targetGramMatrix=eye(2));
             testCase.verifyError(@() transform.transformForward(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
             testCase.verifyError(@() transform.transformBack(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
+        end
+
+        function largeGramToleranceCannotAcceptAnUnobservablePrefix(testCase)
+            [basisSet,~,~] = testCase.regularBasis(3);
+            z = [-1;-0.5;0]; weights = [0.25;0.5;0.25];
+            testCase.verifyError(@() basisSet.discreteTransform(z=z,weights=weights,nModes=2,gramTolerance=1e6),"IMBasisSet:DiscreteTransformPolicyFailed")
+            [transform,assessment] = basisSet.discreteTransform(z=z,weights=weights,gramTolerance=1e6);
+            testCase.verifyEqual(transform.columnCount,1)
+            testCase.verifyTrue(all(isfinite(assessment.prefixDiagnostics.gramError)))
+            testCase.verifyEqual(assessment.prefixDiagnostics.physicalGramRankAccepted,[true;false;false])
+            testCase.verifyFalse(assessment.prefixDiagnostics.recoveryAccepted(end))
         end
     end
 
