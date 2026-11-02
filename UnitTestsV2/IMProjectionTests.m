@@ -48,6 +48,74 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(inactive.prefix(2).columnLabels,["barotropic" "1"])
         end
 
+        function weakStratificationKeepsTheAnalyticalDCTRank(testCase)
+            % Physical F norms span many orders of magnitude even though
+            % the energy-normalized columns are orthogonal on this grid.
+            D = 1000; g = 9.81; nPoints = 65;
+            z = linspace(0,D,nPoints).';
+            w = D/(nPoints-1)*[0.5;ones(nPoints-2,1);0.5];
+            j = 1:nPoints-2;
+            for N0 = [1e-6 1e-7 1e-10]
+                h = N0^2*D^2./(g*(j*pi).^2);
+                H = [D h];
+                Phi = [ones(nPoints,1) cos(z*(j*pi/D)).*sqrt(2*h/D)];
+                projection = IMProjection(Phi,diag(w),diag(H));
+                testCase.verifyEqual(projection.sampledGramRank,nPoints-1)
+                testCase.verifyTrue(projection.targetGramIsPositiveDefinite)
+                testCase.verifyLessThan(projection.gramError,1e-12)
+                coefficients = (1+1i*sin(0:nPoints-2)).'/sqrt(H).';
+                recovered = projection.project(Phi*coefficients);
+                testCase.verifyLessThan(norm(sqrt(H).'.*(recovered-coefficients))/norm(sqrt(H).'.*coefficients),1e-12)
+            end
+        end
+
+        function signedDensePairingsAreInvariantToColumnUnits(testCase)
+            metric = [2 0.3 0.2;0.3 -1 0.4;0.2 0.4 3];
+            majorant = [4 0.2 0.1;0.2 2 0.3;0.1 0.3 5];
+            columnScales = [1e-12 1 1e8];
+            scaling = diag(columnScales);
+            projection = IMProjection(scaling,metric,scaling*metric*scaling,majorantGramMatrix=scaling*majorant*scaling);
+            testCase.verifyEqual(projection.sampledGramRank,3)
+            testCase.verifyFalse(projection.targetGramIsPositiveDefinite)
+            values = [1;2i;3-1i];
+            testCase.verifyEqual(columnScales.'.*projection.project(values),values,AbsTol=1e-12)
+            pairing = [1 2i;3 -1;2i 4];
+            prescribed = IMProjection.fromPrescribedDual(scaling*pairing,scaling*metric*scaling,scaling*metric*scaling,majorantGramMatrix=scaling*majorant*scaling,provenance=struct(source="scaled signed dual"));
+            testCase.verifyEqual(prescribed.sampledGramRank,3)
+            testCase.verifyFalse(prescribed.targetGramIsPositiveDefinite)
+            testCase.verifyEqual(columnScales.'.*prescribed.project([1;2i]),metric\(pairing*[1;2i]),AbsTol=1e-12)
+        end
+
+        function zeroWeightsIgnoreSamplesWithDenseCoefficientMetric(testCase)
+            z = linspace(-1,1,7).';
+            scales = [1e-10 1 1e8];
+            Phi = [ones(size(z)) z z.^2].*scales;
+            w = [0;ones(5,1);0];
+            H = Phi.'*(w.*Phi);
+            projection = IMProjection(Phi,diag(w),H,majorantGramMatrix=H);
+            coefficients = [1+1i;2;3]./scales.';
+            values = Phi*coefficients;
+            values([1 end]) = 1e12;
+            testCase.verifyEqual(projection.sampledGramRank,3)
+            testCase.verifyTrue(projection.targetGramIsPositiveDefinite)
+            testCase.verifyEqual(projection.forwardMatrix(:,[1 end]),zeros(3,2),AbsTol=0)
+            testCase.verifyEqual(scales.'.*projection.project(values),scales.'.*coefficients,AbsTol=1e-12)
+        end
+
+        function deficientPairingPreservesUnitsAndInactiveZeros(testCase)
+            Phi = [0 1 1;0 2 2;0 -1 -1];
+            H = diag([0 1 1]);
+            scales = [1 1e-10 1e5];
+            base = IMProjection(Phi,eye(3),H,activeColumnMask=[false true true]);
+            scaled = IMProjection(Phi.*scales,eye(3),diag(scales)*H*diag(scales),activeColumnMask=[false true true]);
+            values = [1+1i;2;3-1i];
+            testCase.verifyEqual(scaled.sampledGramRank,1)
+            testCase.verifyEqual(scaled.gramError,Inf)
+            testCase.verifyEqual(scales.'.*scaled.project(values),base.project(values),AbsTol=1e-12)
+            testCase.verifyEqual(scaled.forwardMatrix(1,:),zeros(1,3),AbsTol=0)
+            testCase.verifyEqual(scaled.prefix(1).forwardMatrix,zeros(1,3),AbsTol=0)
+        end
+
         function denseSignedTargetsRequireAnExplicitPositiveMajorant(testCase)
             target = [1 2;2 -1];
             testCase.verifyError(@() IMProjection(eye(2),target,target),"IMProjection:MajorantRequired")

@@ -1,7 +1,7 @@
 function results = HydrostaticRootTransformComparison(options)
 % Compare the hydrostatic root transform with the v4 algorithm on identical points.
 %
-% For each profile and point budget, `IMModes.hydrostaticRootTransform` builds
+% For each profile and point budget, `IMInternalModesDiscreteTransform.hydrostaticRoot` builds
 % the root grid, fitted weights and qualified band, with its default
 % truncated-collocation operator and, separately, the Galerkin operator. The
 % v4 algorithm is reproduced from the same converged modes on the same
@@ -49,29 +49,27 @@ for p = 1:size(profiles,1)
     for nPoints = options.nPoints
         if options.verbose, fprintf("%s, %d points: building transforms\n",name,nPoints); end
         t0 = tic;
-        [transform,grid,assessment] = IMModes.hydrostaticRootTransform(background,nPoints,gramTolerance=options.gramTolerance);
+        [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints,gramTolerance=options.gramTolerance);
         setupTime = toc(t0);
-        galerkinTransform = IMModes.hydrostaticRootTransform(background,nPoints,gramTolerance=options.gramTolerance,forwardOperator="galerkin");
+        galerkinTransform = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints,gramTolerance=options.gramTolerance,forwardOperator="galerkin");
         % Continuous reference modes at the converged resolution, beyond the retained band.
-        solver = IMSolverSpectral(nEVP=2*assessment.convergence.candidateNEVP,coordinateKind="wkb");
-        evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0],latitude=33);
+        solver = IMSolverSpectral(nEVP=2*assessment.convergence.candidateNEVP,coordinateKind=assessment.convergence.coordinateKind);
         nModes = nPoints+8;
-        basis = solver.solveEVP(evp,nModes=nModes);
-        z = grid.z; g = background.g; h = basis.h(1:nModes);
-        F = [ones(nPoints,1) basis.F(z,normalization="geostrophic")];
-        G = [zeros(nPoints,1) basis.G(z,normalization="geostrophic")]; G([1 end],:) = 0;
-        HF = [D h]; GMetric = N2(z)/g;
+        basis = IMModes.hydrostaticFModes(background,solver=solver,nInternalModes=nModes);
+        z = grid.z; g = background.g; h = basis.h(2:end);
+        F = basis.F(z); G = basis.G(z);
+        HF = D*ones(1,nModes+1); HG = D./h; GMetric = N2(z)/g;
         % v4 algorithm on the same points.
         Fsquare = F(:,1:nPoints);
         w4 = Fsquare.'\[D;zeros(nPoints-1,1)];
         collocationForward = inv(Fsquare); % v4 forms the explicit inverse
         usableV4 = 0;
         for r = nPoints-2:-1:1
-            [eF,eG] = energyErrors(F(:,1:r+1),G(:,2:r+1),w4,HF(1:r+1),GMetric);
+            [eF,eG] = energyErrors(F(:,1:r+1),G(:,2:r+1),w4,HF(1:r+1),HG(1:r),GMetric);
             if eF <= options.gramTolerance && eG <= options.gramTolerance, usableV4 = r; break, end
         end
         r = assessment.retainedInternalModeCount;
-        [eF4,eG4] = energyErrors(F(:,1:r+1),G(:,2:r+1),w4,HF(1:r+1),GMetric);
+        [eF4,eG4] = energyErrors(F(:,1:r+1),G(:,2:r+1),w4,HF(1:r+1),HG(1:r),GMetric);
         omitted = r+2:min(r+9,nModes+1);
         collocationF = transform.forwardMatrix(variable="F");
         galerkinF = galerkinTransform.forwardMatrix(variable="F");
@@ -80,7 +78,7 @@ for p = 1:size(profiles,1)
         v4Difference = norm(collocationF-v4Rows)/norm(v4Rows);
         % Nonmodal input u = exp(z/300).
         fine = IMVerticalGrid.physicalDepth([-D 0],2049);
-        Ffine = [ones(fine.nPoints,1) basis.F(fine.z,normalization="geostrophic")];
+        Ffine = basis.F(fine.z);
         u = @(zz) exp(zz/300);
         continuous = (Ffine(:,1:r+1).'*(fine.weights.*u(fine.z)))./HF(1:r+1).';
         galerkin = galerkinF*u(z);
@@ -108,9 +106,9 @@ if options.outputFile ~= ""
 end
 end
 
-function [epsF,epsG] = energyErrors(F,G,w,HF,GMetric)
+function [epsF,epsG] = energyErrors(F,G,w,HF,HG,GMetric)
 gram = F.'*(w.*F);
 epsF = norm((gram-diag(HF))./sqrt(HF(:)*HF(:).'),2);
 gram = G.'*((GMetric.*w).*G);
-epsG = norm(gram-eye(size(G,2)),2);
+epsG = norm((gram-diag(HG))./sqrt(HG(:)*HG(:).'),2);
 end

@@ -29,12 +29,22 @@ for iColumn = find(~activeMask)
 end
 if ~isempty(active)
     targetNorms = diag(targetGram(active,active));
-    if self.projectionKind == "galerkin" && any(abs(targetNorms) <= 100*eps(max(1,abs(targetNorms))))
-        error("IMProjection:InvalidTargetNorm","Every active target diagonal must be nonzero at numerical precision for Gram normalization.");
+    if self.projectionKind == "galerkin" && any(targetNorms == 0)
+        error("IMProjection:InvalidTargetNorm","Every active target diagonal must be nonzero relative to its positive coefficient metric for Gram normalization.");
     end
-    [~,failure] = chol(majorant(active,active));
+    majorantDiagonal = diag(majorant(active,active));
+    if any(majorantDiagonal <= 0)
+        error("IMProjection:InvalidMajorant","majorantGramMatrix must be positive definite on active columns.");
+    end
+    coefficientScale = sqrt(majorantDiagonal);
+    normalizedMajorant = (majorant(active,active)./coefficientScale)./coefficientScale.';
+    [majorantFactor,failure] = chol(normalizedMajorant);
     if failure ~= 0
         error("IMProjection:InvalidMajorant","majorantGramMatrix must be positive definite on active columns.");
+    end
+    relativeTargetNorms = abs(targetNorms)./majorantDiagonal;
+    if self.projectionKind == "galerkin" && any(relativeTargetNorms <= 100*eps(max(1,relativeTargetNorms)))
+        error("IMProjection:InvalidTargetNorm","Every active target diagonal must be nonzero relative to its positive coefficient metric for Gram normalization.");
     end
 end
 self.sampleCount = nSamples;
@@ -53,16 +63,27 @@ if isempty(active)
     return
 end
 gramActive = sampleGram(active,active);
-rankTolerance = max(size(gramActive))*eps(max(1,norm(gramActive,2)));
-self.sampledGramRank = sum(svd(gramActive) > rankTolerance);
+% Factor and test the signed pairing in dimensionless coefficient coordinates.
+% The majorant supplies units, not a replacement physical pairing. In these
+% coordinates column rescaling cannot turn a weak but independent mode into
+% a numerical null column.
+normalizedGram = (gramActive./coefficientScale)./coefficientScale.';
+normalizedGram = majorantFactor.'\normalizedGram/majorantFactor;
+normalizedGram = 0.5*(normalizedGram+normalizedGram.');
+normalizedPairing = majorantFactor.'\(samplePairingMatrix(active,:)./coefficientScale);
+rankTolerance = max(size(normalizedGram))*eps(norm(normalizedGram,2));
+self.sampledGramRank = sum(svd(normalizedGram) > rankTolerance);
 if self.sampledGramRank < numel(active)
-    self.forwardMatrix(active,:) = pinv(gramActive,rankTolerance)*samplePairingMatrix(active,:);
+    self.forwardMatrix(active,:) = (majorantFactor\(pinv(normalizedGram,rankTolerance)*normalizedPairing))./coefficientScale;
 else
-    self.forwardMatrix(active,:) = gramActive \ samplePairingMatrix(active,:);
+    self.forwardMatrix(active,:) = (majorantFactor\(normalizedGram\normalizedPairing))./coefficientScale;
 end
 self.gramConditionNumber = cond(gramActive);
 targetActive = targetGram(active,active);
-self.targetGramIsPositiveDefinite = min(eig(targetActive)) > 100*eps(max(1,norm(targetActive,2)));
+normalizedTarget = (targetActive./coefficientScale)./coefficientScale.';
+normalizedTarget = majorantFactor.'\normalizedTarget/majorantFactor;
+normalizedTarget = 0.5*(normalizedTarget+normalizedTarget.');
+self.targetGramIsPositiveDefinite = min(eig(normalizedTarget)) > 100*eps(norm(normalizedTarget,2));
 end
 
 function matrix = symmetricMatrix(matrix,name)

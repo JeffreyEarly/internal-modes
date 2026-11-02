@@ -1,7 +1,7 @@
 classdef IMHydrostaticRootTransformAssessment
     % Record how a hydrostatic root transform's retained band was qualified.
     %
-    % `IMModes.hydrostaticRootTransform` returns this immutable record with
+    % `IMInternalModesDiscreteTransform.hydrostaticRoot` returns this immutable record with
     % its transform and grid. Each row of `search` describes one fitted
     % candidate band $$r$$ (aligned columns $$F_0,\ldots,F_r$$): the F and G
     % energy errors
@@ -10,7 +10,7 @@ classdef IMHydrostaticRootTransformAssessment
     %
     % sampled Gram ranks and condition numbers, the weight range and the
     % number of zero weights, the largest normalized modal mean
-    % $$|\sum_i w_iF_j(z_i)|/\sqrt{Dh_j}$$, and the omitted-mode gains
+    % $$|\sum_i w_iF_j(z_i)|/D$$, and the omitted-mode gains
     % $$\|H_r^{1/2}A_V\Phi_{V,\mathrm{om}}H_\mathrm{om}^{-1/2}\|_2$$ of the
     % selected forward operator $$A_V$$: the
     % largest retained energy amplitude produced per unit energy amplitude of
@@ -18,7 +18,7 @@ classdef IMHydrostaticRootTransformAssessment
     % omitted set and are diagnostics, not acceptance criteria.
     %
     % ```matlab
-    % [transform,grid,assessment] = IMModes.hydrostaticRootTransform(background,33);
+    % [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
     % assessment.search
     % assessment.limitingCriterion
     % ```
@@ -70,7 +70,7 @@ classdef IMHydrostaticRootTransformAssessment
         % Forward operator used by the transform and the omitted-mode gains.
         %
         % `"truncatedCollocation"` or `"galerkin"`; see
-        % `IMModes.hydrostaticRootTransform`.
+        % `IMInternalModesDiscreteTransform.hydrostaticRoot`.
         %
         % - Topic: Assess transform quality
         forwardOperator
@@ -103,7 +103,7 @@ classdef IMHydrostaticRootTransformAssessment
             arguments
                 options.selection (1,1) string {mustBeMember(options.selection,["strict","automatic"])}
                 options.nPoints (1,1) double {mustBeInteger,mustBePositive}
-                options.retainedInternalModeCount (1,1) double {mustBeInteger,mustBePositive}
+                options.retainedInternalModeCount (1,1) double {mustBeInteger,mustBeNonnegative}
                 options.gramTolerance (1,1) double {mustBePositive}
                 options.limitingCriterion (1,1) string
                 options.search table
