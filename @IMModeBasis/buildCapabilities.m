@@ -55,13 +55,20 @@ if ~isempty(evp), hasGeneralizedEnergy = evp.innerProduct("G").hasInnerProduct; 
 if hasGeneralizedEnergy && ~self.waveConvention
     normalizationNames(end+1) = "generalizedEnergy";
 end
+if self.family == "geostrophicZeroAPV"
+    normalizationNames(end+1) = "generalizedEnergy";
+    if self.rotationMetadata.isRotated, normalizationNames(end+1) = "rotationRightMetric"; end
+end
 hasGeneralizedEnstrophy = ~isempty(self.sourceUnityFactors_) && ismember("generalizedPotentialEnstrophy",self.source.normalizationNames());
 if ~isempty(evp), hasGeneralizedEnstrophy = ismember("generalizedPotentialEnstrophy",IMInternalModesNormalizationTools.available(evp)); end
 if hasGeneralizedEnstrophy
     normalizationNames(end+1) = "generalizedPotentialEnstrophy";
 end
 if isa(self.source,"IMGeostrophicZeroAPVModesBasis") || isa(self.source,"IMAnalyticalGeostrophicZeroAPVModesBasis") || self.family == "geostrophicZeroAPV"
-    normalizationNames(end+1) = "endpointResponse";
+    map = self.zeroAPVColumnMap_;
+    if self.family ~= "geostrophicZeroAPV" || (~self.rotationMetadata.isRotated && ((all(sum(map ~= 0,1) == 1) && all(map(map ~= 0) == 1)) || self.nColumns == 0))
+        normalizationNames(end+1) = "endpointResponse";
+    end
 end
 normalizationNames = unique(normalizationNames,"stable");
 operations = struct("variable",{},"kind",{},"availability",{},"requirements",{});
@@ -73,5 +80,14 @@ elseif isa(self.source,"IMNeutralLabelModesBasis")
     operations = struct(variable="APV",kind="prescribedContinuousDual",availability="conditional",requirements=["APV observations with fixed dz quadrature","nonzero f0 and representable continuous APV norms for retained columns","empty inventories preserve an empty physical dual","particle-label information for a complete neutral-label state"]);
 end
 recovery = struct(synthesisVariables=variables,preparation="IMDiscreteTransform.fromObservationMatrices",availability="requiresPreparedSystem",requirements=["explicit observation model and column identities","explicit scientific column activity","declared fitting or observation factor, or physical dual","successful rank and overlap assessment of the prepared system"],noiseEvidence="requiresDeclaredObservationFactor");
-description = struct(variables=variables,derivativeOrders={orders},aliases=aliases,derivativeConvention=derivativeConvention,traceConvention=traceConvention,traceOrders={orders},spectrumNames=spectrumNames,normalizationNames=normalizationNames,normalizationRequirements="Every retained column requires a finite positive magnitude; signed rules preserve a separate norm signature.",projectionOperations=operations,sampledRecovery=recovery,supportsEmptyColumns=true);
+quadraticFormNames = strings(1,0);
+rotationNames = strings(1,0);
+if self.family == "geostrophicZeroAPV"
+    quadraticFormNames = ["energyMatrix","surfaceBuoyancyMatrix","bottomBuoyancyMatrix","endpointResponseMetric","generalizedEnergyMatrix"];
+    rotationNames = ["rotateBoundaryDepth","rotateWithPencil"];
+    if ismember("surface",self.canonicalEndpointLabels)
+        rotationNames = ["rotateBoundaryDepth","rotateSurfaceBuoyancy","rotateWithPencil"];
+    end
+end
+description = struct(variables=variables,derivativeOrders={orders},aliases=aliases,derivativeConvention=derivativeConvention,traceConvention=traceConvention,traceOrders={orders},spectrumNames=spectrumNames,normalizationNames=normalizationNames,normalizationRequirements="Every retained column requires a finite positive magnitude; signed rules preserve a separate norm signature.",projectionOperations=operations,sampledRecovery=recovery,supportsEmptyColumns=true,quadraticFormNames=quadraticFormNames,rotationNames=rotationNames);
 end

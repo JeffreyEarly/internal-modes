@@ -9,6 +9,10 @@ classdef IMModeBasis
     % selected columns and backend evidence. Shared capabilities describe
     % available operations and their requirements; observation-grid rank
     % and recovery evidence belong to a prepared transform.
+    % Zero-APV bases also expose physical coefficient forms and immutable
+    % rotations within the retained continuous subspace. Canonical endpoint
+    % labels identify source rows; the source-coordinate map identifies
+    % their current normalized or rotated linear combinations.
     %
     % ```matlab
     % basis = IMModes.waveModesAtWavenumber(background,1e-3,nInternalModes=8);
@@ -18,6 +22,8 @@ classdef IMModeBasis
     % - Topic: Inspect modes
     % - Topic: Evaluate modes
     % - Topic: Project modes
+    % - Topic: Form zero-APV quadratic forms
+    % - Topic: Rotate zero-APV modes
     % - Topic: Developer topics
     % - Declaration: classdef IMModeBasis
 
@@ -70,6 +76,17 @@ classdef IMModeBasis
         % Caller extension metadata, separate from canonical scientific records.
         % - Topic: Inspect modes
         metadata (1,1) struct
+        % Canonical endpoint row identities for the zero-APV source.
+        % - Topic: Inspect modes
+        canonicalEndpointLabels (1,:) string = strings(1,0)
+        % Rotation creation evidence, separate from ordinary EVP spectra.
+        %
+        % The parent-coordinate pencil and map describe rotation creation.
+        % Selection narrows aligned arrays; positive profile normalization
+        % leaves this snapshot unchanged. Current forms and sourceCoordinateMap
+        % describe the resulting coefficient coordinates.
+        % - Topic: Rotate zero-APV modes
+        rotationMetadata (1,1) struct
     end
 
     properties (Dependent, SetAccess = private)
@@ -79,6 +96,32 @@ classdef IMModeBasis
         % EVP eigenvalues; unavailable for families without an EVP.
         % - Topic: Inspect modes
         eigenvalues
+        % Zero-APV-only map from canonical endpoints to normalized columns.
+        %
+        % The nCanonicalEndpoints-by-nColumns map $$M$$ obeys
+        % $$A_{\mathrm{current}}=A_{\mathrm{canonical}}M$$ for every profile,
+        % derivative and endpoint trace. Canonical row identities remain
+        % separate from mixed column labels. Other families throw when this
+        % unavailable coordinate map is requested.
+        % - Topic: Inspect modes
+        sourceCoordinateMap
+        % Physical-energy form in current zero-APV coefficient coordinates.
+        %
+        % For coefficients $$a$$, the restricted energy self-pairing is
+        % $$a^* H a$$. Under a coordinate change $$T$$, the form becomes
+        % $$H_{\mathrm{new}}=T^* H T$$. The state convention includes
+        % the existing zero-APV factors of k, f0 and g.
+        % - Topic: Form zero-APV quadratic forms
+        energyMatrix
+        % Surface-buoyancy form in current zero-APV coordinates.
+        % - Topic: Form zero-APV quadratic forms
+        surfaceBuoyancyMatrix
+        % Bottom-buoyancy form in current zero-APV coordinates.
+        % - Topic: Form zero-APV quadratic forms
+        bottomBuoyancyMatrix
+        % Canonical endpoint-response form in current coordinates.
+        % - Topic: Form zero-APV quadratic forms
+        endpointResponseMetric
     end
 
     properties (Access = private)
@@ -93,12 +136,16 @@ classdef IMModeBasis
         hasEigenvalues_ (1,1) logical = false
         hasFrequency_ (1,1) logical = false
         profileVariables_ (1,:) string
-        % Immutable derived scales depend only on source, columns and normalization.
+        % Immutable derived scales depend on source directions and normalization.
         scaleFactors_ (1,:) double
         sourceUnityFactors_ (1,:) double
         integrationIntervals_ (:,2) double
         % Original source inventory fixes the normalization integration budget.
         normalizationColumnCount_ (1,1) double
+        zeroAPVColumnMap_ (:,:) double = zeros(0)
+        zeroAPVSourceRotation_ (:,:) double = zeros(0)
+        zeroAPVRightGram_ (:,:) double = zeros(0)
+        zeroAPVEnergyBoundary_ (1,1) struct = struct()
     end
 
     methods
@@ -111,7 +158,7 @@ classdef IMModeBasis
             % cached factors valid for every subsequent evaluation.
             %
             % - Topic: Developer topics
-            % - Parameter options.source: existing numerical or analytical basis, or empty
+            % - Parameter options.source: existing numerical or analytical basis with the same declared stratification as background, or empty
             % - Parameter options.background: common physical column configuration
             % - Parameter options.family: scientific family name
             % - Parameter options.columns: selected source columns; all by default
@@ -186,6 +233,7 @@ classdef IMModeBasis
             self.frequency = options.frequency;
             self.hasFrequency_ = options.hasFrequency || ~isempty(options.frequency);
             self.metadata = options.metadata;
+            self.rotationMetadata = struct(name="",isRotated=false,eigenvalues=zeros(1,0),rightMetricSignatures=zeros(1,0),leftMetricSignatures=zeros(1,0),normalizationConvention="",residuals=struct(),h0=zeros(1,0),parentColumnLabels=strings(1,0),coordinateChange=zeros(0),leftMatrix=zeros(0),rightMatrix=zeros(0));
             self.integrationIntervals_ = options.integrationIntervals;
             if ~isempty(self.integrationIntervals_) && (any(self.integrationIntervals_(:,1) >= self.integrationIntervals_(:,2)) || any(self.integrationIntervals_(:,1) < self.zDomain(1)) || any(self.integrationIntervals_(:,2) > self.zDomain(2)) || any(self.integrationIntervals_(2:end,1) < self.integrationIntervals_(1:end-1,2)))
                 error("IMModeBasis:InvalidIntegrationIntervals","Integration intervals must be increasing, disjoint and contained in zDomain.");
@@ -242,6 +290,9 @@ classdef IMModeBasis
                 error("IMModeBasis:InvalidColumns","Select distinct existing source columns.");
             end
             self.nColumns = numel(self.columns);
+            if self.family == "geostrophicZeroAPV"
+                self = self.initializeZeroAPVCoordinates(options.scientificInput);
+            end
             self.hasEquivalentDepths_ = options.hasEquivalentDepths;
             self.hasEigenvalues_ = options.hasEigenvalues;
             self.modeInfo = options.modeInfo;
@@ -297,6 +348,7 @@ classdef IMModeBasis
             self.capabilities = self.buildCapabilities(options.scientificInput);
             [self.scaleFactors_,self.normSignatures] = self.normalizationScales();
             [self.scientificSpecification,self.constructionRecord] = self.createRecords(options.scientificInput,options.constructionInput);
+            if self.family == "geostrophicZeroAPV", self = self.refreshZeroAPVRecords(); end
         end
 
         function values = F(self,z)
@@ -393,6 +445,32 @@ classdef IMModeBasis
             value = self.eigenvalues_;
         end
 
+        function map = get.sourceCoordinateMap(self)
+            if self.family ~= "geostrophicZeroAPV"
+                error("IMModeBasis:UnavailableCoordinateMap","A canonical endpoint coordinate map is defined only for the geostrophicZeroAPV family.");
+            end
+            map = self.zeroAPVColumnMap_./self.scaleFactors_;
+            if any(~isfinite(map),"all")
+                error("IMModeBasis:UnrepresentableCoordinates","The normalized canonical coordinate map is not finite. Choose a representable normalization or pencil.");
+            end
+        end
+
+        function matrix = get.energyMatrix(self)
+            matrix = self.zeroAPVForm("energyMatrix");
+        end
+
+        function matrix = get.surfaceBuoyancyMatrix(self)
+            matrix = self.zeroAPVForm("surfaceBuoyancyMatrix");
+        end
+
+        function matrix = get.bottomBuoyancyMatrix(self)
+            matrix = self.zeroAPVForm("bottomBuoyancyMatrix");
+        end
+
+        function matrix = get.endpointResponseMetric(self)
+            matrix = self.zeroAPVForm("endpointResponseMetric");
+        end
+
         function projection = projectionOnGrid(self,z,weights,options)
             % Construct a family projection on fixed physical samples.
             %
@@ -453,6 +531,10 @@ classdef IMModeBasis
     methods
         basis = selectColumns(self,columns)
         basis = withNormalization(self,name)
+        matrix = generalizedEnergyMatrix(self,options)
+        basis = rotateBoundaryDepth(self,options)
+        basis = rotateSurfaceBuoyancy(self,options)
+        basis = rotateWithPencil(self,options)
         transform = discreteTransform(self,grid)
         [z,design] = modeRootPoints(self,generatingMode)
     end
@@ -510,10 +592,33 @@ classdef IMModeBasis
     methods (Access = private)
         capabilities = buildCapabilities(self,scientificInput)
         [scientific,construction] = createRecords(self,scientificInput,constructionInput)
+        self = initializeZeroAPVCoordinates(self,scientificInput)
+        matrix = zeroAPVForm(self,name,isRaw)
+        boundary = zeroAPVEnergyBoundary(self,g0,gd)
+        self = refreshZeroAPVRecords(self)
+        basis = rotateZeroAPVPencil(self,name,left,right,ordering,convention,g0,gd)
+        bound = zeroAPVNormBound(self,boundary)
 
         function values = unscaledValues(self,variable,z,derivativeOrder)
             if self.nColumns == 0
                 values = zeros(numel(z),0);
+                return
+            end
+            if self.family == "geostrophicZeroAPV"
+                if variable == "F" && derivativeOrder == 0
+                    raw = self.source.F(z);
+                elseif variable == "F" && derivativeOrder == 1
+                    raw = -self.source.N2(z)/self.background.g.*self.source.G(z);
+                elseif variable == "G" && derivativeOrder == 0
+                    raw = self.source.G(z);
+                elseif variable == "G" && derivativeOrder == 1
+                    raw = -self.background.g*self.k^2/self.background.f0^2*self.source.F(z);
+                elseif variable == "G" && derivativeOrder == 2
+                    raw = self.k^2*self.source.N2(z)/self.background.f0^2.*self.source.G(z);
+                else
+                    error("IMModeBasis:UnsupportedDerivative","Zero-APV profiles support F through first and G through second derivatives.");
+                end
+                values = (raw/self.zeroAPVSourceRotation_)*self.zeroAPVColumnMap_;
                 return
             end
             if isempty(self.source)
@@ -613,7 +718,7 @@ classdef IMModeBasis
         end
 
         function [scales,signatures] = normalizationScales(self)
-            names = ["depthRMSF","depthRMSG","waveEnergy","generalizedEnergy","generalizedPotentialEnstrophy","endpointResponse","maxAbsF","maxAbsG"];
+            names = ["depthRMSF","depthRMSG","waveEnergy","generalizedEnergy","generalizedPotentialEnstrophy","endpointResponse","maxAbsF","maxAbsG","rotationRightMetric"];
             if ~ismember(self.normalization,names)
                 error("IMModeBasis:UnknownNormalization","Choose one of the common normalization names: %s.",join(names,", "));
             end
@@ -632,16 +737,39 @@ classdef IMModeBasis
                     end
                     scales = ones(1,self.nColumns);
                     return
-                case "generalizedEnergy"
-                    if isempty(self.sourceUnityFactors_) || ~ismethod(self.source,"gramMatrix") || self.waveConvention
-                        error("IMModeBasis:UnavailableNormalization","This family has no generalized-energy G pairing.");
-                    end
-                    gram = self.source.gramMatrix(variable="G");
-                    squares = reshape(diag(gram),1,[]);
-                    if self.includesBarotropic, squares = [0 squares]; end
-                    squares = squares(self.columns);
-                    signatures = sign(squares);
+                case "rotationRightMetric"
+                    squares = reshape(diag(self.zeroAPVRightGram_),1,[]);
                     scales = sqrt(abs(squares));
+                    signatures = sign(squares);
+                case "generalizedEnergy"
+                    if self.family == "geostrophicZeroAPV"
+                        boundary = self.zeroAPVEnergyBoundary([],[]);
+                        gram = self.zeroAPVForm("energyMatrix",true);
+                        majorant = gram;
+                        if isfinite(boundary.g0), gram = gram+boundary.g0*self.zeroAPVForm("surfaceBuoyancyMatrix",true); end
+                        if isfinite(boundary.gd), gram = gram+boundary.gd*self.zeroAPVForm("bottomBuoyancyMatrix",true); end
+                        if isfinite(boundary.g0), majorant = majorant+abs(boundary.g0)*self.zeroAPVForm("surfaceBuoyancyMatrix",true); end
+                        if isfinite(boundary.gd), majorant = majorant+abs(boundary.gd)*self.zeroAPVForm("bottomBuoyancyMatrix",true); end
+                        squares = reshape(diag(gram),1,[]);
+                        majorantSquares = reshape(diag(majorant),1,[]);
+                        arithmeticBound = self.zeroAPVNormBound(boundary);
+                        relativeNullTolerance = 1e-12;
+                        if any(~isfinite(majorantSquares)) || any(~isfinite(arithmeticBound)) || any(majorantSquares <= 0) || any(abs(squares) <= relativeNullTolerance*max(majorantSquares,arithmeticBound))
+                            error("IMModeBasis:NullNormalization","A retained zero-APV column has an unresolved signed-energy norm relative to its physical majorant or canonical arithmetic cancellation bound (relative tolerance %g). Select a non-null span or another normalization.",relativeNullTolerance);
+                        end
+                        signatures = sign(squares);
+                        scales = sqrt(abs(squares));
+                    else
+                        if isempty(self.sourceUnityFactors_) || ~ismethod(self.source,"gramMatrix") || self.waveConvention
+                            error("IMModeBasis:UnavailableNormalization","This family has no generalized-energy G pairing.");
+                        end
+                        gram = self.source.gramMatrix(variable="G");
+                        squares = reshape(diag(gram),1,[]);
+                        if self.includesBarotropic, squares = [0 squares]; end
+                        squares = squares(self.columns);
+                        signatures = sign(squares);
+                        scales = sqrt(abs(squares));
+                    end
                 case "generalizedPotentialEnstrophy"
                     if isempty(self.sourceUnityFactors_) || ~ismember("generalizedPotentialEnstrophy",self.source.normalizationNames())
                         error("IMModeBasis:UnavailableNormalization","This family has no generalized-potential-enstrophy pairing.");

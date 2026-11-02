@@ -20,7 +20,9 @@ Generalized-energy normalization uses the square root of the absolute signed sel
 
 Unsupported rules are rejected before profile evaluation, including on empty inventories. Supported empty inventories retain empty scales and signatures, with their capability and scientific identity records intact.
 
-`scientificSpecification.resolved.normalization` records the new name, divisors and signatures. The original `scientificSpecification.requested` and `constructionRecord` remain the original construction evidence. Selecting and reordering columns preserves these distinctions. Normalization integration retains the original source-inventory budget through selection, so selecting a small high-order band does not reduce the integration rule to that of a few low modes. This fixes a selected-harmonic aliasing error; it is not an independent convergence certificate for arbitrary supplied profiles.
+`scientificSpecification.resolved.normalization` records the new name, divisors and signatures. For zero-APV bases the current source-coordinate map is updated as well; rotation-creation evidence retains its original meaning. Original scientific requests and backend construction evidence remain available. Selecting and reordering columns preserves these distinctions. Normalization integration retains the original source-inventory budget through selection, so selecting a small high-order band does not reduce the integration rule to that of a few low modes. This fixes a selected-harmonic aliasing error; it is not an independent convergence certificate for arbitrary supplied profiles.
+
+Zero-APV [rotations](BasisRotations.md) introduce `"rotationRightMetric"`, whose signed right form is retained so the rule can be restored after another profile normalization. Its exact meaning is recorded by the rotation's normalization convention. Mixed rotated directions cannot request canonical `"endpointResponse"` normalization. Generalized-energy normalization uses the retained scientific energy-boundary coefficients, which need not be overrides used for an earlier rotation pencil.
 
 ## Coefficient coordinates and prepared operators
 
@@ -42,6 +44,6 @@ Physical dual application remains distinct from fitted recovery. Verification in
 
 ## Scope and verification
 
-This increment provides the immutable basis operation and verifies the existing physical and recovery adapters under it. It adds no new recovery policy or family/source adapter. Zero-APV forms and rotations remain #49; common family/source adapter completion remains #48. Observation-grid qualification and WVM adoption remain separate work.
+The normalization operation and the supported zero-APV coordinate rotations add no new recovery policy or family/source adapter. Common family/source adapter completion remains #48. Observation-grid qualification and WVM adoption remain separate work.
 
 See [normalization verification](BasisNormalizationVerification.md) for numerical controls, independent review and the source-inventory integration correction.

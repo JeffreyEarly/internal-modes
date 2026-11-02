@@ -246,6 +246,12 @@ classdef IMModeBasisNormalizationTests < matlab.unittest.TestCase
             testCase.verifyEqual(changed.constructionRecord,original.constructionRecord);
             expected = original.scientificSpecification;
             expected.resolved.normalization = changed.scientificSpecification.resolved.normalization;
+            if original.family == "geostrophicZeroAPV"
+                ratio = original.scientificSpecification.resolved.normalization.scales./changed.scientificSpecification.resolved.normalization.scales;
+                expectedMap = original.sourceCoordinateMap.*ratio;
+                testCase.verifyEqual(changed.sourceCoordinateMap,expectedMap,AbsTol=3e-14);
+                expected.resolved.sourceCoordinateMap = expectedMap;
+            end
             testCase.verifyEqual(changed.scientificSpecification,expected);
             testCase.verifyEqual(changed.scientificSpecification.resolved.normalization.name,changed.normalization);
             testCase.verifyEqual(changed.scientificSpecification.resolved.normalization.normSignatures,changed.normSignatures);

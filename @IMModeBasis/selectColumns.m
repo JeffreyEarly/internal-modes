@@ -16,7 +16,21 @@ if any(columns > self.nColumns) || numel(unique(columns)) ~= numel(columns)
     error("IMModeBasis:InvalidColumns","Select distinct existing basis columns.");
 end
 basis = self;
-basis.columns = self.columns(columns);
+if self.family == "geostrophicZeroAPV"
+    basis.zeroAPVColumnMap_ = self.zeroAPVColumnMap_(:,columns);
+    basis.zeroAPVRightGram_ = self.zeroAPVRightGram_(columns,columns);
+    rotation = self.rotationMetadata;
+    rotation.coordinateChange = rotation.coordinateChange(:,columns);
+    for name = ["eigenvalues","rightMetricSignatures","leftMetricSignatures","h0"]
+        if ~isempty(rotation.(name)), rotation.(name) = rotation.(name)(columns); end
+    end
+    if isfield(rotation.residuals,"relativePencilResidual")
+        rotation.residuals.relativePencilResidual = rotation.residuals.relativePencilResidual(columns,:);
+    end
+    basis.rotationMetadata = rotation;
+else
+    basis.columns = self.columns(columns);
+end
 basis.nColumns = numel(columns);
 basis.modeInfo = self.modeInfo(columns,:);
 basis.columnLabels = self.columnLabels(columns);
@@ -38,6 +52,9 @@ basis.scientificSpecification.resolved = resolved;
 selection = basis.constructionRecord.selection;
 selection.activeSourceColumns = basis.columns;
 selection.columnLabels = basis.columnLabels;
-selection.initialColumnIndices = self.constructionRecord.selection.initialColumnIndices(columns);
+if ~isempty(self.constructionRecord.selection.initialColumnIndices)
+    selection.initialColumnIndices = self.constructionRecord.selection.initialColumnIndices(columns);
+end
 basis.constructionRecord.selection = selection;
+if self.family == "geostrophicZeroAPV", basis = basis.refreshZeroAPVRecords(); end
 end
