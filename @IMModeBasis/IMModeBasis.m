@@ -8,7 +8,10 @@ classdef IMModeBasis
     % Scientific and construction records preserve the defining problem,
     % selected columns and backend evidence. Shared capabilities describe
     % available operations and their requirements; observation-grid rank
-    % and recovery evidence belong to a prepared transform.
+    % and recovery evidence belong to a prepared transform. Supported
+    % scalar physical recipes can bind this family to caller-supplied
+    % samples through projectionOnGrid or scalarTransform; continuous
+    % construction remains independent of sampling and recovery policy.
     % Zero-APV bases also expose physical coefficient forms and immutable
     % rotations within the retained continuous subspace. Canonical endpoint
     % labels identify source rows; the source-coordinate map identifies
@@ -474,16 +477,20 @@ classdef IMModeBasis
         function projection = projectionOnGrid(self,z,weights,options)
             % Construct a family projection on fixed physical samples.
             %
-            % Hydrostatic F/G uses sampled Galerkin recovery. Neutral-label
-            % APV uses its prescribed continuous dual for the fixed-endpoint
-            % sine ladder. Every retained label has positive continuous APV
-            % norm when f0 is nonzero; sampled recovery depends on the rule.
+            % Supported scalar F/G channels retain their full continuous
+            % signed forms and literal source-observation requirements.
+            % Neutral-label APV uses its prescribed continuous dual for the
+            % fixed-endpoint sine ladder. Physical projection applies its
+            % continuous-normalized dual; sample recovery is independent.
             %
             % - Topic: Project modes
             % - Parameter z: increasing physical sample column
             % - Parameter weights: fixed physical dz quadrature weights
-            % - Parameter options.variable: F/G for hydrostatic modes, APV for neutral labels
+            % - Parameter options.variable: supported F/G channel, or APV for neutral labels
             % - Parameter options.columns: selected facade columns, all by default
+            % - Parameter options.prepareRecovery: prepare the legacy physical-metric recovery, or return only the physical record
+            % - Parameter options.failureMode: diagnostic or error for unresolved recovery
+            % - Parameter options.rankTolerance: dimensionless relative recovery rank cutoff
             % - Returns projection: family map from sampled values to normalized-basis coefficients
             arguments (Input)
                 self (1,1) IMModeBasis
@@ -491,24 +498,24 @@ classdef IMModeBasis
                 weights (:,1) double {mustBeReal,mustBeFinite}
                 options.variable (1,1) string = ""
                 options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:self.nColumns
+                options.prepareRecovery (1,1) logical = true
+                options.failureMode (1,1) string {mustBeMember(options.failureMode,["diagnostic","error"])} = "diagnostic"
+                options.rankTolerance (1,1) double {mustBeReal,mustBeFinite,mustBePositive} = 1e-12
             end
             arguments (Output)
                 projection (1,1) IMProjection
             end
-            if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
-                recipe = self.projectionRecipe(variable=options.variable);
-                projection = IMProjection.fromRecipe(recipe,z,weights,columns=options.columns);
-                return
-            end
-            if ~isa(self.source,"IMNeutralLabelModesBasis") || ~ismember(options.variable,["","APV"])
-                error("IMModeBasis:UnavailableProjection","This basis does not provide the requested projection.");
-            end
             selectedColumns = options.columns;
-            if isempty(selectedColumns)
-                selectedColumns = 1:self.nColumns;
-            end
             if any(selectedColumns > self.nColumns) || numel(unique(selectedColumns)) ~= numel(selectedColumns)
                 error("IMModeBasis:InvalidColumns","Select distinct existing basis columns.");
+            end
+            if ~isa(self.source,"IMNeutralLabelModesBasis")
+                recipe = self.projectionRecipe(variable=options.variable);
+                projection = IMProjection.fromRecipe(recipe,z,weights,columns=selectedColumns,prepareRecovery=options.prepareRecovery,failureMode=options.failureMode,rankTolerance=options.rankTolerance);
+                return
+            end
+            if ~ismember(options.variable,["","APV"])
+                error("IMModeBasis:UnavailableProjection","Neutral labels provide the prescribed physical APV dual only.");
             end
             if isempty(selectedColumns)
                 % Validate the physical rule through an empty source, without
@@ -536,6 +543,7 @@ classdef IMModeBasis
         basis = rotateSurfaceBuoyancy(self,options)
         basis = rotateWithPencil(self,options)
         transform = discreteTransform(self,grid)
+        transform = scalarTransform(self,z,weights,options)
         [z,design] = modeRootPoints(self,generatingMode)
     end
 
@@ -544,7 +552,7 @@ classdef IMModeBasis
         function recipe = projectionRecipe(self,options)
             % Describe the family projection metric and continuous reference.
             % - Topic: Project modes
-            % - Parameter options.variable: F/G for rigid-lid hydrostatic modes, APV for neutral labels
+            % - Parameter options.variable: supported scalar F/G channel, or APV for neutral labels
             % - Returns recipe: family-owned reference and capability metadata
             % - Developer: true
             arguments (Input)
@@ -554,38 +562,88 @@ classdef IMModeBasis
             arguments (Output)
                 recipe (1,1) struct
             end
-            if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
-                variable = options.variable;
-                if variable == "", variable = "F"; end
-                if ~ismember(variable,["F","G"])
-                    error("IMModeBasis:UnavailableProjection","Rigid-lid hydrostatic modes provide F and G projection channels.");
-                end
-                [HF,HG] = self.hydrostaticNorms();
-                if variable == "F"
-                    target = diag(HF); weightFunction = @(z) ones(size(z));
-                else
-                    target = diag(HG); weightFunction = @(z) self.background.N2(z)/self.background.g;
-                end
-                spec = struct(surfaceWeights=struct([]),bottomWeights=struct([]));
-                provenance = struct(family=self.family,projection="sampledGalerkin",normalization=self.normalization, ...
-                    referenceIntegration="continuous F/G norms",solveAccuracy="unverified",referenceConvergence="unverified");
-                recipe = IMProjection.createRecipe(variable=variable,columnLabels=self.columnLabels,normalization=self.normalization, ...
-                    targetGramMatrix=target,majorantGramMatrix=target,provenance=provenance,zDomain=self.zDomain, ...
-                    evaluateFunction=@(z) self.evaluate(z,variable),weightFunction=weightFunction,spec=spec);
+            variable = options.variable;
+            if isa(self.source,"IMNeutralLabelModesBasis") && ismember(variable,["","APV"])
+                recipe = self.source.projectionRecipe(variable="APV");
+                factors = self.scaleFactors_;
+                recipe.columnLabels = self.columnLabels;
+                recipe.normalization = self.normalization;
+                recipe.targetGramMatrix = eye(self.nColumns);
+                recipe.majorantGramMatrix = recipe.majorantGramMatrix(self.columns,self.columns)./(factors(:)*factors);
+                recipe.activeColumnMask = true(1,self.nColumns);
+                recipe.evaluateFunction = @(z) self.APV(z);
+                recipe.provenance.normalization = self.normalization;
+                recipe.provenance.continuousAPVGramMatrix = recipe.majorantGramMatrix;
                 return
             end
-            if ~isa(self.source,"IMNeutralLabelModesBasis") || ~ismember(options.variable,["","APV"])
-                error("IMModeBasis:UnavailableProjection","This basis does not provide the requested prescribed APV projection.");
+            supported = ismember(self.family,["hydrostaticF","hydrostaticG","geostrophicAPV","meanDensityAnomaly"]);
+            if ~supported
+                error("IMModeBasis:UnavailableProjection","The %s family has no common scalar physical projection in this adapter. Evaluable profiles may still support an explicitly prepared observation recovery.",self.family);
             end
-            recipe = self.source.projectionRecipe(variable="APV");
+            if variable == ""
+                if self.family == "hydrostaticF", variable = "F"; else, variable = "G"; end
+            end
+            if ~ismember(variable,["F","G"]) || (self.family == "meanDensityAnomaly" && variable ~= "G")
+                error("IMModeBasis:UnavailableProjection","The %s family does not define an independent scalar physical %s pairing.",self.family,variable);
+            end
+            active = true(1,self.nColumns);
+            hasSource = ~isempty(self.source);
+            if hasSource
+                self.assertValueOnlyPairing(self.source.evp.innerProduct(variable),variable);
+                recipe = self.source.projectionRecipe(variable=variable);
+                if ~recipe.isAvailable
+                    error("IMModeBasis:UnavailableProjection","%s",recipe.reason);
+                end
+                target = recipe.targetGramMatrix;
+                majorant = recipe.majorantGramMatrix;
+                active = recipe.activeColumnMask;
+                if self.includesBarotropic
+                    if variable == "F", constantNorm = self.background.D; else, constantNorm = 0; end
+                    target = blkdiag(constantNorm,target);
+                    majorant = blkdiag(constantNorm,majorant);
+                    active = [variable == "F",active];
+                    recipe.provenance.barotropicAugmentation = "F0=1, G0=0; exact Dirichlet G traces imply zero F0/internal cross pairing";
+                end
+                target = target(self.columns,self.columns);
+                majorant = majorant(self.columns,self.columns);
+                active = active(self.columns);
+            else
+                pairings = self.scientificSpecification.resolved.pairings;
+                if ~isfield(pairings,variable) || ~pairings.(variable).hasInnerProduct
+                    error("IMModeBasis:UnavailableProjection","The %s family has no retained declaration of the requested %s pairing.",self.family,variable);
+                end
+                spec = pairings.(variable);
+                if ~isfield(spec,"surfaceWeights"), spec.surfaceWeights = struct([]); end
+                if ~isfield(spec,"bottomWeights"), spec.bottomWeights = struct([]); end
+                if ~isfield(spec,"endpointInnerProductTerms"), spec.endpointInnerProductTerms = struct([]); end
+                if variable == "F", weightFunction = @(z) ones(size(z)); else, weightFunction = @(z) self.background.N2(z)/self.background.g; end
+                target = zeros(self.nColumns);
+                if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
+                    if variable == "F", target = diag(self.background.D*double(self.modeInfo.branch == "barotropic")); end
+                elseif self.nColumns > 0
+                    error("IMModeBasis:UnavailableProjection","A nonempty scalar family requires an existing continuous source form.");
+                end
+                majorant = target;
+                provenance = struct(representation="intrinsic",referenceIntegration="empty form or exact analytical barotropic norm",solveAccuracy="unverified",referenceConvergence="unverified");
+                recipe = IMProjection.createRecipe(variable=variable,columnLabels=self.columnLabels,targetGramMatrix=target,majorantGramMatrix=majorant,provenance=provenance,zDomain=self.zDomain,weightFunction=weightFunction,spec=spec);
+            end
+            self.assertValueOnlyPairing(recipe.spec,variable);
+            if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid" && variable == "G"
+                active = self.modeInfo.branch.' ~= "barotropic";
+            end
             factors = self.scaleFactors_;
             recipe.columnLabels = self.columnLabels;
             recipe.normalization = self.normalization;
-            recipe.targetGramMatrix = eye(self.nColumns);
-            recipe.majorantGramMatrix = recipe.majorantGramMatrix(self.columns,self.columns)./(factors(:)*factors);
-            recipe.evaluateFunction = @(z) self.APV(z);
+            recipe.targetGramMatrix = target./(factors(:)*factors);
+            recipe.majorantGramMatrix = majorant./(factors(:)*factors);
+            recipe.activeColumnMask = active;
+            recipe.evaluateFunction = @(z) self.evaluate(z,variable);
+            recipe.provenance.family = self.family;
+            recipe.provenance.projection = "sampledGalerkin";
             recipe.provenance.normalization = self.normalization;
-            recipe.provenance.continuousAPVGramMatrix = recipe.majorantGramMatrix;
+            recipe.provenance.columnLabels = self.columnLabels;
+            recipe.provenance.sourceColumns = self.columns;
+            recipe.provenance.targetCoordinateChange = "selected source unity profiles divided by common normalization scales";
         end
     end
 
@@ -598,6 +656,20 @@ classdef IMModeBasis
         self = refreshZeroAPVRecords(self)
         basis = rotateZeroAPVPencil(self,name,left,right,ordering,convention,g0,gd)
         bound = zeroAPVNormBound(self,boundary)
+
+        function assertValueOnlyPairing(~,spec,variable)
+            if ~spec.hasInnerProduct
+                error("IMModeBasis:UnavailableProjection","%s",spec.reason);
+            end
+            terms = [spec.surfaceWeights;spec.bottomWeights];
+            if ~isempty(terms) && any([terms.coefficient] ~= 0 & [terms.d] ~= 0)
+                error("IMModeBasis:UnavailableProjection","The %s pairing requires independent derivative endpoint observations; scalar values cannot represent it.",variable);
+            end
+            terms = spec.endpointInnerProductTerms;
+            if ~isempty(terms) && any([terms.coefficient] ~= 0 & string({terms.variable}) ~= variable)
+                error("IMModeBasis:UnavailableProjection","The %s pairing requires independent companion-variable endpoint observations; scalar values cannot represent it.",variable);
+            end
+        end
 
         function values = unscaledValues(self,variable,z,derivativeOrder)
             if self.nColumns == 0

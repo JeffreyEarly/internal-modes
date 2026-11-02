@@ -27,7 +27,7 @@ arguments (Input)
     self IMNeutralLabelModesBasis
     z (:,1) double {mustBeReal,mustBeFinite}
     weights (:,1) double {mustBeReal,mustBeFinite}
-    options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+    options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.m_n)
 end
 arguments (Output)
     projection (1,1) IMProjection
@@ -42,9 +42,7 @@ if numel(weights) ~= numel(z) || ~any(weights ~= 0)
     error("IMNeutralLabelModesBasis:InvalidWeights","Supply one weight per point and at least one nonzero weight.");
 end
 columns = options.columns;
-if isempty(columns)
-    columns = 1:numel(self.m_n);
-elseif any(columns > numel(self.m_n)) || numel(unique(columns)) ~= numel(columns)
+if any(columns > numel(self.m_n)) || numel(unique(columns)) ~= numel(columns)
     error("IMProjection:InvalidColumns","Select distinct existing neutral-label columns.");
 end
 % Cancel one factor of f0 analytically rather than forming 1/f0^2.

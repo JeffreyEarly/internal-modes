@@ -72,9 +72,32 @@ if isa(self.source,"IMGeostrophicZeroAPVModesBasis") || isa(self.source,"IMAnaly
 end
 normalizationNames = unique(normalizationNames,"stable");
 operations = struct("variable",{},"kind",{},"availability",{},"requirements",{});
-if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
-    for variable = ["F","G"]
-        operations(end+1) = struct(variable=variable,kind="sampledGalerkin",availability="conditional",requirements=["fixed physical samples and dz quadrature","continuous physical pairing","separate prepared-recovery rank assessment"]); %#ok<AGROW>
+if ismember(self.family,["hydrostaticF","hydrostaticG","geostrophicAPV","meanDensityAnomaly"])
+    projectionVariables = ["F","G"];
+    if self.family == "meanDensityAnomaly", projectionVariables = "G"; end
+    for variable = projectionVariables
+        requirements = ["fixed physical samples and dz quadrature","full continuous signed pairing and positive majorant","separate explicit recovery policy and prepared-system rank assessment"];
+        if ~isempty(evp)
+            spec = evp.innerProduct(variable);
+            if ~spec.hasInnerProduct, continue; end
+            terms = [spec.surfaceWeights;spec.bottomWeights];
+            if ~isempty(terms) && any([terms.coefficient] ~= 0 & [terms.d] ~= 0), continue; end
+            for iTerm = 1:numel(terms)
+                if terms(iTerm).coefficient ~= 0 && terms(iTerm).c ~= 0
+                    requirements(end+1) = "independent " + variable + " value at the physical " + string(terms(iTerm).location) + " endpoint"; %#ok<AGROW>
+                end
+            end
+            terms = spec.endpointInnerProductTerms;
+            if ~isempty(terms) && any([terms.coefficient] ~= 0 & string({terms.variable}) ~= variable), continue; end
+            for iTerm = 1:numel(terms)
+                if terms(iTerm).coefficient ~= 0
+                    requirements(end+1) = "independent " + variable + " value at the physical " + string(terms(iTerm).location) + " endpoint"; %#ok<AGROW>
+                end
+            end
+        elseif ~(self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid")
+            continue
+        end
+        operations(end+1) = struct(variable=variable,kind="sampledGalerkin",availability="conditional",requirements=unique(requirements,"stable")); %#ok<AGROW>
     end
 elseif isa(self.source,"IMNeutralLabelModesBasis")
     operations = struct(variable="APV",kind="prescribedContinuousDual",availability="conditional",requirements=["APV observations with fixed dz quadrature","nonzero f0 and representable continuous APV norms for retained columns","empty inventories preserve an empty physical dual","particle-label information for a complete neutral-label state"]);

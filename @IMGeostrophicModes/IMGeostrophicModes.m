@@ -90,7 +90,48 @@ classdef IMGeostrophicModes < IMInternalModes
                 variable {mustBeTextScalar,mustBeMember(variable,["F","G"])} = "F"
             end
             spec = innerProduct@IMInternalModes(self,variable);
-            if self.name == "geostrophicGeneralizedPotentialEnstrophyModes" && string(variable) == "G"
+            if self.name == "geostrophicAPVModes" && string(variable) == "G"
+                % Physical endpoint coefficients come from the declared
+                % accelerations. Relative tests on dimensional canonical
+                % boundary coefficients can erase finite value observations.
+                spec.surfaceWeights = struct([]);
+                spec.bottomWeights = struct([]);
+                spec.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
+                g0 = self.parameters.g0;
+                gd = self.parameters.gd;
+                if self.parameters.surfaceBoundary == "freeSurface"
+                    if isinf(g0)
+                        surfaceCoefficient = 1;
+                    elseif g0 == -self.g
+                        surfaceCoefficient = 0; % Gs is constrained to zero.
+                    else
+                        surfaceCoefficient = g0/(self.g+g0);
+                        if isinf(self.g+g0)
+                            surfaceCoefficient = 1/(1+self.g/g0);
+                        end
+                    end
+                elseif isfinite(g0)
+                    surfaceCoefficient = g0/self.g;
+                else
+                    surfaceCoefficient = 0;
+                end
+                if isfinite(gd), bottomCoefficient = gd/self.g; else, bottomCoefficient = 0; end
+                surfaceActive = isfinite(g0) && g0 ~= 0 && (self.parameters.surfaceBoundary ~= "freeSurface" || g0 ~= -self.g);
+                surfaceActive = surfaceActive || (self.parameters.surfaceBoundary == "freeSurface" && isinf(g0));
+                coefficients = [surfaceCoefficient,bottomCoefficient];
+                if any(~isfinite(coefficients)) || (surfaceActive && surfaceCoefficient == 0) ...
+                        || (isfinite(gd) && gd ~= 0 && bottomCoefficient == 0)
+                    error("IMGeostrophicModes:UnrepresentablePairing","A nonzero physical APV endpoint coefficient exceeds floating-point range. Choose representable physical units.");
+                end
+                locations = ["surface","bottom"];
+                for i = find(coefficients ~= 0)
+                    term = struct(location=locations(i),coefficient=coefficients(i),variable="G", ...
+                        description="G("+locations(i)+")",catalogCase="declaredAPVAcceleration");
+                    spec.endpointInnerProductTerms(end+1,1) = term;
+                end
+                spec.hasInnerProduct = true;
+                spec.reason = "The declared APV accelerations define the signed G value pairing, including literal inactive and constrained-zero limits.";
+            elseif self.name == "geostrophicGeneralizedPotentialEnstrophyModes" && string(variable) == "G"
                 spec.hasInnerProduct = true;
                 spec.reason = "The paired generalized-enstrophy problem supplies companion F endpoint traces.";
                 k = self.parameters.k;

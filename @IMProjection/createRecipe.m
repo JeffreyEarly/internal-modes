@@ -5,6 +5,7 @@ arguments (Input)
     options.reason (1,1) string = ""
     options.variable (1,1) string = "u"
     options.columnLabels (1,:) string = strings(1,0)
+    options.activeColumnMask (1,:) logical = []
     options.normalization (1,1) string = ""
     options.targetGramMatrix (:,:) double {mustBeFinite} = zeros(0)
     options.majorantGramMatrix (:,:) double {mustBeFinite} = zeros(0)
@@ -21,6 +22,12 @@ arguments (Output)
 end
 self = options;
 n = numel(self.columnLabels);
+if isempty(self.activeColumnMask)
+    self.activeColumnMask = true(1,n);
+end
+if numel(self.activeColumnMask) ~= n
+    error("IMProjection:InvalidActivity","Declare one scientific activity flag per recipe column.");
+end
 if self.isAvailable && (~isequal(size(self.targetGramMatrix),[n n]) || ~isequal(size(self.majorantGramMatrix),[n n]))
     error("IMProjection:InvalidTargetShape","Both target matrices must have one row and column per scientific label.");
 end
