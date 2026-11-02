@@ -27,16 +27,26 @@ if options.page > numel(collection.basisIndex)
     error("IMBasisCollection:InvalidPage","The requested page is absent from the collection.");
 end
 metadata = collection.metadata(collection.basisIndex(options.page));
-variableIndex = find(metadata.variables==options.variable,1);
-if isempty(variableIndex) || ~ismember(options.derivativeOrder,metadata.derivativeOrders{variableIndex})
+description = metadata.capabilities;
+variable = options.variable;
+derivativeOrder = options.derivativeOrder;
+for alias = description.aliases
+    if variable == alias.variable
+        variable = alias.baseVariable;
+        derivativeOrder = derivativeOrder+alias.derivativeOffset;
+        break
+    end
+end
+variableIndex = find(description.variables==variable,1);
+if isempty(variableIndex) || ~ismember(derivativeOrder,description.derivativeOrders{variableIndex})
     error("IMBasisCollection:UnsupportedFactor","The collection does not support the requested variable/derivative.");
 end
 if metadata.columnKind=="endpoint" && options.countRole~="fixed"
     error("IMBasisCollection:EndpointPrefix","Boundary endpoint factors must preserve the complete fixed coordinate set.");
 end
-factor = struct(id=options.id,family=metadata.family,labels=metadata.columnLabels,ordinals=1:numel(metadata.columnLabels),frequencySigns=zeros(size(metadata.columnLabels)),countRole=options.countRole,columnKind=metadata.columnKind,evaluate=@evaluate,provenance=struct(collectionMetadata=metadata,page=options.page,kappa=collection.kappa,variable=options.variable,derivativeOrder=options.derivativeOrder,independentSolve=false));
+factor = struct(id=options.id,family=metadata.family,labels=metadata.columnLabels,ordinals=1:numel(metadata.columnLabels),frequencySigns=zeros(size(metadata.columnLabels)),countRole=options.countRole,columnKind=metadata.columnKind,evaluate=@evaluate,provenance=struct(collectionMetadata=metadata,page=options.page,kappa=collection.kappa,variable=variable,derivativeOrder=derivativeOrder,independentSolve=false));
     function values = evaluate(z,columns,referenceId) %#ok<INUSD>
-        values = collection.evaluate(z,pages=options.page,columns=columns,variable=options.variable,derivativeOrder=options.derivativeOrder);
+        values = collection.evaluate(z,pages=options.page,columns=columns,variable=variable,derivativeOrder=derivativeOrder);
         coefficient = options.coefficient(z);
         if ~isnumeric(coefficient) || ~(isscalar(coefficient) || isequal(size(coefficient),size(z))) || any(~isfinite(coefficient),"all")
             error("IMBasisCollection:InvalidCoefficient","A coefficient function must return one finite value or one per grid point.");

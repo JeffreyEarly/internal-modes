@@ -65,9 +65,9 @@ classdef (Sealed) IMModes
             boundary = IMModes.waveBoundary(background);
             evp = IMInternalModes.waveModesAtWavenumber(args{:},k=k,surfaceBoundary=boundary);
             request = struct("kind","wave","hasSurface",background.surfaceCondition=="freeSurface","nPositiveModes",options.nInternalModes,"nNegativeModes",options.nSubinertialModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
             frequency = sqrt(background.f0^2+background.g*k^2*h);
-            basis = IMModes.wrap(source,columns,info,background,"wave",options.normalization,h,lambda,true,k,frequency);
+            basis = IMModes.wrap(source,columns,info,background,"wave",options.normalization,h,lambda,true,"fixedWavenumber",k,[],frequency,IMModes.specificationInput("waveModesAtWavenumber",options,evp,k=k),construction);
         end
 
         function basis = inertialModes(background,options)
@@ -84,8 +84,8 @@ classdef (Sealed) IMModes
             args = IMModes.physicalArguments(background);
             evp = IMInternalModes.waveModesAtWavenumber(args{:},k=0,surfaceBoundary=IMModes.waveBoundary(background));
             request = struct("kind","inertial","hasSurface",background.surfaceCondition=="freeSurface","nPositiveModes",options.nPositiveModes,"nNegativeModes",options.nNegativeModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"inertial",options.normalization,h,lambda,true,0,repmat(abs(background.f0),size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"inertial",options.normalization,h,lambda,true,"fixedWavenumber",0,[],repmat(abs(background.f0),size(h)),IMModes.specificationInput("inertialModes",options,evp),construction);
         end
 
         function basis = waveModesAtFrequency(background,omega,options)
@@ -109,8 +109,8 @@ classdef (Sealed) IMModes
             args = IMModes.physicalArguments(background);
             evp = IMInternalModes.waveModesAtFrequency(args{:},omega=omega,surfaceBoundary=IMModes.waveBoundary(background));
             request = struct("kind","frequency","hasSurface",background.surfaceCondition=="freeSurface","nPropagatingModes",options.nPropagatingModes,"nEvanescentModes",options.nEvanescentModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"fixedFrequencyWave",options.normalization,h,lambda,true,0,repmat(omega,size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"fixedFrequencyWave",options.normalization,h,lambda,true,"perColumn",[],(omega-abs(background.f0))*(omega+abs(background.f0))*lambda/background.g,repmat(omega,size(h)),IMModes.specificationInput("waveModesAtFrequency",options,evp,omega=omega),construction);
         end
 
         function basis = geostrophicAPVModes(background,options)
@@ -128,8 +128,8 @@ classdef (Sealed) IMModes
             energy = options.energyBoundary;
             evp = IMInternalModes.geostrophicAPVModes(args{:},g0=energy.g0,gd=energy.gd,surfaceBoundary=background.surfaceCondition);
             request = struct("kind","apv","nPositiveModes",options.nPositiveModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"geostrophicAPV",options.normalization,h,lambda,false,0,zeros(size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"geostrophicAPV",options.normalization,h,lambda,false,"independent",[],[],zeros(size(h)),IMModes.specificationInput("geostrophicAPVModes",options,evp),construction);
         end
 
         function basis = meanDensityAnomalyModes(background,options)
@@ -146,8 +146,8 @@ classdef (Sealed) IMModes
             energy = options.energyBoundary;
             evp = IMInternalModes.meanDensityAnomalyModes(args{:},g0=energy.g0,gd=energy.gd);
             request = struct("kind","mda","nPositiveModes",options.nPositiveModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"meanDensityAnomaly",options.normalization,h,lambda,false,0,zeros(size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"meanDensityAnomaly",options.normalization,h,lambda,false,"independent",[],[],zeros(size(h)),IMModes.specificationInput("meanDensityAnomalyModes",options,evp),construction);
         end
 
         function basis = geostrophicGeneralizedPotentialEnstrophyModes(background,k,options)
@@ -168,8 +168,8 @@ classdef (Sealed) IMModes
             args = IMModes.physicalArguments(background);
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(args{:},k=k,alpha0=options.alpha0,alphaD=options.alphaD);
             request = struct("kind","generalizedEnstrophy","nPositiveModes",options.nModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"geostrophicGeneralizedPotentialEnstrophy",options.normalization,h,lambda,false,k,zeros(size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"geostrophicGeneralizedPotentialEnstrophy",options.normalization,h,lambda,false,"fixedWavenumber",k,[],zeros(size(h)),IMModes.specificationInput("geostrophicGeneralizedPotentialEnstrophyModes",options,evp,k=k),construction);
         end
 
         function basis = hydrostaticGModes(background,options)
@@ -184,8 +184,8 @@ classdef (Sealed) IMModes
             args = IMModes.physicalArguments(background);
             evp = IMInternalModes.hydrostaticGModes(args{:},surfaceBoundary=IMModes.waveBoundary(background));
             request = struct("kind","hydrostaticG","hasSurface",background.surfaceCondition=="freeSurface","nPositiveModes",options.nInternalModes);
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"hydrostaticG",options.normalization,h,lambda,false,0,zeros(size(h)));
+            [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+            basis = IMModes.wrap(source,columns,info,background,"hydrostaticG",options.normalization,h,lambda,false,"independent",[],[],zeros(size(h)),IMModes.specificationInput("hydrostaticGModes",options,evp),construction);
         end
 
         function basis = hydrostaticFModes(background,options)
@@ -206,26 +206,28 @@ classdef (Sealed) IMModes
                     info = IMModes.info("barotropic",0);
                     info.eigenvalue = 0;
                     evaluator = @(variable,z,order) double(variable=="F" && order==0)*ones(numel(z),1);
+                    scientific = IMModes.specificationInput("hydrostaticFModes",options,[]);
+                    construction = struct(requestedSolver=options.solver,backendKind="analyticalBarotropic",constructionSkipped=true);
                     basis = IMModeBasis(background=background,family="hydrostaticF",modeInfo=info,normalization=options.normalization, ...
-                        h=Inf,eigenvalues=0,frequency=0,intrinsicEvaluator=evaluator,variables=["F","G"]);
+                        h=Inf,eigenvalues=0,horizontalKind="independent",frequency=0,hasFrequency=true,intrinsicEvaluator=evaluator,variables=["F","Fz","G"],scientificInput=scientific,constructionInput=construction);
                     return
                 end
                 % A single G solve defines both fields. The constant sector
                 % is analytical and never evaluated as Inf times G prime.
                 evp = IMInternalModes.hydrostaticGModes(args{:});
                 request = struct("kind","hydrostaticG","hasSurface",false,"nPositiveModes",options.nInternalModes);
-                [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
+                [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
                 barotropic = IMModes.info("barotropic",0);
                 barotropic.eigenvalue = 0;
                 info = [barotropic;info];
                 basis = IMModeBasis(source=source,background=background,family="hydrostaticF",columns=[1 columns+1],modeInfo=info, ...
-                    normalization=options.normalization,h=[Inf h],eigenvalues=[0 lambda],frequency=zeros(1,numel(h)+1),includeBarotropic=true);
+                    normalization=options.normalization,h=[Inf h],eigenvalues=[0 lambda],horizontalKind="independent",frequency=zeros(1,numel(h)+1),hasFrequency=true,includeBarotropic=true,scientificInput=IMModes.specificationInput("hydrostaticFModes",options,evp),constructionInput=construction);
             else
                 % Preserve the regular free-surface pair, including neutral depths.
                 evp = IMInternalModes.geostrophicAPVModes(args{:},g0=Inf,gd=Inf,surfaceBoundary=background.surfaceCondition);
                 request = struct("kind","hydrostaticG","hasSurface",true,"nPositiveModes",options.nInternalModes);
-                [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-                basis = IMModes.wrap(source,columns,info,background,"hydrostaticF",options.normalization,h,lambda,false,0,zeros(size(h)));
+                [source,columns,info,h,lambda,construction] = IMModes.solve(background,evp,options.solver,request);
+                basis = IMModes.wrap(source,columns,info,background,"hydrostaticF",options.normalization,h,lambda,false,"independent",[],[],zeros(size(h)),IMModes.specificationInput("hydrostaticFModes",options,evp),construction);
             end
         end
 
@@ -256,7 +258,13 @@ classdef (Sealed) IMModes
             else
                 error("IMModes:InvalidSolver","Use an IMSolver or IMSolverAnalytical backend.");
             end
-            basis = IMModes.wrap(source,1:numel(endpoints),info,background,"geostrophicZeroAPV",options.normalization,[],[],false,k,zeros(1,numel(endpoints)));
+            scientific = IMModes.specificationInput("geostrophicZeroAPVModesAtWavenumber",options,[],k=k);
+            scientific.endpoints = endpoints;
+            construction = struct(requestedSolver=options.solver,backendKind="numerical",constructionSkipped=isempty(endpoints));
+            if ~isempty(endpoints), construction.actualSolver = options.solver; end
+            if isa(options.solver,"IMSolverAnalytical"), construction.backendKind = "analytical"; end
+            if isempty(endpoints), construction.backendKind = "emptyEndpointSector"; end
+            basis = IMModes.wrap(source,1:numel(endpoints),info,background,"geostrophicZeroAPV",options.normalization,[],[],false,"fixedWavenumber",k,[],zeros(1,numel(endpoints)),scientific,construction);
         end
 
         function basis = neutralLabelModes(background,options)
@@ -279,7 +287,11 @@ classdef (Sealed) IMModes
             info.columnLabel = source.columnLabels(:);
             info.intervalIndex = source.intervalIndex(:);
             info.localModeNumber = source.localModeNumber(:);
-            basis = IMModes.wrap(source,1:numel(source.m_n),info,background,"neutralLabel",options.normalization,[],[],false,0,zeros(size(source.m_n)));
+            scientific = IMModes.specificationInput("neutralLabelModes",options,[]);
+            scientific.intervals = options.neutralIntervals;
+            scientific.intervalKind = "neutral";
+            construction = struct(backendKind="analyticalDDLabels",constructionSkipped=false);
+            basis = IMModes.wrap(source,1:numel(source.m_n),info,background,"neutralLabel",options.normalization,[],[],false,"independent",[],[],zeros(size(source.m_n)),scientific,construction);
         end
 
         function basis = zeroDepthWaveModesAtWavenumber(background,k,options)
@@ -299,7 +311,11 @@ classdef (Sealed) IMModes
             info.intervalIndex = auxiliary.intervalIndex(:);
             info.columnLabel = "zeroDepth:"+auxiliary.columnLabels(:);
             evaluator = @(variable,z,order) IMModes.zeroDepthValues(auxiliary,background.D,variable,z,order);
-            basis = IMModeBasis(background=background,family="zeroDepthWave",modeInfo=info,normalization=options.normalization,waveConvention=true,k=k,h=zeros(size(auxiliary.m_n)),hasEquivalentDepths=true,frequency=repmat(abs(background.f0),size(auxiliary.m_n)),intrinsicEvaluator=evaluator,variables=["F","G"],integrationIntervals=options.criticalIntervals);
+            scientific = IMModes.specificationInput("zeroDepthWaveModesAtWavenumber",options,[],k=k);
+            scientific.intervals = options.criticalIntervals;
+            scientific.intervalKind = "critical";
+            construction = struct(backendKind="analyticalDDKernel",constructionSkipped=false);
+            basis = IMModeBasis(background=background,family="zeroDepthWave",modeInfo=info,normalization=options.normalization,waveConvention=true,horizontalKind="fixedWavenumber",k=k,h=zeros(size(auxiliary.m_n)),hasEquivalentDepths=true,frequency=repmat(abs(background.f0),size(auxiliary.m_n)),hasFrequency=true,intrinsicEvaluator=evaluator,variables=["F","G"],integrationIntervals=options.criticalIntervals,scientificInput=scientific,constructionInput=construction);
         end
     end
 
@@ -317,7 +333,7 @@ classdef (Sealed) IMModes
             end
         end
 
-        function [source,columns,info,h,lambda] = solve(background,evp,solver,request)
+        function [source,columns,info,h,lambda,construction] = solve(background,evp,solver,request)
             if isa(solver,"IMSolverAnalytical")
                 solution = background.analyticalSolution();
                 if ismember(request.kind,["mda","generalizedEnstrophy"])
@@ -339,6 +355,10 @@ classdef (Sealed) IMModes
             else
                 error("IMModes:InvalidSolver","Use an IMSolver or IMSolverAnalytical backend.");
             end
+            sourceClass = "";
+            if ~isempty(source), sourceClass = string(class(source)); end
+            construction = struct(requestedSolver=solver,actualSolver=solver,request=request,selection=selection,backendKind="numerical",sourceClass=sourceClass,constructionSkipped=false);
+            if isa(solver,"IMSolverAnalytical"), construction.backendKind = "analytical"; end
             info = selection.modeInfo;
             if isempty(columns)
                 source = [];
@@ -349,14 +369,35 @@ classdef (Sealed) IMModes
             info.eigenvalue = lambda(:);
         end
 
-        function basis = wrap(source,columns,info,background,family,normalization,h,lambda,wave,k,frequency)
+        function basis = wrap(source,columns,info,background,family,normalization,h,lambda,wave,horizontalKind,k,kSquared,frequency,scientificInput,constructionInput)
             if isempty(source)
                 evaluator = @(~,z,~) zeros(numel(z),height(info));
                 hasSpectrum = ~ismember(family,["neutralLabel","geostrophicZeroAPV"]);
-                basis = IMModeBasis(background=background,family=family,modeInfo=info,normalization=normalization,h=h,eigenvalues=lambda,hasEquivalentDepths=hasSpectrum,hasEigenvalues=hasSpectrum,waveConvention=wave,k=k,frequency=frequency,intrinsicEvaluator=evaluator,variables=["F","G"]);
+                basis = IMModeBasis(background=background,family=family,modeInfo=info,normalization=normalization,h=h,eigenvalues=lambda,hasEquivalentDepths=hasSpectrum,hasEigenvalues=hasSpectrum,waveConvention=wave,horizontalKind=horizontalKind,k=k,kSquared=kSquared,frequency=frequency,hasFrequency=true,scientificInput=scientificInput,constructionInput=constructionInput,intrinsicEvaluator=evaluator,variables=["F","Fz","G"]);
             else
-                basis = IMModeBasis(source=source,background=background,family=family,columns=columns,modeInfo=info,normalization=normalization,h=h,eigenvalues=lambda,waveConvention=wave,k=k,frequency=frequency);
+                basis = IMModeBasis(source=source,background=background,family=family,columns=columns,modeInfo=info,normalization=normalization,h=h,eigenvalues=lambda,waveConvention=wave,horizontalKind=horizontalKind,k=k,kSquared=kSquared,frequency=frequency,hasFrequency=true,scientificInput=scientificInput,constructionInput=constructionInput);
             end
+        end
+
+        function input = specificationInput(factory,options,evp,extra)
+            arguments
+                factory (1,1) string
+                options (1,1) struct
+                evp
+                extra.k double = []
+                extra.omega double = []
+            end
+            requested = options;
+            if isfield(requested,"solver"), requested = rmfield(requested,"solver"); end
+            if isfield(requested,"energyBoundary")
+                boundary = requested.energyBoundary;
+                requested.energyBoundary = struct(g0=boundary.g0,gd=boundary.gd);
+            end
+            requested.factory = factory;
+            if ~isempty(extra.k), requested.k = extra.k; end
+            if ~isempty(extra.omega), requested.omega = extra.omega; end
+            input = struct(requested=requested,evp=evp);
+            if isfield(options,"energyBoundary"), input.energyBoundary = options.energyBoundary; end
         end
 
         function info = info(branch,number)

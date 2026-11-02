@@ -5,6 +5,10 @@ classdef IMModeBasis
     % profiles obey $$F_j = D G_j'$$, where $$D = z_s-z_b$$. Every
     % normalization multiplies all fields in one column by the same
     % positive factor; signed metric signatures remain explicit.
+    % Scientific and construction records preserve the defining problem,
+    % selected columns and backend evidence. Shared capabilities describe
+    % available operations and their requirements; observation-grid rank
+    % and recovery evidence belong to a prepared transform.
     %
     % ```matlab
     % basis = IMModes.waveModesAtWavenumber(background,1e-3,nInternalModes=8);
@@ -33,9 +37,15 @@ classdef IMModeBasis
         % Resolved normalization name.
         % - Topic: Inspect modes
         normalization (1,1) string
-        % Available profile evaluation names.
+        % Authoritative evaluation, normalization and operation capabilities.
         % - Topic: Inspect modes
-        capabilities (1,:) string
+        capabilities (1,1) struct
+        % Scientific family, pairing, boundaries and selected column identity.
+        % - Topic: Inspect modes
+        scientificSpecification (1,1) struct
+        % Requested and resolved backend settings and construction evidence.
+        % - Topic: Inspect modes
+        constructionRecord (1,1) struct
         % Immutable physical column configuration.
         % - Topic: Inspect modes
         background IMModeBackground
@@ -45,13 +55,19 @@ classdef IMModeBasis
         % Signs remaining after signed normalization, otherwise positive one.
         % - Topic: Inspect modes
         normSignatures (1,:) double
-        % Horizontal wavenumber used in fixed-wavenumber wave normalization.
+        % Horizontal identity: fixedWavenumber, perColumn, independent or unspecified.
         % - Topic: Inspect modes
-        k (1,1) double
+        horizontalKind (1,1) string
+        % Fixed nonnegative horizontal wavenumber, empty for other identities.
+        % - Topic: Inspect modes
+        k (1,:) double
+        % Signed horizontal roots in inverse square meters, otherwise empty.
+        % - Topic: Inspect modes
+        kSquared (1,:) double
         % Physical modal frequencies when defined by the family.
         % - Topic: Inspect modes
         frequency (1,:) double
-        % Additional family and construction information.
+        % Caller extension metadata, separate from canonical scientific records.
         % - Topic: Inspect modes
         metadata (1,1) struct
     end
@@ -75,6 +91,8 @@ classdef IMModeBasis
         eigenvalues_ (1,:) double
         hasEquivalentDepths_ (1,1) logical = false
         hasEigenvalues_ (1,1) logical = false
+        hasFrequency_ (1,1) logical = false
+        profileVariables_ (1,:) string
         % Immutable derived scales depend only on source, columns and normalization.
         scaleFactors_ (1,:) double
         sourceUnityFactors_ (1,:) double
@@ -99,17 +117,22 @@ classdef IMModeBasis
             % - Parameter options.normalization: resolved common normalization name
             % - Parameter options.includeBarotropic: prepend the analytical rigid-lid F0=1, G0=0 sector to a G source
             % - Parameter options.waveConvention: whether to enforce F = D G prime
-            % - Parameter options.k: nonnegative fixed horizontal wavenumber
+            % - Parameter options.horizontalKind: declared horizontal identity; unspecified for an unassigned direct wrapper
+            % - Parameter options.k: nonnegative scalar for fixed-wavenumber identity, otherwise empty
+            % - Parameter options.kSquared: signed per-column horizontal roots for fixed-frequency identity
             % - Parameter options.h: optional equivalent depths for selected columns
             % - Parameter options.eigenvalues: optional selected eigenvalues
             % - Parameter options.hasEquivalentDepths: advertise an empty equivalent-depth spectrum
             % - Parameter options.hasEigenvalues: advertise an empty EVP spectrum
             % - Parameter options.frequency: optional physical modal frequencies
+            % - Parameter options.hasFrequency: advertise an empty physical-frequency spectrum
             % - Parameter options.intrinsicEvaluator: function of variable, z and derivative order
-            % - Parameter options.capabilities: available variables for an intrinsic evaluator
-            % - Parameter options.variables: optional intrinsic variable list
-            % - Parameter options.metadata: additional scientific metadata
+            % - Parameter options.capabilities: intrinsic variable/derivative declarations such as F, Fz, Gz and Gzz
+            % - Parameter options.variables: optional intrinsic variable declarations; G also declares Gz/Gzz
+            % - Parameter options.metadata: opaque caller extension metadata
             % - Parameter options.integrationIntervals: exact intrinsic support intervals
+            % - Parameter options.scientificInput: factory-owned scientific request and resolved EVP declaration
+            % - Parameter options.constructionInput: factory-owned backend request, resolved settings and selection evidence
             % - Returns self: immutable continuous family basis
             % - Developer: true
             arguments (Input)
@@ -121,17 +144,22 @@ classdef IMModeBasis
                 options.normalization (1,1) string = "depthRMSF"
                 options.includeBarotropic (1,1) logical = false
                 options.waveConvention (1,1) logical = false
-                options.k (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 0
+                options.horizontalKind (1,1) string {mustBeMember(options.horizontalKind,["fixedWavenumber","perColumn","independent","unspecified"])} = "unspecified"
+                options.k (1,:) double {mustBeReal,mustBeFinite,mustBeNonnegative} = []
+                options.kSquared (1,:) double {mustBeReal,mustBeFinite} = []
                 options.h (1,:) double {mustBeReal} = []
                 options.eigenvalues (1,:) double {mustBeReal} = []
                 options.hasEquivalentDepths (1,1) logical = false
                 options.hasEigenvalues (1,1) logical = false
                 options.frequency (1,:) double {mustBeReal} = []
+                options.hasFrequency (1,1) logical = false
                 options.intrinsicEvaluator = []
                 options.capabilities (1,:) string = ["F","G","Gz","Gzz"]
                 options.variables (1,:) string = strings(1,0)
                 options.metadata (1,1) struct = struct()
                 options.integrationIntervals (:,2) double {mustBeReal,mustBeFinite} = zeros(0,2)
+                options.scientificInput (1,1) struct = struct()
+                options.constructionInput (1,1) struct = struct()
             end
             arguments (Output)
                 self (1,1) IMModeBasis
@@ -144,11 +172,18 @@ classdef IMModeBasis
             self.includesBarotropic = options.includeBarotropic;
             self.waveConvention = options.waveConvention;
             self.k = options.k;
-            self.frequency = options.frequency;
-            self.metadata = options.metadata;
-            if self.waveConvention
-                self.metadata.profileConvention = "F=DGz";
+            self.kSquared = options.kSquared;
+            self.horizontalKind = options.horizontalKind;
+            if self.horizontalKind == "unspecified"
+                if ~isempty(self.k)
+                    self.horizontalKind = "fixedWavenumber";
+                elseif ~isempty(self.kSquared)
+                    self.horizontalKind = "perColumn";
+                end
             end
+            self.frequency = options.frequency;
+            self.hasFrequency_ = options.hasFrequency || ~isempty(options.frequency);
+            self.metadata = options.metadata;
             self.integrationIntervals_ = options.integrationIntervals;
             if ~isempty(self.integrationIntervals_) && (any(self.integrationIntervals_(:,1) >= self.integrationIntervals_(:,2)) || any(self.integrationIntervals_(:,1) < self.zDomain(1)) || any(self.integrationIntervals_(:,2) > self.zDomain(2)) || any(self.integrationIntervals_(2:end,1) < self.integrationIntervals_(1:end-1,2)))
                 error("IMModeBasis:InvalidIntegrationIntervals","Integration intervals must be increasing, disjoint and contained in zDomain.");
@@ -159,11 +194,11 @@ classdef IMModeBasis
             end
             if isempty(self.source)
                 nSource = height(options.modeInfo);
-                self.capabilities = options.capabilities;
+                self.profileVariables_ = options.capabilities;
                 if ~isempty(options.variables)
-                    self.capabilities = options.variables;
-                    if ismember("G",self.capabilities)
-                        self.capabilities = unique([self.capabilities,"Gz","Gzz"],"stable");
+                    self.profileVariables_ = options.variables;
+                    if ismember("G",self.profileVariables_)
+                        self.profileVariables_ = unique([self.profileVariables_,"Gz","Gzz"],"stable");
                     end
                 end
                 if nSource > 0 && isempty(self.intrinsicEvaluator)
@@ -171,10 +206,10 @@ classdef IMModeBasis
                 end
             elseif isa(self.source,"IMNeutralLabelModesBasis")
                 nSource = numel(self.source.columnLabels);
-                self.capabilities = ["G","Gz","Gzz","APV"];
-            elseif isa(self.source,"IMBasisSet") || isa(self.source,"IMAnalyticalInternalModesBasis")
+                self.profileVariables_ = ["G","Gz","Gzz","APV"];
+            elseif isa(self.source,"IMInternalModesBasis") || isa(self.source,"IMAnalyticalInternalModesBasis")
                 nSource = numel(self.source.eigenvalues);
-                self.capabilities = ["F","G","Gz","Gzz"];
+                self.profileVariables_ = ["F","G","Gz","Gzz"];
                 self.sourceUnityFactors_ = self.source.normalizationFactors("unity");
                 factors = self.sourceUnityFactors_;
                 self.source = self.source.addNormalization("unity",@(~,j) factors(j));
@@ -184,7 +219,7 @@ classdef IMModeBasis
                     error("IMModeBasis:MultipleWavenumbers","Wrap one zero-APV wavenumber page at a time.");
                 end
                 nSource = numel(self.source.endpoints);
-                self.capabilities = ["F","G","Gz","Gzz"];
+                self.profileVariables_ = ["F","G","Gz","Gzz"];
             else
                 error("IMModeBasis:UnsupportedSource","source must be a supported continuous mode basis.");
             end
@@ -239,10 +274,26 @@ classdef IMModeBasis
             if (self.hasEquivalentDepths_ && numel(self.equivalentDepths_) ~= self.nColumns) || (self.hasEigenvalues_ && numel(self.eigenvalues_) ~= self.nColumns) || (~isempty(self.frequency) && numel(self.frequency) ~= self.nColumns)
                 error("IMModeBasis:InvalidSpectrumCount","h, eigenvalues and frequency must have one value per selected column when supplied.");
             end
+            if self.hasFrequency_ && numel(self.frequency) ~= self.nColumns
+                error("IMModeBasis:InvalidSpectrumCount","A declared physical-frequency spectrum requires one value per retained column.");
+            end
             if self.waveConvention && ~isempty(self.source) && self.source.evp.formulation ~= "G"
                 error("IMModeBasis:WaveFormulation","The standard wave convention requires a G-form source.");
             end
+            if self.horizontalKind == "fixedWavenumber"
+                if ~isscalar(self.k) || ~isempty(self.kSquared)
+                    error("IMModeBasis:InvalidHorizontalIdentity","A fixed-wavenumber basis requires one k and no per-column kSquared.");
+                end
+            elseif self.horizontalKind == "perColumn"
+                if ~isempty(self.k) || numel(self.kSquared) ~= self.nColumns
+                    error("IMModeBasis:InvalidHorizontalIdentity","Per-column dispersion requires one signed kSquared per retained column and no scalar k.");
+                end
+            elseif ~isempty(self.k) || ~isempty(self.kSquared)
+                error("IMModeBasis:InvalidHorizontalIdentity","Independent or unspecified horizontal identity cannot carry a solved k or kSquared.");
+            end
+            self.capabilities = self.buildCapabilities(options.scientificInput);
             [self.scaleFactors_,self.normSignatures] = self.normalizationScales();
+            [self.scientificSpecification,self.constructionRecord] = self.createRecords(options.scientificInput,options.constructionInput);
         end
 
         function values = F(self,z)
@@ -293,27 +344,31 @@ classdef IMModeBasis
             %
             % - Topic: Evaluate modes
             % - Parameter z: physical coordinate column within zDomain
-            % - Parameter variable: F, G, Gz, Gzz or APV, when available
+            % - Parameter variable: F, Fz, G, Gz, Gzz or APV, when available
             % - Parameter derivativeOrder: physical derivative order, zero by default
             % - Returns values: normalized sample-by-column matrix
             arguments (Input)
                 self (1,1) IMModeBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                variable (1,1) string {mustBeMember(variable,["F","G","Gz","Gzz","APV"])}
+                variable (1,1) string {mustBeMember(variable,["F","Fz","G","Gz","Gzz","APV"])}
                 derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
             end
             arguments (Output)
                 values (:,:) double
             end
-            if variable == "Gz"
-                variable = "G";
-                derivativeOrder = derivativeOrder+1;
-            elseif variable == "Gzz"
-                variable = "G";
-                derivativeOrder = derivativeOrder+2;
+            for alias = self.capabilities.aliases
+                if variable == alias.variable
+                    variable = alias.baseVariable;
+                    derivativeOrder = derivativeOrder+alias.derivativeOffset;
+                    break
+                end
             end
-            if ~ismember(variable,self.capabilities)
+            variableIndex = find(self.capabilities.variables == variable,1);
+            if isempty(variableIndex)
                 error("IMModeBasis:UnavailableVariable","The %s family has no %s profile.",self.family,variable);
+            end
+            if ~ismember(derivativeOrder,self.capabilities.derivativeOrders{variableIndex})
+                error("IMModeBasis:UnsupportedDerivative","The %s family does not support derivative order %d of %s.",self.family,derivativeOrder,variable);
             end
             if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
                 error("IMModeBasis:OutsideDomain","Evaluation points must lie within zDomain.");
@@ -449,6 +504,9 @@ classdef IMModeBasis
     end
 
     methods (Access = private)
+        capabilities = buildCapabilities(self,scientificInput)
+        [scientific,construction] = createRecords(self,scientificInput,constructionInput)
+
         function values = unscaledValues(self,variable,z,derivativeOrder)
             if self.nColumns == 0
                 values = zeros(numel(z),0);
@@ -555,6 +613,9 @@ classdef IMModeBasis
             if ~ismember(self.normalization,names)
                 error("IMModeBasis:UnknownNormalization","Choose one of the common normalization names: %s.",join(names,", "));
             end
+            if ~ismember(self.normalization,self.capabilities.normalizationNames)
+                error("IMModeBasis:UnavailableNormalization","The %s family does not provide %s with its declared profiles and horizontal identity.",self.family,self.normalization);
+            end
             signatures = ones(1,self.nColumns);
             if self.nColumns == 0
                 scales = zeros(1,0);
@@ -641,7 +702,7 @@ classdef IMModeBasis
         end
 
         function requireVariable(self,variable)
-            if ~ismember(variable,self.capabilities)
+            if ~ismember(variable,self.capabilities.variables)
                 error("IMModeBasis:UnavailableNormalization","%s requires a %s profile, which this family does not provide.",self.normalization,variable);
             end
         end

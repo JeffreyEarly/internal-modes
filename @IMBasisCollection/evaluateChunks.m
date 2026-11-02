@@ -41,7 +41,16 @@ elseif any(pages > numel(self.basisIndex))
 end
 variable = options.variable;
 if variable == ""
-    variable = self.metadata(self.basisIndex(pages(1))).variables(1);
+    variable = self.metadata(self.basisIndex(pages(1))).capabilities.variables(1);
+end
+description = self.metadata(self.basisIndex(pages(1))).capabilities;
+derivativeOrder = options.derivativeOrder;
+for alias = description.aliases
+    if variable == alias.variable
+        variable = alias.baseVariable;
+        derivativeOrder = derivativeOrder+alias.derivativeOffset;
+        break
+    end
 end
 columnCounts = arrayfun(@(i) numel(self.metadata(self.basisIndex(i)).columnLabels),pages);
 columns = options.columns;
@@ -55,19 +64,20 @@ elseif any(columns > min(columnCounts))
 end
 for iBasis = unique(self.basisIndex(pages),"stable")
     entry = self.metadata(iBasis);
-    iVariable = find(entry.variables == variable,1);
+    description = entry.capabilities;
+    iVariable = find(description.variables == variable,1);
     if isempty(iVariable)
         error("IMBasisCollection:UnsupportedVariable","Basis %d does not support %s. Inspect metadata.variables.",iBasis,variable);
     end
-    if ~ismember(options.derivativeOrder,entry.derivativeOrders{iVariable})
-        error("IMBasisCollection:UnsupportedDerivative","Basis %d does not implement derivative order %d for %s.",iBasis,options.derivativeOrder,variable);
+    if ~ismember(derivativeOrder,description.derivativeOrders{iVariable})
+        error("IMBasisCollection:UnsupportedDerivative","Basis %d does not implement derivative order %d for %s.",iBasis,derivativeOrder,variable);
     end
     if any(z < entry.zDomain(1) | z > entry.zDomain(2))
         error("IMBasisCollection:OutsideDomain","Evaluation coordinates must lie inside every selected basis domain.");
     end
 end
 % Normalize each immutable stored basis once, including repeated requests.
-[groups,basisGroup,factors] = prepareNativeGroups(self,unique(self.basisIndex(pages),"stable"),columns,variable,options.derivativeOrder);
+[groups,basisGroup,factors] = prepareNativeGroups(self,unique(self.basisIndex(pages),"stable"),columns,variable,derivativeOrder);
 % Sample chunks are outermost so evaluation matrices can serve every page
 % chunk without retaining operators for the complete physical grid.
 for firstRow = 1:options.sampleChunkSize:numel(z)
@@ -101,7 +111,7 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
                 memberColumns = (iMember-1)*numel(columns)+(1:numel(columns));
                 memberValues = sampled(:,memberColumns);
                 basis = self.bases{iBasis};
-                if options.derivativeOrder == 0 && isa(basis,"IMInternalModesBasis") && variable ~= string(basis.evp.formulation)
+                if derivativeOrder == 0 && isa(basis,"IMInternalModesBasis") && variable ~= string(basis.evp.formulation)
                     context = basis.evp.contextForSolver(basis.solver);
                     if variable == "F"
                         memberValues = basis.evp.FfromGz(zChunk,memberValues,basis.h(columns),context);
@@ -119,27 +129,27 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
             entry = self.metadata(iBasis);
             selected = find(self.basisIndex(chunkPages) == iBasis);
             if isa(basis,"IMModeBasis")
-                sampled = basis.evaluate(zChunk,variable,options.derivativeOrder);
+                sampled = basis.evaluate(zChunk,variable,derivativeOrder);
                 if size(sampled,2) ~= numel(entry.columnLabels)
                     error("IMBasisCollection:InvalidEvaluationShape","Basis evaluation must return one column per scientific label.");
                 end
                 sampled = repmat(sampled(:,columns),1,1,numel(selected));
             elseif entry.columnKind == "endpoint"
                 sourcePages = self.sourcePage(chunkPages(selected));
-                if options.derivativeOrder == 0
+                if derivativeOrder == 0
                     sampled = basis.(variable)(zChunk,pages=sourcePages);
                 else
                     sampled = -(basis.N2(zChunk)./basis.g).*basis.G(zChunk,pages=sourcePages);
                 end
                 sampled = sampled(:,columns,:);
             else
-                if isa(basis,"IMNeutralLabelModesBasis") && options.derivativeOrder > 0
-                    if options.derivativeOrder == 1
+                if isa(basis,"IMNeutralLabelModesBasis") && derivativeOrder > 0
+                    if derivativeOrder == 1
                         sampled = basis.Gz(zChunk);
                     else
                         sampled = basis.Gzz(zChunk);
                     end
-                elseif options.derivativeOrder == 0
+                elseif derivativeOrder == 0
                     sampled = basis.(variable)(zChunk);
                 else
                     sampled = basis.uz(zChunk);
