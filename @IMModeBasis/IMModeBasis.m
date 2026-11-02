@@ -68,6 +68,7 @@ classdef IMModeBasis
     properties (Access = private)
         source
         columns (1,:) double
+        includesBarotropic (1,1) logical = false
         waveConvention (1,1) logical
         intrinsicEvaluator
         equivalentDepths_ (1,:) double
@@ -96,6 +97,7 @@ classdef IMModeBasis
             % - Parameter options.columns: selected source columns; all by default
             % - Parameter options.modeInfo: table with columnLabel, branch and branchIndex
             % - Parameter options.normalization: resolved common normalization name
+            % - Parameter options.includeBarotropic: prepend the analytical rigid-lid F0=1, G0=0 sector to a G source
             % - Parameter options.waveConvention: whether to enforce F = D G prime
             % - Parameter options.k: nonnegative fixed horizontal wavenumber
             % - Parameter options.h: optional equivalent depths for selected columns
@@ -117,6 +119,7 @@ classdef IMModeBasis
                 options.columns (1,:) double {mustBeInteger,mustBePositive} = []
                 options.modeInfo table = table()
                 options.normalization (1,1) string = "depthRMSF"
+                options.includeBarotropic (1,1) logical = false
                 options.waveConvention (1,1) logical = false
                 options.k (1,1) double {mustBeReal,mustBeFinite,mustBeNonnegative} = 0
                 options.h (1,:) double {mustBeReal} = []
@@ -138,6 +141,7 @@ classdef IMModeBasis
             self.family = options.family;
             self.zDomain = options.background.zDomain;
             self.normalization = options.normalization;
+            self.includesBarotropic = options.includeBarotropic;
             self.waveConvention = options.waveConvention;
             self.k = options.k;
             self.frequency = options.frequency;
@@ -187,6 +191,12 @@ classdef IMModeBasis
             if ~isempty(self.source) && ~isequal(self.source.zDomain,self.zDomain)
                 error("IMModeBasis:IncompatibleDomain","The source and background must have the same zDomain.");
             end
+            if self.includesBarotropic
+                if isempty(self.source) || self.source.evp.formulation ~= "G" || self.family ~= "hydrostaticF" || self.background.surfaceCondition ~= "rigidLid"
+                    error("IMModeBasis:InvalidBarotropicExtension","An analytical barotropic extension requires a rigid-lid hydrostatic G source.");
+                end
+                nSource = nSource+1;
+            end
             self.columns = options.columns;
             if isempty(self.columns)
                 self.columns = 1:nSource;
@@ -212,14 +222,18 @@ classdef IMModeBasis
                 self.equivalentDepths_ = options.h;
                 self.hasEquivalentDepths_ = true;
             elseif ~isempty(self.source) && isprop(self.source,"h")
-                self.equivalentDepths_ = self.source.h(self.columns);
+                spectrum = self.source.h;
+                if self.includesBarotropic, spectrum = [Inf spectrum]; end
+                self.equivalentDepths_ = spectrum(self.columns);
                 self.hasEquivalentDepths_ = true;
             end
             if ~isempty(options.eigenvalues)
                 self.eigenvalues_ = options.eigenvalues;
                 self.hasEigenvalues_ = true;
             elseif ~isempty(self.source) && isprop(self.source,"eigenvalues")
-                self.eigenvalues_ = self.source.eigenvalues(self.columns);
+                spectrum = self.source.eigenvalues;
+                if self.includesBarotropic, spectrum = [0 spectrum]; end
+                self.eigenvalues_ = spectrum(self.columns);
                 self.hasEigenvalues_ = true;
             end
             if (self.hasEquivalentDepths_ && numel(self.equivalentDepths_) ~= self.nColumns) || (self.hasEigenvalues_ && numel(self.eigenvalues_) ~= self.nColumns) || (~isempty(self.frequency) && numel(self.frequency) ~= self.nColumns)
@@ -322,27 +336,35 @@ classdef IMModeBasis
         end
 
         function projection = projectionOnGrid(self,z,weights,options)
-            % Construct the prescribed continuous neutral-label APV dual.
+            % Construct a family projection on fixed physical samples.
             %
-            % APV cannot identify a constant neutral label. Select observable
-            % columns explicitly when the complete basis includes that label.
+            % Hydrostatic F/G uses sampled Galerkin recovery. Neutral-label
+            % APV uses its prescribed continuous dual and cannot identify a
+            % constant label. Select observable columns explicitly when the complete basis includes that label.
             %
             % - Topic: Project modes
             % - Parameter z: increasing physical sample column
             % - Parameter weights: fixed physical dz quadrature weights
+            % - Parameter options.variable: F/G for hydrostatic modes, APV for neutral labels
             % - Parameter options.columns: selected facade columns, all by default
-            % - Returns projection: map from APV samples to normalized-basis coefficients
+            % - Returns projection: family map from sampled values to normalized-basis coefficients
             arguments (Input)
                 self (1,1) IMModeBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
                 weights (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
                 options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:self.nColumns
             end
             arguments (Output)
                 projection (1,1) IMProjection
             end
-            if ~isa(self.source,"IMNeutralLabelModesBasis")
-                error("IMModeBasis:UnavailableProjection","This basis does not provide a prescribed APV projection.");
+            if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
+                recipe = self.projectionRecipe(variable=options.variable);
+                projection = IMProjection.fromRecipe(recipe,z,weights,columns=options.columns);
+                return
+            end
+            if ~isa(self.source,"IMNeutralLabelModesBasis") || ~ismember(options.variable,["","APV"])
+                error("IMModeBasis:UnavailableProjection","This basis does not provide the requested projection.");
             end
             selectedColumns = options.columns;
             if isempty(selectedColumns)
@@ -361,11 +383,18 @@ classdef IMModeBasis
         end
     end
 
+    methods
+        basis = selectColumns(self,columns)
+        transform = discreteTransform(self,grid)
+        [z,design] = modeRootPoints(self,generatingMode)
+    end
+
     methods (Hidden)
+        [HF,HG] = hydrostaticNorms(self)
         function recipe = projectionRecipe(self,options)
-            % Describe the continuous neutral-label APV dual and its reference.
+            % Describe the family projection metric and continuous reference.
             % - Topic: Project modes
-            % - Parameter options.variable: APV, or empty for the family default
+            % - Parameter options.variable: F/G for rigid-lid hydrostatic modes, APV for neutral labels
             % - Returns recipe: family-owned reference and capability metadata
             % - Developer: true
             arguments (Input)
@@ -374,6 +403,26 @@ classdef IMModeBasis
             end
             arguments (Output)
                 recipe (1,1) struct
+            end
+            if self.family == "hydrostaticF" && self.background.surfaceCondition == "rigidLid"
+                variable = options.variable;
+                if variable == "", variable = "F"; end
+                if ~ismember(variable,["F","G"])
+                    error("IMModeBasis:UnavailableProjection","Rigid-lid hydrostatic modes provide F and G projection channels.");
+                end
+                [HF,HG] = self.hydrostaticNorms();
+                if variable == "F"
+                    target = diag(HF); weightFunction = @(z) ones(size(z));
+                else
+                    target = diag(HG); weightFunction = @(z) self.background.N2(z)/self.background.g;
+                end
+                spec = struct(surfaceWeights=struct([]),bottomWeights=struct([]));
+                provenance = struct(family=self.family,projection="sampledGalerkin",normalization=self.normalization, ...
+                    referenceIntegration="continuous F/G norms",solveAccuracy="unverified",referenceConvergence="unverified");
+                recipe = IMProjection.createRecipe(variable=variable,columnLabels=self.columnLabels,normalization=self.normalization, ...
+                    targetGramMatrix=target,majorantGramMatrix=target,provenance=provenance,zDomain=self.zDomain, ...
+                    evaluateFunction=@(z) self.evaluate(z,variable),weightFunction=weightFunction,spec=spec);
+                return
             end
             if ~isa(self.source,"IMNeutralLabelModesBasis") || ~ismember(options.variable,["","APV"])
                 error("IMModeBasis:UnavailableProjection","This basis does not provide the requested prescribed APV projection.");
@@ -428,7 +477,15 @@ classdef IMModeBasis
             else
                 error("IMModeBasis:UnsupportedDerivative","This profile derivative is unavailable.");
             end
+            if self.includesBarotropic
+                constant = zeros(numel(z),1);
+                if variable == "F" && derivativeOrder == 0, constant(:) = 1; end
+                values = [constant values];
+            end
             values = values(:,self.columns);
+            if self.includesBarotropic && variable == "G" && derivativeOrder == 0
+                values(z == self.zDomain(1) | z == self.zDomain(2),:) = 0;
+            end
         end
 
         function values = unscaledSourceG(self,z)
@@ -506,6 +563,7 @@ classdef IMModeBasis
                     end
                     gram = self.source.gramMatrix(variable="G");
                     squares = reshape(diag(gram),1,[]);
+                    if self.includesBarotropic, squares = [0 squares]; end
                     squares = squares(self.columns);
                     signatures = sign(squares);
                     scales = sqrt(abs(squares));
@@ -579,7 +637,8 @@ classdef IMModeBasis
             end
         end
 
-        function [z,weights] = normalizationQuadrature(self)
+        function [z,weights] = normalizationQuadrature(self,includeExtrema)
+            if nargin < 2, includeExtrema = true; end
             if ~isempty(self.source) && isprop(self.source,"solver") && isa(self.source.solver,"IMSolverSpectral")
                 solver = self.source.solver;
                 bounds = [min(solver.xNative),max(solver.xNative)];
@@ -591,7 +650,7 @@ classdef IMModeBasis
                 coordinateCoefficients(1:2) = [mean(bounds);diff(bounds)/2];
                 jacobian = solver.evaluatePhysicalDerivative(coordinateCoefficients,z,1);
                 weights = nativeWeights(:)./jacobian;
-                if startsWith(self.normalization,"maxAbs")
+                if includeExtrema && startsWith(self.normalization,"maxAbs")
                     z = unique([z;self.zDomain.']);
                 end
                 return
@@ -619,7 +678,7 @@ classdef IMModeBasis
                 z = [z;mean(bounds(j,:))+halfLength*points]; %#ok<AGROW>
                 weights = [weights;halfLength*unitWeights]; %#ok<AGROW>
             end
-            if startsWith(self.normalization,"maxAbs")
+            if includeExtrema && startsWith(self.normalization,"maxAbs")
                 z = unique([z;bounds(:)]);
             end
         end

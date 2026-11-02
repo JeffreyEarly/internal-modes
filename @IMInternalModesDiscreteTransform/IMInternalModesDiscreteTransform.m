@@ -23,6 +23,10 @@ classdef IMInternalModesDiscreteTransform
     % the signed Pontryagin pairing. `targetMajorantGramMatrix` returns the
     % induced positive Hilbert majorant used for error magnitudes; it does
     % not replace the signed projection metric.
+    % A channel may instead carry a supplied forward operator, reported by
+    % `forwardOperator`, such as the truncated collocation of
+    % `IMInternalModesDiscreteTransform.hydrostaticRoot`; Gram diagnostics still measure
+    % the sampled metric.
     % When `variable` is omitted, accessors use `primaryVariable`, which is
     % the solved formulation when that channel was requested and otherwise
     % the first directly representable requested channel.
@@ -74,6 +78,10 @@ classdef IMInternalModesDiscreteTransform
         endpointLocations
         % Immutable basis metadata snapshot.
         problemMetadata
+        % Reusable common continuous basis, when supplied at construction.
+        %
+        % - Topic: Inspect samples and modes
+        basis
         % Whether any shared quadrature weight is negative.
         hasNegativeWeights
     end
@@ -94,6 +102,11 @@ classdef IMInternalModesDiscreteTransform
             % `targetMajorantGramMatrix`. Diagnostic inverse
             % matrices and endpoint traces are supplied for both variables,
             % including variables that have no direct sampled projection.
+            % An available channel may also supply `suppliedForwardMatrix`
+            % and its name `suppliedForwardOperator`; it then replaces the
+            % Galerkin forward matrix, while Gram diagnostics still use the
+            % metric. Prefixes keep its leading rows, and weight changes
+            % keep it unchanged.
             %
             % - Topic: Developer topics — Construct transforms
             % - Declaration: transform = IMInternalModesDiscreteTransform(options)
@@ -115,6 +128,7 @@ classdef IMInternalModesDiscreteTransform
                 options.modeFamily {mustBeTextScalar}
                 options.N2Values (:,1) double {mustBeReal, mustBeFinite}
                 options.problemMetadata (1,1) struct = struct()
+                options.basis = []
             end
 
             z = options.z(:);
@@ -180,6 +194,22 @@ classdef IMInternalModesDiscreteTransform
                     data.gramConditionNumber = projection.gramConditionNumber;
                     data.targetGramIsPositiveDefinite = projection.targetGramIsPositiveDefinite;
                     data.sampledGramRank = projection.sampledGramRank;
+                    data.forwardOperator = "galerkin";
+                    if isfield(data,"suppliedForwardMatrix") && ~isempty(data.suppliedForwardMatrix)
+                        supplied = data.suppliedForwardMatrix;
+                        if ~isequal(size(supplied),[nModes nSamples]) || any(~isfinite(supplied),"all")
+                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "suppliedForwardMatrix must be a finite matrix with one row per aligned mode and one column per sample.");
+                        end
+                        if any(supplied(~data.activeModeMask,:) ~= 0,"all")
+                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "Inactive columns must have zero supplied forward rows.");
+                        end
+                        if ~isfield(data,"suppliedForwardOperator") || strlength(string(data.suppliedForwardOperator)) == 0
+                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "Name a supplied forward operator with suppliedForwardOperator.");
+                        end
+                        data.forwardMatrix = supplied;
+                        data.roundTripError = norm(supplied*inverseMatrices.(field)-diag(double(data.activeModeMask)),2);
+                        data.forwardOperator = string(data.suppliedForwardOperator);
+                    end
                     availableVariables(end+1) = variable; %#ok<AGROW>
                 else
                     data.metricMatrix = zeros(0,0);
@@ -193,6 +223,7 @@ classdef IMInternalModesDiscreteTransform
                     data.gramConditionNumber = NaN;
                     data.targetGramIsPositiveDefinite = false;
                     data.sampledGramRank = 0;
+                    data.forwardOperator = "";
                 end
                 channelData.(field) = data;
             end
@@ -225,6 +256,16 @@ classdef IMInternalModesDiscreteTransform
             self.inverseMatrices = inverseMatrices;
             self.endpointMatrices = endpointMatrices;
             self.channelData = channelData;
+            if ~isempty(options.basis) && (~isa(options.basis,"IMModeBasis") || options.basis.nColumns ~= nModes || options.basis.normalization ~= string(options.normalization))
+                error("IMInternalModesDiscreteTransform:InvalidBasis","basis must be an aligned IMModeBasis with the same column count and normalization.");
+            end
+            if ~isempty(options.basis)
+                if ~isequal(options.basis.h,options.h) || ~isequal(options.basis.modeInfo.branchIndex.',options.modeNumber) ...
+                        || (isfield(options.problemMetadata,"columnLabels") && ~isequal(options.basis.columnLabels,options.problemMetadata.columnLabels))
+                    error("IMInternalModesDiscreteTransform:InvalidBasis","basis identities and equivalent depths must match the prepared modal snapshot.");
+                end
+            end
+            self.basis = options.basis;
         end
 
         function tf = hasForwardTransform(self, options)
@@ -269,8 +310,30 @@ classdef IMInternalModesDiscreteTransform
             matrix = self.inverseMatrices.(char(string(options.variable)));
         end
 
+        function name = forwardOperator(self, options)
+            % Return the name of the variable's forward operator.
+            %
+            % `"galerkin"` is $$(\Phi^\mathsf{T}W\Phi)^{-1}\Phi^\mathsf{T}W$$;
+            % other names identify a supplied operator, such as
+            % `"truncatedCollocation"`.
+            %
+            % - Topic: Inspect samples and modes
+            % - Declaration: name = forwardOperator(transform,options)
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns name: operator name
+            arguments
+                self IMInternalModesDiscreteTransform
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
+            end
+            data = self.requireChannel(string(options.variable));
+            name = data.forwardOperator;
+        end
+
         function matrix = forwardMatrix(self, options)
-            % Return the variable-qualified Galerkin forward matrix.
+            % Return the variable-qualified forward matrix.
+            %
+            % This is the Galerkin matrix unless the channel was built with
+            % a supplied forward operator; see `forwardOperator`.
             arguments
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
@@ -389,7 +452,7 @@ classdef IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
-            diagnostics = rmfield(data,["metricMatrix","targetGramMatrix","targetMajorantGramMatrix","gramMatrix","forwardMatrix"]);
+            diagnostics = rmfield(data,intersect(["metricMatrix","targetGramMatrix","targetMajorantGramMatrix","gramMatrix","forwardMatrix","suppliedForwardMatrix"],string(fieldnames(data)).',"stable"));
         end
 
         function value = relativeGramOperatorError(self, options)
@@ -443,6 +506,10 @@ classdef IMInternalModesDiscreteTransform
         end
     end
 
+    methods (Static)
+        [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,options)
+    end
+
     methods (Hidden)
         function transform = prefixTransform(self, nModes)
             % Derive a leading family prefix without reevaluating the basis.
@@ -460,15 +527,41 @@ classdef IMInternalModesDiscreteTransform
                 data = preparedChannels.(field);
                 data.activeModeMask = data.activeModeMask(1:nModes);
                 if data.available
+                    if isfield(data,"suppliedForwardMatrix") && ~isempty(data.suppliedForwardMatrix)
+                        data.suppliedForwardMatrix = data.suppliedForwardMatrix(1:nModes,:);
+                    end
                     data.targetGramMatrix = data.targetGramMatrix(1:nModes,1:nModes);
                     data.targetMajorantGramMatrix = data.targetMajorantGramMatrix(1:nModes,1:nModes);
                 end
                 preparedChannels.(field) = data;
             end
+            metadata = self.problemMetadata;
+            if isfield(metadata,"columnLabels"), metadata.columnLabels = metadata.columnLabels(1:nModes); end
+            selectedBasis = self.basis;
+            if ~isempty(selectedBasis), selectedBasis = selectedBasis.selectColumns(1:nModes); end
             transform = IMInternalModesDiscreteTransform(z=self.z,weights=self.weights,modeNumber=self.modeNumber(1:nModes),h=self.h(1:nModes), ...
                 normalization=self.normalization,inverseF=self.inverseMatrices.F(:,1:nModes),inverseG=self.inverseMatrices.G(:,1:nModes), ...
                 endpointF=self.endpointMatrices.F(:,1:nModes),endpointG=self.endpointMatrices.G(:,1:nModes),channelData=preparedChannels, ...
-                primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
+                primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=metadata,basis=selectedBasis);
+        end
+
+        function transform = transformWithForwardOperators(self,forwardF,forwardG,name)
+            % Replace coefficient recovery while preserving sampled metrics.
+            arguments
+                self (1,1) IMInternalModesDiscreteTransform
+                forwardF (:,:) double {mustBeReal,mustBeFinite}
+                forwardG (:,:) double {mustBeReal,mustBeFinite}
+                name (1,1) string
+            end
+            prepared = self.channelData;
+            prepared.F.suppliedForwardMatrix = forwardF;
+            prepared.G.suppliedForwardMatrix = forwardG;
+            prepared.F.suppliedForwardOperator = name;
+            prepared.G.suppliedForwardOperator = name;
+            transform = IMInternalModesDiscreteTransform(z=self.z,weights=self.weights,modeNumber=self.modeNumber,h=self.h,normalization=self.normalization, ...
+                inverseF=self.inverseMatrices.F,inverseG=self.inverseMatrices.G,endpointF=self.endpointMatrices.F,endpointG=self.endpointMatrices.G, ...
+                channelData=prepared,primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily, ...
+                N2Values=self.N2Values,problemMetadata=self.problemMetadata,basis=self.basis);
         end
 
         function transform = transformWithWeights(self, weights)
@@ -494,7 +587,7 @@ classdef IMInternalModesDiscreteTransform
             end
             transform = IMInternalModesDiscreteTransform(z=self.z,weights=weights,modeNumber=self.modeNumber,h=self.h,normalization=self.normalization, ...
                 inverseF=self.inverseMatrices.F,inverseG=self.inverseMatrices.G,endpointF=self.endpointMatrices.F,endpointG=self.endpointMatrices.G, ...
-                channelData=preparedChannels,primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata);
+                channelData=preparedChannels,primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=self.problemMetadata,basis=self.basis);
         end
 
         function context = quadratureFitContext(self, options)

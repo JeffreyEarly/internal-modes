@@ -3,8 +3,10 @@ classdef IMProjection
     %
     % The signed sampled pairing defines coefficients through
     % $$A = (\Phi^T W\Phi)^{-1}\Phi^T W.$$
-    % Rank-deficient pairings use a pseudoinverse and report infinite Gram
-    % error. The separately supplied positive majorant measures coefficient
+    % A nonnegative diagonal metric is solved by weighted QR rather than the
+    % normal equations. Rank-deficient pairings use a pseudoinverse in
+    % positive-majorant coordinates and
+    % report infinite Gram error. The separately supplied positive majorant measures coefficient
     % errors; it never replaces the physical pairing. This object does not
     % choose a grid, fit weights, accept tolerances, or select model counts.
     % `fromPrescribedDual` instead accepts an explicit physical source dual and its
@@ -78,7 +80,7 @@ classdef IMProjection
         % Operator norm of the active round-trip error, or NaN without synthesis.
         % - Topic: Measure projection quality
         roundTripError
-        % Numerical rank of the active sampled Gram matrix.
+        % Numerical rank of the active sampled Gram relative to the positive majorant.
         % - Topic: Measure projection quality
         sampledGramRank
         % Condition number of the active sampled basis, or NaN without synthesis.
@@ -153,6 +155,21 @@ classdef IMProjection
             sampleGram = 0.5*(sampledBasis.'*metricMatrix*sampledBasis + sampledBasis.'*metricMatrix.'*sampledBasis);
             self = self.initializeProjection(sampledBasis.'*metricMatrix,sampleGram,targetGramMatrix,options.majorantGramMatrix,options.activeColumnMask,options.columnLabels);
             active = find(self.activeColumnMask);
+            % A nonnegative diagonal metric W admits a weighted QR solve of the
+            % same least-squares problem. Scale columns by the positive
+            % coefficient metric before QR, then map back to the supplied
+            % coordinates. Rank-deficient pairings keep the pseudoinverse.
+            metricDiagonal = diag(metricMatrix);
+            if ~isempty(active) && self.sampledGramRank == numel(active) ...
+                    && isequal(metricMatrix,diag(metricDiagonal)) && all(metricDiagonal >= 0)
+                rootWeights = sqrt(metricDiagonal);
+                coefficientScale = sqrt(diag(self.majorantGramMatrix(active,active)));
+                normalizedMajorant = (self.majorantGramMatrix(active,active)./coefficientScale)./coefficientScale.';
+                majorantFactor = chol(normalizedMajorant);
+                normalizedBasis = ((rootWeights.*sampledBasis(:,active))./coefficientScale.')/majorantFactor;
+                [Q,R] = qr(normalizedBasis,0);
+                self.forwardMatrix(active,:) = (majorantFactor\(R\(Q.'.*rootWeights.')))./coefficientScale;
+            end
             for iColumn = find(~self.activeColumnMask)
                 values = sampledBasis(:,iColumn);
                 if norm(values,2) > 1e3*eps(max(1,norm(values,2)))

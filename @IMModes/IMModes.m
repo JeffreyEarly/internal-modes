@@ -198,16 +198,35 @@ classdef (Sealed) IMModes
                 options.normalization (1,1) string = "depthRMSF"
             end
             args = IMModes.physicalArguments(background);
-            % The regular pair avoids inverse N2 at neutral depths under
-            % either physical surface convention.
-            evp = IMInternalModes.geostrophicAPVModes(args{:},g0=Inf,gd=Inf,surfaceBoundary=background.surfaceCondition);
-            if background.surfaceCondition == "freeSurface"
-                request = struct("kind","hydrostaticG","hasSurface",true,"nPositiveModes",options.nInternalModes);
+            if background.surfaceCondition == "rigidLid"
+                if options.nInternalModes == 0
+                    if ~isa(options.solver,"IMSolver") && ~isa(options.solver,"IMSolverAnalytical")
+                        error("IMModes:InvalidSolver","Use an IMSolver or IMSolverAnalytical backend.");
+                    end
+                    info = IMModes.info("barotropic",0);
+                    info.eigenvalue = 0;
+                    evaluator = @(variable,z,order) double(variable=="F" && order==0)*ones(numel(z),1);
+                    basis = IMModeBasis(background=background,family="hydrostaticF",modeInfo=info,normalization=options.normalization, ...
+                        h=Inf,eigenvalues=0,frequency=0,intrinsicEvaluator=evaluator,variables=["F","G"]);
+                    return
+                end
+                % A single G solve defines both fields. The constant sector
+                % is analytical and never evaluated as Inf times G prime.
+                evp = IMInternalModes.hydrostaticGModes(args{:});
+                request = struct("kind","hydrostaticG","hasSurface",false,"nPositiveModes",options.nInternalModes);
+                [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
+                barotropic = IMModes.info("barotropic",0);
+                barotropic.eigenvalue = 0;
+                info = [barotropic;info];
+                basis = IMModeBasis(source=source,background=background,family="hydrostaticF",columns=[1 columns+1],modeInfo=info, ...
+                    normalization=options.normalization,h=[Inf h],eigenvalues=[0 lambda],frequency=zeros(1,numel(h)+1),includeBarotropic=true);
             else
-                request = struct("kind","hydrostaticF","hasSurface",false,"nPositiveModes",options.nInternalModes);
+                % Preserve the regular free-surface pair, including neutral depths.
+                evp = IMInternalModes.geostrophicAPVModes(args{:},g0=Inf,gd=Inf,surfaceBoundary=background.surfaceCondition);
+                request = struct("kind","hydrostaticG","hasSurface",true,"nPositiveModes",options.nInternalModes);
+                [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
+                basis = IMModes.wrap(source,columns,info,background,"hydrostaticF",options.normalization,h,lambda,false,0,zeros(size(h)));
             end
-            [source,columns,info,h,lambda] = IMModes.solve(background,evp,options.solver,request);
-            basis = IMModes.wrap(source,columns,info,background,"hydrostaticF",options.normalization,h,lambda,false,0,zeros(size(h)));
         end
 
         function basis = geostrophicZeroAPVModesAtWavenumber(background,k,options)
