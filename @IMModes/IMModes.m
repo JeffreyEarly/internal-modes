@@ -260,13 +260,14 @@ classdef (Sealed) IMModes
         end
 
         function basis = neutralLabelModes(background,options)
-            % Return analytical labels and any fully neutral constant kernel.
+            % Return fixed-endpoint DD labels on exact neutral intervals.
             % Intervals are caller declarations of exact N2=0, never inferred.
+            % Generalized-energy coefficients are optional provenance only.
             % - Topic: Create modes
             arguments (Input)
                 background (1,1) IMModeBackground
                 options.neutralIntervals (:,2) double {mustBeReal,mustBeFinite}
-                options.energyBoundary (1,1) IMGeneralizedEnergyBoundary
+                options.energyBoundary (1,1) IMGeneralizedEnergyBoundary = IMGeneralizedEnergyBoundary(g0=0,gd=0)
                 options.nModesPerInterval (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = 8
                 options.normalization (1,1) string = "depthRMSG"
             end
@@ -274,7 +275,6 @@ classdef (Sealed) IMModes
             IMModes.validateIntervals(background,options.neutralIntervals,0,"neutral");
             source = IMNeutralLabelModesBasis(options.neutralIntervals,zDomain=background.zDomain,nModes=options.nModesPerInterval,rotationRate=background.rotationRate,latitude=background.latitude,g0=energy.g0,gd=energy.gd);
             branch = repmat("neutralLabel",numel(source.m_n),1);
-            branch(source.m_n==0) = "constantLabel";
             info = IMModes.info(branch,source.localModeNumber(:));
             info.columnLabel = source.columnLabels(:);
             info.intervalIndex = source.intervalIndex(:);
@@ -294,8 +294,7 @@ classdef (Sealed) IMModes
                 options.normalization (1,1) string = "waveEnergy"
             end
             IMModes.validateIntervals(background,options.criticalIntervals,background.f0^2,"critical");
-            % Nonzero endpoint weights enforce DD at physical boundaries too.
-            auxiliary = IMNeutralLabelModesBasis(options.criticalIntervals,zDomain=background.zDomain,nModes=options.nModesPerInterval,rotationRate=background.rotationRate,latitude=background.latitude,g0=1,gd=1);
+            auxiliary = IMNeutralLabelModesBasis(options.criticalIntervals,zDomain=background.zDomain,nModes=options.nModesPerInterval,rotationRate=background.rotationRate,latitude=background.latitude);
             info = IMModes.info(repmat("zeroDepth",numel(auxiliary.m_n),1),auxiliary.localModeNumber(:));
             info.intervalIndex = auxiliary.intervalIndex(:);
             info.columnLabel = "zeroDepth:"+auxiliary.columnLabels(:);

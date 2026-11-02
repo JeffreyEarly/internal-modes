@@ -181,8 +181,9 @@ classdef IMBasisCollection
                     entry.derivativeOrders{entry.variables == basis.evp.formulation} = [0 1];
                 end
             end
-            if (isempty(entry.columnLabels) && ~isa(basis,"IMModeBasis")) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
-                error("IMBasisCollection:InvalidColumnLabels","Each basis must have nonempty, distinct scientific column labels.");
+            supportsEmptyColumns = isa(basis,"IMModeBasis") || isa(basis,"IMNeutralLabelModesBasis");
+            if (isempty(entry.columnLabels) && ~supportsEmptyColumns) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
+                error("IMBasisCollection:InvalidColumnLabels","Each retained column must have a distinct scientific label; only common and neutral-label bases support an empty inventory.");
             end
         end
 

@@ -25,6 +25,8 @@ classdef IMModeCreationTests < matlab.unittest.TestCase
             background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
             energy = IMGeneralizedEnergyBoundary(g0=0,gd=0);
             testCase.verifyError(@() IMModes.neutralLabelModes(background,neutralIntervals=[-200 0],energyBoundary=energy),"IMModes:InconsistentInterval")
+            weak = IMModeBackground(N2=@(z) 1e-30*ones(size(z)),zDomain=[-1000 0]);
+            testCase.verifyError(@() IMModes.neutralLabelModes(weak,neutralIntervals=[-1000 0],nModesPerInterval=0),"IMModes:InconsistentInterval")
             testCase.verifyError(@() IMModes.zeroDepthWaveModesAtWavenumber(background,1e-4,criticalIntervals=[-200 0]),"IMModes:InconsistentInterval")
             testCase.verifyError(@() IMModes.waveModesAtFrequency(background,.002,normalization="waveEnergy"),"IMModes:UnavailableNormalization")
             testCase.verifyError(@() IMModes.waveModesAtFrequency(background,abs(background.f0)),"IMModes:InertialFrequency")
@@ -172,20 +174,28 @@ classdef IMModeCreationTests < matlab.unittest.TestCase
             testCase.verifyEqual(both.F(z),[surface.F(z) bottom.F(z)],RelTol=2e-10,AbsTol=2e-10)
         end
 
-        function neutralLabelsKeepTheirConstantAndUnobservableAmplitude(testCase)
+        function neutralLabelsKeepFixedEndpointsAndExactCounts(testCase)
             background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            energyBoundary = IMGeneralizedEnergyBoundary(g0=0,gd=0);
-            basis = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],energyBoundary=energyBoundary,nModesPerInterval=0);
-            testCase.verifyEqual(basis.nColumns,1)
-            testCase.verifyEqual(basis.normalization,"depthRMSG")
-            z = linspace(-1000,0,11).';
-            testCase.verifyEqual(basis.G(z),ones(size(z)))
-            testCase.verifyEqual(basis.Gz(z),zeros(size(z)))
-            testCase.verifyEqual(basis.APV(z),zeros(size(z)))
-            testCase.verifyError(@() basis.projectionOnGrid(z,ones(size(z))),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
-            regular = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],energyBoundary=energyBoundary,nModesPerInterval=3);
-            testCase.verifyEqual(regular.nColumns,4)
-            testCase.verifyEqual(regular.columnLabels(1),basis.columnLabels)
+            z = linspace(-1000,0,101).';
+            empty = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],nModesPerInterval=0);
+            testCase.verifyEqual(empty.nColumns,0)
+            testCase.verifyEqual(empty.normalization,"depthRMSG")
+            testCase.verifySize(empty.G(z),[numel(z) 0])
+            testCase.verifyEmpty(empty.columnLabels)
+            for acceleration = [0 .1 -.1 Inf]
+                energyBoundary = IMGeneralizedEnergyBoundary(g0=acceleration,gd=acceleration);
+                basis = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],energyBoundary=energyBoundary,nModesPerInterval=3);
+                testCase.verifyEqual(basis.nColumns,3)
+                testCase.verifyEqual(basis.G([-1000;0]),zeros(2,3))
+                testCase.verifyEqual(basis.modeInfo.branch,repmat("neutralLabel",3,1))
+                testCase.verifyEqual(basis.modeInfo.localModeNumber,(1:3).')
+                testCase.verifyEqual(basis.G(z),sqrt(2)*sin((z+1000)*(pi*(1:3)/1000)),AbsTol=3e-15)
+                weights = 10*ones(size(z)); weights([1 end]) = 5;
+                projection = basis.projectionOnGrid(z,weights);
+                testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),eye(3),AbsTol=2e-14)
+                testCase.verifyEqual(projection.provenance.g0,acceleration)
+                testCase.verifyEqual(projection.provenance.gd,acceleration)
+            end
         end
 
         function hydrostaticFactoriesKeepExternalModeOutsideInternalCount(testCase)

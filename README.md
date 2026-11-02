@@ -28,7 +28,7 @@ For the rigid-lid hydrostatic problem, `IMInternalModesDiscreteTransform.hydrost
 
 A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies the fixed points and weights used by all families and wavenumbers. The provisional default is the smoothed-bandwidth grid, `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the mode-root grid remains available.
 
-Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicit neutral intervals, automatically retain the admissible constant label, and project observable amplitudes from labeled APV with continuous normalization. APV cannot identify the constant-label amplitude.
+Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical sine profiles on explicit neutral intervals with fixed endpoint labels, including at physical boundaries, and project amplitudes from labeled APV with continuous normalization. No constant label is included.
 
 If you use these classes to compute the vertical modes, please cite the following paper,
 - J. Early, M. P. Lelong, and K. S. Smith. Fast and Accurate Coputation of Vertical Modes. Journal of Advances in Modeling Earth Systems. 2020. [doi](https://doi.org/10.1029/2019MS001939)

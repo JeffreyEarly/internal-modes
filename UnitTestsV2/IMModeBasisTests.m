@@ -98,7 +98,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModes=2);
             basis = testCase.wrap(background,source,"depthRMSG",false,0);
             z = [-1000;-700;-100;0];
-            testCase.verifyEqual(basis.nColumns,3)
+            testCase.verifyEqual(basis.nColumns,2)
             testCase.verifyEqual(basis.G(z),source.G(z))
             testCase.verifyEqual(basis.Gz(z),source.Gz(z))
             testCase.verifyEqual(basis.Gzz(z),source.Gzz(z))
@@ -126,16 +126,17 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.G(z),originalG(:,[3 1])./sqrt(10),AbsTol=1e-14)
         end
 
-        function constantNeutralLabelRequiresExternalAmplitudeInformation(testCase)
+        function fullyNeutralLabelsAllHaveObservableAPV(testCase)
             background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
             source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModes=2);
             basis = testCase.wrap(background,source,"depthRMSG",false,0);
             z = linspace(-1000,0,1001).';
             weights = ones(size(z));
             weights([1 end]) = .5;
-            testCase.verifyError(@() basis.projectionOnGrid(z,weights),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
-            projection = basis.projectionOnGrid(z,weights,columns=[2 3]);
-            testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),[zeros(2,1),eye(2)],AbsTol=2e-12)
+            projection = basis.projectionOnGrid(z,weights);
+            testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),eye(2),AbsTol=2e-12)
+            selected = basis.projectionOnGrid(z,weights,columns=[2 1]);
+            testCase.verifyEqual(selected.forwardMatrix*basis.APV(z),[0 1;1 0],AbsTol=2e-12)
         end
 
         function endpointResponsesKeepCanonicalScaling(testCase)

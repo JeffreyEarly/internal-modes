@@ -113,6 +113,66 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G"),"IMModeBasis:UnavailableProjection");
         end
 
+        function emptyNeutralViewsAndScaledSelectionsPreserveDualMetadata(testCase)
+            background = IMModeBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0]);
+            maximum = IMModes.neutralLabelModes(background,neutralIntervals=[-200 0],nModesPerInterval=3,normalization="maxAbsG");
+            requestedEmpty = IMModes.neutralLabelModes(background,neutralIntervals=[-200 0],nModesPerInterval=0);
+            selectedEmpty = maximum.selectColumns([]);
+            collection = IMBasisCollection({requestedEmpty,selectedEmpty},basisIndex=[2 1 2]);
+            z = linspace(-200,0,401).';
+            weights = .5*ones(size(z)); weights([1 end]) = .25;
+            for basis = {requestedEmpty,selectedEmpty}
+                projection = basis{1}.projectionOnGrid(z,weights);
+                recipe = basis{1}.projectionRecipe();
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)]);
+                testCase.verifyEqual(projection.majorantGramMatrix,zeros(0));
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0));
+                testCase.verifyEqual(recipe.provenance.continuousAPVGramMatrix,zeros(0));
+                testCase.verifyEmpty(projection.columnLabels);
+                testCase.verifySize(projection.project(ones(numel(z),2)),[0 2]);
+            end
+            for derivativeOrder = 0:2
+                testCase.verifySize(collection.evaluate(z,variable="G",derivativeOrder=derivativeOrder,pages=[3 1 3 2],sampleChunkSize=100,pageChunkSize=2),[numel(z) 0 4]);
+            end
+            testCase.verifySize(collection.evaluate(z,variable="APV",pages=[3 1 3 2]),[numel(z) 0 4]);
+            for page = [3 1 3 2]
+                projection = collection.projectionOnGrid(z,weights,page=page);
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)]);
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0));
+            end
+            selected = maximum.selectColumns([3 1]);
+            expected = diag(background.f0^2*100*(pi*[3 1]/200).^2);
+            projection = selected.projectionOnGrid(z,weights);
+            recipe = selected.projectionRecipe();
+            testCase.verifyEqual(projection.majorantGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(recipe.majorantGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(recipe.provenance.continuousAPVGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(projection.columnLabels,maximum.columnLabels([3 1]));
+            testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=2e-13);
+        end
+
+        function emptyNeutralViewDoesNotPrepareDiscardedAPVNorms(testCase)
+            background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],rotationRate=1e-170);
+            full = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],nModesPerInterval=3);
+            selected = full.selectColumns([]);
+            requested = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],nModesPerInterval=0);
+            z = [-900;-500;-100];
+            weights = [300;400;300];
+            testCase.verifyError(@() full.projectionOnGrid(z,weights),"IMNeutralLabelModesBasis:UnrepresentableProjection");
+            collection = IMBasisCollection({selected,requested},basisIndex=[2 1 2]);
+            for page = 1:3
+                projection = collection.projectionOnGrid(z,weights,page=page);
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)]);
+                testCase.verifyEqual(projection.physicalDualStatus,"available");
+                testCase.verifySize(projection.projectPhysical(ones(numel(z),2)),[0 2]);
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0));
+                testCase.verifyEmpty(projection.recovery);
+            end
+            testCase.verifyError(@() selected.projectionOnGrid(z,zeros(size(z))),"IMNeutralLabelModesBasis:InvalidWeights");
+            testCase.verifyError(@() selected.projectionOnGrid([z(1);z(1)],weights(1:2)),"IMNeutralLabelModesBasis:InvalidGrid");
+        end
+
         function collectionDoesNotInventAProjectionForWaveProfiles(testCase)
             background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
             basis = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=2);
