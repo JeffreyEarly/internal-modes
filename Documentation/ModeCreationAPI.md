@@ -56,7 +56,7 @@ Generalized-energy families additionally require explicit `IMGeneralizedEnergyBo
 | `meanDensityAnomalyModes(background,...)` | `nPositiveModes` | Every negative mode and the admissible constant mode | `"generalizedEnergy"` |
 | `geostrophicGeneralizedPotentialEnstrophyModes(background,k,...)` | `nModes` | None | `"generalizedPotentialEnstrophy"` |
 | `geostrophicZeroAPVModesAtWavenumber(background,k,...)` | None | Every active surface/bottom response | `"endpointResponse"` |
-| `neutralLabelModes(background,...)` | `nModesPerInterval` | Fully neutral constant label when admissible | `"depthRMSG"` |
+| `neutralLabelModes(background,...)` | `nModesPerInterval` | None | `"depthRMSG"` |
 | `zeroDepthWaveModesAtWavenumber(background,k,...)` | `nModesPerInterval` | None; this explicitly truncates an infinite kernel | `"waveEnergy"` |
 
 All counts are nonnegative integers, and special modes never consume a requested count. Per-interval counts accept a scalar broadcast or one count per declared interval. Numerical requests are exact: insufficient availability throws `IMModes:InsufficientModes` with requested and available counts. Increase solver resolution when the discretization is too small; a physically absent branch cannot be obtained by refining it. A returned count does not certify convergence or recoverability on a separate sampling grid.
@@ -105,30 +105,26 @@ The names have the same meaning wherever the required profiles or pairing exist.
 
 `waveEnergy` reduces to `depthRMSF` at zero horizontal wavenumber. Fixed-frequency creation defaults to `depthRMSF`, because each returned root has its own horizontal dispersion. The new factory interface does not reinterpret legacy names such as `"kConstant"` or `"geostrophic"` as these different definitions.
 
-## Neutral labels and the constant kernel
+## Neutral labels with fixed endpoint labels
 
-Neutral intervals are explicit declarations of exact $$N^2 = 0$$, ordered and strictly separated. They are never inferred from sampled stratification. Merge touching intervals first. Boundary conditions are Dirichlet at joins to stratified water. At a physical endpoint they are Neumann only when its generalized-energy coefficient is zero, and Dirichlet otherwise.
+Neutral intervals are explicit declarations of exact $$N^2 = 0$$, ordered and strictly separated. They are never inferred from sampled stratification. Merge touching intervals first. Profiles vanish at both ends of each interval, including a physical surface or bottom, independently of generalized-energy coefficients. Independent boundary anomalies belong to other mode families.
 
 ```matlab
 background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-energyBoundary = IMGeneralizedEnergyBoundary(g0=0,gd=0);
-labels = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],energyBoundary=energyBoundary,nModesPerInterval=3);
+labels = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],nModesPerInterval=3);
 ```
 
-This returns four columns: the constant label $$G=1$$, followed by three positive-wavenumber cosine modes. The constant has local mode number zero, does not consume `nModesPerInterval`, and has zero APV. `nModesPerInterval=0` returns that constant alone. Neutral labels have neither equivalent depths nor EVP eigenvalues.
-
-APV cannot determine the constant amplitude. A projection request containing it throws `IMNeutralLabelModesBasis:UnobservableConstantLabel`. Select the observable columns explicitly and supply the constant amplitude from independent particle-label information:
+This returns three positive-wavenumber sine modes with local mode numbers 1, 2 and 3. There is no constant sector; `nModesPerInterval=0` returns zero columns, including for a fully neutral column. The optional `energyBoundary` argument records generalized-energy provenance and does not change these profiles. Neutral labels have neither equivalent depths nor EVP eigenvalues.
 
 ```matlab
 z = -1000+((1:256).'-0.5)*(1000/256);
 weights = (1000/256)*ones(size(z));
-columns = find(labels.modeInfo.branch == "neutralLabel").';
-projection = labels.projectionOnGrid(z,weights,columns=columns);
-sampledAPV = labels.APV(z)*[5;1;-2;.5];
-positiveAmplitudes = projection.project(sampledAPV);
+projection = labels.projectionOnGrid(z,weights);
+sampledAPV = labels.APV(z)*[1;-2;.5];
+amplitudes = projection.project(sampledAPV);
 ```
 
-The projector uses the prescribed continuous APV dual and fixed physical-depth quadrature. Quadrature error remains visible in the coefficients. Zero rotation makes every neutral APV column unobservable and is rejected by projection. See [neutral-label profiles and projection](NeutralLabelModes.md) for the exact formulas and endpoint traces.
+The projector uses the prescribed continuous APV dual and fixed physical-depth quadrature. Quadrature error remains visible in the coefficients. Zero rotation makes every neutral APV column unobservable and is rejected by projection. The equivalent displacement-source functional includes interval-endpoint terms. See [neutral-label profiles and projection](NeutralLabelModes.md) for the exact formulas and endpoint traces.
 
 ## Exact zero-depth waves
 
@@ -148,4 +144,4 @@ The implementation uses interval-local Dirichlet sine modes, zero outside their 
 
 The creation layer provides the neutral-label APV projector above. Rigid-lid `hydrostaticFModes` obtains both fields from one G EVP and appends the analytical barotropic F0=1, G0=0 sector. That common basis supports `basis.discreteTransform(grid)` for a fixed `IMVerticalGrid`, preserving identities and normalization without another solve or weight fit. `IMInternalModesDiscreteTransform.hydrostaticRoot` coordinates converged continuous construction, G-root sampling, weight fitting and band qualification and returns its retained basis as well as the grid, transform and assessment. See [hydrostatic root transforms](HydrostaticRootTransform.md). A generic shared wave projection/transform interface is not yet provided by `IMModeBasis`; other existing lower-level basis APIs remain available for their supported transforms and assessments.
 
-`IMInternalModes`, canonical boundary objects, existing numerical/analytical bases and their direct solver entry points remain available. Their original F/G equations, normalization names and count semantics are preserved. In particular, a direct lower-level wave basis retains its existing profile convention; the standard $$F=DG'$$ convention is applied by the new `IMModes`/`IMModeBasis` creation layer. The direct neutral-label constructor now also includes its admissible constant by default; explicit legacy `constantLabelPolicy="reject"` and `"exclude"` remain available there. Existing bulk APIs continue to use their documented lower-level contracts.
+`IMInternalModes`, canonical boundary objects, existing numerical/analytical bases and their direct solver entry points remain available. Their original F/G equations, normalization names and count semantics are preserved. In particular, a direct lower-level wave basis retains its existing profile convention; the standard $$F=DG'$$ convention is applied by the new `IMModes`/`IMModeBasis` creation layer. The direct neutral-label constructor and the common factory both implement the manuscript's DD sine ladder. The former generalized-energy-dependent Neumann selection and `constantLabelPolicy` option are removed; see the [neutral-label migration note](NeutralLabelModes.md). Existing bulk APIs continue to use their documented lower-level contracts.

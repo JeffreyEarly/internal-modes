@@ -339,8 +339,9 @@ classdef IMModeBasis
             % Construct a family projection on fixed physical samples.
             %
             % Hydrostatic F/G uses sampled Galerkin recovery. Neutral-label
-            % APV uses its prescribed continuous dual and cannot identify a
-            % constant label. Select observable columns explicitly when the complete basis includes that label.
+            % APV uses its prescribed continuous dual for the fixed-endpoint
+            % sine ladder. Every retained label has positive continuous APV
+            % norm when f0 is nonzero; sampled recovery depends on the rule.
             %
             % - Topic: Project modes
             % - Parameter z: increasing physical sample column
@@ -373,12 +374,20 @@ classdef IMModeBasis
             if any(selectedColumns > self.nColumns) || numel(unique(selectedColumns)) ~= numel(selectedColumns)
                 error("IMModeBasis:InvalidColumns","Select distinct existing basis columns.");
             end
-            base = self.source.projectionOnGrid(z,weights,columns=self.columns(selectedColumns));
+            if isempty(selectedColumns)
+                % Validate the physical rule through an empty source, without
+                % preparing discarded APV columns or their physical norms.
+                source = IMNeutralLabelModesBasis(self.source.neutralIntervals,zDomain=self.zDomain,nModes=0,rotationRate=self.source.rotationRate,latitude=self.source.latitude,g0=self.source.g0,gd=self.source.gd);
+            else
+                source = self.source;
+            end
+            base = source.projectionOnGrid(z,weights,columns=self.columns(selectedColumns));
             factors = self.scaleFactors_(selectedColumns);
             forward = factors(:).*base.forwardMatrix;
             majorant = base.majorantGramMatrix./(factors(:)*factors);
             provenance = base.provenance;
             provenance.normalization = self.normalization;
+            provenance.continuousAPVGramMatrix = majorant;
             projection = IMProjection.fromPrescribedDual(forward,eye(numel(selectedColumns)),eye(numel(selectedColumns)),majorantGramMatrix=majorant,columnLabels=self.columnLabels(selectedColumns),provenance=provenance);
         end
     end
@@ -435,6 +444,7 @@ classdef IMModeBasis
             recipe.majorantGramMatrix = recipe.majorantGramMatrix(self.columns,self.columns)./(factors(:)*factors);
             recipe.evaluateFunction = @(z) self.APV(z);
             recipe.provenance.normalization = self.normalization;
+            recipe.provenance.continuousAPVGramMatrix = recipe.majorantGramMatrix;
         end
     end
 
@@ -581,7 +591,6 @@ classdef IMModeBasis
                     if isa(self.source,"IMNeutralLabelModesBasis") && self.normalization == "maxAbsG"
                         lengths = diff(self.source.neutralIntervals,1,2);
                         scales = sqrt(2*diff(self.zDomain)./reshape(lengths(self.source.intervalIndex(self.columns)),1,[]));
-                        scales(self.source.m_n(self.columns) == 0) = 1;
                         return
                     end
                     [z,weights] = self.normalizationQuadrature();
