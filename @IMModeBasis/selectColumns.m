@@ -25,4 +25,19 @@ basis.normSignatures = self.normSignatures(columns);
 if self.hasEquivalentDepths_, basis.equivalentDepths_ = self.equivalentDepths_(columns); end
 if self.hasEigenvalues_, basis.eigenvalues_ = self.eigenvalues_(columns); end
 if ~isempty(self.frequency), basis.frequency = self.frequency(columns); end
+if self.horizontalKind == "perColumn", basis.kSquared = self.kSquared(columns); end
+resolved = basis.scientificSpecification.resolved;
+resolved.columnLabels = basis.columnLabels;
+resolved.modeInfo = basis.modeInfo;
+resolved.sourceColumns = basis.columns;
+resolved.normalization.scales = basis.scaleFactors_;
+resolved.normalization.normSignatures = basis.normSignatures;
+resolved.horizontal = struct(kind=basis.horizontalKind,k=basis.k,kSquared=basis.kSquared);
+resolved.includesAnalyticalBarotropic = basis.family == "hydrostaticF" && any(basis.modeInfo.branch == "barotropic");
+basis.scientificSpecification.resolved = resolved;
+selection = basis.constructionRecord.selection;
+selection.activeSourceColumns = basis.columns;
+selection.columnLabels = basis.columnLabels;
+selection.initialColumnIndices = self.constructionRecord.selection.initialColumnIndices(columns);
+basis.constructionRecord.selection = selection;
 end

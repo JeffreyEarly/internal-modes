@@ -124,7 +124,7 @@ sampledAPV = labels.APV(z)*[1;-2;.5];
 amplitudes = projection.project(sampledAPV);
 ```
 
-The projector uses the prescribed continuous APV dual and fixed physical-depth quadrature. Quadrature error remains visible in the coefficients. Zero rotation makes every neutral APV column unobservable and is rejected by projection. The equivalent displacement-source functional includes interval-endpoint terms. See [neutral-label profiles and projection](NeutralLabelModes.md) for the exact formulas and endpoint traces.
+The projector uses the prescribed continuous APV dual and fixed physical-depth quadrature. Quadrature error remains visible in the coefficients. Zero rotation makes every retained neutral APV column unobservable and is rejected for a nonempty inventory; an empty inventory retains its empty dual. The equivalent displacement-source functional includes interval-endpoint terms. See [neutral-label profiles and projection](NeutralLabelModes.md) for the exact formulas and endpoint traces.
 
 ## Exact zero-depth waves
 
@@ -140,7 +140,9 @@ The implementation uses interval-local Dirichlet sine modes, zero outside their 
 
 ## Returned basis and compatibility
 
-`basis.nColumns` reports the full returned inventory. `basis.modeInfo` is a table with `columnLabel`, `branch` and `branchIndex`, plus relevant family metadata such as interval and local mode identity. `columnLabels` preserves identity independently of eigenvalue sign or array position. `F`, `G`, `Gz`, `Gzz` and, when available, `APV` return sample-by-column matrices. Inspect `basis.capabilities` before requesting a channel. `h` and `eigenvalues` report unavailable quantities explicitly for families that do not define them.
+`basis.nColumns` reports the full returned inventory. `basis.modeInfo` is a table with `columnLabel`, `branch` and `branchIndex`, plus relevant family metadata such as interval and local mode identity. `columnLabels` preserves identity independently of eigenvalue sign or array position. `F`, `G`, `Gz`, `Gzz` and, when available, `APV` return sample-by-column matrices. Inspect `basis.capabilities.variables` and the parallel `derivativeOrders` cells before requesting a channel; `capabilities` is now a structured operation record. `evaluate(z,"Fz")` aliases the first physical derivative of F. `h` and `eigenvalues` report unavailable quantities explicitly for families that do not define them.
+
+`scientificSpecification` records the defining EVP, physical pairings, profile relations and selected identities. `constructionRecord` separately records requested/resolved backend settings, selection diagnostics and unverified convergence status. `horizontalKind` distinguishes solved scalar `k`, signed per-column `kSquared` at fixed frequency and wavenumber-independent vertical structures. Independent bases can be assigned collection page wavenumbers; per-column dispersion cannot be replaced by one scalar page value. See [continuous basis contracts](BasisContracts.md) for the record schema, empty/selected inventory behavior and capability limits.
 
 The creation layer provides the neutral-label APV projector above. Rigid-lid `hydrostaticFModes` obtains both fields from one G EVP and appends the analytical barotropic F0=1, G0=0 sector. That common basis supports `basis.discreteTransform(grid)` for a fixed `IMVerticalGrid`, preserving identities and normalization without another solve or weight fit. `IMInternalModesDiscreteTransform.hydrostaticRoot` coordinates converged continuous construction, G-root sampling, weight fitting and band qualification and returns its retained basis as well as the grid, transform and assessment. See [hydrostatic root transforms](HydrostaticRootTransform.md). A generic shared wave projection/transform interface is not yet provided by `IMModeBasis`; other existing lower-level basis APIs remain available for their supported transforms and assessments.
 

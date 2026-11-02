@@ -11,10 +11,14 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
         function constantControlKeepsTheGridAndPhysicalSpectrum(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
             evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=45);
-            ordinary = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
+            ordinary = IMSolverSpectral(nEVP=65,coordinateKind="bandwidth").configuredForEVP(evp);
             smoothed = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=65).configuredForEVP(evp);
             testCase.verifyEqual(smoothed.zNative,ordinary.zNative,AbsTol=2e-9);
             testCase.verifyEqual(smoothed.qReference,ordinary.qReference,RelTol=2e-11);
+            % At 45 degrees, tildeF^2=f0^2. A constant bandwidth is
+            % unchanged by the Neumann filter, but differs from WKB's N.
+            expectedQ = (N2(0)^2+4*evp.f0^4)^(1/4);
+            testCase.verifyEqual(smoothed.qReference,expectedQ*ones(size(smoothed.qReference)),RelTol=2e-11);
             testCase.verifyEqual(smoothed.N2(smoothed.zReference),N2(smoothed.zReference));
             basis = smoothed.solveEVP(evp,nModes=4);
             expectedH = 2.5e-5*1000^2./(evp.g*pi^2*(1:4).^2);

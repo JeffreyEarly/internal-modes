@@ -17,7 +17,7 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(collection.metadata(1).columnLabels,first.columnLabels);
             testCase.verifyEqual(collection.metadata(1).normalization,"waveEnergy");
             testCase.verifyEqual(collection.metadata(1).variables,["F", "G"]);
-            testCase.verifyEqual(collection.metadata(1).derivativeOrders,{0,0:2});
+            testCase.verifyEqual(collection.metadata(1).derivativeOrders,{0:1,0:2});
             z = linspace(-1000,0,17).';
             pages = [3 2 3 1];
             columns = [3 1 3];
@@ -29,7 +29,7 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
                 expected = basis.F(z);
                 testCase.verifyEqual(F(:,:,j),expected(:,columns),AbsTol=0);
             end
-            testCase.verifyError(@() collection.evaluate(z,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyEqual(collection.evaluate(z,variable="F",derivativeOrder=1,pages=pages,columns=columns),background.D*collection.evaluate(z,variable="G",derivativeOrder=2,pages=pages,columns=columns),AbsTol=2e-14);
         end
 
         function streamedFacadePagesKeepRepeatedPositionsAndBoundedChunks(testCase)

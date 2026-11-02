@@ -103,7 +103,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.Gz(z),source.Gz(z))
             testCase.verifyEqual(basis.Gzz(z),source.Gzz(z))
             testCase.verifyEqual(basis.APV(z),source.APV(z))
-            testCase.verifyFalse(ismember("F",basis.capabilities))
+            testCase.verifyFalse(ismember("F",basis.capabilities.variables))
             testCase.verifyError(@() basis.F(z),"IMModeBasis:UnavailableVariable")
             testCase.verifyError(@() basis.h,"IMModeBasis:UnavailableEquivalentDepth")
             testCase.verifyError(@() basis.eigenvalues,"IMModeBasis:UnavailableEigenvalues")
@@ -162,7 +162,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             z = linspace(-1000,0,31).';
             testCase.verifyEqual(basis.F(z),1000*basis.Gz(z),AbsTol=1e-14)
             testCase.verifyEqual(basis.h,0)
-            emptyBasis = IMModeBasis(background=background,family="wave",normalization="waveEnergy",waveConvention=true,variables=["F","G"]);
+            emptyBasis = IMModeBasis(background=background,family="wave",normalization="waveEnergy",waveConvention=true,k=0,variables=["F","G"]);
             testCase.verifySize(emptyBasis.G(z),[31 0])
             testCase.verifySize(emptyBasis.F(z),[31 0])
             testCase.verifyEqual(emptyBasis.nColumns,0)

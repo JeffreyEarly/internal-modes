@@ -723,7 +723,10 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
             internalBasis = solver.solveEVP(internalEVP, nModes=2);
             solution = IMConstantStratificationSolution(rotationRate=0,N0=sqrt(N2(0)), zDomain=zDomain);
-            analyticalBasis = solution.internalModes(internalEVP, nModes=2);
+            % Keep the varying numerical profile and give the analytical
+            % helpers an EVP with their matching constant stratification.
+            analyticalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) solution.N2(z),zDomain=zDomain);
+            analyticalBasis = solution.internalModes(analyticalEVP, nModes=2);
 
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor", "rawU", "rawUz"])))
             testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor", "rawVariable"])))
