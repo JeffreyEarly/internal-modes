@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add immutable `IMVerticalSampling` for caller-prescribed point values, true physical-depth cell averages and cell integrals of a common continuous basis (#60). Preserve row identities, column coordinates and integration provenance; split cells at known joins and actual finite-difference companion knots, refine quadrature with an explicit estimated-error budget, and connect the evaluated matrix to existing generic recovery without another solve. Keep WVM's physical state/source projector assembly in WVM; see `Documentation/PrescribedVerticalSampling.md`.
+
 - Expose zero-APV physical-energy, boundary-buoyancy and endpoint-response forms and immutable boundary-depth, surface-buoyancy and custom-pencil rotations through `IMModeBasis` (#49). Keep current normalized/selected coordinates explicit through a canonical endpoint map, retain signed right-metric normalization and separate rotation spectra from differential-EVP spectra. Repair repeated-eigenvalue signed-metric orthogonality and dimensional-scale-dependent pencil rejection in the shared lower-level solver; preserve fixed-sector collection identities and reuse the continuous representation without another solve or weight fit.
 
 - Add immutable `IMModeBasis.withNormalization(name)` using the existing continuous representation, selected scientific columns and supported normalization rules (#47). Preserve original requests and construction evidence while updating resolved divisors/signatures; keep related fields and derivatives aligned. Preserve normalization integration resolution through high-order column selection, and verify physical-dual, signed-form and shared-recovery coordinate covariance on fixed grids without repeating an EVP solve or weight fit.

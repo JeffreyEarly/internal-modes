@@ -1,6 +1,6 @@
 # Shared prepared recovery
 
-V2 separates the scientific basis, physical projection and numerical recovery. This prerelease API intentionally replaces the old scalar `IMDiscreteTransform` constructor. It implements [#57](https://github.com/JeffreyEarly/internal-modes/issues/57); broader family adapters, cross-grid qualification and WVM adoption remain separate work.
+V2 separates the scientific basis, physical projection and numerical recovery. This prerelease API intentionally replaces the old scalar `IMDiscreteTransform` constructor. It implements [#57](https://github.com/JeffreyEarly/internal-modes/issues/57); cross-grid qualification and WVM adoption remain separate work. InternalModes supplies vertical ingredients and generic numerical preparation; WVM owns its complete physical state and source projectors.
 
 ## Ownership
 
@@ -8,6 +8,7 @@ V2 separates the scientific basis, physical projection and numerical recovery. T
 | --- | --- |
 | `IMModes` / `IMModeBasis` | Continuous scientific families, labels, normalization, evaluation, derivatives and physical recipes |
 | `IMVerticalGrid` | Physical points, quadrature weights and grid-design provenance |
+| `IMVerticalSampling` | Prescribed point values, cell averages and cell integrals of continuous vertical profiles, with row identities and integration evidence |
 | `IMProjection` | Physical pairings, continuous coefficient normalization, sampled/target Gram diagnostics and physical-dual application |
 | `IMDiscreteTransform` | Prepared synthesis/recovery matrices, coefficient identity, observation metadata and numerical recovery evidence |
 | `IMScalarDiscreteTransform` | Scalar grid/quadrature adapter, with a genuine physical `projection` record |
@@ -20,7 +21,7 @@ Creating a continuous basis does not select a grid. Selecting a grid does not se
 
 For observations `y` and scientific amplitudes `a`, synthesis is `y=A*a` and recovery is `a=R*y`. `A` is a finite real or complex `sampleCount × columnCount` matrix. Unique string `columnLabels` and an explicit `activeColumnMask` preserve coefficient identity and alignment. Inactive columns must be exactly zero; their recovered rows are exactly zero. An active column that vanishes at the selected observations is unobservable and fails recovery.
 
-Observation rows may stack variables on different points, endpoint coordinates, traces, cell averages or other caller-assembled linear observations. Their count is independent of `length(z)`. The generic object requires no `IMVerticalGrid`; a diagnostic application can use another model's prescribed observations directly. Store their ordering and scientific meaning in caller `metadata`. This matrix interface does not yet supply all family-owned observation adapters or WVM ingestion.
+Observation rows may stack variables on different points, endpoint coordinates, traces, cell averages or other caller-assembled linear observations. Their count is independent of `length(z)`. The generic object requires no `IMVerticalGrid`; a diagnostic application can use another model's prescribed observations directly. [Prescribed vertical sampling](PrescribedVerticalSampling.md) supplies point/cell matrices and their ordering and provenance as a record suitable for `metadata`. WVM ingestion and physical field combinations remain WVM responsibilities.
 
 The engine keeps four inputs distinct:
 
@@ -94,4 +95,4 @@ Migration from the earlier prerelease API:
 
 The portable kernel and adapter regressions cover complex algebra, coordinate/unit changes, fit/noise separation, active/inactive sectors and explicit deficiencies. [Verification and cost evidence](SharedRecoveryVerification.md) records the tested revision, independent audits and known baseline failure.
 
-This implementation does not raise retained bands or choose a universal WVM policy. Remaining family/source adapters belong to #48, provider grid calculus to #50, cross-grid/family qualification to #58 and prescribed-grid fixtures to #60. Production WVM integration is downstream in #59. The [neutral-label API](NeutralLabelModes.md) documents the manuscript DD convention separately; local coupled-grid DD research is not presented here as released qualification evidence.
+This implementation does not raise retained bands or choose a universal WVM policy. Provider vertical operations belong to #48, provider grid calculus to #50, cross-grid/family qualification to #58 and prescribed-grid fixtures to #60. Complete physical state/source projectors and production WVM integration belong to WVM, tracked downstream in #59. The [neutral-label API](NeutralLabelModes.md) documents the manuscript DD convention separately; local coupled-grid DD research is not presented here as released qualification evidence.

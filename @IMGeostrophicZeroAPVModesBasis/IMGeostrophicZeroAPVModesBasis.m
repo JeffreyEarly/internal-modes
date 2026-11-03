@@ -186,6 +186,7 @@ classdef IMGeostrophicZeroAPVModesBasis
     end
 
     methods (Hidden)
+        points = samplingBreakpoints(self)
         recipe = projectionRecipe(self,options)
     end
 

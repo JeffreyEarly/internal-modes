@@ -5,6 +5,7 @@ These developer-facing scripts exercise the prerelease V2 API. They are not regi
 Start with the scripts that demonstrate normal application workflows:
 
 - `HydrostaticModesExponentialStratification.m` — solve and normalize an aligned hydrostatic family.
+- `PrescribedVerticalSampling.m` — recover shared vertical coefficients from irregular F point values and staggered G cell averages, using explicitly declared fitting and activity.
 - `WaveVortexVerticalGridDesign.m` — choose a point-limited F/G grid and retained mode count, retain negative APV modes, and compare signed projection diagnostics with positive Hilbert-majorant error magnitudes.
 - `GeostrophicGeneralizedPotentialEnstrophyModes.m` — compare generalized-potential-enstrophy modes, independently designed mode-root grids, and fitted quadrature weights at several horizontal wavenumbers.
 - `GeostrophicModesExponentialStratification.m` — construct generalized-energy APV modes through the public factory.

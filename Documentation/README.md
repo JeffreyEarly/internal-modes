@@ -6,3 +6,4 @@ Documentation
 + The generated `../docs` folder is committed output. Edit `Documentation/WebsiteDocumentation` and rerun the build script rather than editing `docs/` by hand.
 
 + [Common scalar physical projection and recovery](CommonScalarProjection.md): supported family/channel pairings, literal endpoint observations, explicit recovery policies and qualification limits.
++ [Prescribed vertical sampling](PrescribedVerticalSampling.md): evaluate point values, true cell averages and cell integrals on caller-supplied layouts, then prepare generic numerical recovery.

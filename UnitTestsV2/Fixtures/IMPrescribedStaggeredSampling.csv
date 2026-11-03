@@ -1,0 +1,7 @@
+observationLabel,variable,derivativeOrder,kind,zLower,zUpper,units
+F_upper,F,0,point,-0.19,-0.19,1
+G_lower,G,0,cellAverage,-1.73,-1.39,1
+F_lower,F,0,point,-1.87,-1.87,1
+G_upper,G,0,cellAverage,-0.51,-0.12,1
+F_middle,F,0,point,-0.86,-0.86,1
+G_middle,G,0,cellAverage,-1.09,-0.68,1
