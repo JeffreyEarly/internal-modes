@@ -155,21 +155,21 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
             end
         end
 
-        function endpointConventionsRequireExplicitRotations(testCase)
+        function endpointNormalizationPreservesCoordinateMeaning(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
             problem = IMGeostrophicZeroAPVModes.atWavenumber(background,[1e-4 2e-4]);
             numerical = IMSolverSpectral(nEVP=40).solveGeostrophicZeroAPVModes(problem);
             exact = IMSolverAnalytical().solveGeostrophicZeroAPVModes(problem);
             z = linspace(-1000,0,13).';
             callbacks = 0;
-            for entry = {numerical,exact,numerical.rotateBoundaryDepth(),exact.rotateBoundaryDepth()}
+            for entry = {numerical,exact,numerical.orthogonalizeGeneralizedEnergy(g0=0,gd=0),exact.orthogonalizeGeneralizedEnergy(g0=0,gd=0)}
                 basis = entry{1};
                 collection = IMBasisCollection({basis},basisIndex=[1 1 1],sourcePage=[2 1 2]);
-                actual = collection.evaluate(z,variable="G",derivativeOrder=1,normalization=basis.normalizationConvention,sampleChunkSize=4);
-                expected = basis.evaluate(z,variable="G",derivativeOrder=1,normalization=basis.normalizationConvention,pages=[2 1 2]);
+                actual = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="depthRMSF",sampleChunkSize=4);
+                expected = basis.evaluate(z,variable="G",derivativeOrder=1,normalization="depthRMSF",pages=[2 1 2]);
                 testCase.verifyEqual(actual,expected,AbsTol=1e-12,RelTol=1e-12);
-                testCase.verifyError(@() collection.evaluateChunks(z,@consume,variable="F",normalization="depthRMSF",sampleChunkSize=1),"IMBasisCollection:UnsupportedNormalization");
-                testCase.verifyError(@() basis.evaluate(z,variable="F",normalization="depthRMSF"),string(class(basis))+":UnsupportedNormalization");
+                testCase.verifyError(@() collection.evaluateChunks(z,@consume,variable="F",normalization="notARule",sampleChunkSize=1),string(class(basis))+":UnsupportedNormalization");
+                testCase.verifyError(@() basis.evaluate(z,variable="F",normalization="notARule"),string(class(basis))+":UnsupportedNormalization");
             end
             testCase.verifyEqual(callbacks,0);
             function consume(varargin)

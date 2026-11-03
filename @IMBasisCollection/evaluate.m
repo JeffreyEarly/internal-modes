@@ -2,7 +2,7 @@ function values = evaluate(self,z,options)
 % Evaluate continuous structures with bounded intermediate allocations.
 %
 % Returns nZ x nColumns x nSelectedPages, preserving page/column order and
-% repeated selections. Empty pages/columns selects all. The final output is
+% repeated selections. Empty pages select all; omitted columns select all and [] selects none. The final output is
 % allocated in full; use evaluateChunks to stream without that allocation.
 % sampleChunkSize and pageChunkSize bound evaluation temporaries.
 % A normalization override applies to this evaluation only. Omit it to use
@@ -25,7 +25,7 @@ arguments (Input)
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
     options.normalization = []
     options.pages (1,:) double {mustBeInteger,mustBePositive} = []
-    options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+    options.columns = ":"
     options.sampleChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 1024
     options.pageChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 16
 end
@@ -39,7 +39,7 @@ elseif any(pages > numel(self.basisIndex))
     error("IMBasisCollection:InvalidPage","pages must select existing requested pages.");
 end
 nColumns = numel(options.columns);
-if isempty(options.columns)
+if isequal(options.columns,":") || isequal(options.columns,':')
     nColumns = numel(self.metadata(self.basisIndex(pages(1))).columnLabels);
 end
 values = zeros(numel(z),nColumns,numel(pages));

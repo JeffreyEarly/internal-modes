@@ -109,11 +109,11 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.Gz(z),source.Gz(z))
             testCase.verifyEqual(basis.Gzz(z),source.Gzz(z))
             testCase.verifyEqual(basis.APV(z),source.APV(z))
-            testCase.verifyFalse(ismember("F",basis.capabilities))
+            testCase.verifyFalse(ismember("F",basis.capabilities.variables))
             testCase.verifyFalse(ismethod(basis,"F"))
             testCase.verifyFalse(isprop(basis,"h"))
             testCase.verifyFalse(isprop(basis,"eigenvalues"))
-            testCase.verifyError(@() basis.G(z,normalization="depthRMSF"),"IMNeutralLabelModesBasis:UnknownNormalization")
+            testCase.verifyError(@() basis.G(z,normalization="depthRMSF"),"IMNeutralLabelModesBasis:UnsupportedNormalization")
         end
 
         function scaledSelectedNeutralProjectionRecoversItsOwnCoefficients(testCase)
@@ -124,7 +124,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             z = linspace(-800,-600,4001).';
             weights = .05*ones(size(z));
             weights([1 end]) = .025;
-            projection = basis.projectionOnGrid(z,weights);
+            projection = basis.projectionOnGrid(z,weights,variable="APV");
             coefficients = [2.5;-.75];
             testCase.verifyEqual(projection.project(basis.APV(z)*coefficients),coefficients,AbsTol=2e-12)
             testCase.verifyEqual(projection.columnLabels,basis.columnLabels)
@@ -139,9 +139,9 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             z = linspace(-1000,0,1001).';
             weights = ones(size(z));
             weights([1 end]) = .5;
-            projection = basis.projectionOnGrid(z,weights);
+            projection = basis.projectionOnGrid(z,weights,variable="APV");
             testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),eye(2),AbsTol=2e-12)
-            selected = basis.projectionOnGrid(z,weights,columns=[2 1]);
+            selected = basis.projectionOnGrid(z,weights,variable="APV",columns=[2 1]);
             testCase.verifyEqual(selected.forwardMatrix*basis.APV(z),[0 1;1 0],AbsTol=2e-12)
         end
 

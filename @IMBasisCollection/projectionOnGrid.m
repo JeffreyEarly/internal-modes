@@ -11,6 +11,7 @@ function projection = projectionOnGrid(self,z,weights,options)
 % - Parameter options.page: requested page index
 % - Parameter options.variable: sampled variable, formulation by default
 % - Parameter options.columns: explicit array columns, all by default
+% - Parameter options.prepareRecovery: also prepare numerical recovery for Galerkin records
 % - Returns projection: fixed numerical projection
 arguments (Input)
     self (1,1) IMBasisCollection
@@ -18,10 +19,14 @@ arguments (Input)
     weights (:,1) double {mustBeReal,mustBeFinite}
     options.page (1,1) double {mustBeInteger,mustBePositive} = 1
     options.variable (1,1) string = ""
-    options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+    options.columns = ":"
+    options.prepareRecovery (1,1) logical = true
 end
 arguments (Output)
     projection (1,1) IMProjection
+end
+if options.variable == ""
+    error("IMScalarProjection:MissingVariable","Specify the independent scalar observations with variable=.");
 end
 args = namedargs2cell(options);
 projection = self.prepareProjection(z,weights,args{:});

@@ -82,9 +82,30 @@ classdef IMAnalyticalInternalModesBasis
         normalizationNameMap
         normalizationVectorRules_
         normalizationCache_
+        normalizationBuiltins_ (1,:) string = strings(1,0)
+    end
+
+    properties (Hidden, SetAccess = protected)
+        % Immutable construction identities; derived normalization stays separate.
+        basisContractState struct = struct()
     end
 
     properties (Dependent, SetAccess = private)
+        % Supported continuous operations and conditional preparation requirements.
+        % - Topic: Inspect basis sets
+        % Requested/resolved scientific identity, without evaluating normalization.
+        % - Topic: Inspect basis sets
+        scientificSpecification
+        % Original backend request and current selection, with unverified accuracy.
+        % - Topic: Inspect basis sets
+        constructionRecord
+        % Fixed, per-column or independent horizontal identity.
+        % - Topic: Inspect basis sets
+        horizontalKind
+        k
+        kSquared
+        % Signs of the active normalization form.
+        % - Topic: Normalize modes
         nColumns
         family
         columnLabels
@@ -94,11 +115,49 @@ classdef IMAnalyticalInternalModesBasis
         normSignatures
     end
 
+    methods
+        projection = projectionOnGrid(self,z,weights,options)
+        transform = scalarTransform(self,z,weights,options)
+    end
+
     methods (Hidden)
+        function value = isBuiltinNormalization(self,name)
+            value = ismember(string(name),self.normalizationBuiltins_);
+        end
+        function self = withConstructionRequest(self,request,solver,selection)
+            % Attach original creation evidence without evaluating the modes.
+            arguments
+                self
+                request (1,1) struct
+                solver
+                selection (1,1) struct = struct()
+            end
+            state = self.basisContractState;
+            state.request = request;
+            state.requestedSolver = IMBasisContracts.solverRecord(solver,false);
+            if isfield(selection,"sortIndex"), state.sourceEigenpairIndices = reshape(selection.sortIndex,1,[]); end
+            if isfield(selection,"modeSelectionDiagnostics"), state.selectionDiagnostics = selection.modeSelectionDiagnostics; end
+            self.basisContractState = state;
+        end
         recipe = projectionRecipe(self,options)
     end
 
     methods
+        function value = get.scientificSpecification(self)
+            value = IMBasisContracts.scientificSpecification(self);
+        end
+        function value = get.constructionRecord(self)
+            value = IMBasisContracts.constructionRecord(self);
+        end
+        function value = get.horizontalKind(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kind;
+        end
+        function value = get.k(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.k;
+        end
+        function value = get.kSquared(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kSquared;
+        end
         function self = IMAnalyticalInternalModesBasis(options)
             % Create an exact internal-mode basis.
             %
@@ -143,7 +202,7 @@ classdef IMAnalyticalInternalModesBasis
             self.rawVariableFunction = options.rawVariableFunction;
             self.rawUzFunction = options.rawUzFunction;
             self.orientationSigns = ones(1,length(self.h));
-            zOrientation = self.integrationGrid(self.zDomain);
+            zOrientation = linspace(self.zDomain(1),self.zDomain(2),max(1025,4*self.nColumns+1)).';
             GValues = self.rawVariable("G",zOrientation);
             FValues = self.rawVariable("F",zOrientation);
             if self.evp.formulation == "G"
@@ -166,6 +225,8 @@ classdef IMAnalyticalInternalModesBasis
             else
                 self.normalization = options.normalization;
             end
+            self.normalizationBuiltins_ = self.normalizationNames();
+            self.basisContractState = IMBasisContracts.initialState(self);
         end
 
         function self = addNormalization(self, name, rule)
@@ -183,6 +244,7 @@ classdef IMAnalyticalInternalModesBasis
             end
 
             name = self.normalizationName(name);
+            self.normalizationBuiltins_ = setdiff(self.normalizationBuiltins_,string(name),"stable");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRules_{name} = [];
             self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
@@ -210,14 +272,19 @@ classdef IMAnalyticalInternalModesBasis
         end
 
         function value = get.capabilities(self)
-            value = ["F","G",self.evp.formulation+"z"];
-            if IMInternalModesNormalizationTools.isWave(self.evp) || IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
-                value = ["F","G","Fz","Gz","Gzz"];
-            end
+            value = IMBasisContracts.capabilities(self);
         end
 
         function value = get.normSignatures(self)
-            value = sign(real(diag(self.gramMatrix(variable="G")))).';
+            value = IMBasisContracts.normalizationSignatures(self);
+        end
+
+        function self = set.normalization(self,name)
+            name = self.normalizationName(name);
+            if ~isempty(self.normalizationNameMap) && ~isKey(self.normalizationNameMap,name)
+                error("IMAnalyticalInternalModesBasis:UnsupportedNormalization","The basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
         end
 
         function self = withNormalization(self,name)
@@ -238,6 +305,7 @@ classdef IMAnalyticalInternalModesBasis
                 error("IMAnalyticalInternalModesBasis:InvalidColumns","Select distinct existing columns.");
             end
             source = self;
+            self.basisContractState = IMBasisContracts.selectState(self.basisContractState,columns);
             info = self.modeInfo(columns,:);
             self.rawVariableFunction = @(~,variable,z) IMInternalModesNormalizationTools.columns(source.rawVariable(variable,z),columns);
             self.rawUzFunction = @(~,z) IMInternalModesNormalizationTools.columns(source.rawUz(z),columns);
@@ -253,8 +321,13 @@ classdef IMAnalyticalInternalModesBasis
             self.modeSelectionDiagnostics.modeInfo = info;
             self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
             for name = reshape(self.normalizationNames(),1,[])
-                self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
-                if ~isempty(self.normalizationVectorRules_{name})
+                cached = source.normalizationCache_(name);
+                if ~isempty(cached), self.normalizationCache_(name,cached(columns)); end
+                if isempty(self.normalizationVectorRules_{name})
+                    rule = self.normalizationNameMap{name};
+                    self.normalizationNameMap{name} = @(~,j) rule(source,columns(j));
+                elseif ~ismember(name,self.normalizationBuiltins_)
+                    self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
                     self.normalizationVectorRules_{name} = @(~) IMInternalModesNormalizationTools.columns(source.normalizationFactors(name),columns);
                 end
             end
@@ -296,6 +369,8 @@ classdef IMAnalyticalInternalModesBasis
             if ~ismember(variable,["F","G"])
                 error("IMAnalyticalInternalModesBasis:UnsupportedVariable","Unsupported channel %s. Inspect capabilities for supported channels and derivatives.",variable);
             end
+            IMBasisContracts.validateEvaluation(self,variable,derivativeOrder);
+            IMBasisContracts.validateNormalization(self,options.normalization);
             if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
                 error("IMAnalyticalInternalModesBasis:OutsideDomain","Evaluation points must lie within zDomain.");
             end
@@ -329,39 +404,7 @@ classdef IMAnalyticalInternalModesBasis
             values = self.evaluate(z,variable="G",derivativeOrder=2,normalization=options.normalization);
         end
 
-        function transform = discreteTransform(self,grid)
-            % Build a fixed-grid F/G transform from the retained rigid hydrostatic basis.
-            arguments
-                self IMAnalyticalInternalModesBasis
-                grid (1,1) IMVerticalGrid
-            end
-            if ~isequal(grid.zDomain,self.zDomain)
-                error("IMAnalyticalInternalModesBasis:IncompatibleDomain","The basis and grid must have the same zDomain.");
-            end
-            rigid = true;
-            for boundary = [self.evp.surfaceBoundary,self.evp.bottomBoundary]
-                if self.evp.formulation == "F"
-                    rigid = rigid && boundary.a == 0 && boundary.b ~= 0 && boundary.c == 0 && boundary.d == 0;
-                else
-                    rigid = rigid && boundary.a ~= 0 && boundary.b == 0 && boundary.c == 0 && boundary.d == 0;
-                end
-            end
-            if self.evp.modeFamily ~= "hydrostatic" || ~rigid || any(self.h < 0)
-                error("IMAnalyticalInternalModesBasis:UnavailableDiscreteTransform","The fixed-grid analytical bridge requires a rigid hydrostatic F/G basis including its barotropic sector.");
-            end
-            F = self.F(grid.z); G = self.G(grid.z);
-            HF = real(diag(self.gramMatrix(variable="F"))).';
-            if ismember(string(self.normalization),["depth","depthRMSF"])
-                HF(:) = diff(self.zDomain);
-            end
-            HG = HF./self.h;
-            HG(~isfinite(self.h)) = 0;
-            N2Values = self.N2(grid.z);
-            channel = @(interior,target,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=diag(target),targetMajorantGramMatrix=diag(target));
-            channels = struct(F=channel(ones(size(grid.z)),HF,true(1,self.nColumns)),G=channel(N2Values/self.evp.g,HG,isfinite(self.h)));
-            transformMetadata = struct(construction="IMAnalyticalInternalModesBasis.discreteTransform",columnLabels=self.columnLabels,relation="F=h Gz with F0=1 and G0=0");
-            transform = IMInternalModesDiscreteTransform(z=grid.z,weights=grid.weights,modeNumber=self.modeNumber,h=self.h,normalization=string(self.normalization),inverseF=F,inverseG=G,endpointF=self.F(self.zDomain([2 1]).'),endpointG=self.G(self.zDomain([2 1]).'),channelData=channels,primaryVariable="F",zDomain=self.zDomain,g=self.evp.g,modeFamily="hydrostatic",N2Values=N2Values,problemMetadata=transformMetadata,basis=self);
-        end
+        transform = discreteTransform(self,grid,options)
 
         function names = normalizationNames(self)
             % Return installed normalization rule names.
@@ -386,7 +429,7 @@ classdef IMAnalyticalInternalModesBasis
                 options.normalization = self.normalization
             end
 
-            F = self.rawVariable("F", z) ./ self.normalizationFactors(options.normalization);
+            F = self.evaluate(z,variable="F",normalization=options.normalization);
         end
 
         function G = G(self, z, options)
@@ -403,7 +446,7 @@ classdef IMAnalyticalInternalModesBasis
                 options.normalization = self.normalization
             end
 
-            G = self.rawVariable("G", z) ./ self.normalizationFactors(options.normalization);
+            G = self.evaluate(z,variable="G",normalization=options.normalization);
         end
 
         function values = uz(self, z, options)
@@ -445,8 +488,9 @@ classdef IMAnalyticalInternalModesBasis
                 factors = self.normalizationCache_(name);
                 if isempty(factors) && self.nColumns > 0
                     factors = vectorRule(self);
-                    factors = abs(factors);
-                    factors(factors == 0 | ~isfinite(factors)) = 1;
+                    if ~isreal(factors) || any(factors <= 0 | ~isfinite(factors))
+                        error("IMAnalyticalInternalModesBasis:NullNormalization","Every retained mode requires a finite positive normalization divisor.");
+                    end
                     self.normalizationCache_(name,factors);
                 elseif self.nColumns == 0
                     factors = zeros(1,0);
@@ -457,8 +501,9 @@ classdef IMAnalyticalInternalModesBasis
             for iMode = 1:length(self.h)
                 factors(iMode) = rule(self, iMode);
             end
-            factors = abs(factors);
-            factors(factors == 0 | ~isfinite(factors)) = 1;
+            if ~isreal(factors) || any(factors <= 0 | ~isfinite(factors))
+                error("IMAnalyticalInternalModesBasis:NullNormalization","Every retained mode requires a finite positive normalization divisor.");
+            end
         end
 
         function spec = majorantInnerProduct(self, options)
@@ -823,13 +868,12 @@ classdef IMAnalyticalInternalModesBasis
         end
 
         function factor = surfacePressureNormFactor(self, iMode)
-            % Return the raw surface `F` value.
+            % Return the magnitude of the raw surface `F` value.
             %
             % This developer utility returns the exact raw surface value
             % $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
-            % It gives unit surface `F` value when that value is finite and
-            % nonzero. If the raw value is unavailable, zero, or nonfinite,
-            % it returns `1` so normalization remains well defined.
+            % It gives unit surface-F magnitude for an admissible column.
+            % Zero or nonfinite divisors are rejected by normalizationFactors.
             %
             % - Topic: Developer topics
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
@@ -837,10 +881,7 @@ classdef IMAnalyticalInternalModesBasis
             % - Returns factor: raw surface-pressure scale factor
             % - Developer: true
             values = self.rawVariable("F", self.zDomain(2));
-            factor = values(1,iMode);
-            if ~isfinite(factor) || abs(factor) <= 1e-12
-                factor = 1;
-            end
+            factor = abs(values(1,iMode));
         end
     end
 
@@ -916,6 +957,10 @@ classdef IMAnalyticalInternalModesBasis
 
         function factors = profileNormFactors(self,name)
             [z,w] = self.integrationGrid(self.zDomain);
+            if startsWith(name,"maxAbs")
+                z = [self.zDomain(1);z;self.zDomain(2)];
+                w = [0;w;0];
+            end
             D = diff(self.zDomain);
             switch name
                 case {"unity","kConstant","generalizedEnergy","geostrophic","generalizedPotentialEnstrophy"}
@@ -941,7 +986,7 @@ classdef IMAnalyticalInternalModesBasis
                     end
                 case "surfacePressure"
                     factors = abs(self.rawVariable("F",self.zDomain(2)));
-                    factors(factors <= 1e-12 | ~isfinite(factors)) = 1;
+
                 case "waveEnergy"
                     F = self.rawVariable("F",z); G = self.rawVariable("G",z);
                     factors = sqrt(sum(w.*(abs(F).^2+(self.evp.parameters.k*D)^2*abs(G).^2),1)/D);
@@ -997,10 +1042,11 @@ classdef IMAnalyticalInternalModesBasis
             end
         end
 
-        function [z,weights] = integrationGrid(~, zBounds)
-            grid = IMVerticalGrid.physicalDepth(sort(zBounds),1025);
-            z = grid.z;
-            weights = grid.weights;
+        function [z,weights] = integrationGrid(self, zBounds)
+            originalCount = self.nColumns;
+            if ~isempty(fieldnames(self.basisContractState)), originalCount = self.basisContractState.originalColumnCount; end
+            [z,weights] = legpts(max(128,4*originalCount+32),sort(zBounds));
+            z = z(:); weights = weights(:);
         end
 
         function context = context(self)

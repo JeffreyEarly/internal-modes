@@ -63,6 +63,10 @@ classdef IMInternalModes < IMEigenvalueProblem
         % - Topic: Inspect internal-mode configuration
         background IMBackground
 
+        % Original scientific factory arguments, before derived defaults.
+        % - Topic: Inspect internal-mode configuration
+        requestedSpecification struct = struct()
+
         % Planetary rotation rate in radians per second.
         %
         % The default is Earth rotation, $$7.2921\times10^{-5}\ \mathrm{rad\,s^{-1}}$$.
@@ -453,6 +457,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("hydrostaticGModes",varargin);
             evp = IMInternalModes.hydrostaticGModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -551,6 +556,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("hydrostaticFModes",varargin);
             evp = IMInternalModes.hydrostaticFModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -644,6 +650,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("geostrophicAPVModes",varargin);
             evp = IMInternalModes.geostrophicAPVModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -710,6 +717,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("geostrophicGeneralizedPotentialEnstrophyModes",varargin);
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -790,6 +798,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("meanDensityAnomalyModes",varargin);
             evp = IMInternalModes.meanDensityAnomalyModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -875,6 +884,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("waveModesAtWavenumber",varargin);
             evp = IMInternalModes.waveModesAtWavenumberFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 
@@ -960,6 +970,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             end
             [args,background] = IMInternalModes.backgroundArguments("waveModesAtFrequency",varargin);
             evp = IMInternalModes.waveModesAtFrequencyFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
             if ~isempty(background), evp.background = background; end
         end
 

@@ -18,10 +18,10 @@ z = linspace(zDomain(1), zDomain(2), 512).';
 problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),k=k,endpoints="surface");
 solver = IMSolverSpectral(nEVP=nEVP);
 boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
-basisSet = boundaryModes.rotateBoundaryDepth(g0=g0);
+basisSet = boundaryModes.orthogonalizeGeneralizedEnergy(g0=g0,gd=0);
 
 F = squeeze(basisSet.F(z));
-modeLabels = "L = " + string(L/1000) + " km, h_0 = " + compose("%.3g", basisSet.h0) + " m";
+modeLabels = "L = " + string(L/1000) + " km, h_{bb} = " + compose("%.3g", basisSet.boundaryDepth) + " m";
 
 figure(Name="V2 geostrophic zero-APV modes: exponential stratification",Color="w");
 plot(F, z, LineWidth=1.2)

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Integrate shared observation recovery and native scalar physical adapters with the capable-basis API. Expose structured capabilities, scientific identity and construction evidence on each family; retain lazy normalization, signed forms, original integration effort and selected-coordinate physical duals.
+- Use the manuscript boundary-buoyancy operation `orthogonalizeGeneralizedEnergy`, signed `boundaryDepth` and `boundaryResponseMatrix`. Preserve explicit endpoint inventories and negative/null directions, and remove general public rotations and the prescribed-sampling abstraction.
+
 - Preserve sample-by-zero shapes when finite-difference bases evaluate empty mode inventories or their derivatives. Record unavailable exact requests in the bandwidth comparison explicitly, without retrying smaller inventories.
 
 - Require explicit V2 `nModes` for numerical and analytical EVP solves and positive-wavenumber bulk pages; zero-only bulk requests need only `nInertialModes`. Unify scalar and collection `evaluate(z,variable=...,derivativeOrder=...)` syntax with explicit variables and zero-order default, retaining convenient profile/derivative methods. Add per-call normalization to ordinary and streamed collection evaluation, derive derivative support from actual basis capabilities, and reject unsupported requests before streaming callbacks. Preserve endpoint-coordinate meanings by rejecting incompatible normalization overrides. Correct the free-surface example's surface residual for the manuscript `F=D*Gz` convention, select the explicit `bandwidth` coordinate in its comparison example, and update affected examples and callers.

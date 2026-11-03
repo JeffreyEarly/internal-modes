@@ -23,9 +23,19 @@ context = self.evp.contextForSolver(self.solver);
 factors = self.normalizationFactors(self.normalization);
 target = self.gramMatrix(variable=options.variable);
 majorant = self.majorantGramMatrix(variable=options.variable);
-active = abs(diag(target)) > 1e3*eps(max(1,diag(majorant)));
+active = true(1,numel(self.modeNumber));
+surface = self.evp.surfaceBoundary;
+bottom = self.evp.bottomBoundary;
+ordinaryNeumann = surface.a == 0 && surface.c == 0 && surface.d == 0 ...
+    && bottom.a == 0 && bottom.c == 0 && bottom.d == 0;
+if options.variable == "G" && (isa(self,"IMHydrostaticModesBasis") || self.evp.modeFamily == "hydrostatic" && self.evp.formulation == "F" && ordinaryNeumann)
+    % The exact zero-eigenvalue F-constant sector has G=0. This includes
+    % rigid hydrostatic modes and literal APV Neumann/Neumann limits.
+    % No sampled values or magnitude cutoff decide scientific activity.
+    active = ~isinf(self.h);
+end
 [~,notPositive] = chol(target(active,active));
-recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant,activeColumnMask=active, ...
     supportsLeakage=notPositive==0,supportsQuadratic=~isa(self,"IMMeanDensityAnomalyModesBasis"),provenance=provenance,zDomain=self.zDomain, ...
     evaluateFunction=@(z) self.rawVariable(options.variable,z)./factors,weightFunction=@(z) IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context),spec=spec);
 end

@@ -33,14 +33,14 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
         function rotatedSourceCoordinatesPreserveCanonicalProjection(testCase)
             data = IMGeostrophicTransformSourceTests.buildCase();
             [vorticity,displacement] = IMGeostrophicTransformSourceTests.sourceFields(data.z,data.k,3);
-            rotated = data.zeroAPVModes.rotateBoundaryDepth(g0=data.g0,gd=data.gd);
+            rotated = data.zeroAPVModes.orthogonalizeGeneralizedEnergy(g0=data.g0,gd=data.gd);
             [SqCanonical,S0Canonical] = data.transform.transformSourceForward(vorticitySource=vorticity,displacementSource=displacement);
             [SqRotated,S0Rotated] = data.transform.transformSourceForward(vorticitySource=vorticity,displacementSource=displacement,zeroAPVCoordinates=rotated);
             testCase.verifyEqual(SqRotated,SqCanonical,AbsTol=0)
             for iK = 1:numel(data.k)
-                expected = rotated.rotationMatrix(:,:,iK)\reshape(S0Canonical(:,iK,:),2,[]);
+                expected = rotated.boundaryResponseMatrix(:,:,iK)\reshape(S0Canonical(:,iK,:),2,[]);
                 testCase.verifyEqual(reshape(S0Rotated(:,iK,:),2,[]),expected,RelTol=3e-12,AbsTol=3e-12)
-                testCase.verifyEqual(rotated.rotationMatrix(:,:,iK)*reshape(S0Rotated(:,iK,:),2,[]),reshape(S0Canonical(:,iK,:),2,[]),RelTol=3e-12,AbsTol=3e-12)
+                testCase.verifyEqual(rotated.boundaryResponseMatrix(:,:,iK)*reshape(S0Rotated(:,iK,:),2,[]),reshape(S0Canonical(:,iK,:),2,[]),RelTol=3e-12,AbsTol=3e-12)
             end
         end
 

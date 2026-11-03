@@ -27,6 +27,9 @@ classdef IMDiscreteTransformAssessment
     % consistency and can be near roundoff even when the Gram rule is poor.
     % The two condition-number columns describe algebraic sensitivity and
     % are diagnostics rather than acceptance policies.
+    % Physical Gram distortion remains finite when the sampled Gram is
+    % deficient. Acceptance additionally requires full physical Gram rank
+    % and successful recovery; these gates are recorded separately.
     %
     % When enabled, rejected-mode leakage is
     %
@@ -61,6 +64,8 @@ classdef IMDiscreteTransformAssessment
     % - `inverseMatrixConditionNumber`: $$\kappa_2(A_\mathrm i)$$.
     % - `gramConditionNumber`: $$\kappa_2(\Gamma_N)$$.
     % - `sampledGramRank`: numerical rank of $$\Gamma_N$$.
+    % - `physicalGramRankAccepted`: full physical Gram rank for this prefix.
+    % - `recoveryAccepted`: successful shared-kernel recovery for this prefix.
     % - `leakageError`: $$\ell_N$$, or `NaN` when disabled.
     % - `leakageLimitingModeNumber`: rejected physical mode label attaining $$\ell_N$$.
     % - `quadraticAliasingError`: $$q_N$$, or `NaN` when disabled.
@@ -229,8 +234,8 @@ classdef IMDiscreteTransformAssessment
             % - Parameter options.retentionReason: readable retention reason
             % - Returns assessment: initialized assessment
             arguments
-                options.transform (1,1) IMDiscreteTransform
-                options.candidateTransform (1,1) IMDiscreteTransform
+                options.transform (1,1) IMScalarDiscreteTransform
+                options.candidateTransform (1,1) IMScalarDiscreteTransform
                 options.weightFit = []
                 options.requestedPointCount (1,1) double {mustBeInteger, mustBePositive}
                 options.prefixDiagnostics table

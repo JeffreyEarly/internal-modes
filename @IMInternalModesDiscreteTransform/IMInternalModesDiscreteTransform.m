@@ -17,16 +17,17 @@ classdef IMInternalModesDiscreteTransform
     %
     % $$A_\mathrm{f}^{V}A_\mathrm{i}^{V}=Q_V.$$
     %
-    % `modeProjectionFunctional` returns
-    % $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$ before the active Gram solve;
-    % `transformForward` returns coefficients after that solve. Both use
-    % the signed Pontryagin pairing. `targetMajorantGramMatrix` returns the
+    % `modeProjectionFunctional` returns the raw physical pairings
+    % $$(A_\mathrm{i}^{V})^\mathsf{T}W_VX$$. `transformForward` applies the
+    % separately prepared sampled recovery. The Galerkin specialization uses
+    % positive-metric least squares or signed physical-dual correction. `targetMajorantGramMatrix` returns the
     % induced positive Hilbert majorant used for error magnitudes; it does
     % not replace the signed projection metric.
-    % A channel may instead carry a supplied forward operator, reported by
-    % `forwardOperator`, such as the truncated collocation of
-    % `IMInternalModesDiscreteTransform.hydrostaticRoot`; Gram diagnostics still measure
-    % the sampled metric.
+    % Each channel stores its physical projection separately from an engine-
+    % prepared numerical `recovery`. `forwardOperator` names the domain
+    % specialization, such as the root truncated collocation, while
+    % `recovery.recoveryPolicy` identifies the shared numerical policy.
+    % Physical Gram diagnostics continue to measure the sampled metric.
     % When `variable` is omitted, accessors use `primaryVariable`, which is
     % the solved formulation when that channel was requested and otherwise
     % the first directly representable requested channel.
@@ -102,11 +103,11 @@ classdef IMInternalModesDiscreteTransform
             % `targetMajorantGramMatrix`. Diagnostic inverse
             % matrices and endpoint traces are supplied for both variables,
             % including variables that have no direct sampled projection.
-            % An available channel may also supply `suppliedForwardMatrix`
-            % and its name `suppliedForwardOperator`; it then replaces the
-            % Galerkin forward matrix, while Gram diagnostics still use the
-            % metric. Prefixes keep its leading rows, and weight changes
-            % keep it unchanged.
+            % Each available channel keeps a physical `IMProjection` record
+            % separately from its prepared `IMDiscreteTransform` recovery.
+            % A channel may supply `recovery` to reuse an engine-prepared
+            % operator, such as the root extended-span specialization.
+            % Prefixes and weight changes preserve that distinction.
             %
             % - Topic: Developer topics — Construct transforms
             % - Declaration: transform = IMInternalModesDiscreteTransform(options)
@@ -159,6 +160,9 @@ classdef IMInternalModesDiscreteTransform
                     error("IMInternalModesDiscreteTransform:InvalidChannelData", "channelData must contain F and G records.");
                 end
                 data = channelData.(field);
+                if isfield(data,"suppliedForwardMatrix") || isfield(data,"suppliedForwardOperator")
+                    error("IMInternalModesDiscreteTransform:RawForwardUnsupported","Supply an engine-prepared IMDiscreteTransform recovery instead of an arbitrary forward matrix.");
+                end
                 requiredFields = ["available","reason","activeModeMask","metricMatrix","targetGramMatrix","targetMajorantGramMatrix"];
                 if ~all(isfield(data,requiredFields))
                     error("IMInternalModesDiscreteTransform:InvalidChannelData", "Each channel record must contain availability, reason, active mask, metric, and target Gram data.");
@@ -182,33 +186,57 @@ classdef IMInternalModesDiscreteTransform
                             || norm(data.targetMajorantGramMatrix-data.targetMajorantGramMatrix.',2) > majorantTolerance
                         error("IMInternalModesDiscreteTransform:NonSymmetricMatrix", "Metric, target Gram, and target majorant Gram matrices must be symmetric.");
                     end
-                    projection = IMProjection(inverseMatrices.(field),data.metricMatrix,data.targetGramMatrix,majorantGramMatrix=data.targetMajorantGramMatrix,activeColumnMask=data.activeModeMask,columnLabels=string(options.modeNumber));
+                    labels = string(options.modeNumber);
+                    if isfield(options.problemMetadata,"columnLabels")
+                        labels = reshape(string(options.problemMetadata.columnLabels),1,[]);
+                    end
+                    if isfield(data,"physicalProjection")
+                        projection = data.physicalProjection;
+                        if ~isa(projection,"IMProjection") || ~isequal(projection.sampledBasis,inverseMatrices.(field)) || ~isequal(projection.columnLabels,labels) || ~isequal(projection.activeColumnMask,data.activeModeMask) || ~isequal(projection.metricMatrix,data.metricMatrix) || ~isequal(projection.targetGramMatrix,data.targetGramMatrix) || ~isequal(projection.majorantGramMatrix,data.targetMajorantGramMatrix)
+                            error("IMInternalModesDiscreteTransform:InvalidPhysicalProjection","A prepared physicalProjection must preserve this channel's synthesis, labels, activity and physical forms.");
+                        end
+                    else
+                        projection = IMProjection(inverseMatrices.(field),data.metricMatrix,data.targetGramMatrix,majorantGramMatrix=data.targetMajorantGramMatrix,activeColumnMask=data.activeModeMask,columnLabels=labels,prepareRecovery=false);
+                    end
+                    data.physicalProjection = projection;
                     data.metricMatrix = projection.metricMatrix;
                     data.targetGramMatrix = projection.targetGramMatrix;
                     data.targetMajorantGramMatrix = projection.majorantGramMatrix;
                     data.gramMatrix = projection.gramMatrix;
-                    data.forwardMatrix = projection.forwardMatrix;
                     data.relativeGramOperatorError = projection.gramError;
-                    data.roundTripError = projection.roundTripError;
                     data.inverseMatrixConditionNumber = projection.inverseMatrixConditionNumber;
                     data.gramConditionNumber = projection.gramConditionNumber;
                     data.targetGramIsPositiveDefinite = projection.targetGramIsPositiveDefinite;
                     data.sampledGramRank = projection.sampledGramRank;
-                    data.forwardOperator = "galerkin";
-                    if isfield(data,"suppliedForwardMatrix") && ~isempty(data.suppliedForwardMatrix)
-                        supplied = data.suppliedForwardMatrix;
-                        if ~isequal(size(supplied),[nModes nSamples]) || any(~isfinite(supplied),"all")
-                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "suppliedForwardMatrix must be a finite matrix with one row per aligned mode and one column per sample.");
+                    if isfield(data,"recovery")
+                        recovery = data.recovery;
+                        if ~isa(recovery,"IMDiscreteTransform")
+                            error("IMInternalModesDiscreteTransform:InvalidRecovery","Supply an engine-prepared IMDiscreteTransform recovery.");
                         end
-                        if any(supplied(~data.activeModeMask,:) ~= 0,"all")
-                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "Inactive columns must have zero supplied forward rows.");
+                        matching = [isequal(recovery.synthesisMatrix,inverseMatrices.(field)),isequal(recovery.columnLabels,labels),isequal(recovery.activeColumnMask,data.activeModeMask)];
+                        if ~all(matching)
+                            error("IMInternalModesDiscreteTransform:InvalidRecovery","Prepared %s recovery must preserve synthesis, labels and activity (matching: %d, %d, %d).",variable,matching(1),matching(2),matching(3));
                         end
-                        if ~isfield(data,"suppliedForwardOperator") || strlength(string(data.suppliedForwardOperator)) == 0
-                            error("IMInternalModesDiscreteTransform:InvalidSuppliedForward", "Name a supplied forward operator with suppliedForwardOperator.");
+                        if (isfield(recovery.metadata,"normalization") && ~isequal(string(recovery.metadata.normalization),string(options.normalization))) || (isfield(recovery.metadata,"variable") && ~isequal(string(recovery.metadata.variable),variable)) || (isfield(recovery.metadata,"z") && ~isequal(recovery.metadata.z,z))
+                            error("IMInternalModesDiscreteTransform:InvalidRecovery","Prepared recovery metadata must match the channel variable, normalization and physical sample ordering.");
                         end
-                        data.forwardMatrix = supplied;
-                        data.roundTripError = norm(supplied*inverseMatrices.(field)-diag(double(data.activeModeMask)),2);
-                        data.forwardOperator = string(data.suppliedForwardOperator);
+                    else
+                        active = data.activeModeMask;
+                        scales = diag(1./sqrt(diag(data.targetMajorantGramMatrix(active,active))));
+                        [fitFactor,isPositiveFit] = IMProjection.positiveFitFactor(data.metricMatrix);
+                        metadata = struct(variable=variable,normalization=string(options.normalization),observationLayout="sampled scalar "+variable,observationNorm="not declared",physicalPairing="family-owned signed metric");
+                        if isPositiveFit
+                            recovery = IMDiscreteTransform.fromObservationMatrices(inverseMatrices.(field),columnLabels=labels,activeColumnMask=active,policy="sampledLeastSquares",coefficientScale=scales,fitFactor=fitFactor,physicalDual=projection.physicalDualMatrix,failureMode="diagnostic",metadata=metadata);
+                        else
+                            recovery = IMDiscreteTransform.fromObservationMatrices(inverseMatrices.(field),columnLabels=labels,activeColumnMask=active,policy="correctedPhysicalDual",coefficientScale=scales,physicalDual=projection.physicalDualMatrix,failureMode="diagnostic",metadata=metadata);
+                        end
+                    end
+                    data.recovery = recovery;
+                    data.forwardMatrix = recovery.forwardMatrix;
+                    data.roundTripError = recovery.diagnostics.roundTripError;
+                    data.recoveryDiagnostics = recovery.diagnostics;
+                    if ~isfield(data,"forwardOperator")
+                        if recovery.recoveryPolicy == "extendedSpan", data.forwardOperator = "extendedSpan"; else, data.forwardOperator = "galerkin"; end
                     end
                     availableVariables(end+1) = variable; %#ok<AGROW>
                 else
@@ -274,7 +302,8 @@ classdef IMInternalModesDiscreteTransform
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
-            tf = self.channelData.(char(string(options.variable))).available;
+            data = self.channelData.(char(string(options.variable)));
+            tf = data.available && data.recovery.success;
         end
 
         function reason = forwardTransformReason(self, options)
@@ -284,10 +313,12 @@ classdef IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.channelData.(char(string(options.variable)));
-            if data.available
-                reason = "";
-            else
+            if ~data.available
                 reason = data.reason;
+            elseif ~data.recovery.success
+                reason = "The prepared recovery is unavailable: "+data.recovery.status;
+            else
+                reason = "";
             end
         end
 
@@ -314,8 +345,8 @@ classdef IMInternalModesDiscreteTransform
             % Return the name of the variable's forward operator.
             %
             % `"galerkin"` is $$(\Phi^\mathsf{T}W\Phi)^{-1}\Phi^\mathsf{T}W$$;
-            % other names identify a supplied operator, such as
-            % `"truncatedCollocation"`.
+            % other names identify a domain specialization, such as
+            % `"truncatedCollocation"`, implemented by shared extended-span recovery.
             %
             % - Topic: Inspect samples and modes
             % - Declaration: name = forwardOperator(transform,options)
@@ -332,14 +363,56 @@ classdef IMInternalModesDiscreteTransform
         function matrix = forwardMatrix(self, options)
             % Return the variable-qualified forward matrix.
             %
-            % This is the Galerkin matrix unless the channel was built with
-            % a supplied forward operator; see `forwardOperator`.
+            % This is the engine-prepared recovery matrix; physical source
+            % projection is available separately through `physicalProjection`.
             arguments
                 self IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
-            matrix = data.forwardMatrix;
+            if ~data.recovery.success
+                error("IMInternalModesDiscreteTransform:UnavailableRecovery","The prepared %s recovery failed: %s.",options.variable,data.recovery.status);
+            end
+            matrix = data.recovery.forwardMatrix;
+        end
+
+        function transform = recovery(self,options)
+            % Return the immutable prepared numerical recovery for one channel.
+            %
+            % Physical Gram/pairing diagnostics belong to `physicalProjection`.
+            % A failed diagnostic preparation has `success=false` and must not
+            % be applied as if it recovered the active modal span.
+            %
+            % - Topic: Assess transform quality
+            % - Returns transform: IMDiscreteTransform with declared policy and recovery diagnostics
+            arguments (Input)
+                self IMInternalModesDiscreteTransform
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
+            end
+            arguments (Output)
+                transform (1,1) IMDiscreteTransform
+            end
+            data = self.requireChannel(string(options.variable));
+            transform = data.recovery;
+        end
+
+        function projection = physicalProjection(self,options)
+            % Return the physical pairing and Gram record for one channel.
+            %
+            % Its physical dual retains quadrature error and is independent
+            % of the selected coefficient recovery policy.
+            %
+            % - Topic: Assess transform quality
+            % - Returns projection: IMProjection physical record
+            arguments (Input)
+                self IMInternalModesDiscreteTransform
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
+            end
+            arguments (Output)
+                projection (1,1) IMProjection
+            end
+            data = self.requireChannel(string(options.variable));
+            projection = data.physicalProjection;
         end
 
         function matrix = metricMatrix(self, options)
@@ -412,8 +485,10 @@ classdef IMInternalModesDiscreteTransform
             if size(values,1) ~= length(self.z)
                 error("IMInternalModesDiscreteTransform:InvalidSampleCount", "values must have one row for each sample point in z.");
             end
-            pairings = self.inverseMatrices.(char(variable)).'*data.metricMatrix*values;
+            shape = size(values);
+            pairings = data.physicalProjection.samplePairingMatrix*reshape(values,length(self.z),[]);
             pairings(~data.activeModeMask,:) = 0;
+            pairings = reshape(pairings,[length(self.modeNumber) shape(2:end)]);
         end
 
         function coefficients = transformForward(self, values, options)
@@ -428,7 +503,7 @@ classdef IMInternalModesDiscreteTransform
             if size(values,1) ~= length(self.z)
                 error("IMInternalModesDiscreteTransform:InvalidSampleCount", "values must have one row for each sample point in z.");
             end
-            coefficients = data.forwardMatrix*values;
+            coefficients = data.recovery.transformForward(values);
         end
 
         function values = transformBack(self, coefficients, options)
@@ -441,7 +516,9 @@ classdef IMInternalModesDiscreteTransform
             if size(coefficients,1) ~= length(self.modeNumber)
                 error("IMInternalModesDiscreteTransform:InvalidCoefficientCount", "coefficients must have one row for each aligned family mode.");
             end
-            values = self.inverseMatrices.(char(string(options.variable)))*coefficients;
+            shape = size(coefficients);
+            values = self.inverseMatrices.(char(string(options.variable)))*reshape(coefficients,length(self.modeNumber),prod(shape(2:end)));
+            values = reshape(values,[length(self.z) shape(2:end)]);
         end
 
         function diagnostics = channelDiagnostics(self, options)
@@ -452,7 +529,7 @@ classdef IMInternalModesDiscreteTransform
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.primaryVariable
             end
             data = self.requireChannel(string(options.variable));
-            diagnostics = rmfield(data,intersect(["metricMatrix","targetGramMatrix","targetMajorantGramMatrix","gramMatrix","forwardMatrix","suppliedForwardMatrix"],string(fieldnames(data)).',"stable"));
+            diagnostics = rmfield(data,intersect(["metricMatrix","targetGramMatrix","targetMajorantGramMatrix","gramMatrix","forwardMatrix","physicalProjection","recovery"],string(fieldnames(data)).',"stable"));
         end
 
         function value = relativeGramOperatorError(self, options)
@@ -527,8 +604,11 @@ classdef IMInternalModesDiscreteTransform
                 data = preparedChannels.(field);
                 data.activeModeMask = data.activeModeMask(1:nModes);
                 if data.available
-                    if isfield(data,"suppliedForwardMatrix") && ~isempty(data.suppliedForwardMatrix)
-                        data.suppliedForwardMatrix = data.suppliedForwardMatrix(1:nModes,:);
+                    if isfield(data,"physicalProjection"), data = rmfield(data,"physicalProjection"); end
+                    if data.recovery.recoveryPolicy == "extendedSpan"
+                        data.recovery = data.recovery.selectOutputs(1:nModes);
+                    else
+                        data = rmfield(data,"recovery");
                     end
                     data.targetGramMatrix = data.targetGramMatrix(1:nModes,1:nModes);
                     data.targetMajorantGramMatrix = data.targetMajorantGramMatrix(1:nModes,1:nModes);
@@ -545,27 +625,13 @@ classdef IMInternalModesDiscreteTransform
                 primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily,N2Values=self.N2Values,problemMetadata=metadata,basis=selectedBasis);
         end
 
-        function transform = transformWithForwardOperators(self,forwardF,forwardG,name)
-            % Replace coefficient recovery while preserving sampled metrics.
-            arguments
-                self (1,1) IMInternalModesDiscreteTransform
-                forwardF (:,:) double {mustBeReal,mustBeFinite}
-                forwardG (:,:) double {mustBeReal,mustBeFinite}
-                name (1,1) string
-            end
-            prepared = self.channelData;
-            prepared.F.suppliedForwardMatrix = forwardF;
-            prepared.G.suppliedForwardMatrix = forwardG;
-            prepared.F.suppliedForwardOperator = name;
-            prepared.G.suppliedForwardOperator = name;
-            transform = IMInternalModesDiscreteTransform(z=self.z,weights=self.weights,modeNumber=self.modeNumber,h=self.h,normalization=self.normalization, ...
-                inverseF=self.inverseMatrices.F,inverseG=self.inverseMatrices.G,endpointF=self.endpointMatrices.F,endpointG=self.endpointMatrices.G, ...
-                channelData=prepared,primaryVariable=self.primaryVariable,zDomain=self.zDomain,g=self.g,modeFamily=self.modeFamily, ...
-                N2Values=self.N2Values,problemMetadata=self.problemMetadata,basis=self.basis);
-        end
-
         function transform = transformWithWeights(self, weights)
-            % Replace shared weights while reusing prepared modal data.
+            % Replace physical quadrature weights while reusing modal data.
+            %
+            % Ordinary Galerkin recovery is rebuilt for the new metric.
+            % Extended-span recovery retains its declared parent fit/test
+            % space and provenance; the physical projection record is
+            % refreshed independently.
             arguments
                 self IMInternalModesDiscreteTransform
                 weights (:,1) double {mustBeReal, mustBeFinite}
@@ -583,6 +649,8 @@ classdef IMInternalModesDiscreteTransform
                     error("IMInternalModesDiscreteTransform:MissingPreparedMetric", "The %s channel does not contain reusable sampled-metric components.",variable);
                 end
                 data.metricMatrix = diag(data.interiorWeight.*weights)+data.endpointMetricMatrix;
+                if isfield(data,"physicalProjection"), data = rmfield(data,"physicalProjection"); end
+                if data.recovery.recoveryPolicy ~= "extendedSpan", data = rmfield(data,"recovery"); end
                 preparedChannels.(field) = data;
             end
             transform = IMInternalModesDiscreteTransform(z=self.z,weights=weights,modeNumber=self.modeNumber,h=self.h,normalization=self.normalization, ...

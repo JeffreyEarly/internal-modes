@@ -55,8 +55,17 @@ self.targetGramMatrix = targetGram;
 self.majorantGramMatrix = majorant;
 self.activeColumnMask = activeMask;
 self.columnLabels = labels;
-self.forwardMatrix = zeros(nColumns,nSamples);
+self.forwardMatrix = [];
+self.recovery = [];
+self.physicalDualMatrix = [];
+self.physicalDualStatus = "unavailable";
 if isempty(active)
+    self.coefficientScale_ = zeros(0);
+    self.physicalDualMatrix = zeros(nColumns,nSamples);
+    self.physicalDualStatus = "available";
+    if self.projectionKind == "prescribedDual"
+        self.forwardMatrix = zeros(nColumns,nSamples);
+    end
     self.sampledGramRank = 0;
     self.gramConditionNumber = NaN;
     self.targetGramIsPositiveDefinite = true;
@@ -71,19 +80,45 @@ normalizedGram = (gramActive./coefficientScale)./coefficientScale.';
 normalizedGram = majorantFactor.'\normalizedGram/majorantFactor;
 normalizedGram = 0.5*(normalizedGram+normalizedGram.');
 normalizedPairing = majorantFactor.'\(samplePairingMatrix(active,:)./coefficientScale);
+self.coefficientScale_ = diag(1./coefficientScale)/majorantFactor;
 rankTolerance = max(size(normalizedGram))*eps(norm(normalizedGram,2));
 self.sampledGramRank = sum(svd(normalizedGram) > rankTolerance);
-if self.sampledGramRank < numel(active)
-    self.forwardMatrix(active,:) = (majorantFactor\(pinv(normalizedGram,rankTolerance)*normalizedPairing))./coefficientScale;
-else
-    self.forwardMatrix(active,:) = (majorantFactor\(normalizedGram\normalizedPairing))./coefficientScale;
-end
 self.gramConditionNumber = cond(gramActive);
 targetActive = targetGram(active,active);
 normalizedTarget = (targetActive./coefficientScale)./coefficientScale.';
 normalizedTarget = majorantFactor.'\normalizedTarget/majorantFactor;
 normalizedTarget = 0.5*(normalizedTarget+normalizedTarget.');
 self.targetGramIsPositiveDefinite = min(eig(normalizedTarget)) > 100*eps(norm(normalizedTarget,2));
+if self.projectionKind == "prescribedDual"
+    % This is the caller's physical coefficient normalization, not a sampled
+    % synthesis inverse. A singular supplied system is explicitly unavailable.
+    if self.sampledGramRank < numel(active)
+        self.physicalDualStatus = "singularCoefficientSystem";
+    else
+        self.forwardMatrix = zeros(nColumns,nSamples);
+        self.forwardMatrix(active,:) = self.coefficientScale_*(normalizedGram\normalizedPairing);
+        if any(~isfinite(self.forwardMatrix),"all") || any(any(samplePairingMatrix(active,:) ~= 0,1) & all(self.forwardMatrix(active,:) == 0,1))
+            self.forwardMatrix = [];
+            self.physicalDualStatus = "unrepresentableCoefficientSystem";
+        else
+            self.physicalDualMatrix = self.forwardMatrix;
+            self.physicalDualStatus = "available";
+        end
+    end
+else
+    targetTolerance = max(size(normalizedTarget))*eps(norm(normalizedTarget,2));
+    if sum(svd(normalizedTarget) > targetTolerance) < numel(active)
+        error("IMProjection:SingularTarget","A physical coefficient dual requires a nonsingular continuous target on the active columns.");
+    end
+    self.physicalDualMatrix = zeros(nColumns,nSamples);
+    self.physicalDualMatrix(active,:) = self.coefficientScale_*(normalizedTarget\normalizedPairing);
+    if any(~isfinite(self.physicalDualMatrix),"all") || any(any(samplePairingMatrix(active,:) ~= 0,1) & all(self.physicalDualMatrix(active,:) == 0,1))
+        self.physicalDualMatrix = [];
+        self.physicalDualStatus = "unrepresentableCoefficientSystem";
+    else
+        self.physicalDualStatus = "available";
+    end
+end
 end
 
 function matrix = symmetricMatrix(matrix,name)

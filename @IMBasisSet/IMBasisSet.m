@@ -127,15 +127,38 @@ classdef IMBasisSet
         zDomain
     end
 
-    properties (Access = private)
+    properties (Access = protected)
         % Map from normalization names to rule handles.
         normalizationNameMap
         % Optional whole-family normalization rule handles.
         normalizationVectorRuleMap
         normalizationCache_
+        normalizationBuiltins_ (1,:) string = strings(1,0)
+    end
+
+    properties (Hidden, SetAccess = protected)
+        % Immutable construction identities; derived normalization stays separate.
+        basisContractState struct = struct()
     end
 
     properties (Dependent, SetAccess = private)
+        % Supported continuous operations and conditional preparation requirements.
+        % - Topic: Inspect basis sets
+        capabilities
+        % Requested/resolved scientific identity, without evaluating normalization.
+        % - Topic: Inspect basis sets
+        scientificSpecification
+        % Original backend request and current selection, with unverified accuracy.
+        % - Topic: Inspect basis sets
+        constructionRecord
+        % Fixed, per-column or independent horizontal identity.
+        % - Topic: Inspect basis sets
+        horizontalKind
+        k
+        kSquared
+        % Signs of the active normalization form.
+        % - Topic: Normalize modes
+        normSignatures
         % Number of retained columns, including all special sectors.
         nColumns
         % Scientific family name and retained column identities.
@@ -144,11 +167,56 @@ classdef IMBasisSet
         modeInfo
     end
 
+    methods
+        projection = projectionOnGrid(self,z,weights,options)
+        transform = scalarTransform(self,z,weights,options)
+    end
+
     methods (Hidden)
+        function value = isBuiltinNormalization(self,name)
+            value = ismember(string(name),self.normalizationBuiltins_);
+        end
+        function self = withConstructionRequest(self,request,solver,selection)
+            % Attach original creation evidence without evaluating the modes.
+            arguments
+                self
+                request (1,1) struct
+                solver
+                selection (1,1) struct = struct()
+            end
+            state = self.basisContractState;
+            state.request = request;
+            state.requestedSolver = IMBasisContracts.solverRecord(solver,false);
+            if isfield(selection,"sortIndex"), state.sourceEigenpairIndices = reshape(selection.sortIndex,1,[]); end
+            if isfield(selection,"modeSelectionDiagnostics"), state.selectionDiagnostics = selection.modeSelectionDiagnostics; end
+            self.basisContractState = state;
+        end
         recipe = projectionRecipe(self,options)
     end
 
     methods
+        function value = get.scientificSpecification(self)
+            value = IMBasisContracts.scientificSpecification(self);
+        end
+        function value = get.constructionRecord(self)
+            value = IMBasisContracts.constructionRecord(self);
+        end
+        function value = get.horizontalKind(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kind;
+        end
+        function value = get.k(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.k;
+        end
+        function value = get.kSquared(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kSquared;
+        end
+        function value = get.capabilities(self)
+            value = IMBasisContracts.capabilities(self);
+        end
+        function value = get.normSignatures(self)
+            value = IMBasisContracts.normalizationSignatures(self);
+        end
+
         function self = IMBasisSet(options)
             % Create a solved scalar basis set.
             %
@@ -198,6 +266,9 @@ classdef IMBasisSet
             self.normalizationVectorRuleMap = configureDictionary("string","cell");
             self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
             self = self.addVectorNormalization("unity",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode),@(basisSet) basisSet.innerProductNormFactors());
+            self.normalizationBuiltins_ = self.normalizationNames();
+            if ~isa(self,"IMInternalModesBasis"), IMBasisContracts.validateNormalization(self,self.normalization); end
+            self.basisContractState = IMBasisContracts.initialState(self);
         end
 
         function self = addNormalization(self, name, rule)
@@ -241,6 +312,7 @@ classdef IMBasisSet
             end
 
             name = self.normalizationName(name);
+            self.normalizationBuiltins_ = setdiff(self.normalizationBuiltins_,string(name),"stable");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = [];
             self = self.resetNormalizationCache();
@@ -267,6 +339,14 @@ classdef IMBasisSet
             value = self.modeInfo.columnLabel.';
         end
 
+        function self = set.normalization(self,name)
+            name = self.normalizationName(name);
+            if ~isempty(self.normalizationNameMap) && ~isKey(self.normalizationNameMap,name)
+                error("IMBasisSet:UnsupportedNormalization","The basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
+        end
+
         function self = withNormalization(self,name)
             % Select a registered normalization without solving or evaluating it.
             name = self.normalizationName(name);
@@ -287,6 +367,7 @@ classdef IMBasisSet
                 error("IMBasisSet:InvalidColumns","Select distinct existing columns.");
             end
             source = self;
+            self.basisContractState = IMBasisContracts.selectState(self.basisContractState,columns);
             info = self.modeInfo(columns,:);
             self = self.selectAlignedColumns(columns);
             self.nativeModes = self.nativeModes(:,columns);
@@ -303,8 +384,13 @@ classdef IMBasisSet
             end
             self = self.resetNormalizationCache();
             for name = reshape(self.normalizationNames(),1,[])
-                self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
-                if ~isempty(self.normalizationVectorRuleMap{name})
+                cached = source.normalizationCache_(name);
+                if ~isempty(cached), self.normalizationCache_(name,cached(columns)); end
+                if isempty(self.normalizationVectorRuleMap{name})
+                    rule = self.normalizationNameMap{name};
+                    self.normalizationNameMap{name} = @(~,j) rule(source,columns(j));
+                elseif ~ismember(name,self.normalizationBuiltins_)
+                    self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
                     self.normalizationVectorRuleMap{name} = @(~) IMInternalModesNormalizationTools.columns(source.normalizationFactors(name),columns);
                 end
             end
@@ -463,8 +549,9 @@ classdef IMBasisSet
                 end
                 factors = reshape(factors,1,[]);
             end
-            factors = abs(factors);
-            factors(factors == 0 | ~isfinite(factors)) = 1;
+            if ~isreal(factors) || any(factors <= 0 | ~isfinite(factors))
+                error("IMBasisSet:NullNormalization","Every retained mode requires a finite positive normalization divisor.");
+            end
             if ~isempty(vectorRule), self.normalizationCache_(name,factors); end
         end
 
@@ -880,6 +967,7 @@ classdef IMBasisSet
                 vectorRule (1,1) function_handle
             end
             name = self.normalizationName(name);
+            self.normalizationBuiltins_ = setdiff(self.normalizationBuiltins_,string(name),"stable");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = vectorRule;
             self = self.resetNormalizationCache();
@@ -961,7 +1049,8 @@ classdef IMBasisSet
 
             continuousGramMatrix = self.gramMatrix();
             targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
-            transform = IMDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization),inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=targetGramMatrix);
+            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
+            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization));
         end
 
         function name = normalizationName(~, normalization)

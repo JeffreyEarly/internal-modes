@@ -77,7 +77,9 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
                 basis = solver.solveEVP(evp,nModes=2);
                 testCase.verifyEqual(basis.evaluate(z,variable=formulation,derivativeOrder=1),basis.uz(z),AbsTol=0);
                 if formulation == "G", diagnostic = "F"; else, diagnostic = "G"; end
-                testCase.verifyFalse(ismember(diagnostic+"z",basis.capabilities));
+                description = basis.capabilities;
+                iVariable = find(description.variables == diagnostic,1);
+                testCase.verifyFalse(ismember(1,description.derivativeOrders{iVariable}));
                 testCase.verifyError(@() basis.evaluate(z,variable=diagnostic,derivativeOrder=1),"IMInternalModesBasis:UnsupportedDerivative");
             end
 
@@ -87,7 +89,9 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
                 rawVariableFunction=@(~,variable,z) (variable=="G").*sin(pi*(z+1))+(variable=="F").*(pi^2*cos(pi*(z+1)).^2+1), ...
                 rawUzFunction=@(~,z) pi*cos(pi*(z+1)));
             testCase.verifyEqual(exact.Gz(z),exact.uz(z),AbsTol=0);
-            testCase.verifyFalse(any(ismember(["Fz","Gzz"],exact.capabilities)));
+            description = exact.capabilities;
+            testCase.verifyFalse(ismember(1,description.derivativeOrders{description.variables == "F"}));
+            testCase.verifyFalse(ismember(2,description.derivativeOrders{description.variables == "G"}));
             testCase.verifyError(@() exact.Fz(z),"IMAnalyticalInternalModesBasis:UnsupportedDerivative");
             testCase.verifyError(@() exact.Gzz(z),"IMAnalyticalInternalModesBasis:UnsupportedDerivative");
         end

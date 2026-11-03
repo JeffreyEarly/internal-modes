@@ -15,7 +15,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             weights = [0.5;ones(23,1);0.5]/24;
             old = scalar.discreteTransform(z=z,weights=weights,nModes=3);
             collection = IMBasisCollection({scalar});
-            projection = collection.projectionOnGrid(z,weights,columns=1:3);
+            projection = collection.projectionOnGrid(z,weights,columns=1:3,variable="u");
             testCase.verifyEqual(projection.sampledBasis,old.inverseMatrix,AbsTol=1e-12)
             testCase.verifyEqual(projection.metricMatrix,old.metricMatrix,AbsTol=1e-12)
             testCase.verifyEqual(projection.targetGramMatrix,old.targetGramMatrix,AbsTol=1e-12)
@@ -46,7 +46,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.provenance.solveAccuracy,"unverified")
             testCase.verifyEqual(projection.prefix(2).provenance,projection.provenance)
             testCase.verifyEqual(collection.assess(z,weights,variable="G").identity.projectionProvenance,projection.provenance)
-            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G",columns=[1 1]),"IMProjection:InvalidColumns")
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G",columns=[1 1]),"IMAnalyticalInternalModesBasis:InvalidColumns")
         end
         function signedEndpointMetricsAndMissingTracesAreExplicit(testCase)
             solver = IMSolverSpectral(nEVP=48);
@@ -54,13 +54,13 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             basis = solver.solveEVP(evp,nModes=3);
             z = linspace(-1,0,17).';
             weights = [0.5;ones(15,1);0.5]/16;
-            signed = IMBasisCollection({basis}).projectionOnGrid(z,weights).metricMatrix;
+            signed = IMBasisCollection({basis}).projectionOnGrid(z,weights,variable="u").metricMatrix;
             endpoint = evp.innerProduct().surfaceWeights(1);
             testCase.verifyEqual(signed(end,end),weights(end)+endpoint.coefficient*endpoint.c^2,AbsTol=1e-14)
-            testCase.verifyError(@() IMBasisCollection({basis}).projectionOnGrid(z(1:end-1),weights(1:end-1)),"IMProjection:MissingEndpointSample")
+            testCase.verifyError(@() IMBasisCollection({basis}).projectionOnGrid(z(1:end-1),weights(1:end-1),variable="u"),"IMProjection:MissingEndpointSample")
             evp = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition(a=1,b=0,c=0,d=1),bottomBoundary=IMBoundaryCondition.dirichlet());
             basis = solver.solveEVP(evp,nModes=3);
-            testCase.verifyError(@() IMBasisCollection({basis}).projectionOnGrid(z,weights),"IMProjection:UnsupportedDerivativeTrace")
+            testCase.verifyError(@() IMBasisCollection({basis}).projectionOnGrid(z,weights,variable="u"),"IMProjection:UnsupportedDerivativeTrace")
         end
         function signedAlignedAndMDAKeepDistinctCapabilities(testCase)
             N2 = @(z) 1e-4*ones(size(z));

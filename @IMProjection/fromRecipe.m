@@ -4,12 +4,18 @@ function projection = fromRecipe(self,z,weights,options)
     % - Parameter z: physical sample coordinates
     % - Parameter weights: fixed quadrature weights
     % - Parameter options.columns: explicit column selection, all by default
-    % - Returns projection: numerical projection and measurements
+    % - Parameter options.prepareRecovery: also prepare numerical recovery, true by default
+    % - Parameter options.failureMode: diagnostic or error on recovery failure
+    % - Parameter options.rankTolerance: relative cutoff for numerical recovery
+    % - Returns projection: physical pairing and optional numerical recovery
     arguments (Input)
         self (1,1) struct
         z (:,1) double {mustBeReal,mustBeFinite}
         weights (:,1) double {mustBeReal,mustBeFinite}
-        options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+        options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.columnLabels)
+        options.prepareRecovery (1,1) logical = true
+        options.failureMode (1,1) string {mustBeMember(options.failureMode,["diagnostic","error"])} = "diagnostic"
+        options.rankTolerance (1,1) double {mustBeReal,mustBePositive,mustBeFinite} = 1e-12
     end
     arguments (Output)
         projection (1,1) IMProjection
@@ -19,14 +25,10 @@ function projection = fromRecipe(self,z,weights,options)
     matrix = metric(self,z,weights);
     target = self.targetGramMatrix(columns,columns);
     majorant = self.majorantGramMatrix(columns,columns);
-    zeroTarget = abs(diag(target).') <= 1e3*eps(max(1,diag(majorant).'));
-    columnNorms = vecnorm(sampled,2,1);
-    zeroSample = columnNorms <= 1e3*eps(max(1,columnNorms));
-    if any(zeroTarget & ~zeroSample)
-        labels = self.columnLabels(columns);
-        error("IMProjection:UnsupportedZeroNormColumn","Nonzero sampled %s columns have zero continuous norm for label(s) %s.",self.variable,join(labels(zeroTarget & ~zeroSample),", "));
-    end
-    projection = IMProjection(sampled,matrix,target,majorantGramMatrix=majorant,activeColumnMask=~(zeroTarget & zeroSample),columnLabels=self.columnLabels(columns),provenance=self.provenance);
+    % A vanishing sampled column does not change scientific activity. In
+    % particular, an active signed-null physical norm must fail explicitly.
+    projection = IMProjection(sampled,matrix,target,majorantGramMatrix=majorant,activeColumnMask=self.activeColumnMask(columns),columnLabels=self.columnLabels(columns),provenance=self.provenance, ...
+        prepareRecovery=options.prepareRecovery,failureMode=options.failureMode,rankTolerance=options.rankTolerance);
 end
 
 function values = evaluate(self,z,options)
@@ -38,7 +40,7 @@ function values = evaluate(self,z,options)
     arguments (Input)
         self (1,1) struct
         z (:,1) double {mustBeReal,mustBeFinite}
-        options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+        options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.columnLabels)
     end
     arguments (Output)
         values (:,:) double
@@ -93,6 +95,9 @@ function matrix = metric(self,z,weights,options)
     endpoints = [self.spec.surfaceWeights;self.spec.bottomWeights];
     for i = 1:numel(endpoints)
         term = endpoints(i);
+        if term.coefficient == 0
+            continue
+        end
         if term.d ~= 0
             error("IMProjection:UnsupportedDerivativeTrace","The %s endpoint requires a derivative trace; value-only samples cannot represent this projection.",term.location);
         end
@@ -103,6 +108,9 @@ function matrix = metric(self,z,weights,options)
     if isfield(self.spec,"endpointInnerProductTerms")
         for i = 1:numel(self.spec.endpointInnerProductTerms)
             term = self.spec.endpointInnerProductTerms(i);
+            if term.coefficient == 0
+                continue
+            end
             if string(term.variable) ~= self.variable
                 error("IMProjection:UnsupportedCompanionTrace","The %s endpoint requires %s values in the %s pairing; paired-state projection is unsupported.",term.location,term.variable,self.variable);
             end
@@ -116,9 +124,7 @@ function assertAvailable(self)
     end
 end
 function columns = selectedColumns(self,columns)
-    if isempty(columns)
-        columns = 1:numel(self.columnLabels);
-    elseif any(columns > numel(self.columnLabels)) || numel(unique(columns)) ~= numel(columns)
+    if any(columns > numel(self.columnLabels)) || numel(unique(columns)) ~= numel(columns)
         error("IMProjection:InvalidColumns","Select distinct existing column indices; scientific labels are not array indices.");
     end
 end

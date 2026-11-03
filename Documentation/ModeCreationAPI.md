@@ -1,6 +1,6 @@
 # Creating mode families in V2
 
-The canonical workflow is physical background → family problem → solver → capable family basis. `IMModes` and `IMModeBasis` have been removed. Construction returns the numerical, analytical or specialized family object directly, retaining its applicable diagnostics, normalizations, projections, transforms and boundary-coordinate rotations.
+The canonical workflow is physical background → family problem → solver → capable family basis. `IMModes` and `IMModeBasis` have been removed. Construction returns the numerical, analytical or specialized family object directly, retaining its applicable diagnostics, normalizations, projections, transforms and boundary-buoyancy basis choices.
 
 ```matlab
 background = IMBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
@@ -91,7 +91,7 @@ GzPages = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="kC
 
 `variable` is required. `derivativeOrder` defaults to zero; derivative names such as `"Gz"` are not variable aliases. Convenient methods such as `F(z)`, `G(z)`, `Gz(z)` and `Gzz(z)` remain available where the family supports them. Collections return `nZ × nColumns × nSelectedPages` values, with selected page and column order preserved.
 
-Ordinary and streamed collection evaluation both accept `normalization`. Omitting it uses each stored basis's default. An override scales the requested profiles and derivatives without changing stored defaults, mode identities or the eigensolve. Collection metadata records each stored default and is unchanged by a per-call override. Unsupported variables, derivative orders and normalization overrides are checked across the selected bases before any streaming callback. Endpoint-coordinate bases reject overrides that would reinterpret their canonical or rotated coordinates; change those coordinates through the family's explicit rotation methods. See [bounded collection evaluation](BulkWaveBases.md).
+Ordinary and streamed collection evaluation both accept `normalization`. Omitting it uses each stored basis's default. An override scales the requested profiles and derivatives without changing stored defaults, mode identities or the eigensolve. Collection metadata records each stored default and is unchanged by a per-call override. Unsupported variables, derivative orders and normalization overrides are checked across the selected bases before any streaming callback. Endpoint bases apply the same column scaling to their response maps and physical forms. Orthogonalize the complete endpoint family before selecting columns; normalization remains a separate choice. See [bounded collection evaluation](BulkWaveBases.md).
 
 ## Profile convention and lazy normalization
 
@@ -116,17 +116,17 @@ Custom rules have signature `factor=rule(basis,j)`. Profile factors are computed
 | `"depthRMSF"` | $$D^{-1}\int |F_j|^2\,dz = 1$$ |
 | `"depthRMSG"` | $$D^{-1}\int |G_j|^2\,dz = 1$$ |
 | `"waveEnergy"` | $$D^{-1}\int [|F_j|^2 + (kD)^2|G_j|^2]\,dz = 1$$ at a fixed wavenumber |
-| `"generalizedEnergy"` | Unit magnitude under the family's signed generalized-energy G pairing |
+| `"generalizedEnergy"` | Unit magnitude under the family's signed generalized-energy form; boundary-buoyancy modes use the full state coefficient form |
 | `"generalizedPotentialEnstrophy"` | Unit value under the family's prescribed generalized-enstrophy normalization |
 | `"maxAbsF"`, `"maxAbsG"` | Unit maximum absolute profile amplitude |
 
 `normalizationNames()` reports available rules. Legacy rule names retain their family-specific definitions; they are not assumed interchangeable with descriptive names. Fixed-frequency modes do not offer one fixed-wavenumber `waveEnergy` normalization. A genuinely null pairing cannot define a unit norm and raises an error when that normalization is evaluated; it does not remove a retained column.
 
-The returned family objects retain applicable `gramMatrix`, `majorantGramMatrix`, `endpointGramTerms`, derivatives, spectra and transform methods. Neutral labels retain their prescribed APV dual. Endpoint-response families retain their canonical or rotated coordinate normalization and quadratic matrices; their normalization is not an ordinary EVP profile-normalization override. A capability present on the returned family is not hidden behind a generic wrapper.
+The returned family objects retain applicable `gramMatrix`, `majorantGramMatrix`, `endpointGramTerms`, derivatives, spectra and transform methods. Neutral labels retain their prescribed APV dual. Endpoint-response families retain their canonical identity, current boundary-response map and quadratic matrices through normalization and selection. A capability present on the returned family is not hidden behind a generic wrapper.
 
 ## Explicit zero-APV endpoints
 
-Generalized-energy coefficients define APV problems, pairings and endpoint-coordinate rotations. They do not select canonical endpoint responses.
+Generalized-energy coefficients define APV problems, pairings and endpoint-basis choices. They do not select canonical endpoint responses.
 
 ```matlab
 problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints="surface");
@@ -134,11 +134,13 @@ surface = solver.solveGeostrophicZeroAPVModes(problem);
 
 problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=["surface","bottom"]);
 boundary = solver.solveGeostrophicZeroAPVModes(problem);
-depth = boundary.rotateBoundaryDepth(g0=-.02,gd=.01);
+depth = boundary.orthogonalizeGeneralizedEnergy(g0=-.02,gd=.01);
+hbb = depth.boundaryDepth;
+M = depth.boundaryResponseMatrix;
 Hg = boundary.generalizedEnergyMatrix(g0=-.02,gd=.01);
 ```
 
-Canonical columns have unit response at the requested endpoint and zero response at the other endpoint. Both endpoint identities are returned in surface/bottom order. `endpoints=strings(1,0)` explicitly requests an empty coordinate inventory. These bases have no ordinary EVP eigenvalues or equivalent-depth property; the boundary-depth rotation separately exposes `h0`. Numerical and analytical endpoint families preserve pagewise response, energy, signed rotation and derivative operations.
+Canonical columns have unit response at the requested endpoint and zero response at the other endpoint. Both endpoint identities are returned in surface/bottom order. `endpoints=strings(1,0)` explicitly requests an empty coordinate inventory. These bases have no ordinary EVP eigenvalues or equivalent-depth property; the generalized-energy orthogonal basis separately exposes signed `boundaryDepth`. Numerical and analytical endpoint families preserve pagewise response, energy and derivative operations. Orthogonalization requires the complete originally requested endpoint family; choose its directions before reducing columns. Negative, zero and repeated boundary depths remain valid. See [boundary-buoyancy basis choices](BasisRotations.md).
 
 ## Neutral labels and exact critical intervals
 
@@ -149,7 +151,7 @@ neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
 labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=[-1000 0],nModes=3);
 z = -1000+((1:256).'-0.5)*(1000/256);
 weights = (1000/256)*ones(size(z));
-projection = labels.projectionOnGrid(z,weights);
+projection = labels.projectionOnGrid(z,weights,variable="APV");
 amplitudes = projection.project(labels.APV(z)*[1;-2;.5]);
 ```
 

@@ -202,94 +202,54 @@ gramError = zeros(nModes,1);
 roundTripError = zeros(nModes,1);
 inverseMatrixConditionNumber = nan(nModes,1);
 gramConditionNumber = nan(nModes,1);
-sampledRank = zeros(nModes,1);
 targetGramIsPositiveDefinite = false(nModes,1);
-diagnostics = table(modeCount,lastModeNumber,activeModeCount,gramError,roundTripError,inverseMatrixConditionNumber,gramConditionNumber,sampledRank,targetGramIsPositiveDefinite);
+diagnostics = table(modeCount,lastModeNumber,activeModeCount,gramError,roundTripError,inverseMatrixConditionNumber,gramConditionNumber,targetGramIsPositiveDefinite);
 end
 
 function [prefixData,variableDiagnostics] = preparePrefixData(candidateTransform,variables,retainForwardMatrices)
 nCandidate = length(candidateTransform.modeNumber);
-nSamples = length(candidateTransform.z);
 prefixData = struct();
 variableDiagnostics = struct();
+prefixes = cell(nCandidate,1);
+for nPrefix = 1:nCandidate
+    if nPrefix == nCandidate
+        prefixes{nPrefix} = candidateTransform;
+    else
+        prefixes{nPrefix} = candidateTransform.prefixTransform(nPrefix);
+    end
+end
 for variable = variables
     field = char(variable);
-    inverseFull = candidateTransform.inverseMatrix(variable=variable);
-    metric = candidateTransform.metricMatrix(variable=variable);
-    sampledGramFull = candidateTransform.gramMatrix(variable=variable);
-    targetGramFull = candidateTransform.targetGramMatrix(variable=variable);
-    activeFull = candidateTransform.activeModeMask(variable=variable);
-    pairingOperatorFull = inverseFull.'*metric;
-    sampledGramRank = zeros(nCandidate,1);
-    if retainForwardMatrices
-        forwardMatrices = cell(nCandidate,1);
-    else
-        forwardMatrices = cell(0,1);
-    end
+    recoveries = cell(nCandidate,1);
+    if retainForwardMatrices, forwardMatrices = cell(nCandidate,1); else, forwardMatrices = cell(0,1); end
     record = emptyVariableDiagnostics(nCandidate,candidateTransform.modeNumber);
+    record.physicalGramError = zeros(nCandidate,1);
+    record.recoverySucceeded = false(nCandidate,1);
+    record.physicalGramRank = zeros(nCandidate,1);
+    record.fitRank = nan(nCandidate,1);
+    record.observationRank = nan(nCandidate,1);
     for nPrefix = 1:nCandidate
-        inverse = inverseFull(:,1:nPrefix);
-        active = activeFull(1:nPrefix);
-        sampledGram = sampledGramFull(1:nPrefix,1:nPrefix);
-        targetGram = targetGramFull(1:nPrefix,1:nPrefix);
-        forward = zeros(nPrefix,nSamples);
-        if any(active)
-            sampledActive = sampledGram(active,active);
-            singularValues = svd(sampledActive);
-            rankTolerance = max(size(sampledActive))*eps(max(1,norm(sampledActive,2)));
-            prefixSampledGramRank = sum(singularValues > rankTolerance);
-            if prefixSampledGramRank < nnz(active)
-                forward(active,:) = pinv(sampledActive,rankTolerance)*pairingOperatorFull(active,:);
-            else
-                forward(active,:) = sampledActive\pairingOperatorFull(active,:);
-            end
-            targetActive = targetGram(active,active);
-            targetNorms = diag(targetActive);
-            scale = 1./sqrt(abs(targetNorms));
-            gramError = norm(scale.*(sampledActive-targetActive).*scale.',2);
-            if prefixSampledGramRank < nnz(active)
-                gramError = Inf;
-            end
-            projector = diag(double(active));
-            roundTripError = norm(forward*inverse-projector,2);
-            inverseSingularValues = svd(inverse(:,active));
-            inverseConditionNumber = singularValueConditionNumber(inverseSingularValues);
-            gramConditionNumber = singularValueConditionNumber(singularValues);
-            targetTolerance = 100*eps(max(1,norm(targetActive,2)));
-            targetIsPositiveDefinite = min(eig(targetActive)) > targetTolerance;
-            inverseRankTolerance = max(size(inverse(:,active)))*eps(max(inverseSingularValues));
-            sampledRank = sum(inverseSingularValues > inverseRankTolerance);
-        else
-            prefixSampledGramRank = 0;
-            gramError = 0;
-            roundTripError = 0;
-            inverseConditionNumber = NaN;
-            gramConditionNumber = NaN;
-            targetIsPositiveDefinite = true;
-            sampledRank = 0;
-        end
-        sampledGramRank(nPrefix) = prefixSampledGramRank;
-        if retainForwardMatrices
-            forwardMatrices{nPrefix} = forward;
-        end
+        prefix = prefixes{nPrefix};
+        active = prefix.activeModeMask(variable=variable);
+        projection = prefix.physicalProjection(variable=variable);
+        recovery = prefix.recovery(variable=variable);
+        recoveries{nPrefix} = recovery;
+        if retainForwardMatrices, forwardMatrices{nPrefix} = recovery.forwardMatrix; end
         record.activeModeCount(nPrefix) = nnz(active);
-        record.gramError(nPrefix) = gramError;
-        record.roundTripError(nPrefix) = roundTripError;
-        record.inverseMatrixConditionNumber(nPrefix) = inverseConditionNumber;
-        record.gramConditionNumber(nPrefix) = gramConditionNumber;
-        record.sampledRank(nPrefix) = sampledRank;
-        record.targetGramIsPositiveDefinite(nPrefix) = targetIsPositiveDefinite;
+        record.physicalGramError(nPrefix) = projection.gramError;
+        record.gramError(nPrefix) = projection.gramError;
+        if ~recovery.success || projection.sampledGramRank < nnz(active), record.gramError(nPrefix) = Inf; end
+        record.roundTripError(nPrefix) = recovery.diagnostics.roundTripError;
+        record.inverseMatrixConditionNumber(nPrefix) = projection.inverseMatrixConditionNumber;
+        record.gramConditionNumber(nPrefix) = projection.gramConditionNumber;
+        record.targetGramIsPositiveDefinite(nPrefix) = projection.targetGramIsPositiveDefinite;
+        record.recoverySucceeded(nPrefix) = recovery.success;
+        record.physicalGramRank(nPrefix) = projection.sampledGramRank;
+        record.fitRank(nPrefix) = recovery.diagnostics.fit.rank;
+        record.observationRank(nPrefix) = recovery.diagnostics.observation.rank;
     end
-    prefixData.(field) = struct(sampledGramRank=sampledGramRank,forwardMatrices={forwardMatrices});
+    prefixData.(field) = struct(recoveries={recoveries},forwardMatrices={forwardMatrices});
     variableDiagnostics.(field) = record;
-end
-end
-
-function value = singularValueConditionNumber(singularValues)
-if singularValues(end) == 0
-    value = Inf;
-else
-    value = singularValues(1)/singularValues(end);
 end
 end
 
@@ -347,6 +307,12 @@ for variable = variables
             label = NaN;
         else
             data = prefixData.(char(variable));
+            if ~data.recoveries{nPrefix}.success
+                errors(nPrefix) = Inf;
+                limitingVariable(nPrefix) = variable;
+                limitingModeNumber(nPrefix) = NaN;
+                continue
+            end
             coefficients = data.forwardMatrices{nPrefix}*values(:,rejected);
             active = candidateTransform.activeModeMask(variable=variable);
             active = active(1:nPrefix);
@@ -423,38 +389,33 @@ for iChannel = 1:size(channels,1)
         error("IMBasisSet:UnavailableDiscreteTransformPolicy", "The %s product channel does not define a positive continuous product norm.",channelName);
     end
 
-    targetInverse = candidateTransform.inverseMatrix(variable=target);
-    targetMetric = candidateTransform.metricMatrix(variable=target);
-    sampledPairings = targetInverse.'*(targetMetric*sampledProducts);
     activeFull = candidateTransform.activeModeMask(variable=target);
-    sampledGramFull = candidateTransform.gramMatrix(variable=target);
     targetGramFull = candidateTransform.targetGramMatrix(variable=target);
     targetMajorantGramFull = candidateTransform.targetMajorantGramMatrix(variable=target);
     data = prefixData.(char(target));
-    sampledCoefficients = zeros(0,nPairs);
     continuousCoefficients = zeros(0,nPairs);
     previousSelected = false(nPairs,1);
-    previousSampledFullRank = true;
-    sampledFactor = zeros(0,0);
     targetFactor = zeros(0,0);
     for nPrefix = 1:nCandidate
         active = activeFull(1:nPrefix);
         selected = usable & max(pairIndices,[],2) <= nPrefix;
-        sampledGram = sampledGramFull(1:nPrefix,1:nPrefix);
         targetGram = targetGramFull(1:nPrefix,1:nPrefix);
         targetMajorantGram = targetMajorantGramFull(1:nPrefix,1:nPrefix);
-        sampledFullRank = data.sampledGramRank(nPrefix) == nnz(active);
-        [sampledCoefficients,sampledFactor] = updateProjectionSolutions(sampledCoefficients,sampledFactor,previousSelected,selected,active, ...
-            sampledGram,sampledPairings,sampledFullRank,previousSampledFullRank);
-        [continuousCoefficients,targetFactor] = updateProjectionSolutions(continuousCoefficients,targetFactor,previousSelected,selected,active, ...
-            targetGram,pairings,true,true);
+        [continuousCoefficients,targetFactor] = updateContinuousProjectionSolutions(continuousCoefficients,targetFactor,previousSelected,selected,active,targetGram,pairings);
+        recovery = data.recoveries{nPrefix};
         if ~any(selected)
             previousSelected = selected;
-            previousSampledFullRank = sampledFullRank;
+            continue
+        end
+        if ~recovery.success
+            errors(nPrefix) = Inf;
+            limitingChannel(nPrefix) = channelName;
+            previousSelected = selected;
             continue
         end
         selectedPairs = find(selected);
-        difference = sampledCoefficients(:,selected)-continuousCoefficients(:,selected);
+        sampledCoefficients = recovery.forwardMatrix(active,:)*sampledProducts(:,selected);
+        difference = sampledCoefficients-continuousCoefficients(:,selected);
         targetMajorantActive = targetMajorantGram(active,active);
         values = IMProjection.relativeCoefficientNorm(difference,targetMajorantActive,productNorms(selected));
         [value,iLimiting] = max(values);
@@ -466,12 +427,12 @@ for iChannel = 1:size(channels,1)
             limitingLabelJ(nPrefix) = candidateTransform.modeNumber(pair(2));
         end
         previousSelected = selected;
-        previousSampledFullRank = sampledFullRank;
     end
 end
 end
 
-function [solutions,factor] = updateProjectionSolutions(solutions,factor,previousSelected,selected,active,matrix,pairings,isFullRank,previousWasFullRank)
+function [solutions,factor] = updateContinuousProjectionSolutions(solutions,factor,previousSelected,selected,active,matrix,pairings)
+% Continuous-reference coefficient forms are physical projections, not sampled recovery.
 nActive = nnz(active);
 nPairs = length(selected);
 if nActive == 0
@@ -482,22 +443,7 @@ end
 activeMatrix = matrix(active,active);
 activePairings = pairings(active,:);
 previousActiveCount = size(solutions,1);
-if isFullRank
-    factor = extendPositiveFactor(factor,activeMatrix,previousActiveCount);
-else
-    factor = zeros(0,0);
-end
-requiresFullSolve = ~isFullRank || (~previousWasFullRank && previousActiveCount > 0);
-if requiresFullSolve
-    solutions = zeros(nActive,nPairs);
-    if isFullRank
-        solutions(:,selected) = solvePositiveSystem(activeMatrix,factor,activePairings(:,selected));
-    else
-        rankTolerance = max(nActive,1)*eps(max(1,norm(activeMatrix,2)));
-        solutions(:,selected) = pinv(activeMatrix,rankTolerance)*activePairings(:,selected);
-    end
-    return
-end
+factor = extendPositiveFactor(factor,activeMatrix,previousActiveCount);
 if nActive == previousActiveCount+1
     solutions(nActive,nPairs) = 0;
     if previousActiveCount > 0 && any(previousSelected)

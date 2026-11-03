@@ -51,9 +51,7 @@ classdef IMInternalModesBasis < IMBasisSet
         % Physical modal frequencies; imaginary values indicate nonpropagating roots.
         frequency
         % Available fields and vertical derivative channels.
-        capabilities
         % Signs of the family G pairing in the active normalization.
-        normSignatures
     end
 
     methods (Hidden)
@@ -120,23 +118,17 @@ classdef IMInternalModesBasis < IMBasisSet
             if isempty(options.normalization)
                 self.normalization = IMInternalModesNormalizationTools.default(self.evp);
             end
+            self.normalizationBuiltins_ = self.normalizationNames();
+            IMBasisContracts.validateNormalization(self,self.normalization);
         end
 
         function value = get.frequency(self)
             value = IMInternalModesNormalizationTools.frequency(self.evp,self.h);
         end
 
-        function value = get.capabilities(self)
-            value = ["F","G"];
-            if self.evp.formulation == "F", value(end+1) = "Fz"; else, value = [value,"Gz","Gzz"]; end
-            if IMInternalModesNormalizationTools.isWave(self.evp) || IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp) || isa(self,"IMGeostrophicModesBasis") || isa(self,"IMMeanDensityAnomalyModesBasis")
-                value = ["F","G","Fz","Gz","Gzz"];
-            end
-        end
 
-        function value = get.normSignatures(self)
-            value = sign(real(diag(self.gramMatrix(variable="G")))).';
-        end
+
+
 
         function values = evaluate(self,z,options)
             % Evaluate physical fields and derivatives with one shared normalization.
@@ -174,6 +166,8 @@ classdef IMInternalModesBasis < IMBasisSet
             if ~ismember(variable,["F","G"])
                 error("IMInternalModesBasis:UnsupportedVariable","Unsupported channel %s. Inspect capabilities for supported channels and derivatives.",variable);
             end
+            IMBasisContracts.validateEvaluation(self,variable,derivativeOrder);
+            IMBasisContracts.validateNormalization(self,options.normalization);
             if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
                 error("IMInternalModesBasis:OutsideDomain","Evaluation points must lie within zDomain.");
             end
@@ -229,7 +223,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.normalization = self.normalization
             end
 
-            G = self.rawVariable("G", z) ./ self.normalizationFactors(options.normalization);
+            G = self.evaluate(z,variable="G",normalization=options.normalization);
         end
 
         function F = F(self, z, options)
@@ -251,7 +245,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.normalization = self.normalization
             end
 
-            F = self.rawVariable("F", z) ./ self.normalizationFactors(options.normalization);
+            F = self.evaluate(z,variable="F",normalization=options.normalization);
         end
 
         function spec = majorantInnerProduct(self, options)
@@ -747,14 +741,12 @@ classdef IMInternalModesBasis < IMBasisSet
         end
 
         function factor = surfacePressureNormFactor(self, iMode)
-            % Return the raw surface `F` value.
+            % Return the magnitude of the raw surface `F` value.
             %
             % This developer utility returns the raw surface value
             % $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
-            % It gives unit surface `F` value when the raw surface value is
-            % finite and nonzero. If that value is unavailable, zero, or
-            % nonfinite, it returns `1` so normalization remains well
-            % defined.
+            % It gives unit surface-F magnitude for an admissible column.
+            % Zero or nonfinite divisors are rejected by normalizationFactors.
             %
             % - Topic: Developer topics — Normalization rules
             % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
@@ -762,10 +754,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Returns factor: raw surface-pressure scale factor
             % - Developer: true
             values = self.rawVariable("F", self.zDomain(2));
-            factor = values(1,iMode);
-            if ~isfinite(factor) || abs(factor) <= 1e-12
-                factor = 1;
-            end
+            factor = abs(values(1,iMode));
         end
 
         function values = rawVariable(self, variable, z)
@@ -920,9 +909,7 @@ classdef IMInternalModesBasis < IMBasisSet
 
         function factors = surfacePressureNormFactors(self)
             % Return raw surface-F factors for the whole family.
-            factors = self.rawVariable("F",self.zDomain(2));
-            invalid = ~isfinite(factors) | abs(factors) <= 1e-12;
-            factors(invalid) = 1;
+            factors = abs(self.rawVariable("F",self.zDomain(2)));
         end
     end
 

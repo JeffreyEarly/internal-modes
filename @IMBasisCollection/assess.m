@@ -14,7 +14,7 @@ arguments (Input)
     weights (:,1) double {mustBeReal,mustBeFinite}
     options.page (1,1) double {mustBeInteger,mustBePositive} = 1
     options.variable (1,1) string = ""
-    options.columns (1,:) double {mustBeInteger,mustBePositive} = []
+    options.columns = ":"
     options.prefixColumnCounts (1,:) double {mustBeInteger,mustBePositive} = []
     options.leakage struct = struct.empty
     options.products struct = struct.empty

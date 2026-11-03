@@ -43,7 +43,7 @@ classdef IMGeostrophicZeroAPVModes
     %
     % Solvers return one mode with unit response at each requested endpoint
     % and zero response at the other endpoint. Generalized-energy
-    % coefficients are supplied later to basis rotation methods; they do
+    % coefficients are supplied later to basis orthogonalization methods; they do
     % not change this problem or decide which endpoint coordinates exist.
     % For two endpoints,
     %
@@ -57,7 +57,7 @@ classdef IMGeostrophicZeroAPVModes
     % problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],rotationRate=7.2921e-5,latitude=33,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
     % solver = IMSolverSpectral(nEVP=128);
     % boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
-    % depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0);
+    % orthogonal = boundaryModes.orthogonalizeGeneralizedEnergy(g0=-0.035,gd=0);
     % ```
     %
     % - Topic: Create geostrophic zero-APV problems

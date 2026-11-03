@@ -13,7 +13,7 @@ classdef IMBasisAssessmentTests < matlab.unittest.TestCase
             w = [0.5;ones(11,1);0.5]/12;
             [~,legacy] = basis.discreteTransform(z=z,weights=w,leakageTolerance=1e-8,nCheckModes=18,quadraticAliasingTolerance=1e-8);
             count = 13;
-            p = collection.projectionOnGrid(z,w,columns=1:count);
+            p = collection.projectionOnGrid(z,w,columns=1:count,variable="u");
             checkGram = basis.gramMatrix();
             leakage = struct(sampledValues=basis.u(z),normSquared=diag(checkGram),columnLabels=string(basis.modeNumber));
             zr = basis.solver.innerProductGrid(basis.zDomain);
@@ -24,7 +24,7 @@ classdef IMBasisAssessmentTests < matlab.unittest.TestCase
             end
             [zr,order] = sort(zr);
             wr = wr(order);
-            referenceProjection = collection.projectionOnGrid(zr,wr,columns=1:count);
+            referenceProjection = collection.projectionOnGrid(zr,wr,columns=1:count,variable="u");
             U = referenceProjection.sampledBasis;
             Mr = referenceProjection.metricMatrix;
             pairs = nchoosek(1:count,2).';

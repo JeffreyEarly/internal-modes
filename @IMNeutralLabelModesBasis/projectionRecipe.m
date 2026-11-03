@@ -4,7 +4,7 @@ function recipe = projectionRecipe(self,options)
 % This metadata-only recipe is unavailable to the generic Galerkin
 % constructor. Collection construction delegates to projectionOnGrid.
 % Fixed endpoint labels give strictly positive vertical wavenumbers. APV
-% can identify every retained label when f0 is nonzero.
+% has a positive continuous norm for every retained label when f0 is nonzero.
 % - Topic: Project APV
 % - Parameter options.variable: APV only
 % - Returns recipe: family-owned capability and reference metadata

@@ -95,11 +95,12 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
                 expectedDerivative = basis{1}.evaluate(0,variable="G",derivativeOrder=1,pages=[2 1 2]);
                 testCase.verifyEqual(collection.evaluate(0,variable="G",derivativeOrder=1),expectedDerivative,AbsTol=1e-12);
             end
-            rotated = analytical.rotateBoundaryDepth();
+            rotated = analytical.orthogonalizeGeneralizedEnergy(g0=0,gd=0);
             rotatedCollection = IMBasisCollection({rotated});
-            testCase.verifyEqual(rotatedCollection.metadata.columnLabels,["boundaryDepth1" "boundaryDepth2"]);
+            testCase.verifyEqual(rotatedCollection.metadata.columnLabels,rotated.columnLabels);
             testCase.verifyEqual(rotatedCollection.metadata.endpointLabels,["surface" "bottom"]);
-            testCase.verifyEqual(rotatedCollection.metadata.rotationMatrix,rotated.rotationMatrix);
+            testCase.verifyEqual(rotatedCollection.metadata.boundaryResponseMatrixStatus,"availableOnBasis");
+            testCase.verifyEqual(rotatedCollection.bases{1}.boundaryResponseMatrix,rotated.boundaryResponseMatrix);
         end
 
         function meanAndAPVBasesRetainTheirFamilyIdentity(testCase)
@@ -128,8 +129,8 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(smaller.identity.basisIndex,2);
             testCase.verifyEqual(larger.identity.basisIndex,1);
             checkBasisAssessment(smaller,gramTolerance=0);
-            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=2).columnCount,4);
-            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=3).forwardMatrix,smaller.projection.forwardMatrix);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,variable="u",page=2).columnCount,4);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,variable="u",page=3).forwardMatrix,smaller.projection.forwardMatrix);
         end
 
         function invalidSelectionsAndHeterogeneousCountsAreExplicit(testCase)

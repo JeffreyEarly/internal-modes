@@ -102,7 +102,7 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             exponential = IMExponentialStratificationSolution(N0=5e-3,b=1000,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
             z = linspace(-1000,0,17).';
             for entry = {numerical,constant.geostrophicZeroAPVModesAtWavenumber(k),exponential.geostrophicZeroAPVModesAtWavenumber(k)}
-                basis = entry{1}.rotateBoundaryDepth();
+                basis = entry{1}.orthogonalizeGeneralizedEnergy(g0=0,gd=0);
                 collection = IMBasisCollection({basis},basisIndex=[1 1 1],sourcePage=[3 1 2]);
                 for variable = ["F","G"]
                     full = basis.(variable)(z);

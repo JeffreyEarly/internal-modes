@@ -48,6 +48,7 @@ classdef IMBasisCollection
 
     methods (Access = private)
         [projection,recipe] = prepareProjection(self,z,weights,options)
+        columns = allColumnIndices(self,page)
     end
 
     methods
@@ -101,9 +102,15 @@ classdef IMBasisCollection
             elseif numel(self.sourcePage) ~= nPages
                 error("IMBasisCollection:InvalidSourcePage","sourcePage must contain one index per requested page.");
             end
+            if ~isempty(options.kappa) && numel(options.kappa) ~= nPages
+                error("IMBasisCollection:InvalidKappaCount","kappa must contain one value per requested page.");
+            end
             knownKappa = nan(1,nPages);
             for iPage = 1:nPages
                 basis = bases{self.basisIndex(iPage)};
+                if isprop(basis,"horizontalKind") && ismember(basis.horizontalKind,["perColumn","unspecified"]) && ~isempty(options.kappa)
+                    error("IMBasisCollection:UnsupportedHorizontalPage","A per-column or unspecified horizontal identity cannot be assigned one scalar kappa. Preserve the declared dispersion or use a fixed-wavenumber family.");
+                end
                 basisKappa = IMBasisCollection.basisWavenumbers(basis);
                 if self.sourcePage(iPage) > max(1,numel(basisKappa))
                     error("IMBasisCollection:InvalidSourcePage","Requested page %d selects a nonexistent source page.",iPage);
@@ -130,85 +137,39 @@ classdef IMBasisCollection
 
     methods (Static, Access = private)
         function entry = describeBasis(basis)
-            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"rotationName","","rotationMatrix",[]);
-            if isa(basis,"IMNeutralLabelModesBasis")
-                entry.family = "neutralLabelModes";
-                entry.columnKind = "mode";
-                entry.columnLabels = basis.columnLabels;
-                entry.normalization = basis.normalization;
-                entry.variables = ["G" "APV"];
-                entry.derivativeOrders = {0:2,0};
-            elseif isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
+            description = basis.capabilities;
+            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",basis.columnLabels,"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables",description.variables,"derivativeOrders",{description.derivativeOrders},"capabilities",description,"horizontalIdentity",struct(),"scientificSpecification",basis.scientificSpecification,"constructionRecord",basis.constructionRecord,"boundaryResponseMatrixStatus","notApplicable");
+            if isprop(basis,"normalization"), entry.normalization = string(basis.normalization); end
+            if isprop(basis,"modeNumber"), entry.modeNumber = reshape(basis.modeNumber,1,[]); end
+            if isprop(basis,"evp"), entry.family = string(basis.evp.name); end
+            if isprop(basis,"family"), entry.family = string(basis.family); end
+            if isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
                 entry.family = "geostrophicZeroAPVModes";
                 entry.columnKind = "endpoint";
-                entry.columnLabels = reshape(string(basis.endpoints),1,[]);
-                entry.endpointLabels = entry.columnLabels;
-                entry.rotationName = string(basis.rotationName);
-                entry.rotationMatrix = basis.rotationMatrix;
-                if entry.rotationName ~= "boundaryNormalized"
-                    entry.columnLabels = entry.rotationName + string(1:numel(entry.endpointLabels));
-                end
-                entry.normalization = string(basis.normalizationConvention);
-                entry.variables = ["F" "G"];
-                entry.derivativeOrders = {[0 1],0:2};
-            elseif isa(basis,"IMZeroDepthWaveModesBasis")
-                entry.family = basis.family;
-                entry.columnLabels = basis.columnLabels;
-                entry.modeNumber = basis.modeInfo.branchIndex.';
-                entry.normalization = string(basis.normalization);
-                entry.variables = ["F" "G"];
-                entry.derivativeOrders = {[0 1],0:2};
+                entry.endpointLabels = reshape(string(basis.endpoints),1,[]);
+                entry.boundaryResponseMatrixStatus = "availableOnBasis";
+                if entry.normalization == "", entry.normalization = string(basis.normalizationConvention); end
+            end
+            if isprop(basis,"horizontalKind")
+                entry.horizontalIdentity = struct(kind=basis.horizontalKind,k=basis.k,kSquared=basis.kSquared);
             else
-                entry.family = string(basis.evp.name);
-                entry.modeNumber = reshape(basis.modeNumber,1,[]);
-                entry.columnLabels = string(entry.modeNumber);
-                entry.normalization = string(basis.normalization);
-                if numel(entry.modeNumber) ~= numel(basis.eigenvalues)
-                    error("IMBasisCollection:InvalidColumnLabels","Mode labels must match eigenvalue columns.");
-                end
-                if isa(basis,"IMInternalModesBasis") || isa(basis,"IMAnalyticalInternalModesBasis")
-                    entry.variables = ["F" "G"];
-                    entry.derivativeOrders = {[0 1],0:2};
-                end
+                entry.horizontalIdentity = struct(kind="unspecified",k=[],kSquared=[]);
             end
-            if isprop(basis,"columnLabels")
-                entry.columnLabels = basis.columnLabels;
-            end
-            if isprop(basis,"family")
-                entry.family = basis.family;
-            end
-            if isprop(basis,"capabilities")
-                capabilities = reshape(string(basis.capabilities),1,[]);
-                for iVariable = 1:numel(entry.variables)
-                    variable = entry.variables(iVariable);
-                    orders = [];
-                    for capability = capabilities
-                        if startsWith(capability,variable)
-                            suffix = extractAfter(capability,strlength(variable));
-                            if all(char(suffix) == 'z')
-                                orders(end+1) = strlength(suffix); %#ok<AGROW>
-                            end
-                        end
-                    end
-                    entry.derivativeOrders{iVariable} = unique(orders);
-                end
-                available = ~cellfun(@isempty,entry.derivativeOrders);
-                entry.variables = entry.variables(available);
-                entry.derivativeOrders = entry.derivativeOrders(available);
-            end
-            supportsEmptyColumns = isprop(basis,"nColumns") && basis.nColumns == 0;
-            if (isempty(entry.columnLabels) && ~supportsEmptyColumns) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
-                error("IMBasisCollection:InvalidColumnLabels","Each retained column must have a distinct scientific label.");
+            if numel(entry.columnLabels) ~= basis.nColumns || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
+                error("IMBasisCollection:InvalidColumnLabels","Every retained column requires a distinct scientific label; empty inventories remain empty.");
             end
         end
 
         function kappa = basisWavenumbers(basis)
-            if isprop(basis,"k")
+            kappa = [];
+            if isprop(basis,"horizontalKind")
+                if ismember(basis.horizontalKind,["fixedWavenumber","fixedWavenumberPages"])
+                    kappa = reshape(basis.k,1,[]);
+                end
+            elseif isprop(basis,"k")
                 kappa = reshape(basis.k,1,[]);
             elseif isprop(basis,"evp") && isfield(basis.evp.parameters,"k")
                 kappa = reshape(basis.evp.parameters.k,1,[]);
-            else
-                kappa = [];
             end
         end
     end

@@ -150,32 +150,21 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             end
         end
 
-        function analyticalRotationsMatchNumericalContract(testCase)
+        function analyticalOrthogonalModesMatchNumericalContract(testCase)
             [N0,f0,g,zDomain] = testCase.constantParameters();
             k = [1e-4 2e-4];
             N2 = @(z) N0*N0*ones(size(z));
             solution = IMConstantStratificationSolution(N0=N0,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
-            exactModes = solution.geostrophicZeroAPVModesAtWavenumber(k);
+            exact = solution.geostrophicZeroAPVModesAtWavenumber(k);
             problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k);
-            numericalModes = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
-            g0 = -0.03;
-            gd = 0.01;
-
-            exactDepth = exactModes.rotateBoundaryDepth(g0=g0,gd=gd);
-            numericalDepth = numericalModes.rotateBoundaryDepth(g0=g0,gd=gd);
-            exactSurface = exactModes.rotateSurfaceBuoyancy(g0=g0,gd=gd);
-            numericalSurface = numericalModes.rotateSurfaceBuoyancy(g0=g0,gd=gd);
-            testCase.verifyEqual(exactDepth.h0,numericalDepth.h0,RelTol=2e-10,AbsTol=2e-10)
-            testCase.verifyEqual(exactDepth.rotationEigenvalues,numericalDepth.rotationEigenvalues,RelTol=2e-10,AbsTol=2e-10)
-            testCase.verifyEqual(exactSurface.rotationEigenvalues,numericalSurface.rotationEigenvalues,RelTol=2e-10,AbsTol=2e-10)
-            testCase.verifyEmpty(exactSurface.h0)
-            testCase.verifyEqual(exactDepth.signatures,sign(exactDepth.rotationEigenvalues))
-            testCase.verifyLessThan(max(exactDepth.rotationResiduals.relativePencilResidual,[],"all"),1e-12)
-
-            Hg = exactModes.generalizedEnergyMatrix(g0=g0,gd=gd);
-            custom = exactModes.rotateWithPencil(name="custom",leftMatrix=Hg,rightMatrix=exactModes.endpointResponseMetric);
-            testCase.verifyEmpty(custom.h0)
-            testCase.verifyEqual(custom.rotationEigenvalues,exactDepth.rotationEigenvalues,RelTol=1e-12,AbsTol=1e-12)
+            numerical = IMSolverSpectral(nEVP=80).solveGeostrophicZeroAPVModes(problem);
+            g0 = -.03; gd = .01;
+            exact = exact.orthogonalizeGeneralizedEnergy(g0=g0,gd=gd);
+            numerical = numerical.orthogonalizeGeneralizedEnergy(g0=g0,gd=gd);
+            testCase.verifyEqual(exact.boundaryDepth,numerical.boundaryDepth,RelTol=2e-10,AbsTol=2e-10)
+            testCase.verifyEqual(exact.boundaryResponseMatrix,numerical.boundaryResponseMatrix,AbsTol=2e-10)
+            testCase.verifyEqual(exact.F(linspace(zDomain(1),zDomain(2),31).'),numerical.F(linspace(zDomain(1),zDomain(2),31).'),AbsTol=2e-10)
+            testCase.verifyLessThan(max(exact.metadata.orthogonality.relativeEnergyResidual,[],"all"),1e-12)
         end
 
         function exponentialExactModesConvergeFromNumericalSolver(testCase)

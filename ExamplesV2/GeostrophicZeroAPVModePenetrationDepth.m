@@ -20,9 +20,9 @@ threshold = 0.01;
 problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),k=k,endpoints="surface");
 solver = IMSolverSpectral(nEVP=nEVP);
 boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
-basisSet = boundaryModes.rotateBoundaryDepth(g0=g0);
+basisSet = boundaryModes.orthogonalizeGeneralizedEnergy(g0=g0,gd=0);
 
-h = basisSet.h0;
+h = basisSet.boundaryDepth;
 iSignChange = find(h(1:end-1).*h(2:end) < 0);
 kSignChange = zeros(size(iSignChange));
 for iCross = 1:length(iSignChange)

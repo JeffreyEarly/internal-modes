@@ -172,7 +172,7 @@ classdef IMModeCreationTests < matlab.unittest.TestCase
             testCase.verifyEqual(both.nColumns,2)
             testCase.verifyEqual(surface.nColumns,1)
             testCase.verifyEqual(bottom.nColumns,1)
-            testCase.verifyEqual(both.normalization,"unitEndpointResponse")
+            testCase.verifyEqual(both.normalization,"endpointResponse")
             testCase.verifyEqual(both.columnLabels,[surface.columnLabels bottom.columnLabels])
             z = linspace(-1000,0,37).';
             testCase.verifyEqual(both.F(z),[surface.F(z) bottom.F(z)],RelTol=2e-10,AbsTol=2e-10)
@@ -195,7 +195,7 @@ classdef IMModeCreationTests < matlab.unittest.TestCase
                 testCase.verifyEqual(basis.modeInfo.localModeNumber,(1:3).')
                 testCase.verifyEqual(basis.G(z),sqrt(2)*sin((z+1000)*(pi*(1:3)/1000)),AbsTol=3e-15)
                 weights = 10*ones(size(z)); weights([1 end]) = 5;
-                projection = basis.projectionOnGrid(z,weights);
+                projection = basis.projectionOnGrid(z,weights,variable="APV");
                 testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),eye(3),AbsTol=2e-14)
                 testCase.verifyEqual(projection.provenance.g0,acceleration)
                 testCase.verifyEqual(projection.provenance.gd,acceleration)

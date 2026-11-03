@@ -85,7 +85,7 @@ title("Surface response magnitude")
 % Boundary-normalized coordinates make endpoint inversion direct. A
 % boundary-depth rotation gives a different coefficient representation of
 % exactly the same physical state.
-depthModes = zeroAPVModes.rotateBoundaryDepth(g0=g0,gd=gd);
+depthModes = zeroAPVModes.orthogonalizeGeneralizedEnergy(g0=g0,gd=gd);
 [~,depthCoefficients] = transform.transformStateForward(APV=APV,endpointAnomalies=endpointAnomalies,zeroAPVCoordinates=depthModes);
 [APVFromDepth,endpointsFromDepth] = transform.transformStateBack(APVCoefficients=APVCoefficientsBack,zeroAPVCoefficients=depthCoefficients,zeroAPVCoordinates=depthModes);
 

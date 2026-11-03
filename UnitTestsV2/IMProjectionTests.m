@@ -17,6 +17,37 @@ classdef IMProjectionTests < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function unrepresentablePhysicalDualDoesNotVetoPositiveRecovery(testCase)
+            projection = IMProjection(1e-100,1e100,1e-310,majorantGramMatrix=1e-310);
+            testCase.verifyEqual(projection.physicalDualStatus,"unrepresentableCoefficientSystem")
+            testCase.verifyEmpty(projection.physicalDualMatrix)
+            testCase.verifyTrue(projection.recovery.success)
+            testCase.verifyEqual(projection.project(1e-100),1,AbsTol=1e-14)
+            testCase.verifyError(@() projection.projectPhysical(1),"IMProjection:UnavailablePhysicalDual")
+
+            source = IMProjection.fromPrescribedDual(1,1e-310,1,majorantGramMatrix=1,provenance=struct(kind="rangeControl"));
+            testCase.verifyEqual(source.physicalDualStatus,"unrepresentableCoefficientSystem")
+            testCase.verifyEmpty(source.forwardMatrix)
+            testCase.verifyEmpty(source.physicalDualMatrix)
+            testCase.verifyError(@() source.project(1),"IMProjection:UnavailablePhysicalDual")
+            testCase.verifyError(@() source.projectPhysical(1),"IMProjection:UnavailablePhysicalDual")
+            testCase.verifyEqual(source.samplePairingMatrix,1)
+
+            tinySource = IMProjection.fromPrescribedDual(1e-310,1e100,1,majorantGramMatrix=1,provenance=struct(kind="underflowControl"));
+            testCase.verifyEqual(tinySource.physicalDualStatus,"unrepresentableCoefficientSystem")
+            testCase.verifyEmpty(tinySource.physicalDualMatrix)
+            testCase.verifyError(@() tinySource.projectPhysical(1e100),"IMProjection:UnavailablePhysicalDual")
+            tinyPhysical = IMProjection(1,1e-310,1e100,majorantGramMatrix=1e100);
+            testCase.verifyEqual(tinyPhysical.physicalDualStatus,"unrepresentableCoefficientSystem")
+            testCase.verifyTrue(tinyPhysical.recovery.success)
+            testCase.verifyEqual(tinyPhysical.project(1),1,AbsTol=1e-14)
+
+            physicalOnly = IMProjection(1e-100,-1e100,-1e-310,majorantGramMatrix=1e-310,prepareRecovery=false);
+            testCase.verifyEqual(physicalOnly.physicalDualStatus,"unrepresentableCoefficientSystem")
+            testCase.verifyEmpty(physicalOnly.recovery)
+            testCase.verifyError(@() IMProjection(1e-100,-1e100,-1e-310,majorantGramMatrix=1e-310),"IMProjection:UnavailablePhysicalDual")
+        end
+
         function signedPairingAndPositiveErrorNormStayDistinct(testCase)
             projection = IMProjection(ones(2,1),diag([2 -1]),1,majorantGramMatrix=3,columnLabels="external");
             testCase.verifyEqual(projection.project([1;0]),2,AbsTol=1e-14)
@@ -36,9 +67,12 @@ classdef IMProjectionTests < matlab.unittest.TestCase
         function rankDefectAndInactiveColumnsRemainExplicit(testCase)
             projection = IMProjection([1 1;1 1],eye(2),eye(2));
             testCase.verifyEqual(projection.sampledGramRank,1)
-            testCase.verifyEqual(projection.gramError,Inf)
-            testCase.verifyEqual(projection.project([2;2]),[1;1],AbsTol=1e-14)
-            testCase.verifyEqual(projection.roundTripError,1,AbsTol=1e-14)
+            testCase.verifyEqual(projection.gramError,3,AbsTol=1e-14)
+            testCase.verifyFalse(projection.recovery.success)
+            testCase.verifyEmpty(projection.forwardMatrix)
+            testCase.verifyError(@() projection.project([2;2]),"IMProjection:UnavailableRecovery")
+            testCase.verifyEqual(projection.projectPhysical([2;2]),[4;4],AbsTol=1e-14)
+            testCase.verifyEqual(projection.roundTripError,Inf)
             inactive = IMProjection([0 1;0 2],eye(2),diag([0 5]),activeColumnMask=[false true],columnLabels=["barotropic" "1"]);
             testCase.verifyEqual(inactive.forwardMatrix(1,:),[0 0],AbsTol=0)
             testCase.verifyLessThan(inactive.roundTripError,1e-14)
@@ -110,9 +144,11 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             scaled = IMProjection(Phi.*scales,eye(3),diag(scales)*H*diag(scales),activeColumnMask=[false true true]);
             values = [1+1i;2;3-1i];
             testCase.verifyEqual(scaled.sampledGramRank,1)
-            testCase.verifyEqual(scaled.gramError,Inf)
-            testCase.verifyEqual(scales.'.*scaled.project(values),base.project(values),AbsTol=1e-12)
-            testCase.verifyEqual(scaled.forwardMatrix(1,:),zeros(1,3),AbsTol=0)
+            testCase.verifyEqual(scaled.gramError,base.gramError,AbsTol=1e-12)
+            testCase.verifyFalse(scaled.recovery.success)
+            testCase.verifyEmpty(scaled.forwardMatrix)
+            testCase.verifyError(@() scaled.project(values),"IMProjection:UnavailableRecovery")
+            testCase.verifyEqual(scales.'.*scaled.projectPhysical(values),base.projectPhysical(values),AbsTol=1e-12)
             testCase.verifyEqual(scaled.prefix(1).forwardMatrix,zeros(1,3),AbsTol=0)
         end
 
@@ -220,7 +256,10 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             defect = IMProjection.fromPrescribedDual(eye(2),ones(2),eye(2),provenance=provenance);
             testCase.verifyEqual(defect.sampledGramRank,1)
             testCase.verifyTrue(isnan(defect.gramError))
-            testCase.verifyEqual(defect.forwardMatrix,pinv(ones(2)),AbsTol=1e-14)
+            testCase.verifyEmpty(defect.forwardMatrix)
+            testCase.verifyEmpty(defect.physicalDualMatrix)
+            testCase.verifyEqual(defect.samplePairingMatrix,eye(2))
+            testCase.verifyError(@() defect.project([1;2]),"IMProjection:UnavailablePhysicalDual")
             offDiagonal = IMProjection.fromPrescribedDual(eye(2),[0 1;1 0],[0 1;1 0],majorantGramMatrix=eye(2),provenance=provenance);
             testCase.verifyEqual(offDiagonal.project([1;2]),[2;1],AbsTol=0)
         end
@@ -239,11 +278,46 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyError(@() IMProjection(eye(2),[1 1;0 1],eye(2)),"IMProjection:NonSymmetricMatrix")
             testCase.verifyError(@() IMProjection(eye(2),eye(2),diag([0 1])),"IMProjection:InvalidTargetNorm")
             testCase.verifyError(@() IMProjection(eye(2),eye(2),eye(2),activeColumnMask=[false true]),"IMProjection:InvalidInactiveColumn")
+            testCase.verifyError(@() IMProjection([1e-15 1;0 2],eye(2),diag([0 5]),activeColumnMask=[false true]),"IMProjection:InvalidInactiveColumn")
             projection = IMProjection(eye(2),eye(2),eye(2));
             testCase.verifyError(@() projection.project(ones(3,1)),"IMProjection:InvalidShape")
             testCase.verifyError(@() projection.productError(ones(2,1),ones(3,1),1),"IMProjection:InvalidShape")
             testCase.verifyError(@() projection.leakage(ones(2,1),[1;2]),"IMProjection:InvalidShape")
             testCase.verifyError(@() projection.prefix(3),"IMProjection:InvalidColumnCount")
+        end
+
+        function recoveryDoesNotDependOnRoundedGramRank(testCase)
+            Phi = [1 1;0 1e-8];
+            projection = IMProjection(Phi,eye(2),eye(2));
+            testCase.verifyEqual(projection.sampledGramRank,1)
+            testCase.verifyEqual(projection.gramError,norm(Phi.'*Phi-eye(2),2),AbsTol=1e-14)
+            testCase.verifyTrue(projection.recovery.success)
+            testCase.verifyEqual(projection.recovery.diagnostics.fit.rank,2)
+            testCase.verifyEqual(projection.project(Phi),eye(2),AbsTol=2e-8)
+            testCase.verifyEqual(projection.physicalDualMatrix,Phi.',AbsTol=0)
+            testCase.verifyGreaterThan(norm(projection.projectPhysical(Phi)-eye(2),2),0.9)
+        end
+
+        function singularSignedRecoveryRetainsPhysicalProjection(testCase)
+            projection = IMProjection(ones(2,1),diag([1 -1]),1);
+            testCase.verifyFalse(projection.recovery.success)
+            testCase.verifyEqual(projection.recovery.status,"overlapRankDeficient")
+            testCase.verifyEqual(projection.sampledGramRank,0)
+            testCase.verifyEqual(projection.gramError,1,AbsTol=0)
+            testCase.verifyEqual(projection.projectPhysical([3;1]),2,AbsTol=0)
+            testCase.verifyError(@() projection.project([3;1]),"IMProjection:UnavailableRecovery")
+            testCase.verifyError(@() IMProjection(ones(2,1),diag([1 -1]),1,failureMode="error"),"IMRecovery:OverlapRankDeficient")
+        end
+
+        function physicalRecordDoesNotPrepareOrApplyAnInverse(testCase)
+            projection = IMProjection([1;2],eye(2),3,prepareRecovery=false);
+            testCase.verifyEmpty(projection.recovery)
+            testCase.verifyEmpty(projection.forwardMatrix)
+            testCase.verifyFalse(projection.supportsRoundTripAssessment)
+            testCase.verifyTrue(isnan(projection.roundTripError))
+            testCase.verifyEqual(projection.projectPhysical([3;0]),1,AbsTol=1e-14)
+            testCase.verifyError(@() projection.project([3;0]),"IMProjection:UnavailableRecovery")
+            testCase.verifyEmpty(projection.prefix(1).recovery)
         end
     end
 end

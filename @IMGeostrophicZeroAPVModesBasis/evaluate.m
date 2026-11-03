@@ -1,52 +1,47 @@
 function values = evaluate(self,z,options)
-% Evaluate canonical or rotated profiles and their regular diagnostic derivatives.
+% Evaluate aligned boundary-buoyancy profiles and their regular derivatives.
 %
-% Uses Fz=-N2 G/g and Gz=-g k^2 F/f0^2. The same relations apply
-% after boundary-coordinate rotations, including on neutral intervals.
-% Evaluation preserves the basis's canonical or rotated normalization.
-% A different normalization requires constructing the explicitly rotated basis.
-%
-% - Topic: Evaluate geostrophic zero-APV modes
-% - Declaration: values = evaluate(self,z,options)
+% A per-call normalization preserves stored defaults and coordinate meaning.
+% F supports derivative orders zero and one; G supports zero through two.
+% - Topic: Evaluate boundary-buoyancy modes
 % - Parameter z: physical sample column
-% - Parameter options.variable: required channel F or G
-% - Parameter options.derivativeOrder: zero or one for F, through two for G, zero by default
-% - Parameter options.pages: source pages, preserving order and repeats
-% - Parameter options.normalization: current normalization convention; different conventions require an explicit basis rotation
-% - Returns values: nZ-by-nColumns-by-nPages profiles
+% - Parameter options.variable: required F or G channel
+% - Parameter options.derivativeOrder: nonnegative derivative order, zero by default
+% - Parameter options.pages: source wavenumber pages in caller order
+% - Parameter options.normalization: optional per-call profile normalization
+% - Returns values: nZ-by-nColumns-by-nSelectedPages values
 arguments (Input)
     self IMGeostrophicZeroAPVModesBasis
     z (:,1) double {mustBeReal,mustBeFinite}
     options.variable (1,1) string = ""
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
     options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
-    options.normalization (1,1) string = self.normalizationConvention
+    options.normalization (1,1) string = self.normalization
 end
-arguments (Output)
-    values double
+if options.variable == ""
+    error("IMGeostrophicZeroAPVModesBasis:MissingVariable","Specify variable= followed by F or G.");
 end
-variable = options.variable;
-derivativeOrder = options.derivativeOrder;
-if variable == ""
-    error("IMGeostrophicZeroAPVModesBasis:MissingVariable","Specify the channel with variable= followed by a supported channel name.");
-end
-if ~ismember(variable,["F","G"])
+if ~ismember(options.variable,["F","G"])
     error("IMGeostrophicZeroAPVModesBasis:UnsupportedVariable","Supported channels are F and G.");
 end
-if options.normalization ~= self.normalizationConvention
-    error("IMGeostrophicZeroAPVModesBasis:UnsupportedNormalization","This basis uses normalization %s. Construct an explicitly rotated basis to change its normalization convention.",self.normalizationConvention);
+if (options.variable == "F" && options.derivativeOrder > 1) || options.derivativeOrder > 2
+    error("IMGeostrophicZeroAPVModesBasis:UnsupportedDerivative","F supports orders zero and one; G supports zero through two.");
 end
 if any(options.pages > numel(self.k))
     error("IMGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
 end
-if derivativeOrder == 0
-    values = self.(variable)(z,pages=options.pages);
-elseif variable == "F" && derivativeOrder == 1
-    values = -self.N2(z)/self.g.*self.G(z,pages=options.pages);
-elseif variable == "G" && derivativeOrder <= 2
-    factor = reshape(-self.g*self.k(options.pages).^2/self.f0^2,1,1,[]);
-    values = factor.*self.evaluate(z,variable="F",derivativeOrder=derivativeOrder-1,pages=options.pages);
-else
-    error("IMGeostrophicZeroAPVModesBasis:UnsupportedDerivative","F supports derivative orders zero and one; G supports orders zero through two.");
+if any(z<self.zDomain(1) | z>self.zDomain(2))
+    error("IMGeostrophicZeroAPVModesBasis:OutsideDomain","Samples must lie inside zDomain.");
 end
+factors = self.normalizationFactors(options.normalization,pages=options.pages);
+if options.derivativeOrder == 0
+    values = self.endpointUnscaledProfiles(options.variable,z,options.pages);
+elseif options.variable == "F"
+    values = -self.N2(z)/self.g.*self.endpointUnscaledProfiles("G",z,options.pages);
+elseif options.derivativeOrder == 1
+    values = reshape(-self.g*self.k(options.pages).^2/self.f0^2,1,1,[]).*self.endpointUnscaledProfiles("F",z,options.pages);
+else
+    values = reshape(self.k(options.pages).^2/self.f0^2,1,1,[]).*self.N2(z).*self.endpointUnscaledProfiles("G",z,options.pages);
+end
+values = values./reshape(factors,1,self.nColumns,numel(options.pages));
 end

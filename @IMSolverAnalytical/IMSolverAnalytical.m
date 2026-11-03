@@ -62,6 +62,7 @@ classdef IMSolverAnalytical
                 source = IMAnalyticalInternalModesBasis(solution=[],evp=problem,h=Inf,modeNumber=0,N2=problem.N2,rawVariableFunction=@(~,variable,z) double(variable=="F")*ones(numel(z),1),rawUzFunction=@(~,z) zeros(numel(z),1),metadata=struct(analyticalFamily="barotropic"));
                 selection = IMModeSelection.selectCounted(problem,source.eigenvalues(:),options.nModes,options.branch,zeroIndices=1);
                 basis = source.selectColumns(reshape(selection.sortIndex,1,[]),modeInfo=selection.modeInfo);
+                basis = basis.withConstructionRequest(struct(nModes=options.nModes,branch=options.branch),self,selection);
                 if ~isempty(options.normalization), basis.normalization = options.normalization; end
                 return
             end
@@ -79,6 +80,7 @@ classdef IMSolverAnalytical
             end
             selection = IMModeSelection.selectCounted(problem,source.eigenvalues(:),options.nModes,options.branch,zeroIndices=find(source.modeNumber==0));
             basis = source.selectColumns(reshape(selection.sortIndex,1,[]),modeInfo=selection.modeInfo);
+            basis = basis.withConstructionRequest(struct(nModes=options.nModes,branch=options.branch),self,selection);
             if ~isempty(options.normalization), basis.normalization = options.normalization; end
         end
 

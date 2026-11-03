@@ -165,6 +165,7 @@ roundTripError = zeros(candidateModeCount,1);
 inverseConditionNumber = zeros(candidateModeCount,1);
 gramConditionNumber = zeros(candidateModeCount,1);
 sampledGramRank = zeros(candidateModeCount,1);
+recoveryAccepted = false(candidateModeCount,1);
 for nPrefix = 1:candidateModeCount
     prefixTransforms{nPrefix} = prefixTransform(candidateTransform,nPrefix);
     gramError(nPrefix) = prefixTransforms{nPrefix}.relativeGramOperatorError;
@@ -172,9 +173,21 @@ for nPrefix = 1:candidateModeCount
     inverseConditionNumber(nPrefix) = prefixTransforms{nPrefix}.inverseMatrixConditionNumber;
     gramConditionNumber(nPrefix) = prefixTransforms{nPrefix}.gramConditionNumber;
     sampledGramRank(nPrefix) = prefixTransforms{nPrefix}.sampledGramRank;
+    recoveryAccepted(nPrefix) = prefixTransforms{nPrefix}.success;
 end
-gramAccepted = IMDiscreteTransformTools.cumulativeAcceptance(gramError <= options.gramTolerance);
+physicalGramRankAccepted = sampledGramRank == (1:candidateModeCount).';
+gramAccepted = IMDiscreteTransformTools.cumulativeAcceptance(gramError <= options.gramTolerance & physicalGramRankAccepted & recoveryAccepted);
 gramPolicy = IMDiscreteTransformTools.policyResult("gram",true,options.gramTolerance,gramError,gramAccepted,candidateModeCount);
+gramPolicy.physicalGramRankAccepted = physicalGramRankAccepted;
+gramPolicy.recoveryAccepted = recoveryAccepted;
+if gramPolicy.limited
+    next = gramPolicy.acceptedModeCount+1;
+    if ~physicalGramRankAccepted(next)
+        gramPolicy.reason = sprintf("Accepted %d of %d candidate modes; the next physical Gram has rank %d/%d.",next-1,candidateModeCount,sampledGramRank(next),next);
+    elseif ~recoveryAccepted(next)
+        gramPolicy.reason = sprintf("Accepted %d of %d candidate modes; the next recovery failed: %s.",next-1,candidateModeCount,prefixTransforms{next}.status);
+    end
+end
 
 leakageError = nan(candidateModeCount,1);
 leakageLimitingModeNumber = nan(candidateModeCount,1);
@@ -301,16 +314,20 @@ prefixDiagnostics = table(modeCount,lastModeNumber,gramError,roundTripError,inve
     VariableNames=["modeCount","lastModeNumber","gramError","roundTripError","inverseMatrixConditionNumber","gramConditionNumber","sampledGramRank", ...
     "leakageError","leakageLimitingModeNumber","quadraticAliasingError","quadraticLimitingModeNumberI","quadraticLimitingModeNumberJ", ...
     "gramAccepted","leakageAccepted","quadraticAccepted","combinedAccepted"]);
+prefixDiagnostics.physicalGramRankAccepted = physicalGramRankAccepted;
+prefixDiagnostics.recoveryAccepted = recoveryAccepted;
 assessment = IMDiscreteTransformAssessment(transform=transform,candidateTransform=candidateTransform,weightFit=weightFit, ...
     requestedPointCount=requestedPointCount,prefixDiagnostics=prefixDiagnostics,gramPolicy=gramPolicy, ...
     leakagePolicy=leakagePolicy,quadraticAliasingPolicy=quadraticPolicy,limitingPolicy=limitingPolicy,retentionReason=retentionReason,gridDesign=gridDesign);
 end
 
 function transform = prefixTransform(candidateTransform,nModes)
-transform = IMDiscreteTransform(z=candidateTransform.z,weights=candidateTransform.weights, ...
-    modeNumber=candidateTransform.modeNumber(1:nModes),normalization=candidateTransform.normalization, ...
-    inverseMatrix=candidateTransform.inverseMatrix(:,1:nModes),metricMatrix=candidateTransform.metricMatrix, ...
-    targetGramMatrix=candidateTransform.targetGramMatrix(1:nModes,1:nModes));
+columns = 1:nModes;
+physical = IMProjection(candidateTransform.inverseMatrix(:,columns),candidateTransform.metricMatrix, ...
+    candidateTransform.targetGramMatrix(columns,columns),majorantGramMatrix=candidateTransform.projection.majorantGramMatrix(columns,columns), ...
+    activeColumnMask=candidateTransform.activeColumnMask(columns),columnLabels=candidateTransform.columnLabels(columns));
+transform = IMScalarDiscreteTransform(physical,physical.recovery,z=candidateTransform.z,weights=candidateTransform.weights, ...
+    modeNumber=candidateTransform.modeNumber(columns),normalization=candidateTransform.normalization);
 end
 
 function [errors,limitingModeNumber] = rejectedModeLeakage(prefixTransforms,checkValues,checkNorms,checkModeNumber)
@@ -320,6 +337,10 @@ errors = zeros(nCandidate,1);
 limitingModeNumber = nan(nCandidate,1);
 for nPrefix = 1:nCandidate
     transform = prefixTransforms{nPrefix};
+    if ~transform.success
+        errors(nPrefix) = Inf;
+        continue
+    end
     rejectedIndices = (nPrefix+1):nCheckModes;
     coefficients = transform.forwardMatrix*checkValues(:,rejectedIndices);
     majorant = diag(abs(diag(transform.targetGramMatrix)));
@@ -371,6 +392,10 @@ limitingModeNumberI = nan(nCandidate,1);
 limitingModeNumberJ = nan(nCandidate,1);
 for nPrefix = 1:nCandidate
     transform = prefixTransforms{nPrefix};
+    if ~transform.success
+        errors(nPrefix) = Inf;
+        continue
+    end
     includedPairs = find(pairIndices(:,1) <= nPrefix & pairIndices(:,2) <= nPrefix);
     targetNorms = diag(transform.targetGramMatrix);
     discreteCoefficients = transform.forwardMatrix*sampleProducts(:,includedPairs);
@@ -391,8 +416,8 @@ failureDetails = strings(0,1);
 for iPolicy = 1:length(policies)
     policy = policies{iPolicy};
     if policy.enabled && policy.acceptedModeCount < requestedModeCount
-        failureDetails(end+1,1) = sprintf("%s (accepted %d, first failing value %.6g, tolerance %.6g)", ...
-            policy.name,policy.acceptedModeCount,policy.limitingValue,policy.tolerance); %#ok<AGROW>
+        failureDetails(end+1,1) = sprintf("%s (accepted %d, first failing value %.6g, tolerance %.6g; %s)", ...
+            policy.name,policy.acceptedModeCount,policy.limitingValue,policy.tolerance,policy.reason); %#ok<AGROW>
     end
 end
 error("IMBasisSet:DiscreteTransformPolicyFailed", ...

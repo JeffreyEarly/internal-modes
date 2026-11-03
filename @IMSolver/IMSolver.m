@@ -123,6 +123,7 @@ classdef (Abstract) IMSolver
                 request = struct(counted=true,nModes=options.nModes,branch=options.branch);
                 basisSet = solver.solveAssembledEVP(evp,A,B,max(1,sum(options.nModes)),struct(),request);
             end
+            basisSet = basisSet.withConstructionRequest(struct(nModes=options.nModes,branch=options.branch),self);
             if ~isempty(options.normalization), basisSet.normalization = options.normalization; end
         end
 
@@ -376,6 +377,7 @@ classdef (Abstract) IMSolver
             basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
                 selection.modeNumber, selection.modeSelectionDiagnostics);
             basisSet = basisSet.orientModeSigns();
+            basisSet = basisSet.withConstructionRequest(request,self,selection);
             costs.finalizationSeconds = toc(timer);
         end
 

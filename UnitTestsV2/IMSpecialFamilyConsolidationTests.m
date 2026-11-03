@@ -9,7 +9,7 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
             selected.normalization = "maxAbsG";
             z = linspace(-1000,0,1001).';
             weights = ones(size(z)); weights([1 end]) = 0.5;
-            projection = selected.projectionOnGrid(z,weights);
+            projection = selected.projectionOnGrid(z,weights,variable="APV");
             testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
             testCase.verifyEqual(selected.gramMatrix(),0.5*eye(2),AbsTol=1e-15);
             custom = selected.addNormalization("double",@(~,~) 2);
@@ -51,7 +51,7 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
             original = labels.G(z);
             testCase.verifyEqual(selected.G(z),original(:,[4 2]),AbsTol=1e-15);
             weights = ones(size(z)); weights([1 end]) = 0.5;
-            projection = selected.projectionOnGrid(z,weights);
+            projection = selected.projectionOnGrid(z,weights,variable="APV");
             testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
             referenceGram = labels.gramMatrix();
             testCase.verifyEqual(selected.gramMatrix(),referenceGram([4 2],[4 2]));

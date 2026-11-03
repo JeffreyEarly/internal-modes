@@ -1,6 +1,5 @@
 classdef (Hidden, Sealed) IMGeostrophicZeroAPVFormTools
-    % Share representation-independent zero-APV form and rotation operations.
-
+    % Share canonical endpoint forms and their scientific coordinate changes.
     methods (Static)
         function [responseMetric,physicalEnergy,surfaceBuoyancy,bottomBuoyancy] = formMatrices(FSurface,FBottom,surfaceResponse,bottomResponse,selectedResponse,endpoints,k,f0,g)
             nEndpoints = numel(endpoints);
@@ -25,112 +24,134 @@ classdef (Hidden, Sealed) IMGeostrophicZeroAPVFormTools
                 end
             end
         end
-
-        function pages = expandMatrixPages(matrix,nEndpoints,nK,name,errorPrefix)
-            if size(matrix,1) ~= nEndpoints || size(matrix,2) ~= nEndpoints
-                error(errorPrefix + ":InvalidPencilShape", "%s must have nEndpoints rows and columns.",name);
+        function matrix = generalizedEnergy(energy,surface,bottom,endpoints,g0,gd,errorPrefix)
+            for item = {g0,gd}
+                coefficient = item{1};
+                if ~isscalar(coefficient) || ~isreal(coefficient) || isnan(coefficient) || coefficient == -Inf
+                    error(errorPrefix+":InvalidEnergyCoefficient","Use finite signed coefficients; positive infinity is allowed only for an absent endpoint.");
+                end
             end
-            if size(matrix,3) == 1
-                pages = repmat(matrix,1,1,nK);
-            elseif size(matrix,3) == nK
-                pages = matrix;
+            if (isinf(g0) && ismember("surface",endpoints)) || (isinf(gd) && ismember("bottom",endpoints))
+                error(errorPrefix+":InactiveEndpointRequired","An infinite coefficient cannot remove a retained endpoint. Choose endpoints explicitly in the original problem.");
+            end
+            matrix = energy;
+            if ismember("surface",endpoints), matrix = matrix+g0*surface; end
+            if ismember("bottom",endpoints), matrix = matrix+gd*bottom; end
+            if any(~isfinite(matrix),"all")
+                error(errorPrefix+":UnrepresentableQuadraticForm","Generalized energy must remain finite in these coefficient coordinates.");
+            end
+            matrix = IMGeostrophicZeroAPVFormTools.symmetrizePages(matrix);
+        end
+
+        function [map,depth,evidence] = orthogonalizeEnergy(matrix,k,errorPrefix)
+            n = size(matrix,1); pages = numel(k);
+            map = zeros(n,n,pages); depth = zeros(n,pages);
+            residual = zeros(n,pages); orthogonality = zeros(1,pages);
+            for page = 1:pages
+                if n == 0, continue; end
+                H = matrix(:,:,page);
+                scale = max(abs(H),[],"all");
+                if scale == 0
+                    C = eye(n); lambda = zeros(n,1);
+                else
+                    unit = H/scale;
+                    if any(H~=0 & unit==0,"all")
+                        error(errorPrefix+":UnrepresentableGeneralizedEnergy","Scaling generalized energy lost a nonzero matrix entry.");
+                    end
+                    if norm(unit-unit.',"fro") > 1e-12*norm(unit,"fro")
+                        error(errorPrefix+":NonSymmetricGeneralizedEnergy","The canonical generalized-energy form must be symmetric.");
+                    end
+                    [C,lambda] = eig(IMGeostrophicZeroAPVFormTools.symmetrize(unit),"vector");
+                    [lambda,order] = sort(lambda,"descend"); C = C(:,order);
+                end
+                for j = 1:n
+                    [~,index] = max(abs(C(:,j)));
+                    if C(index,j)<0, C(:,j) = -C(:,j); end
+                    if scale>0
+                        difference = (H/scale)*C(:,j)-lambda(j)*C(:,j);
+                        denominator = (norm(H/scale,"fro")+abs(lambda(j)))*norm(C(:,j));
+                        if denominator>0, residual(j,page) = norm(difference)/denominator; end
+                    end
+                end
+                orthogonality(page) = norm(C.'*C-eye(n),"fro")/max(1,sqrt(n));
+                if max(residual(:,page))>1e-10 || orthogonality(page)>1e-10
+                    error(errorPrefix+":UnqualifiedOrthogonality","Energy residuals and orthonormal endpoint geometry must pass the relative qualification checks.");
+                end
+                map(:,:,page) = C;
+                if scale>0
+                    physical = IMGeostrophicZeroAPVFormTools.restoreScale(lambda,scale);
+                    depth(:,page) = (2*k(page)^2)*physical;
+                    if any(~isfinite(depth(:,page))) || any(physical~=0 & depth(:,page)==0)
+                        error(errorPrefix+":UnrepresentableBoundaryDepth","Signed boundary depths must be representable in the supplied units.");
+                    end
+                end
+            end
+            evidence = struct(relativeEnergyResidual=residual,endpointOrthogonalityError=orthogonality,method="real symmetric canonical generalized-energy eigenproblem");
+        end
+
+        function result = transformForm(canonical,map)
+            n = size(map,2); pages = size(map,3);
+            result = zeros(n,n,pages);
+            for page = 1:pages
+                result(:,:,page) = IMGeostrophicZeroAPVFormTools.symmetrize(map(:,:,page).'*canonical(:,:,page)*map(:,:,page));
+            end
+        end
+
+        function result = applyMap(canonical,map)
+            result = zeros(size(canonical,1),size(map,2),size(map,3));
+            for page = 1:size(map,3), result(:,:,page) = canonical(:,:,page)*map(:,:,page); end
+        end
+
+        function factors = normalizationFactors(basis,name,page)
+            n = basis.nColumns;
+            switch name
+                case "endpointResponse"
+                    directions = basis.endpointUnscaledResponseMatrix();
+                    factors = reshape(sqrt(sum(abs(directions(:,:,page)).^2,1)),n,1);
+                    return
+                case "generalizedEnergy"
+                    matrix = basis.endpointUnscaledGeneralizedEnergy();
+                    bound = basis.endpointEnergyCancellationBound();
+                    squares = diag(matrix(:,:,page));
+                    if any(abs(squares)<=1e-12*bound(:,page)) || any(bound(:,page)<=0)
+                        error(string(class(basis))+":NullNormalization","A retained generalized-energy norm is unresolved relative to canonical cancellation. Keep the state with a profile normalization instead.");
+                    end
+                    factors = sqrt(abs(squares));
+                    return
+            end
+            [z,weights] = basis.endpointNormalizationQuadrature();
+            if endsWith(name,"F"), variable="F"; else, variable="G"; end
+            values = basis.endpointUnscaledProfiles(variable,z,page);
+            if startsWith(name,"depthRMS")
+                factors = sqrt(sum(weights.*abs(values).^2,1)/diff(basis.zDomain)).';
             else
-                error(errorPrefix + ":InvalidPencilShape", "%s must have one page or nK pages.",name);
+                points = [z;basis.zDomain.'];
+                values = basis.endpointUnscaledProfiles(variable,points,page);
+                evaluator = @(zz) basis.endpointUnscaledProfiles(variable,zz,page);
+                factors = IMInternalModesNormalizationTools.maximumAmplitudes(evaluator,points,values).';
             end
-            for iK = 1:nK
-                scale = max(1,norm(pages(:,:,iK),"fro"));
-                if norm(pages(:,:,iK)-pages(:,:,iK).',"fro") > 1e-12*scale
-                    error(errorPrefix + ":NonSymmetricPencil", "%s must be symmetric on every wavenumber page.",name);
-                end
-                pages(:,:,iK) = IMGeostrophicZeroAPVFormTools.symmetrize(pages(:,:,iK));
-            end
-        end
-
-        function [vectors,eigenvalues,rightSignatures,residuals] = solveSymmetricPencil(leftMatrix,rightMatrix,nEndpoints,nK,ordering,errorPrefix)
-            leftMatrix = IMGeostrophicZeroAPVFormTools.expandMatrixPages(leftMatrix,nEndpoints,nK,"leftMatrix",errorPrefix);
-            rightMatrix = IMGeostrophicZeroAPVFormTools.expandMatrixPages(rightMatrix,nEndpoints,nK,"rightMatrix",errorPrefix);
-            vectors = zeros(nEndpoints,nEndpoints,nK);
-            eigenvalues = zeros(nEndpoints,nK);
-            rightSignatures = zeros(nEndpoints,nK);
-            relativeResidual = zeros(nEndpoints,nK);
-            rightOrthogonalityError = zeros(1,nK);
-            rotationConditionNumber = zeros(1,nK);
-
-            for iK = 1:nK
-                left = leftMatrix(:,:,iK);
-                right = rightMatrix(:,:,iK);
-                [C,Lambda] = eig(left,right);
-                lambda = diag(Lambda);
-                imaginaryScale = max(1,max(abs(real(lambda))));
-                if any(~isfinite(lambda)) || any(abs(imag(lambda)) > 1e-10*imaginaryScale)
-                    error(errorPrefix + ":InvalidPencilSpectrum", "The matrix pencil must have a complete finite real spectrum on every wavenumber page.");
-                end
-                C = real(C);
-                lambda = real(lambda);
-                for iMode = 1:nEndpoints
-                    rightNorm = C(:,iMode).'*right*C(:,iMode);
-                    normScale = max(1,norm(right,"fro")*norm(C(:,iMode))^2);
-                    if abs(rightNorm) <= 1e-12*normScale
-                        error(errorPrefix + ":NullRightMetric", "A pencil eigenvector has a numerically zero right-metric norm.");
-                    end
-                    C(:,iMode) = C(:,iMode)/sqrt(abs(rightNorm));
-                end
-
-                switch string(ordering)
-                    case "nonzeroFirst"
-                        zeroTolerance = 1e-11*max(1,max(abs(lambda)));
-                        isZero = abs(lambda) <= zeroTolerance;
-                        [~,sortIndex] = sortrows([isZero(:),-abs(lambda(:)),-lambda(:)],[1 2 3]);
-                    otherwise
-                        [~,sortIndex] = sort(lambda,"descend");
-                end
-                lambda = lambda(sortIndex);
-                C = C(:,sortIndex);
-
-                for iMode = 1:nEndpoints
-                    [~,referenceIndex] = max(abs(C(:,iMode)));
-                    if C(referenceIndex,iMode) < 0
-                        C(:,iMode) = -C(:,iMode);
-                    end
-                    rightSignatures(iMode,iK) = sign(C(:,iMode).'*right*C(:,iMode));
-                    residual = left*C(:,iMode)-lambda(iMode)*right*C(:,iMode);
-                    residualScale = (norm(left,"fro")+abs(lambda(iMode))*norm(right,"fro"))*norm(C(:,iMode));
-                    relativeResidual(iMode,iK) = norm(residual)/max(residualScale,eps);
-                end
-
-                targetRightGram = diag(rightSignatures(:,iK));
-                rightOrthogonalityError(iK) = norm(C.'*right*C-targetRightGram,"fro")/max(1,norm(targetRightGram,"fro"));
-                rotationConditionNumber(iK) = cond(C);
-                vectors(:,:,iK) = C;
-                eigenvalues(:,iK) = lambda;
-            end
-            residuals = struct(relativePencilResidual=relativeResidual,rightOrthogonalityError=rightOrthogonalityError,rotationConditionNumber=rotationConditionNumber);
-        end
-
-        function tf = pagesEqual(left,right)
-            scale = max([1,norm(left(:)),norm(right(:))]);
-            tf = isequal(size(left),size(right)) && norm(left(:)-right(:)) <= 1e-12*scale;
         end
 
         function matrix = symmetrize(matrix)
-            matrix = 0.5*(matrix+matrix.');
+            if isequal(matrix,matrix.'), return; end
+            diagonal = diag(matrix);
+            matrix = .5*matrix+.5*matrix.';
+            matrix(1:size(matrix,1)+1:end) = diagonal;
         end
 
         function pages = symmetrizePages(pages)
-            for iPage = 1:size(pages,3)
-                pages(:,:,iPage) = IMGeostrophicZeroAPVFormTools.symmetrize(pages(:,:,iPage));
-            end
+            for page = 1:size(pages,3), pages(:,:,page) = IMGeostrophicZeroAPVFormTools.symmetrize(pages(:,:,page)); end
         end
-
-        function validateRotationPages(rotation,nEndpoints,nK,errorPrefix)
-            if ~isequal(size(rotation),[nEndpoints nEndpoints nK]) && ~(nK == 1 && isequal(size(rotation),[nEndpoints nEndpoints]))
-                error(errorPrefix + ":InvalidRotationShape", "A rotation must have nEndpoints rows and columns and one page per wavenumber.");
+    end
+    methods (Static, Access = private)
+        function values = restoreScale(values,scale)
+            [fraction,exponent] = log2(scale);
+            [valueFraction,valueExponent] = log2(abs(values));
+            restored = sign(values).*pow2(valueFraction*fraction,valueExponent+exponent);
+            if any(~isfinite(restored)) || any(values~=0 & restored==0)
+                error("IMGeostrophicZeroAPVFormTools:UnrepresentableEnergySpectrum","Generalized-energy eigenvalues must be representable in the supplied units.");
             end
-            for iK = 1:nK
-                if rcond(rotation(:,:,iK)) <= sqrt(eps)
-                    error(errorPrefix + ":SingularCoordinateRotation", "The coordinate rotation is singular or ill-conditioned on page %d.",iK);
-                end
-            end
+            values = restored;
         end
     end
 end
