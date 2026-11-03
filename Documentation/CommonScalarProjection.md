@@ -1,6 +1,6 @@
 # Common scalar physical projection and recovery
 
-The common continuous basis now supplies scalar physical pairings for hydrostatic F/G, geostrophic APV F/G and mean-density-anomaly (MDA) G. Neutral-label APV retains its prescribed continuous dual. This is the first adapter increment of [#48](https://github.com/JeffreyEarly/internal-modes/issues/48); complete coupled state/source and endpoint-observation adapters remain outstanding.
+The common continuous basis now supplies scalar physical pairings for hydrostatic F/G, geostrophic APV F/G and mean-density-anomaly (MDA) G. Neutral-label APV retains its prescribed continuous dual. This is the scalar adapter increment of [#48](https://github.com/JeffreyEarly/internal-modes/issues/48). [Prescribed vertical sampling](PrescribedVerticalSampling.md) separately evaluates vertical point and cell observations. Complete physical state and source projectors remain WVM responsibilities.
 
 ## Preparation and application
 
@@ -65,9 +65,9 @@ All expressions below pair the conjugate retained mode with an independent scala
 | MDA G | Interior integral of (N²/g) G* X, plus (g0/g) Gs* Xs + (gd/g) Gb* Xb | G values and each endpoint with a nonzero coefficient |
 | MDA F | No independent physical scalar projector | Generic sampled recovery may still be prepared from observable F matrices |
 | Neutral-label DD APV | Existing exact-norm prescribed continuous APV dual | APV values and quadrature resolving each neutral interval; nonzero f0 |
-| GPE F/G | Not bridged in this increment; G requires independent companion F endpoint traces | An explicit augmented observation recipe is needed for G |
-| Wave/inertial/fixed-frequency F/G | No full physical scalar state adapter delivered here | The auxiliary G EVP pairing alone does not specify physical displacement or complete state/source recovery |
-| Geostrophic zero-APV F/G | Coefficient-space energy and boundary forms do not define an independent scalar projector | A paired state/endpoint-observation adapter is required |
+| Generalized-potential-enstrophy F/G | Scalar physical recipe not bridged here; its G pairing requires independent companion F endpoint traces | Vertical traces are available; the caller must supply the complete physical pairing |
+| Wave/inertial/fixed-frequency F/G | Vertical profiles are available; WVM owns complete physical state/source projectors | The auxiliary G EVP pairing alone does not specify physical displacement or complete state/source recovery |
+| Geostrophic zero-APV F/G | Coefficient-space energy and boundary forms do not define an independent scalar projector | WVM assembles its paired physical fields and independent endpoint observations |
 
 For APV G, cs is g0/(g+g0) with a free surface and g0/g with a rigid lid. The actual EVP catalog defines the limiting cases: free-surface g0=-g constrains Gs to zero and omits the singular term; free-surface g0=+Inf gives cs=1; rigid-lid g0=+Inf and bottom gd=+Inf omit their terms. Zero coefficients require no endpoint observation. MDA likewise omits inactive infinite endpoint terms.
 
@@ -85,4 +85,4 @@ Diagnostic recovery failure returns `success=false`, a status and no applicable 
 
 The bridge exposes the existing continuous reference forms and their provenance. Numerical source recipes use solver integration; analytical source recipes currently use a 1024-point trapezoidal reference. Neither is automatically convergence-qualified. Tests compare supported physical forms against independently refined quadrature, including signed endpoint terms and independent inputs, but do not establish a universal retained band or arbitrary-profile convergence.
 
-The aligned `basis.discreteTransform(grid)` remains the rigid-lid hydrostatic F/G adapter. Root-grid construction, external observation-layout qualification, coupled state/source adapters, provider grid calculus and production WVM adoption retain their separate scopes. See [verification](CommonScalarProjectionVerification.md) for the evidence and remaining limits of this increment.
+The aligned `basis.discreteTransform(grid)` remains the rigid-lid hydrostatic F/G adapter. Root-grid construction, external observation-layout qualification, provider grid calculus and WVM-owned physical projector assembly retain their separate scopes. See [verification](CommonScalarProjectionVerification.md) for the evidence and remaining limits of this increment.

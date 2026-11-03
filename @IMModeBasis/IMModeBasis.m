@@ -12,6 +12,8 @@ classdef IMModeBasis
     % scalar physical recipes can bind this family to caller-supplied
     % samples through projectionOnGrid or scalarTransform; continuous
     % construction remains independent of sampling and recovery policy.
+    % `IMVerticalSampling` evaluates prescribed point/cell observations
+    % without changing the basis or choosing numerical recovery.
     % Zero-APV bases also expose physical coefficient forms and immutable
     % rotations within the retained continuous subspace. Canonical endpoint
     % labels identify source rows; the source-coordinate map identifies
@@ -549,6 +551,7 @@ classdef IMModeBasis
 
     methods (Hidden)
         [HF,HG] = hydrostaticNorms(self)
+        info = samplingIntegrationInfo(self)
         function recipe = projectionRecipe(self,options)
             % Describe the family projection metric and continuous reference.
             % - Topic: Project modes

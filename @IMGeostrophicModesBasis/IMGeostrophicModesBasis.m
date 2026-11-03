@@ -178,4 +178,8 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
             end
         end
     end
+
+    methods (Hidden)
+        points = samplingBreakpoints(self)
+    end
 end
