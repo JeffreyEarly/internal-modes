@@ -51,6 +51,7 @@ classdef IMBasisCollection
 
     methods (Access = private)
         [projection,recipe] = prepareProjection(self,z,weights,options)
+        columns = allColumnIndices(self,page)
     end
 
     methods

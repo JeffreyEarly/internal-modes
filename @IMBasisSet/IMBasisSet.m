@@ -826,7 +826,8 @@ classdef IMBasisSet
 
             continuousGramMatrix = self.gramMatrix();
             targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
-            transform = IMScalarDiscreteTransform(z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization),inverseMatrix=inverseMatrix,metricMatrix=metricMatrix,targetGramMatrix=targetGramMatrix);
+            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
+            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization));
         end
 
         function name = normalizationName(~, normalization)

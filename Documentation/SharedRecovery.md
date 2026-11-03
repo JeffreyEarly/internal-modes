@@ -85,7 +85,7 @@ An unrepresentable physical coefficient dual similarly has status `unrepresentab
 
 Migration from the earlier prerelease API:
 
-- Use `IMScalarDiscreteTransform(z=...,weights=...,...)` for the old scalar constructor, or continue using the basis's `discreteTransform` factory. Scalar-only metrics and Gram evidence live on its `projection` record and its explicit scalar convenience properties.
+- Use the common basis `scalarTransform(z,w,variable=...)` factory for supported physical scalar channels, or bind prepared records with `IMScalarDiscreteTransform(physical,recovery,z=z,weights=w,normalization=name)`. String labels and full continuous forms are supported. Legacy basis `discreteTransform` factories continue to prepare the scalar adapter. Scalar physical metrics and Gram evidence live on its `projection` record. See the [family and observation inventory](CommonScalarProjection.md).
 - Use `IMDiscreteTransform.fromObservationMatrices` for arbitrary or coupled observations. Generic transforms expose no invented Gram/metric/Parseval fields.
 - Use aligned transform `recovery(variable=...)` and `physicalProjection(variable=...)` to inspect numerical and physical records separately. F0/G0 activity remains explicit.
 - Replace arbitrary forward-matrix injection with a prepared shared-engine result in provider adapters. Physical names such as `galerkin` and `truncatedCollocation` remain available through `forwardOperator`.

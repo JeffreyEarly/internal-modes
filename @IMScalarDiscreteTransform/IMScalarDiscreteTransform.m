@@ -3,8 +3,9 @@ classdef IMScalarDiscreteTransform < IMDiscreteTransform
     %
     % The generic superclass owns synthesis and recovery. This adapter adds
     % scalar samples, quadrature and the genuine physical IMProjection record.
-    % Its sampled Gram and continuous target remain distinct from numerical
-    % sample rank. Failed diagnostic preparation retains synthesis/physical
+    % Galerkin Gram evidence and prescribed coefficient systems remain
+    % distinct from numerical sample rank. Check projection's assessment
+    % capability flags before interpreting its coefficient system as a Gram. Failed diagnostic preparation retains synthesis/physical
     % pairings but does not expose an applicable recovery matrix.
     %
     % ```matlab
@@ -24,7 +25,7 @@ classdef IMScalarDiscreteTransform < IMDiscreteTransform
         % Physical quadrature weights, distinct from observation-noise weights.
         % - Topic: Inspect scalar transforms
         weights (:,1) double
-        % Scientific scalar mode numbers aligned with columnLabels.
+        % Optional legacy integer mode numbers; columnLabels carry scientific identity.
         % - Topic: Inspect scalar transforms
         modeNumber (1,:) double
         % Continuous normalization captured by the scalar family.
@@ -42,28 +43,31 @@ classdef IMScalarDiscreteTransform < IMDiscreteTransform
         % Genuine scalar physical sample metric.
         % - Topic: Inspect scalar transforms
         metricMatrix
-        % Sampled physical Gram, not the recovery overlap or sample rank.
+        % Sampled physical Gram or explicitly prescribed coefficient system.
+        %
+        % Check projection.supportsGramAssessment. A prescribed DD identity
+        % system does not measure a sampled APV Gram or observation rank.
         % - Topic: Inspect scalar transforms
         gramMatrix
-        % Continuous scalar physical Gram target.
+        % Continuous physical Gram target or prescribed coefficient target.
         % - Topic: Inspect scalar transforms
         targetGramMatrix
-        % Magnitude-normalized physical Gram discrepancy.
+        % Physical Gram discrepancy, NaN without Gram assessment capability.
         % - Topic: Inspect scalar transforms
         relativeGramOperatorError
         % Numerical recovery round trip, infinity when recovery failed.
         % - Topic: Inspect scalar transforms
         roundTripError
-        % Unscaled scalar synthesis condition number.
+        % Physical sampled-basis condition, NaN for a prescribed source dual.
         % - Topic: Inspect scalar transforms
         inverseMatrixConditionNumber
-        % Condition number of the actual sampled physical Gram.
+        % Condition number of the sampled Gram or prescribed coefficient system.
         % - Topic: Inspect scalar transforms
         gramConditionNumber
-        % Rank of the actual sampled physical Gram.
+        % Rank of the projection system, independent of sampled observability.
         % - Topic: Inspect scalar transforms
         sampledGramRank
-        % Whether the continuous active scalar target is positive definite.
+        % Whether the active physical or prescribed coefficient target is positive.
         % - Topic: Inspect scalar transforms
         targetGramIsPositiveDefinite
         % Whether any scalar physical quadrature weight is negative.
@@ -72,43 +76,50 @@ classdef IMScalarDiscreteTransform < IMDiscreteTransform
     end
 
     methods
-        function self = IMScalarDiscreteTransform(options)
-            % Prepare one scalar adapter from its genuine physical matrices.
+        function self = IMScalarDiscreteTransform(physical,recovery,options)
+            % Bind separately prepared physical and numerical scalar operators.
             %
-            % IMProjection delegates recovery to the shared kernel. Its
-            % prepared generic transform initializes the superclass without
-            % another factorization. The physical dual remains separately
-            % available through projection even when recovery fails.
+            % The shared engine prepares recovery once. This adapter validates
+            % its alignment with the physical record without another solve or
+            % factorization. General symmetric targets and string identities
+            % are retained. A prescribed dual may lack physical Gram evidence
+            % while still having independently prepared sampled recovery.
             %
             % - Topic: Create scalar transforms
+            % - Parameter physical: genuine IMProjection, optionally physical-only
+            % - Parameter recovery: shared-engine IMDiscreteTransform with aligned synthesis and physical dual
             % - Parameter options.z: scalar sample column
-            % - Parameter options.weights: physical quadrature weights
-            % - Parameter options.modeNumber: aligned scientific scalar labels
+            % - Parameter options.weights: unchanged physical quadrature weights
             % - Parameter options.normalization: continuous normalization name
-            % - Parameter options.inverseMatrix: scalar sampled synthesis
-            % - Parameter options.metricMatrix: symmetric physical sample metric
-            % - Parameter options.targetGramMatrix: diagonal continuous scalar Gram
-            % - Parameter options.failureMode: diagnostic or error on unresolved recovery
-            % - Returns self: scalar adapter with generic recovery capability
+            % - Parameter options.modeNumber: optional aligned legacy integer labels
+            % - Returns self: scalar adapter retaining physical projection and numerical recovery
             arguments (Input)
+                physical (1,1) IMProjection
+                recovery (1,1) IMDiscreteTransform
                 options.z (:,1) double {mustBeReal,mustBeFinite}
                 options.weights (:,1) double {mustBeReal,mustBeFinite}
-                options.modeNumber (1,:) double {mustBeInteger}
                 options.normalization (1,1) string
-                options.inverseMatrix (:,:) double {mustBeReal,mustBeFinite}
-                options.metricMatrix (:,:) double {mustBeReal,mustBeFinite}
-                options.targetGramMatrix (:,:) double {mustBeReal,mustBeFinite}
-                options.failureMode (1,1) string = "diagnostic"
+                options.modeNumber (1,:) double {mustBeReal,mustBeFinite,mustBeInteger} = []
             end
-            nSamples = numel(options.z); nModes = numel(options.modeNumber);
-            if numel(options.weights) ~= nSamples || ~isequal(size(options.inverseMatrix),[nSamples nModes])
-                error("IMScalarDiscreteTransform:InvalidShape","Samples, weights and mode labels must align with scalar synthesis.");
+            nSamples = numel(options.z);
+            if numel(options.weights) ~= nSamples || recovery.sampleCount ~= nSamples || physical.sampleCount ~= nSamples
+                error("IMScalarDiscreteTransform:InvalidShape","Samples, weights, physical pairing and recovery must describe the same observations.");
             end
-            if ~isequal(size(options.targetGramMatrix),[nModes nModes]) || ~isequal(options.targetGramMatrix,diag(diag(options.targetGramMatrix)))
-                error("IMScalarDiscreteTransform:InvalidTargetGram","Scalar targets must be diagonal and aligned with modeNumber.");
+            if ~isequal(physical.columnLabels,recovery.columnLabels) || ~isequal(physical.activeColumnMask,recovery.activeColumnMask) ...
+                    || ~isequal(physical.physicalDualMatrix,recovery.physicalDualMatrix)
+                error("IMScalarDiscreteTransform:InvalidRecovery","Recovery must retain the physical record's labels, scientific activity and unchanged physical dual.");
             end
-            physical = IMProjection(options.inverseMatrix,options.metricMatrix,options.targetGramMatrix,columnLabels=string(options.modeNumber),failureMode=options.failureMode);
-            self@IMDiscreteTransform(physical.recovery);
+            if physical.projectionKind == "galerkin" && ~isequal(physical.sampledBasis,recovery.synthesisMatrix)
+                error("IMScalarDiscreteTransform:InvalidRecovery","Scalar synthesis must exactly match the physical Galerkin basis.");
+            end
+            if ~isempty(options.modeNumber) && numel(options.modeNumber) ~= recovery.columnCount
+                error("IMScalarDiscreteTransform:InvalidShape","Optional modeNumber must align with the retained columns.");
+            end
+            if (isfield(recovery.metadata,"z") && ~isequal(recovery.metadata.z,options.z)) ...
+                    || (isfield(recovery.metadata,"normalization") && ~isequal(string(recovery.metadata.normalization),options.normalization))
+                error("IMScalarDiscreteTransform:InvalidRecovery","Prepared recovery metadata must match the sample order and normalization.");
+            end
+            self@IMDiscreteTransform(recovery);
             self.z = options.z;
             self.weights = options.weights;
             self.modeNumber = options.modeNumber;
@@ -121,7 +132,9 @@ classdef IMScalarDiscreteTransform < IMDiscreteTransform
         function value = get.gramMatrix(self), value = self.projection.gramMatrix; end
         function value = get.targetGramMatrix(self), value = self.projection.targetGramMatrix; end
         function value = get.relativeGramOperatorError(self), value = self.projection.gramError; end
-        function value = get.roundTripError(self), value = self.projection.roundTripError; end
+        function value = get.roundTripError(self)
+            if self.success, value = self.diagnostics.roundTripError; else, value = Inf; end
+        end
         function value = get.inverseMatrixConditionNumber(self), value = self.projection.inverseMatrixConditionNumber; end
         function value = get.gramConditionNumber(self), value = self.projection.gramConditionNumber; end
         function value = get.sampledGramRank(self), value = self.projection.sampledGramRank; end

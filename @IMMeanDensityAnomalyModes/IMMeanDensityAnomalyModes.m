@@ -136,6 +136,26 @@ classdef IMMeanDensityAnomalyModes < IMInternalModes
             if string(variable) == "F"
                 spec.hasInnerProduct = false;
                 spec.reason = "F is a surface-referenced diagnostic pressure mode; mean-density-anomaly coefficient projection is defined through G.";
+            else
+                % Express the physical value form directly. Factoring it as
+                % D^-1*(c*G)^2 can drop finite c through a dimensional
+                % boundary-activity threshold or an intermediate 1/D.
+                emptyWeights = struct("location",{},"coefficient",{},"c",{},"d",{});
+                spec.surfaceWeights = emptyWeights;
+                spec.bottomWeights = emptyWeights;
+                spec.endpointInnerProductTerms = IMHydrostaticInnerProductCatalog.emptyEndpointInnerProductTerms();
+                locations = ["surface","bottom"];
+                accelerations = [self.g0,self.gd];
+                for i = find(isfinite(accelerations) & accelerations ~= 0)
+                    % Unit value functionals avoid a reciprocal determinant.
+                    coefficient = accelerations(i)/self.g;
+                    if ~isfinite(coefficient) || coefficient == 0
+                        error("IMMeanDensityAnomalyModes:UnrepresentablePairing","A nonzero physical MDA endpoint coefficient exceeds floating-point range. Choose representable physical units.");
+                    end
+                    spec.(locations(i)+"Weights") = struct(location=locations(i),coefficient=coefficient,c=1,d=0);
+                end
+                spec.hasInnerProduct = true;
+                spec.reason = "The declared finite MDA accelerations define the signed G value pairing; inactive infinite terms are omitted.";
             end
         end
 
