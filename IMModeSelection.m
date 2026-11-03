@@ -1,6 +1,64 @@
 classdef (Hidden, Sealed) IMModeSelection
     % Select scientific ladders separately from finite exceptional sectors.
     methods (Static)
+        function validateRequest(evp,nModes,branch)
+            explicit = ~(isscalar(branch) && ismember(branch,["","all"]));
+            if (~explicit && ~isscalar(nModes)) || (explicit && numel(branch) ~= numel(nModes)) || numel(unique(branch)) ~= numel(branch)
+                error("IMSolver:InvalidModeRequest","Use one total nModes count, or one count for each distinct explicitly requested branch.");
+            end
+            if ~explicit, return; end
+            known = ["negative","zeroEigenvalue","positive"];
+            if isa(evp,"IMInternalModes")
+                if evp.name == "waveModesAtWavenumber"
+                    known = ["surface","internal","subinertial"];
+                elseif evp.name == "waveModesAtFrequency"
+                    known = ["surface","propagating","evanescent"];
+                elseif evp.name == "hydrostaticFModes"
+                    known = ["negative","barotropic","positive"];
+                elseif evp.modeFamily == "meanDensityAnomaly"
+                    known = ["negative","constant","positive"];
+                end
+            end
+            unknown = branch(~ismember(branch,known));
+            if ~isempty(unknown)
+                error("IMSolver:UnknownBranch","Unknown branch %s for %s. Supported branches are %s.",join(unknown,", "),evp.name,join(known,", "));
+            end
+        end
+
+        function plan = wavePagePlan(kappa,nModes)
+            if isempty(kappa)
+                error("IMSolver:EmptyWavenumberCollection","Supply at least one requested wavenumber.");
+            end
+            if isempty(nModes)
+                error("IMSolver:MissingModeCount","Supply nModes for every requested page, including kappa=0. Use a scalar or one count per entry of kappa; zero is valid.");
+            end
+            if isscalar(nModes)
+                counts = repmat(nModes,size(kappa));
+            elseif numel(nModes) == numel(kappa)
+                counts = nModes;
+            else
+                error("IMSolver:InvalidWaveModeCounts","nModes must be scalar or contain one count per entry of kappa, including zero and repeated wavenumbers.");
+            end
+            distinct = unique(kappa,"stable");
+            solveCounts = arrayfun(@(k) max(counts(kappa==k)),distinct);
+            [requests,~,mapping] = unique([kappa(:),counts(:)],"rows","stable");
+            plan = struct(kappa=kappa,pageCounts=counts,solvedKappa=distinct,solveCounts=solveCounts,basisKappa=requests(:,1).',basisCounts=requests(:,2).',basisIndex=reshape(mapping,1,[]));
+        end
+
+        function collection = wavePrefixCollection(sources,plan,solver)
+            bases = cell(size(plan.basisCounts));
+            for j = 1:numel(bases)
+                sourceIndex = find(plan.solvedKappa==plan.basisKappa(j),1);
+                source = sources{sourceIndex};
+                count = plan.basisCounts(j);
+                basis = source;
+                if count ~= source.nColumns, basis = source.selectColumns(1:count); end
+                sharedSolve = struct(kappa=plan.basisKappa(j),nModes=plan.solveCounts(sourceIndex),request=source.constructionRecord.selection.request);
+                bases{j} = basis.withConstructionRequest(struct(nModes=count,branch="",sharedSolve=sharedSolve),solver);
+            end
+            collection = IMBasisCollection(bases,kappa=plan.kappa,basisIndex=plan.basisIndex);
+        end
+
         function selection = selectCounted(evp,lambda,nModes,branch,options)
             % Select an exact total inventory, or explicit counted branches.
             arguments (Input)
@@ -13,10 +71,8 @@ classdef (Hidden, Sealed) IMModeSelection
                 options.diagnostics (1,1) struct = struct()
                 options.zeroIndices (1,:) double = []
             end
+            IMModeSelection.validateRequest(evp,nModes,branch);
             explicit = ~(isscalar(branch) && ismember(branch,["","all"]));
-            if (~explicit && ~isscalar(nModes)) || (explicit && numel(branch) ~= numel(nModes)) || numel(unique(branch)) ~= numel(branch)
-                error("IMSolver:InvalidModeRequest","Use one total nModes count, or one count for each distinct explicitly requested branch.");
-            end
             diagnostics = options.diagnostics;
             wave = isa(evp,"IMInternalModes") && ismember(string(evp.name),["waveModesAtWavenumber","waveModesAtFrequency"]);
             if wave

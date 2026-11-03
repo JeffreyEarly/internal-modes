@@ -52,8 +52,8 @@ waveG = waves.evaluate(z,variable="G",pages=[3 1]);
 assert(isequal(waveG(:,:,1),waveG(:,:,2)));
 % Per-call normalization also applies to collection derivatives without
 % changing the normalization stored on either basis.
-waveGz = waves.evaluate(z,variable="G",derivativeOrder=1,normalization="kConstant",pages=2);
-assert(max(abs(waveGz-wave1.evaluate(z,variable="G",derivativeOrder=1,normalization="kConstant")),[],"all") < 1e-12);
+waveGz = waves.evaluate(z,variable="G",derivativeOrder=1,normalization="waveEnergy",pages=2);
+assert(max(abs(waveGz-wave1.evaluate(z,variable="G",derivativeOrder=1,normalization="waveEnergy")),[],"all") < 1e-12);
 
 % Numerical and analytical zero-APV bases preserve endpoint/page identity.
 boundaryProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=zDomain,rotationRate=1e-4/(2*sind(33)),latitude=33,k=[1e-4 2e-4]);

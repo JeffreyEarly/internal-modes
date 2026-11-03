@@ -1,5 +1,42 @@
 # V2 API integration verification
 
+## Post-review normalization and count hardening
+
+Completed on 2026-11-03 from provider `6ba7b6e` and WVM `c4621b3e`. This follow-up implements the revised contracts in [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md), [CommonScalarProjection](CommonScalarProjection.md) and [HydrostaticRootTransform](HydrostaticRootTransform.md).
+
+- Fixed-grid hydrostatic adapters and root-transform physical records now use the actual full normalized F/G Gram matrices and majorants. They no longer infer a metric from a replaceable name or infer the represented G metric from F/h. A finite-difference regression checks physical forms and independent off-span inputs. Root qualification, quadrature fitting and truncated-collocation recovery retain their existing policies.
+- Built-in profiles remain dimensionless. The catalogue uses `rmsF`, `rmsG`, generic `rms`, `maxAbsF`, `maxAbsG`, `surfaceF`, `waveEnergy`, `generalizedPotentialEnstrophy`, `meanDensityAnomalyEnergy` and `endpointResponse` where supported. Canonical names are reserved; custom rules remain replaceable and validate divisors before MATLAB numeric conversion. Retired aliases, enum inputs, `innerProduct*` variants and `generalizedEnergy` normalization are rejected. Energy matrices and generalized-energy orthogonalization remain available.
+- Bulk counts align with every requested wavenumber, including zero. Unequal repeated-wavenumber counts share one maximal solve, with exact selected prefixes and per-request provenance. Interval families require `nModesPerInterval`; physical backgrounds and applicable raw factories require explicit surface choices. Empty page and column shapes are predictable.
+- `projectionOnGrid` defaults to physical preparation alone. Physical application uses `projectPhysical`/`physicalDualMatrix`; explicit recovery uses `recovery.transformForward`/`recovery.forwardMatrix` or `scalarTransform`. The ambiguous `IMProjection.project` and `IMProjection.forwardMatrix` aliases are removed. Low-level direct matrix construction retains its documented recovery default for assessment callers.
+- Analytical projection provenance now reports the actual Gauss–Legendre integration rule and original-inventory point budget. Selection preserves that budget.
+- WVM requests provider `waveEnergy` and applies its own F/G coordinate factors, including derivatives and k=0. Existing model coefficients, physical fields and saved-array conventions are preserved. MDA keeps its original scale under the new name. Active coordinate-study callers use explicit physical APV duals, recovery and counts. Manuscript source required no edits.
+
+### Verification
+
+The current provider inventory contains **737 distinct cases**, all covered by passing results. One complete run exercised 731 cases: 727 passed and four stale test expectations failed. The corrected four passed focused reruns. Six additional regression cases passed separately: five custom-divisor cases and the finite-difference full-Gram case. Five targeted checks also passed after the final root/provenance corrections. The final inventory comparison found no unverified cases. This is a full run plus targeted repairs and additions, not a second full-suite run.
+
+| Check | Result |
+| --- | --- |
+| Provider V2 | 737 distinct cases covered; no unresolved failures |
+| Affected WVM suites and field/source/restart checks | 30 passed |
+| Affected coordinate-grid study suites | 31 passed |
+| Independent neutral-label validation | 154 checks passed |
+| Original-code NetCDF restart | Exact arrays, coefficients, fields and energy |
+| Two-profile old/new WVM comparison | 66 quantities; maximum relative difference 4.25e-15 |
+| Old/new F/G and spectral derivatives, positive k and k=0 | Maximum relative difference 4.395e-15 |
+| Manuscript source-array smoke | All six scripts passed at original resolutions |
+| Bounded study/tool smoke | 9 reference families, 38 prefix rows; one constant-profile calibration |
+| Code Analyzer | No new findings after correction; existing advisories retained |
+| Scope, whitespace, manifest and Markdown links | Passed; no generated website or package payload changes |
+
+Provider execution evidence is in `/private/tmp/im-v2-implementation`; consumer evidence is in `/private/tmp/im-v2-caller-migration-20261103`. Temporary runner-path errors were corrected without changing source behavior. No `docs:check` target is configured in this provider checkout; canonical Markdown links and source documentation were checked, and website generation was excluded by the requested scope. No local asset prevented completion.
+
+Existing user edits in the provider example and coordinate study were preserved. Full performance campaigns and archived grid-qualification datasets were not regenerated. A complete non-surface-active `WVTransformBoussinesq` port, model-owned grid calculus choices and release/export remain separate work. No commits, pushes or external tracker communication were performed.
+
+## Earlier integration record
+
+This record describes the earlier integration. For the current normalization, exact-count and projection contracts, see [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md) and [CommonScalarProjection](CommonScalarProjection.md). Historical test counts and retired API names below are preserved as evidence of that earlier state.
+
 Implemented and verified on 2026-11-03 for PR [#68](https://github.com/JeffreyEarly/internal-modes/pull/68). The integration merges `InternalModesEVP` at `89ab5a7501189d1bf11adb471a03b03e9781719a` into the capable-basis migration at `f144924d72b1250f053e1886201e7c4880616926`. All 23 assessed source/test/documentation conflicts are resolved. See the [implementation plan](APISimplificationPlan.md) for contracts and scope.
 
 ## Delivered behavior

@@ -12,7 +12,7 @@ The classes contain many options, but also try to remain simple to use. Use `hel
 The prerelease [V2 API](Documentation/ModeCreationAPI.md) uses one physical background, an explicit family problem and a numerical or analytical solver. The result is the capable scientific family basis:
 
 ```matlab
-background = IMBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0]);
+background = IMBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
 problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
 solver = IMSolverSpectral(nEVP=128,coordinateKind="bandwidth");
 basis = solver.solveEVP(problem,nModes=13);
@@ -22,7 +22,7 @@ G = basis.G(z,normalization="maxAbsF");
 Gz = basis.evaluate(z,variable="G",derivativeOrder=1);
 ```
 
-Every numerical and analytical `solveEVP` call requires an explicit mode count. Counts include every returned column. This request returns one surface-gravity mode and twelve internal modes; `nModes=0` returns none. Explicit branch requests such as `branch="internal",nModes=3` return only those columns. All wave construction paths use the manuscript convention `F=D*Gz`. Normalization overrides share the solved basis and do not repeat the eigensolve. Numerical bases retain their native coefficients, diagnostics, signed Gram matrices and applicable transforms. The former `IMModes` namespace and `IMModeBasis` wrapper are removed.
+Every background requires an explicit surface condition. Every numerical and analytical `solveEVP` call requires an explicit mode count. Counts include every returned column. This request returns one surface-gravity mode and twelve internal modes; `nModes=0` returns none. Explicit branch requests such as `branch="internal",nModes=3` return only those columns. All wave construction paths use the manuscript convention `F=D*Gz`. Normalization overrides share the solved basis and do not repeat the eigensolve. Numerical bases retain their native coefficients, diagnostics, signed Gram matrices and applicable transforms. The former `IMModes` namespace and `IMModeBasis` wrapper are removed.
 
 Scalar and collection evaluation use `evaluate(z,variable="G",derivativeOrder=1)`, with an explicit variable and derivative order defaulting to zero. Collections also support per-call normalization in ordinary and streamed evaluation; unsupported requests fail before streaming callbacks.
 
@@ -30,7 +30,7 @@ Canonical zero-APV responses use `IMGeostrophicZeroAPVModes.atWavenumber(backgro
 
 For the rigid-lid hydrostatic problem, `IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/HydrostaticRootTransform.md), returning its root grid, fitted weights, reusable capable continuous basis and retained-band assessment. A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies fixed points and weights independently of the EVP solver coordinate. The provisional sampling default remains `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the mode-root grid is also available.
 
-Capable bases expose structured [capabilities and scientific records](Documentation/BasisContracts.md), lazy [normalization](Documentation/BasisNormalization.md), [physical scalar projection](Documentation/CommonScalarProjection.md) and [shared numerical recovery](Documentation/SharedRecovery.md). Point observations use ordinary basis evaluation.
+Capable bases expose structured [capabilities and scientific records](Documentation/BasisContracts.md), lazy [normalization](Documentation/BasisNormalization.md), [physical scalar projection](Documentation/CommonScalarProjection.md) and [shared numerical recovery](Documentation/SharedRecovery.md). Point observations use ordinary basis evaluation. The built-in `rmsF`, `rmsG` and generic scalar `rms` use full-depth root-mean-square amplitudes; every built-in keeps the profiles dimensionless. `projectionOnGrid` prepares only the physical dual by default. Apply it with `projectPhysical`, or request numerical recovery explicitly with `scalarTransform` or `prepareRecovery=true`.
 
 The creation guide covers [normalizations, analytical backends, counts and migration](Documentation/ModeCreationAPI.md). Independent [neutral-label modes](Documentation/NeutralLabelModes.md) use fixed-endpoint sine profiles on explicitly declared neutral intervals and project labeled APV with continuous normalization; they include no constant label. The stable `InternalModes` quick start below is unchanged.
 

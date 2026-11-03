@@ -21,7 +21,7 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
     methods (Test)
         function constantAPVModesHaveNoCheckerboardBranchesAndConverge(testCase)
             N0 = 5e-3;
-            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],g0=0,gd=0);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],g0=0,gd=0,surfaceBoundary="freeSurface");
             exact = N0^2*1000^2./(evp.g*((1:6)*pi).^2);
             errors = zeros(3,6);
             resolutions = [65 129 257];
@@ -41,7 +41,7 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
         end
 
         function neutralCapFirstModesConvergeWithoutAliases(testCase)
-            evp = IMInternalModes.geostrophicAPVModes(N2=@IMNeutralGeostrophicFiniteDifferenceTests.neutralCap,zDomain=[-1000 0],g0=0,gd=0);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@IMNeutralGeostrophicFiniteDifferenceTests.neutralCap,zDomain=[-1000 0],g0=0,gd=0,surfaceBoundary="freeSurface");
             reference = IMSolverSpectral(nEVP=512).solveEVP(evp,nModes=6);
             errors = zeros(3,6);
             for i = 1:3
@@ -62,7 +62,7 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
             endpoints = [0,-0.01;-0.0175,0.0175];
             for j = 1:size(endpoints,1)
                 evp = IMInternalModes.geostrophicAPVModes(N2=@IMNeutralGeostrophicFiniteDifferenceTests.neutralCap, ...
-                    zDomain=[-1000 0],g0=endpoints(j,1),gd=endpoints(j,2));
+                    zDomain=[-1000 0],g0=endpoints(j,1),gd=endpoints(j,2),surfaceBoundary="freeSurface");
                 reference = IMSolverSpectral(nEVP=512).solveEVP(evp,nModes=6);
                 basis = IMSolverFiniteDifference(z=linspace(-1000,0,257).').solveEVP(evp,nModes=6);
                 testCase.verifyEqual(basis.modeNumber,reference.modeNumber)
@@ -122,7 +122,7 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
             alternateBasis = IMSolverFiniteDifference(z=linspace(-1000,0,65).').solveEVP(alternate,nModes=1);
             testCase.verifyEqual(alternateBasis.inverseDepth,0,AbsTol=0)
             testCase.verifyTrue(isinf(alternateBasis.h))
-            apv = IMInternalModes.geostrophicAPVModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],g0=0.02,gd=0.03);
+            apv = IMInternalModes.geostrophicAPVModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],g0=0.02,gd=0.03,surfaceBoundary="freeSurface");
             neutral = IMSolverFiniteDifference(z=linspace(-1000,0,33).').solveEVP(apv,nModes=1);
             expected = apv.g*(1/apv.g+1/0.02+1/0.03)/1000;
             testCase.verifyNumElements(neutral.h,1)

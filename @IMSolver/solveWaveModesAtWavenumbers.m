@@ -11,17 +11,14 @@ function [collection,diagnostics] = solveWaveModesAtWavenumbers(self,varargin)
 % IMSolverFiniteDifference classes. Custom solvers must use independent
 % solveEVP calls until they expose a validated preparation-reuse capability.
 %
-% Positive wavenumbers request `nModes` columns, either a uniform scalar or
-% one count per positive entry of `kappa`, preserving its order and repeats.
-% Repeated wavenumbers must request identical counts. A zero-wavenumber request
-% requires an explicit independent `nInertialModes` count. Both counts are
-% exact requests: an insufficient returned family raises an error. Stored
-% bases retain the same scientific labels, normalization and boundary
-% conditions as independent `solveEVP` calls. Frequency signs and physical
-% wave polarizations belong to the caller, not this vertical-basis solve.
+% nModes is an exact total count for every page, including kappa=0: use
+% one scalar or a row aligned with all requested kappa entries. For repeated
+% wavenumbers the largest count is solved once; smaller counts retain exact
+% prefix views. Identical (kappa,count) requests share one stored basis.
+% Frequency signs and physical wave polarizations belong to the caller.
 %
 % ```matlab
-% [bases,costs] = solver.solveWaveModesAtWavenumbers([2e-4 0 1e-4 2e-4],N2=N2,zDomain=[-1000 0],nModes=8,nInertialModes=5);
+% [bases,costs] = solver.solveWaveModesAtWavenumbers([2e-4 0 1e-4 2e-4],N2=N2,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet(),nModes=[8 5 8 8]);
 % G = bases.evaluate(z,variable="G",pages=[1 3]);
 % ```
 %
@@ -35,8 +32,7 @@ function [collection,diagnostics] = solveWaveModesAtWavenumbers(self,varargin)
 % - Parameter options.g: gravitational acceleration
 % - Parameter options.surfaceBoundary: surface condition of the G EVP
 % - Parameter options.bottomBoundary: bottom condition of the G EVP
-% - Parameter options.nModes: required scalar or row of nonnegative counts aligned with kappa(kappa>0); may be omitted only for all-zero kappa
-% - Parameter options.nInertialModes: independent count, required when zero is requested
+% - Parameter options.nModes: required scalar or exact total counts aligned with every kappa entry
 % - Returns collection: continuous bases and exact requested-page mapping
 % - Returns diagnostics: construction costs and solve provenance, not accuracy qualification
 arguments
@@ -53,7 +49,7 @@ if ~isempty(args) && isa(args{1},"IMBackground")
     if mod(numel(args),2) ~= 0, error("IMSolver:InvalidOptions","Use name-value options after kappa."); end
     names = string(args(1:2:end));
     physicalArgs = args;
-    for name = ["nModes","nInertialModes","normalization"]
+    for name = ["nModes","normalization"]
         index = find(string(physicalArgs(1:2:end)) == name);
         physicalArgs(reshape([2*index-1;2*index],1,[])) = [];
     end

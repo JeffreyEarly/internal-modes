@@ -7,9 +7,23 @@ classdef IMBackgroundTests < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function surfaceConventionMustBeExplicit(testCase)
+            testCase.verifyError(@() IMBackground(N2=@(z) ones(size(z)),zDomain=[-1 0]),"IMBackground:MissingSurfaceCondition");
+            testCase.verifyError(@() IMBackground.constantStratification(),"IMBackground:MissingSurfaceCondition");
+            testCase.verifyError(@() IMBackground.exponentialStratification(),"IMBackground:MissingSurfaceCondition");
+            for family = ["hydrostaticFModes","hydrostaticGModes","waveModesAtWavenumber","waveModesAtFrequency","geostrophicAPVModes"]
+                factory = str2func("IMInternalModes."+family);
+                testCase.verifyError(@() factory(N2=@(z) ones(size(z)),zDomain=[-1 0]),"IMInternalModes:MissingSurfaceBoundary");
+            end
+            testCase.verifyError(@() IMSolverSpectral(nEVP=16).solveWaveModesAtWavenumbers(0,N2=@(z) ones(size(z)),zDomain=[-1 0],nModes=0),"IMInternalModes:MissingSurfaceBoundary");
+            mathematical = IMInternalModes(N2=@(z) ones(size(z)),zDomain=[-1 0]);
+            testCase.verifyEqual(mathematical.surfaceBoundary,IMBoundaryCondition.dirichlet());
+            testCase.verifyEqual(mathematical.bottomBoundary,IMBoundaryCondition.dirichlet());
+        end
+
         function arbitraryBackgroundOwnsThePhysicalColumn(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            background = IMBackground(N2=N2,zDomain=[-1000 0]);
+            background = IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[-1000 0]);
             testCase.verifyEqual(background.N2,N2);
             testCase.verifyEqual(background.zDomain,[-1000 0]);
             testCase.verifyEqual(background.D,1000);
@@ -47,7 +61,7 @@ classdef IMBackgroundTests < matlab.unittest.TestCase
         end
 
         function exponentialSourceAnchorsN0AtTheSurface(testCase)
-            background = IMBackground.exponentialStratification(N0=.01,b=500,zDomain=[-900 100]);
+            background = IMBackground.exponentialStratification(surfaceCondition="freeSurface",N0=.01,b=500,zDomain=[-900 100]);
             z = [-900 -400 100];
             testCase.verifyEqual(background.N2(z),1e-4*exp(2*(z-100)/500),RelTol=1e-14);
             testCase.verifyEqual(background.N2(100),1e-4);
@@ -57,7 +71,7 @@ classdef IMBackgroundTests < matlab.unittest.TestCase
         end
 
         function exponentialAnalyticalSourceHasOneProfile(testCase)
-            background = IMBackground.exponentialStratification(N0=.02,b=700,zDomain=[-1000 0],rotationRate=0,latitude=0,g=10);
+            background = IMBackground.exponentialStratification(surfaceCondition="freeSurface",N0=.02,b=700,zDomain=[-1000 0],rotationRate=0,latitude=0,g=10);
             solution = background.analyticalSolution();
             z = linspace(-1000,0,11).';
             testCase.verifyClass(solution,"IMExponentialStratificationSolution");
@@ -72,19 +86,19 @@ classdef IMBackgroundTests < matlab.unittest.TestCase
 
         function domainAndSurfaceVocabularyAreValidated(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[0 -1000]),"IMBackground:InvalidDomain");
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[0 0]),"IMBackground:InvalidDomain");
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[-1 Inf]),"MATLAB:validators:mustBeFinite");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[0 -1000]),"IMBackground:InvalidDomain");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[0 0]),"IMBackground:InvalidDomain");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[-1 Inf]),"MATLAB:validators:mustBeFinite");
             testCase.verifyError(@() IMBackground(N2=N2,zDomain=[-1 0],surfaceCondition="free"),"IMBackground:InvalidSurfaceCondition");
         end
 
         function physicalAndSourceParametersAreValidated(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[-1 0],rotationRate=-1),"MATLAB:validators:mustBeNonnegative");
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[-1 0],latitude=91),"MATLAB:validators:mustBeLessThanOrEqual");
-            testCase.verifyError(@() IMBackground(N2=N2,zDomain=[-1 0],g=0),"MATLAB:validators:mustBePositive");
-            testCase.verifyError(@() IMBackground.constantStratification(N0=0),"MATLAB:validators:mustBePositive");
-            testCase.verifyError(@() IMBackground.exponentialStratification(b=-1),"MATLAB:validators:mustBePositive");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[-1 0],rotationRate=-1),"MATLAB:validators:mustBeNonnegative");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[-1 0],latitude=91),"MATLAB:validators:mustBeLessThanOrEqual");
+            testCase.verifyError(@() IMBackground(surfaceCondition="freeSurface",N2=N2,zDomain=[-1 0],g=0),"MATLAB:validators:mustBePositive");
+            testCase.verifyError(@() IMBackground.constantStratification(surfaceCondition="freeSurface",N0=0),"MATLAB:validators:mustBePositive");
+            testCase.verifyError(@() IMBackground.exponentialStratification(surfaceCondition="freeSurface",b=-1),"MATLAB:validators:mustBePositive");
         end
 
         function energyBoundaryIncludesEveryFiniteEndpoint(testCase)

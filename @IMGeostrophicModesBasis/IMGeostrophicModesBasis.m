@@ -10,7 +10,7 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
     % than recovered by subtracting public physical eigenvalues.
     %
     % ```matlab
-    % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0,gd=-0.01);
+    % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0,gd=-0.01,surfaceBoundary="freeSurface");
     % basis = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=10);
     % G = basis.G(z);
     % ```

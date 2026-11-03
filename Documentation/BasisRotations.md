@@ -3,12 +3,12 @@
 Zero-APV geostrophic modes span the boundary-buoyancy states at each nonzero horizontal wavenumber. The manuscript uses two choices: canonical unit endpoint responses, and their generalized-energy orthogonal combinations. Both reuse the same continuous solutions.
 
 ```matlab
-background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
 problem = IMGeostrophicZeroAPVModes.atWavenumber(background,1e-3,endpoints=["surface","bottom"]);
 responses = IMSolverSpectral(nEVP=64).solveGeostrophicZeroAPVModes(problem);
 orthogonal = responses.orthogonalizeGeneralizedEnergy(g0=-.035,gd=.01);
 hbb = orthogonal.boundaryDepth;
-rmsModes = orthogonal.withNormalization("depthRMSF");
+rmsModes = orthogonal.withNormalization("rmsF");
 ```
 
 ## Canonical endpoint coordinates
@@ -54,7 +54,7 @@ $$H_{\mathrm{current}}=M^*H_{\mathrm{canonical}}M.$$
 
  Physical energy can retain cross terms between PV and boundary-buoyancy states even when generalized energy makes those subspaces orthogonal.
 
-The `"generalizedEnergy"` normalization becomes available after explicit orthogonalization establishes g0 and gd. A null generalized-energy direction remains in the basis. Requesting unit generalized-energy normalization or an inverse-norm projection for it fails explicitly. Positive profile normalizations remain available when their own norms are admissible. The basis never removes a direction to make a norm succeed.
+Generalized-energy orthogonalization does not impose unit energy. The default remains `endpointResponse`, preserving dimensionless profiles and the manuscript's response geometry. A null generalized-energy direction remains in the basis; inverse-energy projection on it fails explicitly. Profile normalizations such as `rmsF` remain available when their own amplitudes are nonzero. The basis never removes a direction to make a norm succeed.
 
 ## Coefficients, source projection and recovery
 

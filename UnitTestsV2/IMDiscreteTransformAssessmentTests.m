@@ -25,9 +25,9 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             coordinateKinds = ["z" "wkb" "density"];
             constantN2 = @(z) N0*N0*ones(size(z));
             exponentialN2 = @(z) N0*N0*exp(2*z/1300);
-            evps = [IMInternalModes.hydrostaticFModes(rotationRate=0,N2=constantN2,zDomain=zDomain), ...
-                IMInternalModes.hydrostaticFModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain), ...
-                IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain)];
+            evps = [IMInternalModes.hydrostaticFModes(rotationRate=0,N2=constantN2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann()), ...
+                IMInternalModes.hydrostaticFModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann()), ...
+                IMInternalModes.hydrostaticGModes(rotationRate=0,N2=exponentialN2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet())];
 
             for iEVP = 1:length(evps)
                 for iCoordinate = 1:length(coordinateKinds)
@@ -239,7 +239,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             zDomain = [-4000 0];
             N2 = @(z) N0*N0*ones(size(z));
             solver = IMSolverSpectral(nEVP=128);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
             basisSet = solver.solveEVP(evp,nModes=nModes);
         end
 

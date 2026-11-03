@@ -22,7 +22,7 @@ function evaluateChunks(self,z,consumer,options)
 % - Parameter options.variable: required scalar variable name
 % - Parameter options.derivativeOrder: supported vertical derivative order
 % - Parameter options.normalization: optional common normalization override
-% - Parameter options.pages: requested collection pages, empty means all
+% - Parameter options.pages: requested collection pages; omitted selects all, [] selects none
 % - Parameter options.columns: explicit scientific column indices
 % - Parameter options.sampleChunkSize: maximum coordinate rows per callback
 % - Parameter options.pageChunkSize: maximum requested pages per callback
@@ -33,15 +33,13 @@ arguments (Input)
     options.variable (1,1) string = ""
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
     options.normalization = []
-    options.pages (1,:) double {mustBeInteger,mustBePositive} = []
+    options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.basisIndex)
     options.columns = ":"
     options.sampleChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 1024
     options.pageChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 16
 end
 pages = options.pages;
-if isempty(pages)
-    pages = 1:numel(self.basisIndex);
-elseif any(pages > numel(self.basisIndex))
+if any(pages > numel(self.basisIndex))
     error("IMBasisCollection:InvalidPage","pages must select existing requested pages.");
 end
 variable = options.variable;
@@ -51,11 +49,12 @@ end
 columnCounts = arrayfun(@(i) numel(self.metadata(self.basisIndex(i)).columnLabels),pages);
 columns = options.columns;
 if isequal(columns,":") || isequal(columns,':')
-    if any(columnCounts ~= columnCounts(1))
+    if ~isempty(columnCounts) && any(columnCounts ~= columnCounts(1))
         error("IMBasisCollection:HeterogeneousColumns","Selected pages have different column counts. Evaluate homogeneous page groups or select explicit columns.");
     end
-    columns = 1:columnCounts(1);
-elseif ~isa(columns,"double") || ~isreal(columns) || (~isrow(columns) && ~isempty(columns)) || any(~isfinite(columns) | columns < 1 | columns ~= fix(columns),"all") || any(columns > min(columnCounts))
+    columns = [];
+    if ~isempty(columnCounts), columns = 1:columnCounts(1); end
+elseif ~isa(columns,"double") || ~isreal(columns) || (~isrow(columns) && ~isempty(columns)) || any(~isfinite(columns) | columns < 1 | columns ~= fix(columns),"all") || (~isempty(columnCounts) && any(columns > min(columnCounts)))
     error("IMBasisCollection:InvalidColumn","columns must exist on every selected page. Evaluate differing column counts separately.");
 end
 columns = reshape(columns,1,[]);

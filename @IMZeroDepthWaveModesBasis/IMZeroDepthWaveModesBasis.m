@@ -9,8 +9,8 @@ classdef IMZeroDepthWaveModesBasis
     % infinite-dimensional kernel explicitly, with no extra constant modes.
     %
     % ```matlab
-    % basis = IMZeroDepthWaveModesBasis(background,k,criticalIntervals=[-200 0],nModes=3);
-    % F = basis.F(z,normalization="depthRMSF");
+    % basis = IMZeroDepthWaveModesBasis(background,k,criticalIntervals=[-200 0],nModesPerInterval=3);
+    % F = basis.F(z,normalization="rmsF");
     % ```
     %
     % - Topic: Create zero-depth waves
@@ -33,7 +33,7 @@ classdef IMZeroDepthWaveModesBasis
     properties
         % Active profile normalization, applied lazily to aligned F and G.
         % - Topic: Evaluate zero-depth waves
-        normalization (1,1) string = "waveEnergy"
+        normalization = "waveEnergy"
     end
 
     properties (Access = private)
@@ -62,6 +62,9 @@ classdef IMZeroDepthWaveModesBasis
         % Signs of the active normalization form.
         % - Topic: Normalize modes
         normSignatures
+        % Retained counts on the declared critical intervals.
+        % - Topic: Inspect zero-depth waves
+        nModesPerInterval
         % Retained column count.
         % - Topic: Inspect zero-depth waves
         nColumns
@@ -108,32 +111,39 @@ classdef IMZeroDepthWaveModesBasis
         function self = IMZeroDepthWaveModesBasis(background,k,options)
             % Construct a truncated exact kernel from declared critical intervals.
             %
-            % nModes is scalar or contains one exact count per interval.
+            % nModesPerInterval is scalar or contains one exact count per interval.
             % A zero count retains no columns on that interval.
             %
             % - Topic: Create zero-depth waves
             % - Parameter background: authoritative physical column
             % - Parameter k: positive horizontal wavenumber
             % - Parameter options.criticalIntervals: exact N2=f0^2 intervals
-            % - Parameter options.nModes: nonnegative count per interval
+            % - Parameter options.nModesPerInterval: nonnegative count per interval
             % - Parameter options.normalization: active normalization
             % - Returns self: capable zero-depth wave basis
             arguments
                 background (1,1) IMBackground
                 k (1,1) double {mustBeReal,mustBeFinite,mustBePositive}
                 options.criticalIntervals (:,2) double {mustBeReal,mustBeFinite}
-                options.nModes (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = 8
-                options.normalization (1,1) string = "waveEnergy"
+                options.nModesPerInterval (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = []
+                options.normalization = "waveEnergy"
+            end
+            if isempty(options.nModesPerInterval)
+                error("IMZeroDepthWaveModesBasis:MissingModeCount","Supply nModesPerInterval as an explicit scalar or one nonnegative count per declared interval; zero is valid.");
             end
             IMDeclaredIntervals.validate(background,options.criticalIntervals,background.f0^2,"critical","IMZeroDepthWaveModesBasis");
             self.background = background;
             self.k = k;
             self.criticalIntervals = options.criticalIntervals;
-            self.auxiliary = IMNeutralLabelModesBasis(options.criticalIntervals,zDomain=background.zDomain,nModes=options.nModes,rotationRate=background.rotationRate,latitude=background.latitude);
+            self.auxiliary = IMNeutralLabelModesBasis(options.criticalIntervals,zDomain=background.zDomain,nModesPerInterval=options.nModesPerInterval,rotationRate=background.rotationRate,latitude=background.latitude);
             self.normalization = options.normalization;
             self.basisContractState = IMBasisContracts.initialState(self);
-            self.basisContractState.requestedScientific = struct(k=k,criticalIntervals=options.criticalIntervals,nModes=options.nModes);
-            self.basisContractState.request = struct(nModes=options.nModes);
+            self.basisContractState.requestedScientific = struct(k=k,criticalIntervals=options.criticalIntervals,nModesPerInterval=options.nModesPerInterval);
+            self.basisContractState.request = struct(nModesPerInterval=options.nModesPerInterval);
+        end
+
+        function value = get.nModesPerInterval(self)
+            value = self.auxiliary.nModesPerInterval;
         end
 
         function value = get.nColumns(self)
@@ -179,14 +189,15 @@ classdef IMZeroDepthWaveModesBasis
             % - Topic: Evaluate zero-depth waves
             arguments
                 self IMZeroDepthWaveModesBasis
-                name (1,1) string
+                name
                 rule (1,1) function_handle
             end
+            name = IMInternalModesNormalizationTools.customName(name,"IMZeroDepthWaveModesBasis");
             self.normalizationRules{name} = rule;
         end
 
         function self = set.normalization(self,name)
-            name = string(name);
+            name = IMInternalModesNormalizationTools.name(name,"IMZeroDepthWaveModesBasis");
             IMBasisContracts.validateNormalization(self,name);
             self.normalization = name;
         end
@@ -196,8 +207,9 @@ classdef IMZeroDepthWaveModesBasis
             % - Topic: Evaluate zero-depth waves
             arguments
                 self IMZeroDepthWaveModesBasis
-                name (1,1) string
+                name
             end
+            name = IMInternalModesNormalizationTools.name(name,"IMZeroDepthWaveModesBasis");
             if ~ismember(name,self.normalizationNames())
                 error("IMZeroDepthWaveModesBasis:UnsupportedNormalization","This basis does not define normalization %s.",name);
             end
@@ -207,7 +219,7 @@ classdef IMZeroDepthWaveModesBasis
         function names = normalizationNames(self)
             % List exact and custom profile normalization rules.
             % - Topic: Evaluate zero-depth waves
-            names = unique(["unity";"depthRMSF";"depthRMSG";"maxAbsF";"maxAbsG";"waveEnergy";reshape(string(keys(self.normalizationRules)),[],1)]);
+            names = unique(["rmsF";"rmsG";"maxAbsF";"maxAbsG";"waveEnergy";reshape(string(keys(self.normalizationRules)),[],1)]);
         end
 
         function factors = normalizationFactors(self,normalization)
@@ -215,18 +227,24 @@ classdef IMZeroDepthWaveModesBasis
             % - Topic: Evaluate zero-depth waves
             arguments
                 self IMZeroDepthWaveModesBasis
-                normalization (1,1) string = self.normalization
+                normalization = self.normalization
             end
             D = self.background.D;
             m = self.auxiliary.m_n;
+            normalization = IMInternalModesNormalizationTools.name(normalization,"IMZeroDepthWaveModesBasis");
             if isKey(self.normalizationRules,normalization)
                 rule = self.normalizationRules{normalization};
-                factors = arrayfun(@(j) rule(self,j),1:self.nColumns);
+                factors = zeros(1,self.nColumns);
+                for j = 1:self.nColumns
+                    value = rule(self,j);
+                    IMInternalModesNormalizationTools.validateCustomFactor(value,"IMZeroDepthWaveModesBasis");
+                    factors(j) = value;
+                end
             else
             switch normalization
-                case {"unity","depthRMSG"}
+                case "rmsG"
                     factors = ones(1,self.nColumns);
-                case "depthRMSF"
+                case "rmsF"
                     factors = D*m;
                 case "waveEnergy"
                     factors = D*sqrt(m.^2+self.k^2);
@@ -261,7 +279,7 @@ classdef IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
                 options.variable (1,1) string = ""
                 options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values double
@@ -277,9 +295,9 @@ classdef IMZeroDepthWaveModesBasis
             IMBasisContracts.validateEvaluation(self,variable,derivativeOrder);
             IMBasisContracts.validateNormalization(self,options.normalization);
             if variable == "G" && derivativeOrder <= 2
-                values = self.auxiliary.evaluate(z,variable="G",derivativeOrder=derivativeOrder,normalization="unity");
+                values = self.auxiliary.evaluate(z,variable="G",derivativeOrder=derivativeOrder,normalization="rmsG");
             elseif variable == "F" && derivativeOrder <= 1
-                values = self.background.D*self.auxiliary.evaluate(z,variable="G",derivativeOrder=derivativeOrder+1,normalization="unity");
+                values = self.background.D*self.auxiliary.evaluate(z,variable="G",derivativeOrder=derivativeOrder+1,normalization="rmsG");
             else
                 error("IMZeroDepthWaveModesBasis:UnsupportedDerivative","G supports orders zero through two; F supports orders zero and one.");
             end
@@ -292,7 +310,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             values = self.evaluate(z,variable="F",derivativeOrder=0,normalization=options.normalization);
         end
@@ -303,7 +321,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             values = self.evaluate(z,variable="F",derivativeOrder=1,normalization=options.normalization);
         end
@@ -314,7 +332,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             values = self.evaluate(z,variable="G",derivativeOrder=0,normalization=options.normalization);
         end
@@ -325,7 +343,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             values = self.evaluate(z,variable="G",derivativeOrder=1,normalization=options.normalization);
         end
@@ -336,7 +354,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             values = self.evaluate(z,variable="G",derivativeOrder=2,normalization=options.normalization);
         end
@@ -347,7 +365,7 @@ classdef IMZeroDepthWaveModesBasis
             arguments
                 self IMZeroDepthWaveModesBasis
                 options.variable (1,1) string {mustBeMember(options.variable,["F","G","waveEnergy"])} = "waveEnergy"
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             switch options.variable
                 case "F", squares = (self.background.D*self.auxiliary.m_n).^2;

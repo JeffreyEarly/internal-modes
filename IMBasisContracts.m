@@ -162,23 +162,11 @@ classdef (Hidden, Sealed) IMBasisContracts
         end
 
         function value = normalizationSignatures(basis)
+            % Signs belong to the active normalization, not to an inferred state energy.
             value = ones(1,basis.nColumns);
             if basis.nColumns == 0, return; end
-            name = string(basis.normalization);
-            if (isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis")) && ~basis.isBuiltinNormalization(name), return; end
-            if ismember(name,["generalizedEnergy","geostrophic","kConstant"])
+            if string(basis.normalization) == "meanDensityAnomalyEnergy"
                 gram = basis.gramMatrix(variable="G");
-                value = sign(real(diag(gram))).';
-            elseif name == "generalizedPotentialEnstrophy"
-                gram = basis.gramMatrix(variable="F"); value = sign(real(diag(gram))).';
-            elseif name == "unity"
-                if isa(basis,"IMInternalModesBasis") || isa(basis,"IMAnalyticalInternalModesBasis")
-                    gram = basis.gramMatrix(variable=basis.evp.formulation);
-                elseif isa(basis,"IMBasisSet")
-                    gram = basis.gramMatrix();
-                else
-                    return
-                end
                 value = sign(real(diag(gram))).';
             end
         end
@@ -213,7 +201,8 @@ classdef (Hidden, Sealed) IMBasisContracts
         end
 
         function validateNormalization(basis,name)
-            if ~ismember(string(name),string(basis.normalizationNames()))
+            name = IMInternalModesNormalizationTools.name(name,string(class(basis)));
+            if ~ismember(name,string(basis.normalizationNames()))
                 error(string(class(basis))+":UnsupportedNormalization","The basis does not define normalization %s.",string(name));
             end
         end

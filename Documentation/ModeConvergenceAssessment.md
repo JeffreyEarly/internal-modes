@@ -33,14 +33,14 @@ The result includes per-mode matching/orientation, long-form measurements, input
 
 ## Different wave counts at each wavenumber
 
-`IMSolver.solveWaveModesAtWavenumbers` accepts either scalar `nModes` or a row aligned with the positive entries of the requested `kappa` row, including repeats. Repeated identical wavenumbers must request identical counts. Zero-wavenumber pages instead use the explicit independent scalar `nInertialModes`.
+`IMSolver.solveWaveModesAtWavenumbers` requires `nModes` as either a scalar applied to every page or a row aligned with the full requested `kappa` row, including zero and repeated wavenumbers. Repeated wavenumbers may request different counts. Every count is an exact total, and zero retains no columns.
 
 ```matlab
 kappa = [2e-4 0 1e-4 2e-4];
-[collection,costs] = solver.solveWaveModesAtWavenumbers(kappa,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=[4 7 4],nInertialModes=5);
+[collection,costs] = solver.solveWaveModesAtWavenumbers(kappa,rotationRate=0,N2=N2,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet(),nModes=[4 5 7 2]);
 ```
 
-Each distinct wavenumber is solved once, using shared preparation and the exact requested count. The collection preserves the original basis, labels and page mapping. Evaluating pages with different column counts together requires an explicit common column selection, or separate calls; rectangular outputs do not silently pad or truncate the scientific bases. Wave frequency signs and model storage conventions remain the consumer's responsibility.
+Each distinct wavenumber is solved once, using shared preparation and the largest count requested at that wavenumber. Smaller requests retain exact prefixes of that solve, preserving its normalization integration budget and shared provenance. The collection preserves the original basis, labels and page mapping. Evaluating pages with different column counts together requires an explicit common column selection, or separate calls; rectangular outputs do not silently pad or truncate the scientific bases. Wave frequency signs and model storage conventions remain the consumer's responsibility.
 
 ## Reproduce the figure
 

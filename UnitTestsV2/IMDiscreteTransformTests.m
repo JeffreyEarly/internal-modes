@@ -37,7 +37,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.z, z, AbsTol=0)
             testCase.verifyEqual(transform.weights, dz, AbsTol=0)
             testCase.verifyEqual(transform.modeNumber, basisSet.modeNumber(1:3), AbsTol=0)
-            testCase.verifyEqual(transform.normalization, "unity")
+            testCase.verifyEqual(transform.normalization, "rms")
             testCase.verifyEqual(transform.inverseMatrix, expectedBasis, RelTol=1e-13, AbsTol=1e-13)
             testCase.verifyEqual(transform.metricMatrix, expectedMetric, AbsTol=0)
             testCase.verifyEqual(transform.gramMatrix, expectedGram, RelTol=1e-13, AbsTol=1e-13)
@@ -136,7 +136,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
         function indefiniteTargetsUseAbsoluteNormScaling(testCase)
             targetGram = diag([-1 2]);
             physical = IMProjection(eye(2),diag([-2 3]),targetGram,columnLabels=string([-1 1]));
-            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;0],weights=[-1;1],modeNumber=[-1 1],normalization="unity");
+            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;0],weights=[-1;1],modeNumber=[-1 1],normalization="rms");
             scale = 1./sqrt(abs(diag(targetGram)));
             expected = norm(scale.*(transform.gramMatrix - targetGram).*scale.',2);
 
@@ -168,9 +168,9 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
         function scalarBindingRejectsMismatchedPhysicalCoordinates(testCase)
             physical = IMProjection(eye(2),eye(2),eye(2),columnLabels=["left" "right"],prepareRecovery=false);
             wrong = IMDiscreteTransform.fromObservationMatrices(eye(2),fitFactor=eye(2),columnLabels=["right" "left"],physicalDual=eye(2));
-            testCase.verifyError(@() IMScalarDiscreteTransform(physical,wrong,z=[-1;0],weights=ones(2,1),normalization="unity"),"IMScalarDiscreteTransform:InvalidRecovery")
+            testCase.verifyError(@() IMScalarDiscreteTransform(physical,wrong,z=[-1;0],weights=ones(2,1),normalization="rms"),"IMScalarDiscreteTransform:InvalidRecovery")
             wrong = IMDiscreteTransform.fromObservationMatrices(2*eye(2),fitFactor=eye(2),columnLabels=physical.columnLabels,physicalDual=eye(2));
-            testCase.verifyError(@() IMScalarDiscreteTransform(physical,wrong,z=[-1;0],weights=ones(2,1),normalization="unity"),"IMScalarDiscreteTransform:InvalidRecovery")
+            testCase.verifyError(@() IMScalarDiscreteTransform(physical,wrong,z=[-1;0],weights=ones(2,1),normalization="rms"),"IMScalarDiscreteTransform:InvalidRecovery")
         end
 
         function invalidDiscreteInputsThrowStructuredErrors(testCase)
@@ -189,7 +189,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
 
         function matrixObjectDiagnosesSingularAndRejectsMalformedOperations(testCase)
             physical = IMProjection(ones(3,2),eye(3),eye(2),columnLabels=string([1 2]));
-            singular = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;-0.5;0],weights=ones(3,1),modeNumber=[1 2],normalization="unity");
+            singular = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;-0.5;0],weights=ones(3,1),modeNumber=[1 2],normalization="rms");
             testCase.verifyEqual(singular.sampledGramRank,1)
             testCase.verifyEqual(singular.relativeGramOperatorError,norm(singular.gramMatrix-eye(2),2),AbsTol=1e-14)
             testCase.verifyEqual(singular.roundTripError,Inf)
@@ -197,7 +197,7 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             testCase.verifyError(@() singular.transformForward(ones(3,1)),"IMDiscreteTransform:UnavailableRecovery")
 
             physical = IMProjection(eye(2),eye(2),eye(2),columnLabels=string([1 2]));
-            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;0],weights=ones(2,1),modeNumber=[1 2],normalization="unity");
+            transform = IMScalarDiscreteTransform(physical,physical.recovery,z=[-1;0],weights=ones(2,1),modeNumber=[1 2],normalization="rms");
             testCase.verifyError(@() transform.transformForward(ones(3,1)), "IMDiscreteTransform:InvalidSampleCount")
             testCase.verifyError(@() transform.transformBack(ones(3,1)), "IMDiscreteTransform:InvalidCoefficientCount")
         end

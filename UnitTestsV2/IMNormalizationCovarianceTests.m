@@ -95,10 +95,10 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function signedPhysicalPairingAndMajorantCovaryTogether(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             energy = IMGeneralizedEnergyBoundary(g0=-.04,gd=.03);
             basis = createIMTestBasis("MDA",background,energyBoundary=energy,nModes=4,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
-            normalized = basis.withNormalization("depthRMSG");
+            normalized = basis.withNormalization("rmsG");
             T = normalizationMap(basis,normalized);
             [z,w] = legpts(100,background.zDomain); w = w(:);
             observationZ = [z;background.zDomain([2 1]).'];
@@ -243,8 +243,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         function neutralAPVPhysicalDualAndMajorantCovaryTogether(testCase)
             intervals = [-400 -200;-100 0];
             N2 = @(z) 1e-4*double(~((z >= -400 & z <= -200) | (z >= -100 & z <= 0)));
-            background = IMBackground(N2=N2,zDomain=[-1000 0]);
-            full = IMNeutralLabelModesBasis(background,neutralIntervals=intervals,nModes=[2 2]);
+            background = IMBackground(N2=N2,zDomain=[-1000 0],surfaceCondition="freeSurface");
+            full = IMNeutralLabelModesBasis(background,neutralIntervals=intervals,nModesPerInterval=[2 2]);
             [first,wFirst] = legpts(80,intervals(1,:));
             [second,wSecond] = legpts(80,intervals(2,:));
             z = [first;second]; weights = [wFirst(:);wSecond(:)];

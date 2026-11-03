@@ -52,7 +52,7 @@ classdef IMZeroAPVCommonBasisTests < matlab.unittest.TestCase
         function profileNormalizationSelectionAndCustomRulesStayAligned(testCase)
             b = makeEndpointBasis(IMSolverAnalytical(),"freeSurface",[1.2 .7]).orthogonalizeGeneralizedEnergy(g0=-3,gd=.4);
             z = [-1;-.6;-.1;0];
-            changed = b.withNormalization("depthRMSF").selectColumns([2 1]);
+            changed = b.withNormalization("rmsF").selectColumns([2 1]);
             M = changed.boundaryResponseMatrix;
             raw = b.endpointUnscaledResponseMatrix();
             for page = 1:2
@@ -103,20 +103,20 @@ classdef IMZeroAPVCommonBasisTests < matlab.unittest.TestCase
         function scientificEndpointNormalizationsCannotBeReplaced(testCase)
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=48)}
                 b = makeEndpointBasis(solver{1},"freeSurface",1.2);
-                for name = ["endpointResponse","generalizedEnergy"]
+                for name = ["endpointResponse","rmsF","rmsG","maxAbsF","maxAbsG","surfaceF","waveEnergy"]
                     testCase.verifyError(@() b.addNormalization(name,@(~,~) 2),string(class(b))+":ReservedNormalization");
                 end
+                testCase.verifyError(@() b.withNormalization("generalizedEnergy"),string(class(b))+":UnsupportedNormalization");
                 custom = b.addNormalization("myScaling",@(~,~) 2);
-                replacedProfile = custom.addNormalization("maxAbsF",@(~,~) 3);
-                testCase.verifyEqual(replacedProfile.normalizationFactors("myScaling"),2*ones(2,1),AbsTol=0);
-                testCase.verifyEqual(replacedProfile.normalizationFactors("maxAbsF"),3*ones(2,1),AbsTol=0);
-                orthogonal = replacedProfile.orthogonalizeGeneralizedEnergy(g0=-3,gd=.4);
+                replaced = custom.addNormalization("myScaling",@(~,~) 3);
+                testCase.verifyEqual(custom.normalizationFactors("myScaling"),2*ones(2,1),AbsTol=0);
+                testCase.verifyEqual(replaced.normalizationFactors("myScaling"),3*ones(2,1),AbsTol=0);
+                orthogonal = replaced.orthogonalizeGeneralizedEnergy(g0=-3,gd=.4);
                 M = orthogonal.boundaryResponseMatrix;
                 testCase.verifyEqual(M.'*M,eye(2),AbsTol=5e-15);
                 testCase.verifyEqual(orthogonal.normalization,"endpointResponse");
-                energyNormalized = orthogonal.withNormalization("generalizedEnergy");
-                Hg = energyNormalized.generalizedEnergyMatrix(g0=-3,gd=.4);
-                testCase.verifyEqual(diag(Hg),energyNormalized.normSignatures,AbsTol=3e-14);
+                Hg = orthogonal.generalizedEnergyMatrix(g0=-3,gd=.4);
+                testCase.verifyEqual(Hg,diag(diag(Hg)),AbsTol=3e-14);
             end
         end
 
@@ -138,7 +138,7 @@ classdef IMZeroAPVCommonBasisTests < matlab.unittest.TestCase
         function physicalDualAndSharedRecoveryCovaryForComplexOffSpanData(testCase)
             energy = struct(g0=-3,gd=.4);
             original = makeEndpointBasis(IMSolverAnalytical(),"freeSurface",1.2).withNormalization("maxAbsF");
-            changed = original.orthogonalizeGeneralizedEnergy(g0=energy.g0,gd=energy.gd).withNormalization("depthRMSF");
+            changed = original.orthogonalizeGeneralizedEnergy(g0=energy.g0,gd=energy.gd).withNormalization("rmsF");
             T = original.boundaryResponseMatrix\changed.boundaryResponseMatrix;
             [z,w] = legpts(48,original.zDomain); w = w(:);
             [A,metric] = physicalObservation(original,z,w,energy);

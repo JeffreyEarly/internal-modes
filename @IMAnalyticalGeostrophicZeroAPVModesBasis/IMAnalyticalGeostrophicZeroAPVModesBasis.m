@@ -134,7 +134,6 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         normalizationRules_ = configureDictionary("string","cell")
         normalizationCache_
         isOrthogonal_ = false
-        energyCoefficients_ = []
     end
 
     methods
@@ -210,7 +209,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             value = self.normalization_;
         end
         function self = set.normalization(self,name)
-            name = string(name);
+            name = IMInternalModesNormalizationTools.name(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
             if ~isscalar(name) || ~ismember(name,self.normalizationNames())
                 error("IMAnalyticalGeostrophicZeroAPVModesBasis:UnsupportedNormalization","Choose a rule from normalizationNames().");
             end
@@ -218,10 +217,6 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         end
         function value = get.normSignatures(self)
             value = ones(self.nColumns,numel(self.k));
-            if self.normalization == "generalizedEnergy" && ~isKey(self.normalizationRules_,self.normalization)
-                matrix = self.endpointUnscaledGeneralizedEnergy();
-                for page = 1:numel(self.k), value(:,page) = sign(diag(matrix(:,:,page))); end
-            end
         end
         function value = get.boundaryResponseMatrix(self)
             factors = reshape(self.normalizationFactors(),1,self.nColumns,numel(self.k));
@@ -258,8 +253,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         function names = normalizationNames(self)
             % List admissible profile normalizations and installed rules.
             % - Topic: Evaluate boundary-buoyancy modes
-            names = ["endpointResponse","depthRMSF","depthRMSG","maxAbsF","maxAbsG"];
-            if ~isempty(self.energyCoefficients_), names(end+1) = "generalizedEnergy"; end
+            names = ["endpointResponse","rmsF","rmsG","maxAbsF","maxAbsG"];
             names = unique([names,reshape(string(keys(self.normalizationRules_)),1,[])],"stable");
         end
 
@@ -268,9 +262,10 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             % - Topic: Evaluate boundary-buoyancy modes
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                name (1,1) string = self.normalization
+                name = self.normalization
                 options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
             end
+            name = IMInternalModesNormalizationTools.name(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
             if ~ismember(name,self.normalizationNames())
                 error("IMAnalyticalGeostrophicZeroAPVModesBasis:UnsupportedNormalization","Choose a rule from normalizationNames().");
             end
@@ -310,7 +305,7 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             % - Topic: Choose boundary-buoyancy coordinates
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                name (1,1) string
+                name
             end
             basis = self;
             basis.normalization = name;
@@ -318,17 +313,15 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
 
         function basis = addNormalization(self,name,rule)
             % Install or replace a positive divisor rule, factor=rule(basis,j).
-            % endpointResponse and generalizedEnergy retain their scientific
-            % definitions; use a distinct name for a custom alternative.
+            % Built-in names retain their scientific definitions on every
+            % family; use a distinct name for a custom alternative.
             % - Topic: Choose boundary-buoyancy coordinates
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                name (1,1) string
+                name
                 rule (1,1) function_handle
             end
-            if ismember(name,["endpointResponse","generalizedEnergy"])
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:ReservedNormalization","%s defines the scientific endpoint coordinates and cannot be replaced. Use a distinct custom normalization name.",name);
-            end
+            name = IMInternalModesNormalizationTools.customName(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
             basis = self;
             basis.normalizationRules_{name} = rule;
             basis.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
@@ -400,10 +393,9 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             basis.columnOrdinals_ = 1:self.nColumns;
             basis.normalization_ = "endpointResponse";
             basis.isOrthogonal_ = true;
-            basis.energyCoefficients_ = struct(g0=options.g0,gd=options.gd);
             basis.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
             basis.metadata.basisChoice = "generalizedEnergyOrthogonal";
-            basis.metadata.generalizedEnergyCoefficients = basis.energyCoefficients_;
+            basis.metadata.generalizedEnergyCoefficients = struct(g0=options.g0,gd=options.gd);
             basis.metadata.orthogonality = evidence;
             basis.basisContractState.initialColumnIndices = zeros(1,0);
             basis.basisContractState.activeSourceColumns = zeros(1,0);
@@ -471,24 +463,6 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             z = z(:); weights = weights(:);
         end
 
-        function matrix = endpointUnscaledGeneralizedEnergy(self)
-            if isempty(self.energyCoefficients_)
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:UnspecifiedGeneralizedEnergy","Specify g0 and gd through orthogonalizeGeneralizedEnergy before requesting unit generalized energy.");
-            end
-            coefficient = self.energyCoefficients_;
-            canonical = IMGeostrophicZeroAPVFormTools.generalizedEnergy(self.canonicalEnergyMatrix,self.canonicalSurfaceBuoyancyMatrix,self.canonicalBottomBuoyancyMatrix,self.endpoints,coefficient.g0,coefficient.gd,"IMAnalyticalGeostrophicZeroAPVModesBasis");
-            matrix = IMGeostrophicZeroAPVFormTools.transformForm(canonical,self.endpointDirections_);
-        end
-
-        function bound = endpointEnergyCancellationBound(self)
-            coefficient = self.energyCoefficients_;
-            canonical = abs(self.canonicalEnergyMatrix);
-            if isfinite(coefficient.g0), canonical = canonical+abs(coefficient.g0)*abs(self.canonicalSurfaceBuoyancyMatrix); end
-            if isfinite(coefficient.gd), canonical = canonical+abs(coefficient.gd)*abs(self.canonicalBottomBuoyancyMatrix); end
-            matrix = IMGeostrophicZeroAPVFormTools.transformForm(canonical,abs(self.endpointDirections_));
-            bound = zeros(self.nColumns,numel(self.k));
-            for page = 1:numel(self.k), bound(:,page) = diag(matrix(:,:,page)); end
-        end
         function self = withProblem(self,problem)
             % Retain the authoritative descriptor after exact source dispatch.
             arguments

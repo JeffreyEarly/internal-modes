@@ -18,10 +18,10 @@ zDomain = [-D 0];
 N2 = @(z) N0*N0*exp(2*z/b);
 
 nModes = 6;
-evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g);
+evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,surfaceBoundary=IMBoundaryCondition.neumann());
 solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=10);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 
 nPoints = 10;
 sigma = linspace(0,1,nPoints).';
@@ -69,7 +69,7 @@ legend(["true coefficients" "raw pairings" "forward-transform coefficients"],Loc
 % creates a one-channel forward transform. The sampled F modes and their
 % endpoint traces remain part of the aligned physical snapshot.
 waveN2 = @(z) 1e-4*ones(size(z));
-waveEVP = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=waveN2,zDomain=zDomain,omega=2e-3);
+waveEVP = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=waveN2,zDomain=zDomain,omega=2e-3,surfaceBoundary=IMBoundaryCondition.dirichlet());
 waveSolver = IMSolverSpectral(nEVP=128);
 waveBasis = waveSolver.solveEVP(waveEVP,nModes=4);
 waveTransform = waveBasis.discreteTransform(z=z,weights=geometricWeights,nModes=3,variables="G",gramTolerance=1);

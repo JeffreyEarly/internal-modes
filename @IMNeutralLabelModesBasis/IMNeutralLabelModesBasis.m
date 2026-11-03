@@ -17,10 +17,10 @@ classdef IMNeutralLabelModesBasis
     % component in this fixed linear basis need not preserve physical density.
     %
     % ```matlab
-    % basis = IMNeutralLabelModesBasis([-200 -100],zDomain=[-1000 0],nModes=4);
+    % basis = IMNeutralLabelModesBasis([-200 -100],zDomain=[-1000 0],nModesPerInterval=4);
     % G = basis.G(linspace(-1000,0,1001).');
     % projection = basis.projectionOnGrid(z,weights);
-    % amplitudes = projection.project(APV);
+    % amplitudes = projection.projectPhysical(APV);
     % ```
     %
     % - Topic: Create neutral labels
@@ -38,7 +38,7 @@ classdef IMNeutralLabelModesBasis
         neutralIntervals (:,2) double
         % Nonnegative retained mode count for each neutral interval.
         % - Topic: Inspect neutral labels
-        nModes (1,:) double
+        nModesPerInterval (1,:) double
         % Interval index for each retained column.
         % - Topic: Inspect neutral labels
         intervalIndex (1,:) double
@@ -71,7 +71,7 @@ classdef IMNeutralLabelModesBasis
     properties
         % Active profile normalization; per-evaluation overrides do not solve again.
         % - Topic: Inspect neutral labels
-        normalization (1,1) string = "depthRMSG"
+        normalization = "rmsG"
     end
 
     properties (Access = private)
@@ -143,20 +143,20 @@ classdef IMNeutralLabelModesBasis
         function self = IMNeutralLabelModesBasis(neutralIntervals,options)
             % Create analytical neutral labels on explicitly specified intervals.
             %
-            % Use IMNeutralLabelModesBasis(background,neutralIntervals=...,nModes=...)
+            % Use IMNeutralLabelModesBasis(background,neutralIntervals=...,nModesPerInterval=...)
             % to take domain and rotation from an authoritative background and
             % reject interval declarations contradicting its N2 profile.
             %
             % Intervals must be nonempty, strictly separated, increasing and
             % contained in zDomain. Merge touching intervals before calling.
-            % Counts retain positive modes 1:nModes per interval, in
+            % Counts retain positive modes 1:nModesPerInterval per interval, in
             % interval order. Zero counts return no columns; there is no
             % additional constant sector, including in a fully neutral column.
             %
             % - Topic: Create neutral labels
             % - Parameter neutralIntervals: exact neutral intervals, one [lower upper] row each
             % - Parameter options.zDomain: physical [bottom surface] domain in meters
-            % - Parameter options.nModes: nonnegative positive-mode count, scalar or one per interval
+            % - Parameter options.nModesPerInterval: nonnegative positive-mode count, scalar or one per interval
             % - Parameter options.rotationRate: nonnegative planetary rotation rate
             % - Parameter options.latitude: central latitude in degrees north
             % - Parameter options.g0: optional surface generalized-energy provenance, zero by default
@@ -166,15 +166,18 @@ classdef IMNeutralLabelModesBasis
                 neutralIntervals
                 options.neutralIntervals (:,2) double {mustBeReal,mustBeFinite} = zeros(0,2)
                 options.zDomain double {mustBeReal,mustBeFinite} = []
-                options.nModes (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = 8
+                options.nModesPerInterval (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = []
                 options.rotationRate double {mustBeReal,mustBeFinite,mustBeNonnegative} = []
                 options.latitude double {mustBeReal,mustBeFinite} = []
-                options.normalization (1,1) string = "depthRMSG"
+                options.normalization = "rmsG"
                 options.g0 (1,1) double {mustBeReal} = 0
                 options.gd (1,1) double {mustBeReal} = 0
             end
             arguments (Output)
                 self (1,1) IMNeutralLabelModesBasis
+            end
+            if isempty(options.nModesPerInterval)
+                error("IMNeutralLabelModesBasis:MissingModeCount","Supply nModesPerInterval as an explicit scalar or one nonnegative count per declared interval; zero is valid.");
             end
             if isa(neutralIntervals,"IMBackground")
                 background = neutralIntervals;
@@ -207,18 +210,18 @@ classdef IMNeutralLabelModesBasis
             if isnan(options.g0) || isnan(options.gd)
                 error("IMNeutralLabelModesBasis:InvalidEndpointAcceleration","g0 and gd must be real numbers or infinities, not NaN.");
             end
-            counts = options.nModes;
+            counts = options.nModesPerInterval;
             if isscalar(counts)
                 counts = repmat(counts,1,size(neutralIntervals,1));
             elseif numel(counts) ~= size(neutralIntervals,1)
-                error("IMNeutralLabelModesBasis:InvalidModeCounts","nModes must be scalar or contain one nonnegative count per neutral interval.");
+                error("IMNeutralLabelModesBasis:InvalidModeCounts","nModesPerInterval must be scalar or contain one nonnegative count per neutral interval.");
             end
             if isempty(counts)
                 error("IMNeutralLabelModesBasis:InvalidModeCounts","Supply at least one nonnegative positive-mode count.");
             end
             self.zDomain = options.zDomain;
             self.neutralIntervals = neutralIntervals;
-            self.nModes = counts;
+            self.nModesPerInterval = counts;
             self.rotationRate = options.rotationRate;
             self.latitude = options.latitude;
             self.g0 = options.g0;
@@ -236,8 +239,8 @@ classdef IMNeutralLabelModesBasis
             end
             self.columnLabels = "interval" + string(self.intervalIndex) + ":mode" + string(self.localModeNumber);
             self.basisContractState = IMBasisContracts.initialState(self);
-            self.basisContractState.requestedScientific = struct(neutralIntervals=neutralIntervals,nModes=options.nModes,energyBoundary=struct(g0=options.g0,gd=options.gd));
-            self.basisContractState.request = struct(nModes=options.nModes);
+            self.basisContractState.requestedScientific = struct(neutralIntervals=neutralIntervals,nModesPerInterval=options.nModesPerInterval,energyBoundary=struct(g0=options.g0,gd=options.gd));
+            self.basisContractState.request = struct(nModesPerInterval=options.nModesPerInterval);
             if exist("background","var"), self.basisContractState.physicalBackground = IMBasisContracts.physicalBackground(background); end
         end
 
@@ -285,7 +288,7 @@ classdef IMNeutralLabelModesBasis
             self.localModeNumber = self.localModeNumber(columns);
             self.columnLabels = self.columnLabels(columns);
             self.m_n = self.m_n(columns);
-            self.nModes = arrayfun(@(j) nnz(self.intervalIndex == j),1:size(self.neutralIntervals,1));
+            self.nModesPerInterval = arrayfun(@(j) nnz(self.intervalIndex == j),1:size(self.neutralIntervals,1));
         end
 
         function self = addNormalization(self,name,rule)
@@ -293,14 +296,15 @@ classdef IMNeutralLabelModesBasis
             % - Topic: Evaluate neutral labels
             arguments
                 self IMNeutralLabelModesBasis
-                name (1,1) string
+                name
                 rule (1,1) function_handle
             end
+            name = IMInternalModesNormalizationTools.customName(name,"IMNeutralLabelModesBasis");
             self.normalizationRules{name} = rule;
         end
 
         function self = set.normalization(self,name)
-            name = string(name);
+            name = IMInternalModesNormalizationTools.name(name,"IMNeutralLabelModesBasis");
             IMBasisContracts.validateNormalization(self,name);
             self.normalization = name;
         end
@@ -310,8 +314,9 @@ classdef IMNeutralLabelModesBasis
             % - Topic: Evaluate neutral labels
             arguments
                 self IMNeutralLabelModesBasis
-                name (1,1) string
+                name
             end
+            name = IMInternalModesNormalizationTools.name(name,"IMNeutralLabelModesBasis");
             if ~ismember(name,self.normalizationNames())
                 error("IMNeutralLabelModesBasis:UnsupportedNormalization","This basis does not define normalization %s.",name);
             end
@@ -321,7 +326,7 @@ classdef IMNeutralLabelModesBasis
         function names = normalizationNames(self)
             % List exact and custom profile normalization rules.
             % - Topic: Evaluate neutral labels
-            names = unique(["depthRMSG";"maxAbsG";"unity";reshape(string(keys(self.normalizationRules)),[],1)]);
+            names = unique(["rmsG";"maxAbsG";reshape(string(keys(self.normalizationRules)),[],1)]);
         end
 
         function factors = normalizationFactors(self,normalization)
@@ -329,14 +334,20 @@ classdef IMNeutralLabelModesBasis
             % - Topic: Evaluate neutral labels
             arguments
                 self IMNeutralLabelModesBasis
-                normalization (1,1) string = self.normalization
+                normalization = self.normalization
             end
+            normalization = IMInternalModesNormalizationTools.name(normalization,"IMNeutralLabelModesBasis");
             if isKey(self.normalizationRules,normalization)
                 rule = self.normalizationRules{normalization};
-                factors = arrayfun(@(j) rule(self,j),1:self.nColumns);
+                factors = zeros(1,self.nColumns);
+                for j = 1:self.nColumns
+                    value = rule(self,j);
+                    IMInternalModesNormalizationTools.validateCustomFactor(value,"IMNeutralLabelModesBasis");
+                    factors(j) = value;
+                end
             else
             switch normalization
-                case {"depthRMSG","unity"}
+                case "rmsG"
                     factors = ones(1,self.nColumns);
                 case "maxAbsG"
                     lengths = diff(self.neutralIntervals,1,2);
@@ -364,7 +375,7 @@ classdef IMNeutralLabelModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
                 options.variable (1,1) string = ""
                 options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values double
@@ -397,7 +408,7 @@ classdef IMNeutralLabelModesBasis
             arguments (Input)
                 self IMNeutralLabelModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values (:,:) double
@@ -418,7 +429,7 @@ classdef IMNeutralLabelModesBasis
             arguments (Input)
                 self IMNeutralLabelModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values (:,:) double
@@ -438,7 +449,7 @@ classdef IMNeutralLabelModesBasis
             arguments (Input)
                 self IMNeutralLabelModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values (:,:) double
@@ -454,7 +465,7 @@ classdef IMNeutralLabelModesBasis
             arguments (Input)
                 self IMNeutralLabelModesBasis
                 z (:,1) double {mustBeReal,mustBeFinite}
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 values (:,:) double
@@ -476,7 +487,7 @@ classdef IMNeutralLabelModesBasis
             arguments (Input)
                 self IMNeutralLabelModesBasis
                 options.variable (1,1) string {mustBeMember(options.variable,["G","APV"])} = "G"
-                options.normalization (1,1) string = self.normalization
+                options.normalization = self.normalization
             end
             arguments (Output)
                 gram (:,:) double

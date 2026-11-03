@@ -20,7 +20,7 @@ arguments (Input)
     options.page (1,1) double {mustBeInteger,mustBePositive} = 1
     options.variable (1,1) string = ""
     options.columns = ":"
-    options.prepareRecovery (1,1) logical = true
+    options.prepareRecovery (1,1) logical = false
 end
 arguments (Output)
     projection (1,1) IMProjection

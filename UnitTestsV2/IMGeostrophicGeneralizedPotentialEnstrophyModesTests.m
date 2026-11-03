@@ -93,7 +93,7 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
 
             testCase.verifyEqual(string(basisSet.normalization),"generalizedPotentialEnstrophy")
             testCase.verifyTrue(ismember("generalizedPotentialEnstrophy",basisSet.normalizationNames()))
-            testCase.verifyFalse(ismember("depth",basisSet.normalizationNames()))
+            testCase.verifyTrue(ismember("rmsF",basisSet.normalizationNames()))
             testCase.verifyGreaterThan(min(Lambda),0)
             testCase.verifyLessThan(max(abs(surfaceResidual)./residualScale),2e-7)
             testCase.verifyLessThan(max(abs(bottomResidual)./residualScale),2e-7)
@@ -103,10 +103,10 @@ classdef IMGeostrophicGeneralizedPotentialEnstrophyModesTests < matlab.unittest.
 
         function existingDepthNormalizationRemainsVolumeOnly(testCase)
             [N2,zDomain] = testCase.profile();
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=-0.02,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g0=-0.02,gd=Inf,surfaceBoundary="freeSurface");
             basisSet = IMSolverSpectral(nEVP=64).solveEVP(evp,nModes=4);
             z = basisSet.solver.innerProductGrid(zDomain);
-            F = basisSet.F(z,normalization=Normalization.depth);
+            F = basisSet.F(z,normalization="rmsF");
             weights = basisSet.solver.innerProductWeights(z,zDomain);
             volumeGram = F.'*(weights.*F)/diff(zDomain);
 

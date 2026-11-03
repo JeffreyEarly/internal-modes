@@ -29,7 +29,7 @@ switch family
     case "enstrophy"
         problem = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(background,k=options.k);
     case "neutral"
-        basis = IMNeutralLabelModesBasis(background,neutralIntervals=options.intervals,nModes=options.nModes,g0=options.energyBoundary.g0,gd=options.energyBoundary.gd);
+        basis = IMNeutralLabelModesBasis(background,neutralIntervals=options.intervals,nModesPerInterval=options.nModes,g0=options.energyBoundary.g0,gd=options.energyBoundary.gd);
     otherwise
         error("InternalModesTests:UnknownFixture","Unknown family %s.",family);
 end

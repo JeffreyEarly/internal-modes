@@ -10,15 +10,32 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function explicitEmptyPagesDoNotEvaluateAnyBasis(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            collection = IMSolverAnalytical().solveWaveModesAtWavenumbers(background,[0 1e-4],nModes=[2 3]);
+            z = [-900;-500;-100];
+            testCase.verifySize(collection.evaluate(z,variable="F",pages=[]),[3 0 0]);
+            testCase.verifySize(collection.evaluate(z,variable="F",pages=[],columns=[3 1 3]),[3 3 0]);
+            testCase.verifySize(collection.evaluate(z,variable="F",pages=[],columns=[]),[3 0 0]);
+            callbacks = 0;
+            collection.evaluateChunks(z,@consume,variable="F",pages=[]);
+            testCase.verifyEqual(callbacks,0);
+            testCase.verifyError(@() collection.evaluate(z,variable="F"),"IMBasisCollection:HeterogeneousColumns");
+            testCase.verifyError(@() collection.evaluate(z,variable="F",pages=[],columns=[0 1]),"IMBasisCollection:InvalidColumn");
+            function consume(varargin)
+                callbacks = callbacks+1;
+            end
+        end
+
         function variableIsExplicitForEveryFamily(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=.01,zDomain=[-1000 0]);
             problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
             numeric = IMSolverSpectral(nEVP=32).solveEVP(problem,nModes=2);
             exact = IMSolverAnalytical().solveEVP(problem,nModes=2);
-            neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=background.zDomain);
-            labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=background.zDomain,nModes=2);
-            critical = IMBackground(N2=@(z) background.f0^2*ones(size(z)),zDomain=background.zDomain);
-            zeroDepth = IMZeroDepthWaveModesBasis(critical,2e-4,criticalIntervals=background.zDomain,nModes=2);
+            neutral = IMBackground(surfaceCondition="freeSurface",N2=@(z) zeros(size(z)),zDomain=background.zDomain);
+            labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=background.zDomain,nModesPerInterval=2);
+            critical = IMBackground(surfaceCondition="freeSurface",N2=@(z) background.f0^2*ones(size(z)),zDomain=background.zDomain);
+            zeroDepth = IMZeroDepthWaveModesBasis(critical,2e-4,criticalIntervals=background.zDomain,nModesPerInterval=2);
             endpointProblem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints="surface");
             endpoint = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(endpointProblem);
             exactEndpoint = IMSolverAnalytical().solveGeostrophicZeroAPVModes(endpointProblem);
@@ -41,7 +58,7 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
         end
 
         function normalizedCollectionsAgreeWithScalarBackends(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=.01,zDomain=[-1000 0]);
             problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
             solvers = {IMSolverSpectral(nEVP=40),IMSolverFiniteDifference(z=linspace(-1000,0,65).'),IMSolverAnalytical()};
             bases = cell(size(solvers));
@@ -68,7 +85,7 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
         end
 
         function streamedOverridesPreserveSelectionsAndDerivatives(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=.01,zDomain=[-1000 0]);
             problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
             spectral = IMSolverSpectral(nEVP=32).solveEVP(problem,nModes=3);
             exact = IMSolverAnalytical().solveEVP(problem,nModes=3);
@@ -77,8 +94,8 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
             pages = [3 2 3 1]; columns = [2 1 2];
             actual = zeros(numel(z),numel(columns),numel(pages));
             coverage = zeros(numel(z),numel(pages));
-            collection.evaluateChunks(z,@consume,variable="G",derivativeOrder=2,normalization="kConstant",pages=pages,columns=columns,sampleChunkSize=5,pageChunkSize=2);
-            expected = collection.evaluate(z,variable="G",derivativeOrder=2,normalization="kConstant",pages=pages,columns=columns);
+            collection.evaluateChunks(z,@consume,variable="G",derivativeOrder=2,normalization="waveEnergy",pages=pages,columns=columns,sampleChunkSize=5,pageChunkSize=2);
+            expected = collection.evaluate(z,variable="G",derivativeOrder=2,normalization="waveEnergy",pages=pages,columns=columns);
             testCase.verifyEqual(actual,expected,AbsTol=1e-12,RelTol=1e-12);
             testCase.verifyEqual(coverage,ones(size(coverage)));
             function consume(values,rows,positions,pageIDs)
@@ -108,10 +125,10 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
             for order = 0:1
                 testCase.verifyEqual(collection.evaluate(z,variable="u",derivativeOrder=order,normalization="custom"),scalar.evaluate(z,variable="u",derivativeOrder=order,normalization="custom"),AbsTol=1e-12);
             end
-            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1 0]);
-            labels = IMNeutralLabelModesBasis(background,neutralIntervals=[-1 0],nModes=3).addNormalization("custom",@(~,j) j+1);
-            critical = IMBackground(N2=@(z) background.f0^2*ones(size(z)),zDomain=[-1 0]);
-            waves = IMZeroDepthWaveModesBasis(critical,2e-4,criticalIntervals=[-1 0],nModes=3).addNormalization("custom",@(~,j) j+1);
+            background = IMBackground(surfaceCondition="freeSurface",N2=@(z) zeros(size(z)),zDomain=[-1 0]);
+            labels = IMNeutralLabelModesBasis(background,neutralIntervals=[-1 0],nModesPerInterval=3).addNormalization("custom",@(~,j) j+1);
+            critical = IMBackground(surfaceCondition="freeSurface",N2=@(z) background.f0^2*ones(size(z)),zDomain=[-1 0]);
+            waves = IMZeroDepthWaveModesBasis(critical,2e-4,criticalIntervals=[-1 0],nModesPerInterval=3).addNormalization("custom",@(~,j) j+1);
             for entry = {{labels,"APV",0},{labels,"G",2},{waves,"F",1},{waves,"G",2}}
                 item = entry{1}; basis = item{1}; variable = item{2}; order = item{3};
                 collection = IMBasisCollection({basis},basisIndex=[1 1]);
@@ -122,7 +139,7 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
         end
 
         function invalidNormalizationFailsBeforeAnyCallback(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=.01,zDomain=[-1000 0]);
             problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
             basis = IMSolverSpectral(nEVP=32).solveEVP(problem,nModes=2);
             custom = basis.addNormalization("onlyFirst",@(~,~) 2);
@@ -136,7 +153,7 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
         end
 
         function metadataUsesActualDerivativeCapabilities(testCase)
-            background = IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=0);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=1,zDomain=[-1 0],rotationRate=0);
             ordinary = IMSolverSpectral(nEVP=32).solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=2e-4),nModes=2);
             problem = IMInternalModes(rotationRate=0,name="customDiagnostic",formulation="G",N2=@(z) ones(size(z)),zDomain=[-1 0],p=1,q=0,r=1,FfromGz=@(~,dGdz,~,~) dGdz.^2+1);
             custom = IMSolverSpectral(nEVP=32).solveEVP(problem,nModes=2);
@@ -156,7 +173,7 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
         end
 
         function endpointNormalizationPreservesCoordinateMeaning(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(surfaceCondition="freeSurface",N0=.01,zDomain=[-1000 0]);
             problem = IMGeostrophicZeroAPVModes.atWavenumber(background,[1e-4 2e-4]);
             numerical = IMSolverSpectral(nEVP=40).solveGeostrophicZeroAPVModes(problem);
             exact = IMSolverAnalytical().solveGeostrophicZeroAPVModes(problem);
@@ -165,8 +182,8 @@ classdef IMEvaluationConsistencyTests < matlab.unittest.TestCase
             for entry = {numerical,exact,numerical.orthogonalizeGeneralizedEnergy(g0=0,gd=0),exact.orthogonalizeGeneralizedEnergy(g0=0,gd=0)}
                 basis = entry{1};
                 collection = IMBasisCollection({basis},basisIndex=[1 1 1],sourcePage=[2 1 2]);
-                actual = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="depthRMSF",sampleChunkSize=4);
-                expected = basis.evaluate(z,variable="G",derivativeOrder=1,normalization="depthRMSF",pages=[2 1 2]);
+                actual = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="rmsF",sampleChunkSize=4);
+                expected = basis.evaluate(z,variable="G",derivativeOrder=1,normalization="rmsF",pages=[2 1 2]);
                 testCase.verifyEqual(actual,expected,AbsTol=1e-12,RelTol=1e-12);
                 testCase.verifyError(@() collection.evaluateChunks(z,@consume,variable="F",normalization="notARule",sampleChunkSize=1),string(class(basis))+":UnsupportedNormalization");
                 testCase.verifyError(@() basis.evaluate(z,variable="F",normalization="notARule"),string(class(basis))+":UnsupportedNormalization");

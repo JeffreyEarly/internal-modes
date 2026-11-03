@@ -10,7 +10,7 @@ classdef IMHydrostaticNativeBasisTests < matlab.unittest.TestCase
         function analyticalSectorRetainsNativeMetricsAndDerivatives(testCase)
             N0 = 5e-3; D = 1000;
             source = testCase.source(N0,D);
-            basis = IMHydrostaticModesBasis(source,normalization="depthRMSF");
+            basis = IMHydrostaticModesBasis(source,normalization="rmsF");
             z = linspace(-D,0,33).';
             F = basis.F(z); G = basis.G(z);
             testCase.verifyClass(basis,"IMHydrostaticModesBasis");
@@ -71,7 +71,7 @@ classdef IMHydrostaticNativeBasisTests < matlab.unittest.TestCase
 
     methods (Static, Access = private)
         function basis = source(N0,D)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-D 0],rotationRate=0);
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-D 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=4);
         end
     end

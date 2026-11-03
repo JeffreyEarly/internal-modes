@@ -22,15 +22,13 @@ function transform = discreteTransform(self,grid,options)
         error("IMAnalyticalInternalModesBasis:UnavailableDiscreteTransform","The fixed-grid analytical bridge requires a rigid hydrostatic F/G basis including its barotropic sector.");
     end
     F = self.F(grid.z); G = self.G(grid.z);
-    HF = real(diag(self.gramMatrix(variable="F"))).';
-    if ismember(string(self.normalization),["depth","depthRMSF"])
-        HF(:) = diff(self.zDomain);
-    end
-    HG = HF./self.h;
-    HG(~isfinite(self.h)) = 0;
+    HF = self.gramMatrix(variable="F");
+    HG = self.gramMatrix(variable="G");
+    majorantF = self.majorantGramMatrix(variable="F");
+    majorantG = self.majorantGramMatrix(variable="G");
     N2Values = self.N2(grid.z);
-    channel = @(interior,target,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=diag(target),targetMajorantGramMatrix=diag(target));
-    channels = struct(F=channel(ones(size(grid.z)),HF,true(1,self.nColumns)),G=channel(N2Values/self.evp.g,HG,isfinite(self.h)));
+    channel = @(interior,target,majorant,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=target,targetMajorantGramMatrix=majorant);
+    channels = struct(F=channel(ones(size(grid.z)),HF,majorantF,true(1,self.nColumns)),G=channel(N2Values/self.evp.g,HG,majorantG,isfinite(self.h)));
     if ~isempty(options.recoveryF), channels.F.recovery = options.recoveryF; end
 if ~isempty(options.recoveryG), channels.G.recovery = options.recoveryG; end
 if options.forwardOperator ~= ""

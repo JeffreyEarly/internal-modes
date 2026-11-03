@@ -9,7 +9,7 @@ classdef IMHydrostaticModesBasis < IMInternalModesBasis
     %
     % ```matlab
     % source = solver.solveEVP(IMInternalModes.hydrostaticGModes(background),nModes=12);
-    % basis = IMHydrostaticModesBasis(source,normalization="depthRMSF");
+    % basis = IMHydrostaticModesBasis(source,normalization="rmsF");
     % ```
     %
     % - Topic: Create internal-mode bases
@@ -27,7 +27,7 @@ classdef IMHydrostaticModesBasis < IMInternalModesBasis
             % - Returns self: aligned native hydrostatic basis
             arguments
                 source (1,1) IMInternalModesBasis
-                options.normalization = "depthRMSF"
+                options.normalization = "rmsF"
             end
             surface = source.evp.surfaceBoundary;
             bottom = source.evp.bottomBoundary;

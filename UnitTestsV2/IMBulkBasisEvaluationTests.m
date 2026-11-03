@@ -80,7 +80,7 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             testCase.verifyEqual(collection.evaluate(z,variable="u",sampleChunkSize=3),scalar.u(z),AbsTol=1e-13);
             testCase.verifyEqual(collection.evaluate(z,variable="u",derivativeOrder=1,sampleChunkSize=3),scalar.uz(z),AbsTol=1e-12);
             N2 = @(z) 2.5e-5*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1000 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMConstantStratificationSolution(rotationRate=0,N0=5e-3,zDomain=[-1000 0]);
             analytical = solution.internalModes(evp,nModes=3);
             mean = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
@@ -144,7 +144,7 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             solver = IMSolverSpectral(nEVP=48);
             bases = cell(1,2);
             for i = 1:2
-                evp = IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=i*1e-4);
+                evp = IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=i*1e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 bases{i} = solver.solveEVP(evp,nModes=3);
             end
             bases{2} = bases{2}.addNormalization("double",@(b,j) 2*b.innerProductNormFactor(j));

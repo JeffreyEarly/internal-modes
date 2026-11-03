@@ -14,7 +14,7 @@ classdef IMVerticalGrid
     % $$L_s=2.5\,D/(N_z-1)$$.
     %
     % ```matlab
-    % background = IMBackground(N2=@(z) 1e-5+5e-5*exp(z/300),zDomain=[-2000 0]);
+    % background = IMBackground(N2=@(z) 1e-5+5e-5*exp(z/300),zDomain=[-2000 0],surfaceCondition="freeSurface");
     % grid = IMVerticalGrid.smoothedBandwidth(background,65);
     % grid.z; grid.weights;
     % ```

@@ -39,8 +39,8 @@ classdef IMBasisCapabilityTests < matlab.unittest.TestCase
             testCase.verifyFalse(transform.success);
         end
         function neutralTracesAndAPVDualRequirementsAreExplicit(testCase)
-            bg = IMBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0]);
-            basis = IMNeutralLabelModesBasis(bg,neutralIntervals=[-200 0],nModes=2);
+            bg = IMBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            basis = IMNeutralLabelModesBasis(bg,neutralIntervals=[-200 0],nModesPerInterval=2);
             testCase.verifyEqual(basis.capabilities.derivativeConvention,"classicalIntervalInterior");
             testCase.verifyEqual(basis.capabilities.traceConvention,"insideIntervalEndpoints");
             testCase.verifyEqual(basis.capabilities.projectionOperations.kind,"prescribedContinuousDual");
@@ -50,7 +50,7 @@ classdef IMBasisCapabilityTests < matlab.unittest.TestCase
             testCase.verifyError(@() basis.evaluate(-100,variable="APV",derivativeOrder=1),"IMNeutralLabelModesBasis:UnsupportedDerivative");
         end
         function emptySelectionsKeepTheirDeclaredOperations(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             full = createIMTestBasis("wave",bg,solver=IMSolverAnalytical()); empty = full.selectColumns([]);
             testCase.verifyEqual(empty.capabilities,full.capabilities);
             testCase.verifySize(empty.evaluate([-1000;0],variable="G",derivativeOrder=2),[2 0]);
@@ -69,7 +69,7 @@ classdef IMBasisCapabilityTests < matlab.unittest.TestCase
             end
         end
         function productFactorsPreserveTheSameDerivativeContract(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             basis = createIMTestBasis("wave",bg,solver=IMSolverAnalytical()); c = IMBasisCollection({basis});
             f = c.productFactor(id="Fz",variable="F",derivativeOrder=1);
             g = c.productFactor(id="Gzz",variable="G",derivativeOrder=2);
@@ -77,14 +77,14 @@ classdef IMBasisCapabilityTests < matlab.unittest.TestCase
             testCase.verifyError(@() c.productFactor(id="bad",variable="G",derivativeOrder=3),"IMBasisCollection:UnsupportedFactor");
         end
         function fixedFrequencyDoesNotClaimAFixedWavenumberEnergyNorm(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             basis = createIMTestBasis("frequency",bg,solver=IMSolverAnalytical());
             testCase.verifyFalse(ismember("waveEnergy",basis.capabilities.normalizationNames));
             testCase.verifyTrue(ismember("kSquared",basis.capabilities.spectrumNames));
             testCase.verifyEqual(basis.Fz([-900;-100]),bg.D*basis.Gzz([-900;-100]),AbsTol=3e-14);
         end
         function endpointResponsesExposeTheirRegularPairDerivatives(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             problem = IMGeostrophicZeroAPVModes.atWavenumber(bg,1e-3,endpoints=["surface","bottom"]);
             basis = IMSolverAnalytical().solveGeostrophicZeroAPVModes(problem); z = [-1000;-600;0];
             testCase.verifyEqual(basis.Fz(z),-bg.N2(z)/bg.g.*basis.G(z),AbsTol=2e-15);
@@ -92,7 +92,7 @@ classdef IMBasisCapabilityTests < matlab.unittest.TestCase
             testCase.verifyEmpty(basis.capabilities.projectionOperations);
         end
         function requestedEmptyAndSelectedEmptyPreserveEVPNormalizations(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             full = createIMTestBasis("enstrophy",bg,nModes=2); empty = createIMTestBasis("enstrophy",bg,nModes=0);
             testCase.verifyEqual(empty.capabilities,full.selectColumns([]).capabilities);
             testCase.verifyEqual(empty.normalization,"generalizedPotentialEnstrophy");

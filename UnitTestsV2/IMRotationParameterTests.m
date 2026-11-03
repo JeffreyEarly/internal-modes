@@ -8,7 +8,7 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
     methods (Test)
         function defaultsAndContextUsePlanetaryInputs(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyEqual(evp.rotationRate,7.2921e-5);
             testCase.verifyEqual(evp.latitude,33);
             testCase.verifyEqual(evp.f0,2*7.2921e-5*sind(33));
@@ -22,8 +22,8 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
         function hemisphereSignDoesNotChangeTheBandwidthGrid(testCase)
             N2 = @(z) 1e-8*exp(2*z/700);
-            north = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,latitude=45);
-            south = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,latitude=-45);
+            north = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            south = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,latitude=-45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyEqual(south.f0,-north.f0);
             first = IMSolverSpectral(nEVP=33,coordinateKind="bandwidth").configuredForEVP(north);
             second = IMSolverSpectral(nEVP=33,coordinateKind="bandwidth").configuredForEVP(south);
@@ -32,15 +32,15 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
         function planetaryInputsAreValidated(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=-1),"MATLAB:validators:mustBeNonnegative");
-            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=91),"MATLAB:validators:mustBeLessThanOrEqual");
-            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=-91),"MATLAB:validators:mustBeGreaterThanOrEqual");
-            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=NaN),"MATLAB:validators:mustBeFinite");
+            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=-1,surfaceBoundary=IMBoundaryCondition.dirichlet()),"MATLAB:validators:mustBeNonnegative");
+            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=91,surfaceBoundary=IMBoundaryCondition.dirichlet()),"MATLAB:validators:mustBeLessThanOrEqual");
+            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=-91,surfaceBoundary=IMBoundaryCondition.dirichlet()),"MATLAB:validators:mustBeGreaterThanOrEqual");
+            testCase.verifyError(@() IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=NaN,surfaceBoundary=IMBoundaryCondition.dirichlet()),"MATLAB:validators:mustBeFinite");
         end
 
         function zeroRotationRetainsTheOriginalExponentialStretch(testCase)
             D = 1000; b = 700; N0 = .01;
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) N0^2*exp(2*z/b),zDomain=[-D 0],rotationRate=0);
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) N0^2*exp(2*z/b),zDomain=[-D 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyEqual(evp.f0,0);
             z = linspace(-D,0,111);
             for kind = ["wkb", "bandwidth"]
@@ -54,8 +54,8 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
         function classicalWKBIgnoresRotationWithoutChangingPhysics(testCase)
             D = 1000; b = 700; N0 = 1e-4;
             N2 = @(z) N0^2*exp(2*z/b);
-            nonrotating = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0],rotationRate=0);
-            rotating = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0],latitude=45);
+            nonrotating = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            rotating = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-D 0],latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             classical = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(rotating);
             reference = classical.configuredForEVP(nonrotating);
             bandwidth = IMSolverSpectral(nEVP=65,coordinateKind="bandwidth").configuredForEVP(rotating);
@@ -74,13 +74,13 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
         end
 
         function classicalWKBRejectsNeutralColumnsWithRotation(testCase)
-            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],latitude=45);
+            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             classical = IMSolverSpectral(nEVP=33,coordinateKind="wkb");
             testCase.verifyError(@() classical.configuredForEVP(neutral),"IMSolverSpectral:InvalidCoordinate");
         end
 
         function neutralLayerHasInvertibleMapAndPhysicalCalculus(testCase)
-            evp = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],latitude=45);
+            evp = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=33,coordinateKind="bandwidth").configuredForEVP(evp);
             q = 2*evp.rotationRate;
             testCase.verifyEqual(solver.qReference,q*ones(size(solver.qReference)),AbsTol=1e-17);
@@ -97,7 +97,7 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
         function rotatingExponentialHasConsistentJacobianDerivative(testCase)
             b = 700; N2 = @(z) 1e-8*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=33);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=33,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solver = IMSolverSpectral(nEVP=65,coordinateKind="bandwidth").configuredForEVP(evp);
             horizontal = 2*evp.rotationRate*cosd(evp.latitude);
             w = N2(solver.zReference)+horizontal^2-evp.f0^2;
@@ -110,8 +110,8 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
         function rotationReconfigurationRebuildsWithoutMutatingOriginal(testCase)
             N2 = @(z) 1e-8*exp(2*z/700);
-            firstEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0);
-            secondEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=45);
+            firstEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            secondEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             first = IMSolverSpectral(nEVP=33,coordinateKind="bandwidth").configuredForEVP(firstEVP);
             original = first.xReference;
             second = first.configuredForEVP(secondEVP);
@@ -132,12 +132,12 @@ classdef IMRotationParameterTests < matlab.unittest.TestCase
 
         function invalidAndDegenerateMonitorsRemainErrors(testCase)
             base = IMSolverSpectral(nEVP=33,coordinateKind="bandwidth");
-            negative = IMInternalModes.hydrostaticGModes(N2=@(z) -1e-8*ones(size(z)),zDomain=[-1000 0]);
+            negative = IMInternalModes.hydrostaticGModes(N2=@(z) -1e-8*ones(size(z)),zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyError(@() base.configuredForEVP(negative),"IMSolverSpectral:InvalidCoordinate");
-            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],rotationRate=0);
+            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyError(@() base.configuredForEVP(neutral),"IMSolverSpectral:InvalidCoordinate");
             rotationRate = 7.2921e-5;
-            degenerate = IMInternalModes.hydrostaticGModes(N2=@(z) (2*rotationRate)^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=90);
+            degenerate = IMInternalModes.hydrostaticGModes(N2=@(z) (2*rotationRate)^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=90,surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyError(@() base.configuredForEVP(degenerate),"IMSolverSpectral:InvalidCoordinate");
         end
     end

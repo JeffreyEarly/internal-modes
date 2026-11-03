@@ -22,14 +22,14 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.physicalDualStatus,"unrepresentableCoefficientSystem")
             testCase.verifyEmpty(projection.physicalDualMatrix)
             testCase.verifyTrue(projection.recovery.success)
-            testCase.verifyEqual(projection.project(1e-100),1,AbsTol=1e-14)
+            testCase.verifyEqual(projection.recovery.transformForward(1e-100),1,AbsTol=1e-14)
             testCase.verifyError(@() projection.projectPhysical(1),"IMProjection:UnavailablePhysicalDual")
 
             source = IMProjection.fromPrescribedDual(1,1e-310,1,majorantGramMatrix=1,provenance=struct(kind="rangeControl"));
             testCase.verifyEqual(source.physicalDualStatus,"unrepresentableCoefficientSystem")
-            testCase.verifyEmpty(source.forwardMatrix)
+            testCase.verifyEmpty(source.recovery)
             testCase.verifyEmpty(source.physicalDualMatrix)
-            testCase.verifyError(@() source.project(1),"IMProjection:UnavailablePhysicalDual")
+            testCase.verifyError(@() source.projectPhysical(1),"IMProjection:UnavailablePhysicalDual")
             testCase.verifyError(@() source.projectPhysical(1),"IMProjection:UnavailablePhysicalDual")
             testCase.verifyEqual(source.samplePairingMatrix,1)
 
@@ -40,7 +40,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             tinyPhysical = IMProjection(1,1e-310,1e100,majorantGramMatrix=1e100);
             testCase.verifyEqual(tinyPhysical.physicalDualStatus,"unrepresentableCoefficientSystem")
             testCase.verifyTrue(tinyPhysical.recovery.success)
-            testCase.verifyEqual(tinyPhysical.project(1),1,AbsTol=1e-14)
+            testCase.verifyEqual(tinyPhysical.recovery.transformForward(1),1,AbsTol=1e-14)
 
             physicalOnly = IMProjection(1e-100,-1e100,-1e-310,majorantGramMatrix=1e-310,prepareRecovery=false);
             testCase.verifyEqual(physicalOnly.physicalDualStatus,"unrepresentableCoefficientSystem")
@@ -50,16 +50,16 @@ classdef IMProjectionTests < matlab.unittest.TestCase
 
         function signedPairingAndPositiveErrorNormStayDistinct(testCase)
             projection = IMProjection(ones(2,1),diag([2 -1]),1,majorantGramMatrix=3,columnLabels="external");
-            testCase.verifyEqual(projection.project([1;0]),2,AbsTol=1e-14)
+            testCase.verifyEqual(projection.recovery.transformForward([1;0]),2,AbsTol=1e-14)
             testCase.verifyEqual(projection.productError([1;0],0,1),2*sqrt(3),AbsTol=1e-14)
             testCase.verifyEqual(projection.leakage([1;0],1),2*sqrt(3),AbsTol=1e-14)
-            testCase.verifyNotEqual(projection.project([1;0]),2/3)
+            testCase.verifyNotEqual(projection.recovery.transformForward([1;0]),2/3)
         end
 
         function complexPhaseLeavesPositiveNormsInvariant(testCase)
             projection = IMProjection(ones(2,1),diag([2 -1]),1,majorantGramMatrix=3);
             phase = exp(1i*0.7);
-            testCase.verifyEqual(projection.project(phase*[1;0]),2*phase,AbsTol=1e-14)
+            testCase.verifyEqual(projection.recovery.transformForward(phase*[1;0]),2*phase,AbsTol=1e-14)
             testCase.verifyEqual(projection.leakage(phase*[1;0],1),2*sqrt(3),AbsTol=1e-14)
             testCase.verifyEqual(projection.productError(phase*[1;0],phase,1),sqrt(3),AbsTol=1e-14)
         end
@@ -69,12 +69,12 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.sampledGramRank,1)
             testCase.verifyEqual(projection.gramError,3,AbsTol=1e-14)
             testCase.verifyFalse(projection.recovery.success)
-            testCase.verifyEmpty(projection.forwardMatrix)
-            testCase.verifyError(@() projection.project([2;2]),"IMProjection:UnavailableRecovery")
+            testCase.verifyEmpty(projection.recovery.forwardMatrix)
+            testCase.verifyError(@() projection.recovery.transformForward([2;2]),"IMDiscreteTransform:UnavailableRecovery")
             testCase.verifyEqual(projection.projectPhysical([2;2]),[4;4],AbsTol=1e-14)
             testCase.verifyEqual(projection.roundTripError,Inf)
             inactive = IMProjection([0 1;0 2],eye(2),diag([0 5]),activeColumnMask=[false true],columnLabels=["barotropic" "1"]);
-            testCase.verifyEqual(inactive.forwardMatrix(1,:),[0 0],AbsTol=0)
+            testCase.verifyEqual(inactive.recovery.forwardMatrix(1,:),[0 0],AbsTol=0)
             testCase.verifyLessThan(inactive.roundTripError,1e-14)
             testCase.verifyEqual(inactive.prefix(1).activeColumnMask,false)
             testCase.verifyEqual(inactive.prefix(1).gramError,0)
@@ -98,7 +98,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
                 testCase.verifyTrue(projection.targetGramIsPositiveDefinite)
                 testCase.verifyLessThan(projection.gramError,1e-12)
                 coefficients = (1+1i*sin(0:nPoints-2)).'/sqrt(H).';
-                recovered = projection.project(Phi*coefficients);
+                recovered = projection.recovery.transformForward(Phi*coefficients);
                 testCase.verifyLessThan(norm(sqrt(H).'.*(recovered-coefficients))/norm(sqrt(H).'.*coefficients),1e-12)
             end
         end
@@ -112,12 +112,12 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.sampledGramRank,3)
             testCase.verifyFalse(projection.targetGramIsPositiveDefinite)
             values = [1;2i;3-1i];
-            testCase.verifyEqual(columnScales.'.*projection.project(values),values,AbsTol=1e-12)
+            testCase.verifyEqual(columnScales.'.*projection.recovery.transformForward(values),values,AbsTol=1e-12)
             pairing = [1 2i;3 -1;2i 4];
             prescribed = IMProjection.fromPrescribedDual(scaling*pairing,scaling*metric*scaling,scaling*metric*scaling,majorantGramMatrix=scaling*majorant*scaling,provenance=struct(source="scaled signed dual"));
             testCase.verifyEqual(prescribed.sampledGramRank,3)
             testCase.verifyFalse(prescribed.targetGramIsPositiveDefinite)
-            testCase.verifyEqual(columnScales.'.*prescribed.project([1;2i]),metric\(pairing*[1;2i]),AbsTol=1e-12)
+            testCase.verifyEqual(columnScales.'.*prescribed.projectPhysical([1;2i]),metric\(pairing*[1;2i]),AbsTol=1e-12)
         end
 
         function zeroWeightsIgnoreSamplesWithDenseCoefficientMetric(testCase)
@@ -132,8 +132,8 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             values([1 end]) = 1e12;
             testCase.verifyEqual(projection.sampledGramRank,3)
             testCase.verifyTrue(projection.targetGramIsPositiveDefinite)
-            testCase.verifyEqual(projection.forwardMatrix(:,[1 end]),zeros(3,2),AbsTol=0)
-            testCase.verifyEqual(scales.'.*projection.project(values),scales.'.*coefficients,AbsTol=1e-12)
+            testCase.verifyEqual(projection.recovery.forwardMatrix(:,[1 end]),zeros(3,2),AbsTol=0)
+            testCase.verifyEqual(scales.'.*projection.recovery.transformForward(values),scales.'.*coefficients,AbsTol=1e-12)
         end
 
         function deficientPairingPreservesUnitsAndInactiveZeros(testCase)
@@ -146,17 +146,17 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(scaled.sampledGramRank,1)
             testCase.verifyEqual(scaled.gramError,base.gramError,AbsTol=1e-12)
             testCase.verifyFalse(scaled.recovery.success)
-            testCase.verifyEmpty(scaled.forwardMatrix)
-            testCase.verifyError(@() scaled.project(values),"IMProjection:UnavailableRecovery")
+            testCase.verifyEmpty(scaled.recovery.forwardMatrix)
+            testCase.verifyError(@() scaled.recovery.transformForward(values),"IMDiscreteTransform:UnavailableRecovery")
             testCase.verifyEqual(scales.'.*scaled.projectPhysical(values),base.projectPhysical(values),AbsTol=1e-12)
-            testCase.verifyEqual(scaled.prefix(1).forwardMatrix,zeros(1,3),AbsTol=0)
+            testCase.verifyEqual(scaled.prefix(1).recovery.forwardMatrix,zeros(1,3),AbsTol=0)
         end
 
         function denseSignedTargetsRequireAnExplicitPositiveMajorant(testCase)
             target = [1 2;2 -1];
             testCase.verifyError(@() IMProjection(eye(2),target,target),"IMProjection:MajorantRequired")
             projection = IMProjection(eye(2),target,target,majorantGramMatrix=3*eye(2));
-            testCase.verifyEqual(projection.forwardMatrix,eye(2),AbsTol=1e-14)
+            testCase.verifyEqual(projection.recovery.forwardMatrix,eye(2),AbsTol=1e-14)
             testCase.verifyEqual(projection.gramError,0,AbsTol=0)
             testCase.verifyFalse(projection.targetGramIsPositiveDefinite)
             testCase.verifyEqual(projection.productError([1;2],zeros(2,1),5),sqrt(3),AbsTol=1e-14)
@@ -184,9 +184,9 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             gg = ff;
             gg(6) = -0.5;
             fg = ff;
-            testCase.verifyEqual(f.project(cosines(:,3).*cosines(:,4)),ff,AbsTol=2e-14)
-            testCase.verifyEqual(f.project(sines(:,3).*sines(:,4)),gg,AbsTol=2e-14)
-            testCase.verifyEqual(g.project(cosines(:,3).*sines(:,4)),fg,AbsTol=2e-14)
+            testCase.verifyEqual(f.recovery.transformForward(cosines(:,3).*cosines(:,4)),ff,AbsTol=2e-14)
+            testCase.verifyEqual(f.recovery.transformForward(sines(:,3).*sines(:,4)),gg,AbsTol=2e-14)
+            testCase.verifyEqual(g.recovery.transformForward(cosines(:,3).*sines(:,4)),fg,AbsTol=2e-14)
             testCase.verifyLessThan(f.productError(cosines(:,3).*cosines(:,4),ff,pi/4),2e-14)
             exact = zeros(9,1);
             exact(1) = 0.5;
@@ -201,15 +201,15 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             scalar = solver.solveEVP(evp,nModes=4);
             oldScalar = scalar.discreteTransform(z=z,weights=weights,nModes=4);
             projection = IMProjection(oldScalar.inverseMatrix,oldScalar.metricMatrix,oldScalar.targetGramMatrix);
-            testCase.verifyEqual(projection.forwardMatrix,oldScalar.forwardMatrix,AbsTol=2e-13)
+            testCase.verifyEqual(projection.recovery.forwardMatrix,oldScalar.forwardMatrix,AbsTol=2e-13)
             testCase.verifyEqual(projection.gramError,oldScalar.relativeGramOperatorError,AbsTol=2e-13)
             testCase.verifyEqual(projection.roundTripError,oldScalar.roundTripError,AbsTol=2e-13)
-            family = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]),nModes=4);
+            family = solver.solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.neumann()),nModes=4);
             oldAligned = family.discreteTransform(z=z,weights=weights,nModes=4,variables=["F" "G"]);
             for variable = ["F" "G"]
                 data = oldAligned.channelDiagnostics(variable=variable);
                 projection = IMProjection(oldAligned.inverseMatrix(variable=variable),oldAligned.metricMatrix(variable=variable),oldAligned.targetGramMatrix(variable=variable),majorantGramMatrix=oldAligned.targetMajorantGramMatrix(variable=variable),activeColumnMask=oldAligned.activeModeMask(variable=variable));
-                testCase.verifyEqual(projection.forwardMatrix,oldAligned.forwardMatrix(variable=variable),AbsTol=2e-13)
+                testCase.verifyEqual(projection.recovery.forwardMatrix,oldAligned.forwardMatrix(variable=variable),AbsTol=2e-13)
                 testCase.verifyEqual(projection.gramError,data.relativeGramOperatorError,AbsTol=2e-13)
                 testCase.verifyEqual(projection.roundTripError,data.roundTripError,AbsTol=2e-13)
             end
@@ -224,7 +224,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             projection = IMProjection.fromPrescribedDual(pairing,sampleGram,targetGram,majorantGramMatrix=majorant,columnLabels=["mode1+" "mode1-"],provenance=provenance);
             values = [1+2i;3-1i;-2];
             expected = sampleGram \ (pairing*values);
-            testCase.verifyEqual(projection.project(values),expected,AbsTol=1e-14)
+            testCase.verifyEqual(projection.projectPhysical(values),expected,AbsTol=1e-14)
             testCase.verifyEqual(projection.sampleCount,3)
             testCase.verifyEqual(projection.columnCount,2)
             testCase.verifyEmpty(projection.sampledBasis)
@@ -240,28 +240,28 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             expectedError = sqrt(real((expected-reference)'*majorant*(expected-reference))/7);
             testCase.verifyEqual(projection.productError(values,reference,7),expectedError,AbsTol=1e-14)
             prefix = projection.prefix(1);
-            testCase.verifyEqual(prefix.project(values),(pairing(1,:)*values)/sampleGram(1,1),AbsTol=1e-14)
+            testCase.verifyEqual(prefix.projectPhysical(values),(pairing(1,:)*values)/sampleGram(1,1),AbsTol=1e-14)
             testCase.verifyEqual(prefix.provenance,provenance)
             testCase.verifyEqual(prefix.columnLabels,"mode1+")
             testCase.verifyTrue(isnan(prefix.gramError))
-            testCase.verifyEqual(projection.prefix(0).forwardMatrix,zeros(0,3))
+            testCase.verifyEqual(projection.prefix(0).physicalDualMatrix,zeros(0,3))
         end
 
         function prescribedDualZeroInactiveAndRankDefectRemainExplicit(testCase)
             provenance = struct(source="test-dual");
             projection = IMProjection.fromPrescribedDual([0 0;1 1i],diag([0 -2]),diag([0 -2]),activeColumnMask=[false true],provenance=provenance);
-            testCase.verifyEqual(projection.project([1;1]),[0;-(1+1i)/2],AbsTol=1e-14)
+            testCase.verifyEqual(projection.projectPhysical([1;1]),[0;-(1+1i)/2],AbsTol=1e-14)
             testCase.verifyEqual(projection.productError(zeros(2,1),zeros(2,1),0),0)
             testCase.verifyEqual(projection.productError([0;1],zeros(2,1),0),Inf)
             defect = IMProjection.fromPrescribedDual(eye(2),ones(2),eye(2),provenance=provenance);
             testCase.verifyEqual(defect.sampledGramRank,1)
             testCase.verifyTrue(isnan(defect.gramError))
-            testCase.verifyEmpty(defect.forwardMatrix)
+            testCase.verifyEmpty(defect.recovery)
             testCase.verifyEmpty(defect.physicalDualMatrix)
             testCase.verifyEqual(defect.samplePairingMatrix,eye(2))
-            testCase.verifyError(@() defect.project([1;2]),"IMProjection:UnavailablePhysicalDual")
+            testCase.verifyError(@() defect.projectPhysical([1;2]),"IMProjection:UnavailablePhysicalDual")
             offDiagonal = IMProjection.fromPrescribedDual(eye(2),[0 1;1 0],[0 1;1 0],majorantGramMatrix=eye(2),provenance=provenance);
-            testCase.verifyEqual(offDiagonal.project([1;2]),[2;1],AbsTol=0)
+            testCase.verifyEqual(offDiagonal.projectPhysical([1;2]),[2;1],AbsTol=0)
         end
 
         function prescribedDualRejectsInvalidContracts(testCase)
@@ -280,7 +280,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyError(@() IMProjection(eye(2),eye(2),eye(2),activeColumnMask=[false true]),"IMProjection:InvalidInactiveColumn")
             testCase.verifyError(@() IMProjection([1e-15 1;0 2],eye(2),diag([0 5]),activeColumnMask=[false true]),"IMProjection:InvalidInactiveColumn")
             projection = IMProjection(eye(2),eye(2),eye(2));
-            testCase.verifyError(@() projection.project(ones(3,1)),"IMProjection:InvalidShape")
+            testCase.verifyError(@() projection.recovery.transformForward(ones(3,1)),"IMDiscreteTransform:InvalidSampleCount")
             testCase.verifyError(@() projection.productError(ones(2,1),ones(3,1),1),"IMProjection:InvalidShape")
             testCase.verifyError(@() projection.leakage(ones(2,1),[1;2]),"IMProjection:InvalidShape")
             testCase.verifyError(@() projection.prefix(3),"IMProjection:InvalidColumnCount")
@@ -293,7 +293,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.gramError,norm(Phi.'*Phi-eye(2),2),AbsTol=1e-14)
             testCase.verifyTrue(projection.recovery.success)
             testCase.verifyEqual(projection.recovery.diagnostics.fit.rank,2)
-            testCase.verifyEqual(projection.project(Phi),eye(2),AbsTol=2e-8)
+            testCase.verifyEqual(projection.recovery.transformForward(Phi),eye(2),AbsTol=2e-8)
             testCase.verifyEqual(projection.physicalDualMatrix,Phi.',AbsTol=0)
             testCase.verifyGreaterThan(norm(projection.projectPhysical(Phi)-eye(2),2),0.9)
         end
@@ -305,18 +305,18 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(projection.sampledGramRank,0)
             testCase.verifyEqual(projection.gramError,1,AbsTol=0)
             testCase.verifyEqual(projection.projectPhysical([3;1]),2,AbsTol=0)
-            testCase.verifyError(@() projection.project([3;1]),"IMProjection:UnavailableRecovery")
+            testCase.verifyError(@() projection.recovery.transformForward([3;1]),"IMDiscreteTransform:UnavailableRecovery")
             testCase.verifyError(@() IMProjection(ones(2,1),diag([1 -1]),1,failureMode="error"),"IMRecovery:OverlapRankDeficient")
         end
 
         function physicalRecordDoesNotPrepareOrApplyAnInverse(testCase)
             projection = IMProjection([1;2],eye(2),3,prepareRecovery=false);
             testCase.verifyEmpty(projection.recovery)
-            testCase.verifyEmpty(projection.forwardMatrix)
+            testCase.verifyFalse(isprop(projection,"forwardMatrix"))
             testCase.verifyFalse(projection.supportsRoundTripAssessment)
             testCase.verifyTrue(isnan(projection.roundTripError))
             testCase.verifyEqual(projection.projectPhysical([3;0]),1,AbsTol=1e-14)
-            testCase.verifyError(@() projection.project([3;0]),"IMProjection:UnavailableRecovery")
+            testCase.verifyFalse(ismethod(projection,"project"))
             testCase.verifyEmpty(projection.prefix(1).recovery)
         end
     end

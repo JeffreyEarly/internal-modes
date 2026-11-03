@@ -96,6 +96,7 @@ classdef (Abstract) IMSolver
             if isempty(options.nModes)
                 error("IMSolver:MissingModeCount","Supply an explicit nModes count. Use nModes=0 to request an empty basis.");
             end
+            IMModeSelection.validateRequest(evp,options.nModes,options.branch);
 
             % The rigid-lid F family contains one exact analytical F0.
             % Reuse the regular G problem for the remaining finite modes.

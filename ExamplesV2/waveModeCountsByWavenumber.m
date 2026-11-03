@@ -58,10 +58,12 @@ referenceGrid = IMSolverSpectral(nEVP=2*options.nEVP(2),coordinateKind="wkb").co
 [zReference,referenceWeights] = referenceGrid.nativeQuadratureRule(zDomain);
 collections = cell(1,2);
 costs = cell(1,2);
+requestedCounts = repmat(options.candidateCount,size(kappa));
+requestedCounts(kappa==0) = options.inertialCount;
 for i = 1:2
     solver = IMSolverSpectral(nEVP=options.nEVP(i),coordinateKind="wkb");
     [collections{i},costs{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=zDomain,rotationRate=options.rotationRate,latitude=options.latitude,g=options.g, ...
-        surfaceBoundary=surface,nModes=options.candidateCount,nInertialModes=options.inertialCount);
+        surfaceBoundary=surface,nModes=requestedCounts);
 end
 counts = table(kappa(:),zeros(numel(kappa),1),zeros(numel(kappa),1),zeros(numel(kappa),1),false(numel(kappa),1),false(numel(kappa),1), ...
     VariableNames=["kappa","convergedCount","gridSupportedCount","combinedCount","atCandidateCeiling","inconclusive"]);

@@ -37,7 +37,7 @@ end
 if isempty(fieldnames(options.provenance))
     error("IMProjection:MissingProvenance","A prescribed physical dual requires explicit nonempty provenance.");
 end
-projection = IMProjection();
+projection = IMProjection(prepareRecovery=false);
 projection.projectionKind = "prescribedDual";
 projection = projection.initializeProjection(samplePairingMatrix,sampleGram,targetGram,options.majorantGramMatrix,options.activeColumnMask,options.columnLabels);
 projection.projectionKind = "prescribedDual";

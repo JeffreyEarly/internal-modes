@@ -1,5 +1,7 @@
 # V2 API consolidation verification
 
+This record describes the earlier integration. For the current normalization, exact-count and projection contracts, see [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md) and [CommonScalarProjection](CommonScalarProjection.md). Historical test counts and retired API names below are preserved as evidence of that earlier state.
+
 Implemented locally on 2026-11-02 against the authoring checkout, preserving the preexisting uncommitted neutral-label changes and the preceding manuscript migration. No source push, tracker communication, package release or website publication was performed.
 
 ## Delivered contracts

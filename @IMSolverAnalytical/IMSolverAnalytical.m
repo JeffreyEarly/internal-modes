@@ -8,7 +8,7 @@ classdef IMSolverAnalytical
     % append an unrequested surface, negative, zero or barotropic sector.
     %
     % ```matlab
-    % background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
+    % background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0],surfaceCondition="freeSurface");
     % problem = IMInternalModes.waveModesAtWavenumber(background,k=1e-3);
     % solver = IMSolverAnalytical();
     % modes = solver.solveEVP(problem,nModes=4);
@@ -49,6 +49,7 @@ classdef IMSolverAnalytical
             if isempty(options.nModes)
                 error("IMSolver:MissingModeCount","Supply an explicit nModes count. Use nModes=0 to request an empty basis.");
             end
+            IMModeSelection.validateRequest(problem,options.nModes,options.branch);
             if ismember(string(problem.name),["meanDensityAnomalyModes","geostrophicGeneralizedPotentialEnstrophyModes"])
                 error("IMSolverAnalytical:UnsupportedFamily","The analytical backend does not implement %s. Choose a numerical solver.",problem.name);
             end
@@ -74,7 +75,7 @@ classdef IMSolverAnalytical
             if problem.name == "hydrostaticFModes" && problem.background.surfaceCondition == "freeSurface"
                 pairedProblem = IMInternalModes.geostrophicAPVModes(problem.background,g0=Inf,gd=Inf);
                 paired = solution.internalModes(pairedProblem,nModes=count);
-                source = IMAnalyticalInternalModesBasis(solution=solution,evp=problem,h=paired.h,modeNumber=paired.modeNumber,N2=problem.N2,rawVariableFunction=@(~,variable,z) IMSolverAnalytical.pairedVariable(paired,variable,z),rawUzFunction=@(~,z) paired.uz(z,normalization="unity"),metadata=paired.metadata);
+                source = IMAnalyticalInternalModesBasis(solution=solution,evp=problem,h=paired.h,modeNumber=paired.modeNumber,N2=problem.N2,rawVariableFunction=@(~,variable,z) IMSolverAnalytical.pairedVariable(paired,variable,z),rawUzFunction=@(~,z) paired.rawUz(z),metadata=paired.metadata);
             else
                 source = solution.internalModes(problem,nModes=count);
             end
@@ -106,7 +107,7 @@ classdef IMSolverAnalytical
 
     methods (Static, Access = private)
         function values = pairedVariable(paired,variable,z)
-            values = paired.(variable)(z,normalization="unity");
+            values = paired.rawVariable(variable,z);
         end
     end
 end

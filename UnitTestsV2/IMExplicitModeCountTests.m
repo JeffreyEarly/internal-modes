@@ -20,12 +20,12 @@ classdef IMExplicitModeCountTests < matlab.unittest.TestCase
 
         function missingNumericalCountsFailBeforeSamplingStratification(testCase)
             sampleCalls = 0;
-            problem = IMInternalModes.waveModesAtWavenumber(N2=@profile,zDomain=[-1000 0],k=2e-4);
+            problem = IMInternalModes.waveModesAtWavenumber(N2=@profile,zDomain=[-1000 0],k=2e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
             sampleCalls = 0;
             solvers = IMExplicitModeCountTests.solvers();
             for solver = solvers(1:2)
                 testCase.verifyError(@() solver{1}.solveEVP(problem),"IMSolver:MissingModeCount")
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(2e-4,N2=@profile,zDomain=[-1000 0]),"IMSolver:MissingModeCount")
+                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(2e-4,N2=@profile,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet()),"IMSolver:MissingModeCount")
             end
             testCase.verifyEqual(sampleCalls,0)
             function N2 = profile(z)
@@ -53,41 +53,46 @@ classdef IMExplicitModeCountTests < matlab.unittest.TestCase
             end
         end
 
-        function bulkSolversRequirePositiveAndZeroCountsIndependently(testCase)
+        function bulkSolversRequireOneCountContractForEveryPage(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             for solver = IMExplicitModeCountTests.solvers()
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,[1e-4 2e-4]),"IMSolver:MissingModeCount")
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,[1e-4 0],nInertialModes=0),"IMSolver:MissingModeCount")
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,1e-4,nModes=[]),"IMSolver:MissingModeCount")
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,[1e-4 0],nModes=0),"IMSolver:MissingInertialModeCount")
-                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,0),"IMSolver:MissingInertialModeCount")
-            end
-        end
-
-        function zeroOnlyBulkNeedsNoPositiveModeCount(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            for solver = IMExplicitModeCountTests.solvers()
+                for kappa = {[1e-4 2e-4],[1e-4 0],0}
+                    testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,kappa{1}),"IMSolver:MissingModeCount")
+                    testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,kappa{1},nModes=[]),"IMSolver:MissingModeCount")
+                end
+                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,[],nModes=0),"IMSolver:EmptyWavenumberCollection")
+                testCase.verifyError(@() solver{1}.solveWaveModesAtWavenumbers(background,[1e-4 0 2e-4],nModes=[2 3]),"IMSolver:InvalidWaveModeCounts")
                 for count = [0 2]
-                    [collection,diagnostics] = solver{1}.solveWaveModesAtWavenumbers(background,[0 0],nInertialModes=count);
-                    testCase.verifyEqual(collection.kappa,[0 0])
+                    [collection,diagnostics] = solver{1}.solveWaveModesAtWavenumbers(background,[0 0],nModes=count);
                     testCase.verifyEqual(collection.basisIndex,[1 1])
                     testCase.verifyEqual(numel(collection.bases),1)
                     testCase.verifyEqual(collection.bases{1}.nColumns,count)
-                    testCase.verifyEmpty(diagnostics.nModes)
-                    testCase.verifyEqual(diagnostics.nInertialModes,count)
+                    testCase.verifyEqual(diagnostics.requestedCounts,[count count])
                 end
+                collection = solver{1}.solveWaveModesAtWavenumbers(background,[2e-4 0 1e-4 2e-4],nModes=[0 2 3 0]);
+                testCase.verifyEqual(collection.basisIndex,[1 2 3 1])
+                testCase.verifyEqual(cellfun(@(basis) basis.nColumns,collection.bases),[0 2 3])
+                uniform = solver{1}.solveWaveModesAtWavenumbers(background,[1e-4 0],nModes=2);
+                testCase.verifyEqual(cellfun(@(basis) basis.nColumns,uniform.bases),[2 2])
             end
         end
 
-        function bulkZeroCountsRemainIndependentAndAlignWithPositivePages(testCase)
+        function branchNamesAreValidatedEvenForEmptyRequests(testCase)
+            sampleCalls = 0;
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            kappa = [2e-4 0 1e-4 2e-4];
+            problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
             for solver = IMExplicitModeCountTests.solvers()
-                collection = solver{1}.solveWaveModesAtWavenumbers(background,kappa,nModes=[0 2 0],nInertialModes=0);
-                testCase.verifyEqual(collection.basisIndex,[1 2 3 1])
-                testCase.verifyEqual(cellfun(@(basis) basis.nColumns,collection.bases),[0 0 2])
-                collection = solver{1}.solveWaveModesAtWavenumbers(background,[2e-4 0 2e-4],nModes=0,nInertialModes=2);
-                testCase.verifyEqual(cellfun(@(basis) basis.nColumns,collection.bases),[0 2])
+                testCase.verifyError(@() solver{1}.solveEVP(problem,branch="typo",nModes=0),"IMSolver:UnknownBranch")
+                testCase.verifyError(@() solver{1}.solveEVP(problem,branch=["internal","typo"],nModes=[1 0]),"IMSolver:UnknownBranch")
+                empty = solver{1}.solveEVP(problem,branch="surface",nModes=0);
+                testCase.verifyEqual(empty.nColumns,0)
+            end
+            numericalProblem = IMInternalModes.waveModesAtWavenumber(N2=@profile,zDomain=[-1000 0],k=2e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            testCase.verifyError(@() IMSolverSpectral().solveEVP(numericalProblem,branch="typo",nModes=0),"IMSolver:UnknownBranch")
+            testCase.verifyEqual(sampleCalls,0)
+            function N2 = profile(z)
+                sampleCalls = sampleCalls+1;
+                N2 = 1e-4*ones(size(z));
             end
         end
     end

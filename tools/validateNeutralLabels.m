@@ -63,7 +63,7 @@ for configuration = 1:numel(rotations)
     rotation = rotations(configuration);
     latitude = latitudes(configuration);
     f = 2*rotation*sind(latitude);
-    basis = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModes=counts,rotationRate=rotation,latitude=latitude,g0=Inf,gd=-0.07);
+    basis = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModesPerInterval=counts,rotationRate=rotation,latitude=latitude,g0=Inf,gd=-0.07);
     G = zeros(numel(z),sum(counts));
     Gz = G;
     for column = 1:sum(counts)
@@ -86,8 +86,8 @@ for configuration = 1:numel(rotations)
     assert(all(basis.Gzz(endpointZ)==0,'all')); checks = checks+1;
     projection = basis.projectionOnGrid(z,w,variable="APV",columns=[9 4 1 8]);
     coefficients = (1:9).'+1i*cos((1:9).');
-    verifyClose('modalRecovery',projection.project(Q*coefficients),coefficients([9 4 1 8]),1e-12);
-    verifyClose('physicalDual',projection.projectPhysical(Q*coefficients),projection.project(Q*coefficients),1e-15);
+    verifyClose('modalRecovery',projection.projectPhysical(Q*coefficients),coefficients([9 4 1 8]),1e-12);
+    verifyClose('physicalDual',projection.projectPhysical(Q*coefficients),projection.projectPhysical(Q*coefficients),1e-15);
     assert(isempty(projection.recovery)); checks = checks+1;
     assert(projection.projectionKind=="prescribedDual"); checks = checks+1;
     assert(~projection.supportsGramAssessment && ~projection.supportsRoundTripAssessment); checks = checks+1;
@@ -103,7 +103,7 @@ for configuration = 1:numel(rotations)
         expected(column) = -integral(@(x) qz(x).*q(x),interval(1),interval(2),AbsTol=1e-11,RelTol=1e-12)/(D*m(column)^2);
     end
     allProjection = basis.projectionOnGrid(z,w,variable="APV");
-    verifyClose('nonmodalAdaptive',allProjection.project(sampled),expected,4e-12);
+    verifyClose('nonmodalAdaptive',allProjection.projectPhysical(sampled),expected,4e-12);
     % Displacement source with nonzero traces: compare to the independently
     % integrated volume functional PLUS both endpoint traces.
     source = @(x) 1.2-0.3i+(0.7+0.1i)*(x-domain(1))/D+0.4*((x-domain(1))/D).^3+0.2i*sin((x-domain(1))/D);
@@ -117,25 +117,25 @@ for configuration = 1:numel(rotations)
         traces = amplitude(column)*m(column)*[-1 (-1)^numbers(column)].*source(interval);
         sourceExpected(column) = volumeOnly(column)+sum(traces)/(D*m(column)^2);
     end
-    verifyClose('sourceIBP',allProjection.project(-f*derivative(z)),sourceExpected,2e-12);
+    verifyClose('sourceIBP',allProjection.projectPhysical(-f*derivative(z)),sourceExpected,2e-12);
     assert(norm(volumeOnly-sourceExpected)>0.01); checks = checks+1;
-    verifyClose('affineCancellation',allProjection.project((-f*(0.3-0.2i)/D)*ones(size(z))),zeros(sum(counts),1),3e-13);
+    verifyClose('affineCancellation',allProjection.projectPhysical((-f*(0.3-0.2i)/D)*ones(size(z))),zeros(sum(counts),1),3e-13);
     % Generalized energy coefficients affect provenance only.
-    changed = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModes=counts,rotationRate=rotation,latitude=latitude,g0=-Inf,gd=Inf);
+    changed = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModesPerInterval=counts,rotationRate=rotation,latitude=latitude,g0=-Inf,gd=Inf);
     assert(isequal(changed.G(z),basis.G(z))); checks = checks+1;
     assert(isequal(changed.APV(z),basis.APV(z))); checks = checks+1;
     changedProjection = changed.projectionOnGrid(z,w,variable="APV");
-    assert(isequal(changedProjection.forwardMatrix,allProjection.forwardMatrix)); checks = checks+1;
+    assert(isequal(changedProjection.physicalDualMatrix,allProjection.physicalDualMatrix)); checks = checks+1;
 end
 % Capable basis and repeated collection pages retain exact normalization,
 % selected ordering, physical Gram and source projection semantics.
-background = IMBackground(N2=@(x) neutralIntervalN2(x,intervals),zDomain=domain,latitude=-37);
-raw = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModes=counts,latitude=-37);
+background = IMBackground(N2=@(x) neutralIntervalN2(x,intervals),zDomain=domain,latitude=-37,surfaceCondition="freeSurface");
+raw = IMNeutralLabelModesBasis(intervals,zDomain=domain,nModesPerInterval=counts,latitude=-37);
 rawProjection = raw.projectionOnGrid(z,w,variable="APV");
 coefficients = [(1:9).'+2i,exp(1i*(1:9).')];
-for normalization = ["depthRMSG","maxAbsG"]
-    basisView = IMNeutralLabelModesBasis(background,neutralIntervals=intervals,nModes=counts,normalization=normalization);
-    if normalization == "depthRMSG", scale = ones(1,9); else, scale=amplitude; end
+for normalization = ["rmsG","maxAbsG"]
+    basisView = IMNeutralLabelModesBasis(background,neutralIntervals=intervals,nModesPerInterval=counts,normalization=normalization);
+    if normalization == "rmsG", scale = ones(1,9); else, scale=amplitude; end
     verifyClose('basisViewProfiles',basisView.G(z),raw.G(z)./scale,1e-15);
     verifyClose('basisViewAPV',basisView.APV(z),raw.APV(z)./scale,1e-15);
     selected = basisView.selectColumns([9 2 5 1]);
@@ -143,21 +143,21 @@ for normalization = ["depthRMSG","maxAbsG"]
     subset = [3 1 4];
     for page = [3 1 3]
         actual = collection.projectionOnGrid(z,w,variable="APV",page=page,columns=subset);
-        expectedMap = scale([5 9 1]).'.*rawProjection.forwardMatrix([5 9 1],:);
-        verifyClose('collectionMap',actual.forwardMatrix,expectedMap,1e-15);
+        expectedMap = scale([5 9 1]).'.*rawProjection.physicalDualMatrix([5 9 1],:);
+        verifyClose('collectionMap',actual.physicalDualMatrix,expectedMap,1e-15);
         expectedGram = raw.gramMatrix(variable="APV");
         expectedGram = expectedGram([5 9 1],[5 9 1])./(scale([5 9 1]).'*scale([5 9 1]));
         verifyClose('normalizedGram',actual.majorantGramMatrix,expectedGram,1e-15);
         verifyClose('provenanceGram',actual.provenance.continuousAPVGramMatrix,expectedGram,1e-15);
-        verifyClose('basisViewCoefficients',actual.project(raw.APV(z)*coefficients),scale([5 9 1]).'.*coefficients([5 9 1],:),1e-12);
+        verifyClose('basisViewCoefficients',actual.projectPhysical(raw.APV(z)*coefficients),scale([5 9 1]).'.*coefficients([5 9 1],:),1e-12);
         assert(isempty(actual.recovery)); checks=checks+1;
     end
     empty = basisView.selectColumns([]);
     emptyCollection = IMBasisCollection({empty},basisIndex=[1 1]);
     assert(isequal(size(emptyCollection.evaluate(z,variable="APV",pages=[2 1 2])),[numel(z) 0 3])); checks=checks+1;
     emptyProjection = emptyCollection.projectionOnGrid(z,w,variable="APV",page=2);
-    assert(isequal(size(emptyProjection.forwardMatrix),[0 numel(z)])); checks=checks+1;
-    assert(isequal(size(emptyProjection.project(ones(numel(z),3))),[0 3])); checks=checks+1;
+    assert(isequal(size(emptyProjection.physicalDualMatrix),[0 numel(z)])); checks=checks+1;
+    assert(isequal(size(emptyProjection.projectPhysical(ones(numel(z),3))),[0 3])); checks=checks+1;
     assert(isequal(size(emptyProjection.projectPhysical(ones(numel(z),3))),[0 3])); checks=checks+1;
     assert(isempty(emptyProjection.provenance.continuousAPVGramMatrix)); checks=checks+1;
 end
@@ -165,7 +165,7 @@ end
 for opts = {struct('rotationRate',0),struct('latitude',0)}
     argumentsStruct = opts{1};
     argumentsStruct.zDomain = domain;
-    argumentsStruct.nModes = counts;
+    argumentsStruct.nModesPerInterval = counts;
     pairs = namedargs2cell(argumentsStruct);
     zero = IMNeutralLabelModesBasis(intervals,pairs{:});
     assert(isequal(zero.APV(z),zeros(numel(z),9))); checks=checks+1;
@@ -177,7 +177,7 @@ for opts = {struct('rotationRate',0),struct('latitude',0)}
     end
 end
 % Fully neutral column has only the positive sine ladder (no constant mode).
-full = IMNeutralLabelModesBasis(domain,zDomain=domain,nModes=5);
+full = IMNeutralLabelModesBasis(domain,zDomain=domain,nModesPerInterval=5);
 assert(isequal(full.localModeNumber,1:5)); checks=checks+1;
 verifyClose('fullColumnWavenumbers',full.m_n,pi*(1:5)/D,1e-15);
 assert(all(full.G(domain.')==0,'all')); checks=checks+1;
@@ -195,9 +195,9 @@ for column = 1:5
     boundary = sqrt(2)*wavenumber*[-1 (-1)^column].*source(domain);
     fullSourceExpected(column) = volume+sum(boundary)/(D*wavenumber^2);
 end
-verifyClose('fullNonmodalAPV',fullProjection.project(full.f0*q(zFull)),fullExpected,4e-12);
-verifyClose('fullSourceIBP',fullProjection.project(-full.f0*derivative(zFull)),fullSourceExpected,2e-12);
-verifyClose('fullAffineCancellation',fullProjection.project((-full.f0*(0.3-0.2i)/D)*ones(size(zFull))),zeros(5,1),3e-13);
+verifyClose('fullNonmodalAPV',fullProjection.projectPhysical(full.f0*q(zFull)),fullExpected,4e-12);
+verifyClose('fullSourceIBP',fullProjection.projectPhysical(-full.f0*derivative(zFull)),fullSourceExpected,2e-12);
+verifyClose('fullAffineCancellation',fullProjection.projectPhysical((-full.f0*(0.3-0.2i)/D)*ones(size(zFull))),zeros(5,1),3e-13);
 % A deliberately unresolved fixed quadrature must retain its physical error;
 % the source dual may not turn into a fitted sample inverse.
 coarseZ = domain(1)+D*[0.03;0.19;0.53;0.9];
@@ -205,14 +205,14 @@ coarseW = D*[0.2;0.2;0.2;0.4];
 coarseQ = -full.f0*sqrt(2)*(pi*(1:5)/D).*cos((coarseZ-domain(1))*(pi*(1:5)/D));
 coarse = full.projectionOnGrid(coarseZ,coarseW,variable="APV");
 coarseReference = diag(1./(full.f0^2*D*(pi*(1:5)/D).^2))*(coarseQ'.*coarseW.');
-verifyClose('unresolvedPhysicalMap',coarse.forwardMatrix,coarseReference,4e-15);
-assert(norm(coarse.forwardMatrix*coarseQ-eye(5),'fro')>0.1); checks=checks+1;
-verifyClose('unresolvedPhysicalApplication',coarse.projectPhysical(coarseQ),coarse.project(coarseQ),1e-15);
+verifyClose('unresolvedPhysicalMap',coarse.physicalDualMatrix,coarseReference,4e-15);
+assert(norm(coarse.physicalDualMatrix*coarseQ-eye(5),'fro')>0.1); checks=checks+1;
+verifyClose('unresolvedPhysicalApplication',coarse.projectPhysical(coarseQ),coarse.projectPhysical(coarseQ),1e-15);
 % The same DD auxiliary shape underlies zero-depth waves. Check their
 % independent wave-energy normalization rather than confusing labels/h=0.
-critical = IMBackground(N2=@(x) background.f0^2*ones(size(x)),zDomain=domain,latitude=-37);
+critical = IMBackground(N2=@(x) background.f0^2*ones(size(x)),zDomain=domain,latitude=-37,surfaceCondition="freeSurface");
 k = 3.7e-4;
-wave = IMZeroDepthWaveModesBasis(critical,k,criticalIntervals=domain,nModes=5);
+wave = IMZeroDepthWaveModesBasis(critical,k,criticalIntervals=domain,nModesPerInterval=5);
 mFull = pi*(1:5)/D;
 phase = (zFull-domain(1))*mFull;
 expectedG = sqrt(2)*sin(phase)./(D*sqrt(mFull.^2+k^2));

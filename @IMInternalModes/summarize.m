@@ -41,7 +41,7 @@ function summarize(self, solver)
 %     reason: The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.
 %
 % Internal-mode normalization
-%   geostrophic normalization: available
+%   default: rmsF
 %     shared scale: one factor per coupled (F,G) mode
 %     convention: <G_j,G_j>_G = 1
 %     implied: <F_j,F_j>_F = h_j
@@ -60,7 +60,7 @@ function summarize(self, solver)
 % ```
 %
 % Mean-density-anomaly summaries instead report the surface-referenced
-% `N2*G` integral for `F` and the signed generalized-energy normalization.
+% `N2*G` integral for `F` and the meanDensityAnomalyEnergy convention.
 %
 % - Topic: Summarize internal-mode EVPs
 % - Declaration: summarize(evp,solver)
@@ -131,17 +131,14 @@ end
 end
 
 function printNormalizationSummary(evp)
-if evp.modeFamily == "hydrostatic"
-    fprintf('  geostrophic normalization: available\n');
-    fprintf('    shared scale: one factor per coupled (F,G) mode\n');
-    fprintf('    convention: <G_j,G_j>_G = 1\n');
-    fprintf('    implied: <F_j,F_j>_F = h_j\n');
-elseif evp.modeFamily == "meanDensityAnomaly"
-    fprintf('  signed generalized-energy normalization: available\n');
-    fprintf('    shared scale: one positive factor per aligned (F,G) mode\n');
-    fprintf('    convention: <G_j,G_j>_G = epsilon_j, epsilon_j in {-1,+1}\n');
-else
-    fprintf('  geostrophic normalization: unavailable for this mode family\n');
+fprintf('  default: %s\n',IMInternalModesNormalizationTools.default(evp));
+fprintf('  available: %s\n',join(IMInternalModesNormalizationTools.available(evp),", "));
+fprintf('  shared scale: one positive factor per aligned (F,G) mode\n');
+fprintf('  profiles remain dimensionless; rmsF and rmsG use full-depth averages\n');
+if evp.modeFamily == "meanDensityAnomaly"
+    fprintf('  meanDensityAnomalyEnergy: signed dimensionless magnitude one; state energy g*epsilon_j/2\n');
+elseif string(evp.name) == "waveModesAtWavenumber"
+    fprintf('  waveEnergy: integral (F^2 + (k*D)^2*G^2)/D = 1\n');
 end
 end
 

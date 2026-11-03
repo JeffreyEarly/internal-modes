@@ -109,7 +109,7 @@ classdef IMNeutralSupportingFamiliesTests < matlab.unittest.TestCase
             N2 = @IMNeutralSupportingFamiliesTests.neutralCap;
             g0 = -0.0175;
             gd = 0.0175;
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=g0,gd=gd,latitude=45);
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=g0,gd=gd,latitude=45,surfaceBoundary="freeSurface");
             basis = IMSolverSpectral(nEVP=384).solveEVP(evp,nModes=8);
             [z,weights] = basis.solver.nativeQuadratureRule([-1000 0]);
             apv = basis.discreteTransform(z=z,weights=weights,nModes=6,variables=["F","G"],gramTolerance=1e-5);

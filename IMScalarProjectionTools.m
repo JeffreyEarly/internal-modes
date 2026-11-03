@@ -9,7 +9,7 @@ classdef (Hidden, Sealed) IMScalarProjectionTools
                 weights (:,1) double {mustBeReal,mustBeFinite}
                 options.variable (1,1) string = ""
                 options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:basis.nColumns
-                options.prepareRecovery (1,1) logical = true
+                options.prepareRecovery (1,1) logical = false
                 options.failureMode (1,1) string {mustBeMember(options.failureMode,["diagnostic","error"])} = "diagnostic"
                 options.rankTolerance (1,1) double {mustBeReal,mustBeFinite,mustBePositive} = 1e-12
             end
@@ -128,7 +128,7 @@ classdef (Hidden, Sealed) IMScalarProjectionTools
             if numel(weights) ~= numel(z) || ~any(weights ~= 0)
                 error("IMNeutralLabelModesBasis:InvalidWeights","Supply one weight per point and at least one nonzero weight.");
             end
-            derivatives = basis.Gz(z,normalization="unity");
+            derivatives = basis.Gz(z,normalization="rmsG");
             factors = basis.normalizationFactors();
             pairing = (-derivatives.'./(basis.f0*diff(basis.zDomain)*basis.m_n(:).^2)).*factors(:).*weights.';
             if any(~isfinite(pairing),"all")

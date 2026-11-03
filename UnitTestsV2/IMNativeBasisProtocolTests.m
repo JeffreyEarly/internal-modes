@@ -11,7 +11,7 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
     methods (Test)
         function numericalAndAnalyticalWavesKeepTheManuscriptConvention(testCase)
             D = 1000; k = 2e-4; N0 = .01;
-            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) N0^2*ones(size(z)),zDomain=[-D 0],k=k);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) N0^2*ones(size(z)),zDomain=[-D 0],k=k,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numeric = IMSolverSpectral(nEVP=48).solveEVP(evp,nModes=4);
             exact = IMConstantStratificationSolution(N0=N0,zDomain=[-D 0]).internalModes(evp,nModes=4);
             z = linspace(-D,0,401).';
@@ -26,7 +26,7 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
         end
 
         function selectionKeepsCustomScalesAndIndependentCopies(testCase)
-            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],k=2e-4);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],k=2e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
             source = IMSolverSpectral(nEVP=32).solveEVP(evp,nModes=4);
             exact = IMConstantStratificationSolution(N0=.01,zDomain=[-1000 0]).internalModes(evp,nModes=4);
             z = linspace(-1000,0,81).';
@@ -45,7 +45,7 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
         end
 
         function builtInStyleCacheIsLazyAndDetachedOnRuleChanges(testCase)
-            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],k=2e-4);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],k=2e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
             source = IMSolverSpectral(nEVP=24).solveEVP(evp,nModes=3);
             calls = 0;
             b = IMInternalModesBasisTestAccess(source).withVectorRule("counted",@compute);
@@ -98,7 +98,7 @@ classdef IMNativeBasisProtocolTests < matlab.unittest.TestCase
 
         function storedCompanionDerivativesStayAlignedWithEvaluation(testCase)
             N2 = @(z) 1e-4*ones(size(z));
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0.02,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0.02,gd=Inf,surfaceBoundary="freeSurface");
             z = linspace(-1000,0,33).';
             for solver = {IMSolverSpectral(nEVP=48),IMSolverFiniteDifference(z=linspace(-1000,0,65).')}
                 basis = solver{1}.solveEVP(evp,nModes=3);

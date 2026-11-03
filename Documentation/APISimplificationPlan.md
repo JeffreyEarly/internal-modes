@@ -1,5 +1,7 @@
 # V2 API integration and simplification plan
 
+This record describes the earlier integration. For the current normalization, exact-count and projection contracts, see [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md) and [CommonScalarProjection](CommonScalarProjection.md). Historical test counts and retired API names below are preserved as evidence of that earlier state.
+
 Status: implemented and verified on 2026-11-03. PR [#68](https://github.com/JeffreyEarly/internal-modes/pull/68) now integrates the newer target-branch work with the capable-basis and manuscript endpoint APIs below. See the [integration verification record](APIIntegrationVerification.md) for the full-run/focused-rerun ledger and unchanged figure results. The [earlier verification record](APISimplificationVerification.md) describes the preceding consolidation; its historical checks are separate.
 
 ## Goal and scope

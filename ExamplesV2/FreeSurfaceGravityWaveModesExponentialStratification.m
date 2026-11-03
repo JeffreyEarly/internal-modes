@@ -22,7 +22,7 @@ solver = IMSolverSpectral(nEVP=nEVP, coordinateKind="wkb");
 basisSet = solver.solveEVP(evp, nModes=nModes);
 
 %%
-basisSet.normalization = "surfacePressure";
+basisSet.normalization = "surfaceF";
 
 
 G = basisSet.G(z);

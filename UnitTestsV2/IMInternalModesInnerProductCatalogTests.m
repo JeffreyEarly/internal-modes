@@ -21,8 +21,8 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
     methods (Test)
         function simpleHydrostaticDiagnosticRowsAreKnown(testCase)
             [N2, zDomain] = testCase.profile();
-            gEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
-            fEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            gEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            fEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
 
             fSpec = gEVP.innerProduct("F");
             gSpec = fEVP.innerProduct("G");
@@ -224,7 +224,7 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
         function waveDiagnosticInnerProductsRemainUnavailable(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3, g=g);
+            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3, g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basisSet = solver.solveEVP(evp, nModes=2);
             spec = evp.innerProduct("F");
 
@@ -253,27 +253,27 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyEqual(spec.endpointInnerProductTerms(2).coefficient, -5/(4*g), RelTol=1e-12)
         end
 
-        function geostrophicNormalizationCouplesFAndGForGFormulatedModes(testCase)
+        function rmsFCouplesFAndGForGFormulatedModes(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basisSet = solver.solveEVP(evp, nModes=2);
-            basisSet.normalization = "geostrophic";
+            basisSet.normalization = "rmsF";
 
-            testCase.verifyCoupledGeostrophicNormalization(basisSet)
+            testCase.verifyCoupledRmsFNormalization(basisSet)
         end
 
-        function geostrophicNormalizationCouplesFAndGForFFormulatedModes(testCase)
+        function rmsFCouplesFAndGForFFormulatedModes(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
             basisSet = solver.solveEVP(evp, nModes=3);
-            basisSet.normalization = "geostrophic";
+            basisSet.normalization = "rmsF";
 
-            testCase.verifyCoupledGeostrophicNormalization(basisSet)
+            testCase.verifyCoupledRmsFNormalization(basisSet)
         end
 
-        function geostrophicNormalizationUsesEndpointValueDiagnosticTerms(testCase)
+        function scalarPairingMagnitudeIncludesEndpointValueDiagnosticTerms(testCase)
             [N2, zDomain, nEVP, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, ...
@@ -283,10 +283,10 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             basisSet.normalization = "raw";
             rawGGram = basisSet.gramMatrix(variable="G");
             rawFactor = sqrt(abs(rawGGram(1,1)));
-            factors = basisSet.normalizationFactors("geostrophic");
+            factor = basisSet.innerProductNormFactor(1,variable="G");
 
             testCase.verifyEqual( ...
-                factors(1), ...
+                factor, ...
                 rawFactor, RelTol=2e-8, AbsTol=2e-8)
         end
     end
@@ -305,15 +305,15 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             testCase.verifyTrue(contains(spec.reason, "interior-only"))
         end
 
-        function verifyCoupledGeostrophicNormalization(testCase, basisSet)
+        function verifyCoupledRmsFNormalization(testCase, basisSet)
             baroclinic = basisSet.modeNumber ~= 0;
             gramG = basisSet.gramMatrix(variable="G");
             gramF = basisSet.gramMatrix(variable="F");
 
             testCase.verifyEqual(diag(gramG(baroclinic,baroclinic)).', ...
-                ones(1,nnz(baroclinic)), RelTol=2e-8, AbsTol=2e-8)
+                diff(basisSet.zDomain)./basisSet.h(baroclinic), RelTol=2e-8, AbsTol=2e-8)
             testCase.verifyEqual(diag(gramF(baroclinic,baroclinic)).', ...
-                basisSet.h(baroclinic), RelTol=2e-7, AbsTol=2e-7)
+                diff(basisSet.zDomain)*ones(1,nnz(baroclinic)), RelTol=2e-7, AbsTol=2e-7)
         end
     end
 

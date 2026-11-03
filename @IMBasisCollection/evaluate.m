@@ -2,7 +2,7 @@ function values = evaluate(self,z,options)
 % Evaluate continuous structures with bounded intermediate allocations.
 %
 % Returns nZ x nColumns x nSelectedPages, preserving page/column order and
-% repeated selections. Empty pages select all; omitted columns select all and [] selects none. The final output is
+% repeated selections. Omitted pages/columns select all; explicit [] selects none. The final output is
 % allocated in full; use evaluateChunks to stream without that allocation.
 % sampleChunkSize and pageChunkSize bound evaluation temporaries.
 % A normalization override applies to this evaluation only. Omit it to use
@@ -13,7 +13,7 @@ function values = evaluate(self,z,options)
 % - Parameter options.variable: required scalar variable name
 % - Parameter options.derivativeOrder: supported vertical derivative order
 % - Parameter options.normalization: optional common normalization override
-% - Parameter options.pages: requested-page indices, empty means all
+% - Parameter options.pages: requested-page indices; omitted selects all, [] selects none
 % - Parameter options.columns: explicit scientific column indices
 % - Parameter options.sampleChunkSize: maximum rows evaluated together
 % - Parameter options.pageChunkSize: maximum pages evaluated together
@@ -24,7 +24,7 @@ arguments (Input)
     options.variable (1,1) string = ""
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
     options.normalization = []
-    options.pages (1,:) double {mustBeInteger,mustBePositive} = []
+    options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.basisIndex)
     options.columns = ":"
     options.sampleChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 1024
     options.pageChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 16
@@ -33,14 +33,13 @@ arguments (Output)
     values double
 end
 pages = options.pages;
-if isempty(pages)
-    pages = 1:numel(self.basisIndex);
-elseif any(pages > numel(self.basisIndex))
+if any(pages > numel(self.basisIndex))
     error("IMBasisCollection:InvalidPage","pages must select existing requested pages.");
 end
 nColumns = numel(options.columns);
 if isequal(options.columns,":") || isequal(options.columns,':')
-    nColumns = numel(self.metadata(self.basisIndex(pages(1))).columnLabels);
+    nColumns = 0;
+    if ~isempty(pages), nColumns = numel(self.metadata(self.basisIndex(pages(1))).columnLabels); end
 end
 values = zeros(numel(z),nColumns,numel(pages));
 args = namedargs2cell(options);

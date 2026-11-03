@@ -34,7 +34,7 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
         end
 
         function constantStratificationReducesToPhysicalDepth(testCase)
-            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-2000 0]);
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-2000 0],surfaceCondition="freeSurface");
             smoothed = IMVerticalGrid.smoothedBandwidth(background,33);
             depth = IMVerticalGrid.physicalDepth(background,33);
             testCase.verifyEqual(smoothed.z,depth.z,AbsTol=1e-9)
@@ -67,7 +67,7 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
 
         function smoothedGridIntegratesSmoothFunctionsAccurately(testCase)
             N2 = @(z) 1e-6+5e-5*exp(z/300);
-            background = IMBackground(N2=N2,zDomain=[-4000 0],latitude=33);
+            background = IMBackground(N2=N2,zDomain=[-4000 0],latitude=33,surfaceCondition="freeSurface");
             grid = IMVerticalGrid.smoothedBandwidth(background,65);
             testCase.verifyEqual(sum(grid.weights),4000,RelTol=1e-12)
             testCase.verifyGreaterThan(min(grid.weights),0)
@@ -87,7 +87,7 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
         function modeRootGridHasRequestedCountAndPositiveWeights(testCase)
             solver = IMSolverSpectral(nEVP=128);
             N2 = @(z) 1e-4*exp(2*z/400);
-            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1000 0],latitude=33);
+            evp = IMInternalModes.hydrostaticFModes(N2=N2,zDomain=[-1000 0],latitude=33,surfaceBoundary=IMBoundaryCondition.neumann());
             basisSet = solver.solveEVP(evp,nModes=40);
             grid = IMVerticalGrid.modeRoots(basisSet,25);
             testCase.verifyEqual(grid.kind,"modeRoots")
@@ -130,7 +130,7 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
 
         function stratificationJumpWithBreakpointIsAccepted(testCase)
             % A step in N2 makes Q_zz jump; residuals must be one-sided there.
-            background = IMBackground(N2=@(z) 2.5e-5*(z < -200),zDomain=[-1000 0]);
+            background = IMBackground(N2=@(z) 2.5e-5*(z < -200),zDomain=[-1000 0],surfaceCondition="freeSurface");
             grid = IMVerticalGrid.smoothedBandwidth(background,65,breakpoints=-200);
             testCase.verifyEqual(grid.nPoints,65)
             testCase.verifyLessThan(grid.design.filterRelativeResidual,1e-9)
@@ -144,7 +144,7 @@ classdef IMVerticalGridTests < matlab.unittest.TestCase
         function background = neutralBackground()
             % Neutral 200 m surface layer over a smooth quintic transition.
             N2 = @(z) 2.5e-5*IMVerticalGridTests.ramp(min(max((-z-200)/200,0),1));
-            background = IMBackground(N2=N2,zDomain=[-1000 0],latitude=45,rotationRate=7.2921e-5);
+            background = IMBackground(N2=N2,zDomain=[-1000 0],latitude=45,rotationRate=7.2921e-5,surfaceCondition="freeSurface");
         end
 
         function value = ramp(t)

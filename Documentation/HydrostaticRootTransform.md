@@ -16,7 +16,7 @@ One G family is solved and reused:
 
 $$-G_j''=\frac{N^2}{g h_j}G_j,\qquad G_j(z_b)=G_j(z_s)=0,\qquad F_j=h_jG_j',$$
 
-using the common `depthRMSF` normalization, $$\int F_iF_j\,dz=D\delta_{ij}$$ and $$\int (N^2/g)G_iG_j\,dz=(D/h_j)\delta_{ij}$$. All fields of each internal column use the same scale; this changes coefficient units relative to lower-level legacy geostrophic normalization, while normalized Gram errors and retained-band decisions are invariant under consistent rescaling. The analytical barotropic sector $$F_0=1$$, $$G_0=0$$ is appended explicitly. The aligned family is $$F_0,\ldots,F_r$$ and $$G_0,\ldots,G_r$$: `transform.modeNumber` is `0:r`, `h(1)` is `Inf`, and $$G_0$$ is inactive, so its forward row is zero. This relation, $$F=hG'$$, differs from the wave family's $$F=DG'$$.
+using the common `rmsF` normalization, $$\int F_iF_j\,dz=D\delta_{ij}$$ and $$\int (N^2/g)G_iG_j\,dz=(D/h_j)\delta_{ij}$$. All fields of each internal column use the same scale; this changes coefficient scale relative to the earlier geostrophic normalization, while normalized Gram errors and retained-band decisions are invariant under consistent rescaling. The analytical barotropic sector $$F_0=1$$, $$G_0=0$$ is appended explicitly. The aligned family is $$F_0,\ldots,F_r$$ and $$G_0,\ldots,G_r$$: `transform.modeNumber` is `0:r`, `h(1)` is `Inf`, and $$G_0$$ is inactive, so its forward row is zero. This relation, $$F=hG'$$, differs from the wave family's $$F=DG'$$.
 
 Before any fitting, the retained candidates, the omitted-check modes and the generating mode are compared with an independent solve at `refinementFactor` (default 1.5) times the resolution. Equivalent depths, F and G shapes and the root points must agree within `convergenceTolerance` (default 1e-6). Without a supplied solver the spectral resolution starts at max(128, 4 Nz) and doubles for at most five resolution levels, capped at 2048 unless the starting resolution is larger. At each level WKB is attempted first and physical z provides a fallback for strongly stretched backgrounds. Root-count failures are recorded as underresolved attempts rather than aborting the search. A supplied `IMSolverSpectral` is used as given with no coordinate fallback; failure reports the tested coordinate and resolution. The evidence is in `assessment.convergence`.
 
@@ -32,7 +32,7 @@ selected = basis.selectColumns([1 3 5]); % preserve scales and identities
 selectedTransform = selected.discreteTransform(grid);
 ```
 
-The fixed-grid bridge currently supports rigid-lid hydrostatic F/G families only. The same per-variable Galerkin operators are available through `basis.projectionOnGrid(z,w,variable="F")` or `IMBasisCollection({basis}).projectionOnGrid(z,w,variable="G")`; all use the same continuous metric and labels. Other common families retain their existing lower-level transform paths. It always constructs Galerkin coefficient recovery; the root convenience factory additionally has the larger full-span family needed for truncated collocation.
+The fixed-grid bridge supports rigid-lid hydrostatic F/G families. It uses the full normalized F and G Gram matrices and positive majorants of the represented basis, including off-diagonal terms. It makes no assumption that a numerical derivative satisfies the exact continuous norm identity. Its Galerkin recovery is also available through `basis.projectionOnGrid(z,w,variable="F",prepareRecovery=true).recovery`; omitting `prepareRecovery` prepares only the physical dual. The root convenience factory additionally has the larger full-span family needed for truncated collocation.
 
 To construct a continuous family and obtain candidate points independently:
 
@@ -63,6 +63,8 @@ $$\varepsilon_V$$ bounds the relative error in the energy of any combination of 
 
 Acceptance is linear. It does not qualify nonlinear products and is not a claim of an optimal grid or a maximum resolution.
 
+These diagonal matrices are the ideal Sturm–Liouville targets for root-grid qualification and fitting. The returned transform’s `targetGramMatrix` and `physicalProjection` instead use the full continuous Grams of its retained numerical representation, matching `basis.gramMatrix`. Thus `assessment.final.energyErrorF/G` measures error against the ideal targets, while the transform’s `relativeGramOperatorError` measures error against the represented basis. The independent solve-convergence gate keeps representation error separate from sampling error.
+
 ## Operators
 
 The transform separates two jobs. The fitted weights are the rule for energies and other integrals on the grid, and the energy errors above qualify the retained band. A forward operator, chosen with `forwardOperator`, turns samples into coefficients. Both operators recover retained modes exactly and are cached, so repeated transforms are dense multiplies.
@@ -77,7 +79,7 @@ Truncated collocation combines v4's separation of modes within the interpolation
 Two related quantities are different from either operator and are not substituted for them:
 
 - `modeProjectionFunctional` returns the raw pairings $$\Phi_V^\mathsf{T}W_Vx$$;
-- dividing active F pairings by $$H_F$$ approximates $$H_F^{-1}\int F_j x\,dz$$; dividing active G pairings by $$H_G$$ approximates $$H_G^{-1}\int (N^2/g)G_j x\,dz$$. These physical continuous-dual projections differ from exact sampled recovery by the Gram error, even for modal input. The inactive barotropic G row remains zero.
+- `physicalProjection(variable=V).projectPhysical(x)` applies the continuous physical dual using the full represented Gram. In the exact Sturm–Liouville limit this reduces to dividing active F or G pairings by the corresponding ideal diagonal norm. Physical projection differs from sampled recovery when quadrature error is present, even for modal input. The inactive barotropic G row remains zero.
 
 ## Diagnostics
 

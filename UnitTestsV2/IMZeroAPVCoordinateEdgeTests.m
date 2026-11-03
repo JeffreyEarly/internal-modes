@@ -9,7 +9,7 @@ classdef IMZeroAPVCoordinateEdgeTests < matlab.unittest.TestCase
 
     methods (Test)
         function originallyEmptyFamiliesRemainEmptyWithoutRestoringDirections(testCase)
-            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2);
+            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,surfaceCondition="freeSurface");
             problem=IMGeostrophicZeroAPVModes.atWavenumber(background,[1.2 .7],endpoints=strings(1,0));
             for solver={IMSolverAnalytical(),IMSolverSpectral(nEVP=32),IMSolverFiniteDifference(z=linspace(-1,0,33).')}
                 b=solver{1}.solveGeostrophicZeroAPVModes(problem);
@@ -24,7 +24,7 @@ classdef IMZeroAPVCoordinateEdgeTests < matlab.unittest.TestCase
         end
 
         function infinitiesCannotDeactivateRetainedEndpoints(testCase)
-            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2);
+            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,surfaceCondition="freeSurface");
             for solver={IMSolverAnalytical(),IMSolverSpectral(nEVP=48)}
                 full=solver{1}.solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,1.2));
                 prefix=string(class(full));
@@ -39,7 +39,7 @@ classdef IMZeroAPVCoordinateEdgeTests < matlab.unittest.TestCase
         end
 
         function schurTunedNullEnergyRemainsAStateWithoutAUnitEnergyNorm(testCase)
-            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2);
+            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,surfaceCondition="freeSurface");
             b=IMSolverAnalytical().solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,1.2));
             H=b.energyMatrix; B0=b.surfaceBuoyancyMatrix; Bd=b.bottomBuoyancyMatrix;
             K=H+.4*Bd; g0=-(K(1,1)-K(1,2)^2/K(2,2))/B0(1,1);
@@ -47,11 +47,10 @@ classdef IMZeroAPVCoordinateEdgeTests < matlab.unittest.TestCase
             [~,index]=min(abs(o.boundaryDepth)); nullState=o.selectColumns(index);
             testCase.verifyLessThan(abs(nullState.boundaryDepth),1e-12);
             testCase.verifyGreaterThan(norm(nullState.F([-1;-.4;0])),.01);
-            requested = nullState.withNormalization("generalizedEnergy");
-            assigned = nullState; assigned.normalization = "generalizedEnergy";
-            testCase.verifyEqual(requested.normalization,assigned.normalization);
-            testCase.verifyError(@() requested.normalizationFactors(),"IMAnalyticalGeostrophicZeroAPVModesBasis:NullNormalization");
-            testCase.verifyError(@() assigned.F(-.4),"IMAnalyticalGeostrophicZeroAPVModesBasis:NullNormalization");
+            testCase.verifyEqual(nullState.normalization,"endpointResponse");
+            testCase.verifyEqual(nullState.normSignatures,1);
+            testCase.verifyFalse(ismember("generalizedEnergy",nullState.normalizationNames()));
+            testCase.verifyError(@() nullState.withNormalization("generalizedEnergy"),"IMAnalyticalGeostrophicZeroAPVModesBasis:UnsupportedNormalization");
             testCase.verifyTrue(all(isfinite(nullState.F([-1;-.4;0],normalization="maxAbsF"))));
         end
 
@@ -63,22 +62,22 @@ classdef IMZeroAPVCoordinateEdgeTests < matlab.unittest.TestCase
             z=linspace(-1,0,17).';
             testCase.verifyLessThan(norm(n.F(z)),1e-11);
             testCase.verifyGreaterThan(norm(n.G(z)),1);
-            requested = n.withNormalization("generalizedEnergy");
-            assigned = n; assigned.normalization = "generalizedEnergy";
-            testCase.verifyEqual(requested.normalization,assigned.normalization);
-            testCase.verifyError(@() requested.normalizationFactors(),"IMGeostrophicZeroAPVModesBasis:NullNormalization");
-            testCase.verifyError(@() assigned.F(-.4),"IMGeostrophicZeroAPVModesBasis:NullNormalization");
+            testCase.verifyEqual(n.normalization,"endpointResponse");
+            testCase.verifyEqual(n.normSignatures,1);
+            testCase.verifyTrue(all(isfinite(n.G(z,normalization="rmsG"))));
+            testCase.verifyError(@() n.withNormalization("generalizedEnergy"),"IMGeostrophicZeroAPVModesBasis:UnsupportedNormalization");
         end
 
-        function selectingSourcePagesDoesNotEvaluateAnUnusedNullNorm(testCase)
-            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2);
+        function nullEnergyPagesRetainFiniteEndpointCoordinates(testCase)
+            background=IMBackground.constantStratification(N0=1,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,surfaceCondition="freeSurface");
             b=IMSolverAnalytical().solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,[1.2 .7]));
             H=b.energyMatrix; B0=b.surfaceBuoyancyMatrix; Bd=b.bottomBuoyancyMatrix;
             K=H(:,:,1)+.4*Bd(:,:,1); g0=-(K(1,1)-K(1,2)^2/K(2,2))/B0(1,1,1);
             o=b.orthogonalizeGeneralizedEnergy(g0=g0,gd=.4);
-            values=o.evaluate([-1;-.3;0],variable="G",normalization="generalizedEnergy",pages=2);
+            values=o.evaluate([-1;-.3;0],variable="G",normalization="endpointResponse",pages=2);
             testCase.verifySize(values,[3 2]);
-            testCase.verifyError(@() o.evaluate([],variable="G",normalization="generalizedEnergy",pages=1),"IMAnalyticalGeostrophicZeroAPVModesBasis:NullNormalization");
+            testCase.verifyTrue(all(isfinite(o.evaluate([-1;-.3;0],variable="G",normalization="endpointResponse",pages=1)),"all"));
+            testCase.verifyEqual(o.normSignatures,ones(2,2));
         end
     end
 end

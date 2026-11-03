@@ -56,7 +56,7 @@ for p = 1:size(profiles,1)
         solver = IMSolverSpectral(nEVP=2*assessment.convergence.candidateNEVP,coordinateKind=assessment.convergence.coordinateKind);
         nModes = nPoints+8;
         evp = IMInternalModes.hydrostaticGModes(background);
-        basis = IMHydrostaticModesBasis(solver.solveEVP(evp,nModes=nModes),normalization="depthRMSF");
+        basis = IMHydrostaticModesBasis(solver.solveEVP(evp,nModes=nModes),normalization="rmsF");
         z = grid.z; g = background.g; h = basis.h(2:end);
         F = basis.F(z); G = basis.G(z);
         HF = D*ones(1,nModes+1); HG = D./h; GMetric = N2(z)/g;

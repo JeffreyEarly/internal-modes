@@ -27,8 +27,8 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
                 testCase.verifyEqual(transform.activeColumnMask,[false true true true]);
                 testCase.verifyEqual(transform.transformForward(basis.G(z)),diag([0 1 1 1]),AbsTol=3e-11);
                 collection = IMBasisCollection({basis},basisIndex=[1 1]);
-                selected = basis.selectColumns(2:4).withNormalization("depthRMSG");
-                values = collection.evaluate(z,variable="G",columns=2:4,normalization="depthRMSG");
+                selected = basis.selectColumns(2:4).withNormalization("rmsG");
+                values = collection.evaluate(z,variable="G",columns=2:4,normalization="rmsG");
                 testCase.verifyEqual(values,repmat(selected.G(z),1,1,2),AbsTol=3e-12);
                 testCase.verifySize(collection.evaluate(z,variable="G",columns=[]),[numel(z) 0 2]);
                 empty = basis.projectionOnGrid(z,w,variable="G",columns=[],prepareRecovery=false);
@@ -158,7 +158,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             evp = IMInternalModes(zDomain=background.zDomain,N2=@(z) ones(size(z)),formulation="G",modeFamily="hydrostatic",r=.5,rotationRate=background.rotationRate,latitude=background.latitude,g=background.g, ...
                 surfaceBoundary=IMBoundaryCondition(a=1,b=0,c=0,d=1),bottomBoundary=IMBoundaryCondition.dirichlet());
             source = solver.solveEVP(evp,nModes=3);
-            wrapper = source.withNormalization("depthRMSG");
+            wrapper = source.withNormalization("rmsG");
             [z,w] = endpointRule(background.zDomain,48);
             testCase.verifySize(wrapper.G(z),[numel(z) 3]);
             testCase.verifyError(@() wrapper.scalarTransform(z,w,variable="G"),"IMProjection:UnsupportedDerivativeTrace");
@@ -166,7 +166,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             coupled = solver.solveEVP(IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(background,k=.8,alpha0=.7,alphaD=.4),nModes=2);
             testCase.verifySize(coupled.G(z),[numel(z) coupled.nColumns]);
             testCase.verifyError(@() coupled.scalarTransform(z,w,variable="G"),"IMScalarProjection:UnavailableProjection");
-            waveBackground = IMBackground.constantStratification(N0=2,zDomain=[-1 0],g=2,rotationRate=background.rotationRate,latitude=33);
+            waveBackground = IMBackground.constantStratification(N0=2,zDomain=[-1 0],g=2,rotationRate=background.rotationRate,latitude=33,surfaceCondition="freeSurface");
             wave = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(waveBackground,k=.3),nModes=3);
             testCase.verifyError(@() wave.scalarTransform(z,w,variable="F"),"IMScalarProjection:UnavailableProjection");
             zero = solver.solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,.3,endpoints=["surface","bottom"]));
@@ -292,8 +292,8 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.z,z,AbsTol=0);
             testCase.verifyEqual(transform.weights,w,AbsTol=0);
             testCase.verifyEqual(transform.physicalDualMatrix,projection.physicalDualMatrix,AbsTol=0);
-            neutralBackground = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1 0],rotationRate=background.rotationRate,latitude=33,g=2);
-            neutral = IMNeutralLabelModesBasis(neutralBackground,neutralIntervals=[-1 0],g0=0,gd=0,nModes=3);
+            neutralBackground = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1 0],rotationRate=background.rotationRate,latitude=33,g=2,surfaceCondition="freeSurface");
+            neutral = IMNeutralLabelModesBasis(neutralBackground,neutralIntervals=[-1 0],g0=0,gd=0,nModesPerInterval=3);
             physical = neutral.projectionOnGrid(z,w,variable="APV",prepareRecovery=false);
             adapter = neutral.scalarTransform(z,w,variable="APV");
             testCase.verifyTrue(adapter.success);

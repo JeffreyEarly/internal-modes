@@ -29,7 +29,7 @@ classdef IMNeutralPiecewiseChebyshevTests < matlab.unittest.TestCase
                     nIndexedModes = 40;
                 end
                 problem = IMInternalModes.geostrophicAPVModes(N2=p.N2,zDomain=p.zDomain, ...
-                    latitude=45,g0=endpoints(i,1),gd=endpoints(i,2));
+                    latitude=45,g0=endpoints(i,1),gd=endpoints(i,2),surfaceBoundary="freeSurface");
                 reference = neutralGeostrophicReference(problem,nModes=nIndexedModes,includeSignedSectors=true,tolerance=1e-13);
                 candidate = neutralGeostrophicPiecewiseBasis(problem,384,nModes=numel(reference.h),joins=p.joins);
                 testCase.verifyIndependentAgreement(reference,candidate);
@@ -112,7 +112,7 @@ classdef IMNeutralPiecewiseChebyshevTests < matlab.unittest.TestCase
         function constantStratificationAgreesWithAnalyticalModesWithoutAddingPoints(testCase)
             N0 = 5e-3;
             problem = IMInternalModes.geostrophicAPVModes(N2=@(z) N0^2*ones(size(z)), ...
-                zDomain=[-1000 0],latitude=45,g0=0,gd=-.01);
+                zDomain=[-1000 0],latitude=45,g0=0,gd=-.01,surfaceBoundary="freeSurface");
             candidate = neutralGeostrophicPiecewiseBasis(problem,128,nModes=6);
             analytical = IMConstantStratificationSolution(N0=N0,zDomain=[-1000 0],latitude=45).internalModes(problem,nModes=6);
             [z,weights] = neutralGeostrophicQuadrature([-1000 -400 -200 0],257);

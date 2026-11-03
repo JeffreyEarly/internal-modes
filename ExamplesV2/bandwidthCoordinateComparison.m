@@ -46,7 +46,7 @@ profiles = struct(name={"constant","standardExponential","weakDeepExponential","
     N2={@(z) 1e-4*ones(size(z)),@(z) 1e-4*exp(2*z/400),@(z) 9e-6*exp(2*z/300),@neutralSurfaceN2}, ...
     formula={"N2=1e-4","N2=1e-4 exp(2z/400)","N2=9e-6 exp(2z/300)", ...
     "N2=(5e-3)^2 s(t), t=clip((-z-200)/200,0,1), s=6t^5-15t^4+10t^3"});
-quadratureEVP = IMInternalModes.hydrostaticGModes(N2=profiles(1).N2,zDomain=zDomain,rotationRate=rotationRate,latitude=latitude,g=g);
+quadratureEVP = IMInternalModes.hydrostaticGModes(N2=profiles(1).N2,zDomain=zDomain,rotationRate=rotationRate,latitude=latitude,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
 rule = IMSolverSpectral(nEVP=1025,coordinateKind="z").configuredForEVP(quadratureEVP);
 [z,weights] = rule.nativeQuadratureRule(zDomain);
 % Aggregations are bounded by 42 candidate rows, seven cases and one retry.
@@ -163,7 +163,7 @@ for iProfile = 1:numel(profiles)
         end
     end
 end
-zeroRotationEVP = IMInternalModes.hydrostaticGModes(N2=profiles(2).N2,zDomain=zDomain,rotationRate=0,latitude=latitude,g=g);
+zeroRotationEVP = IMInternalModes.hydrostaticGModes(N2=profiles(2).N2,zDomain=zDomain,rotationRate=0,latitude=latitude,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
 legacy = IMBandwidthComparison.LegacyWKBSolver(nEVP=nEVP(1),coordinateKind="wkb").configuredForEVP(zeroRotationEVP);
 bandwidth = IMSolverSpectral(nEVP=nEVP(1),coordinateKind="bandwidth").configuredForEVP(zeroRotationEVP);
 zeroRotationRecovery = struct(nEVP=nEVP(1),profile=string(profiles(2).name), ...

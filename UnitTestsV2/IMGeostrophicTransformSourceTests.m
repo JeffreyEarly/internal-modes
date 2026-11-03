@@ -77,7 +77,7 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
             gd = Inf;
             k = 1e-4;
             solver = IMSolverSpectral(nEVP=112);
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
             basis = solver.solveEVP(evp,nModes=8);
             z = linspace(-D,-D/64,64).';
             weights = ones(size(z))*(D/numel(z));
@@ -111,7 +111,7 @@ classdef IMGeostrophicTransformSourceTests < matlab.unittest.TestCase
                 N2 = options.N2;
             end
             solver = IMSolverSpectral(nEVP=options.nEVP);
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=options.zDomain,g=options.g,g0=options.g0,gd=options.gd,surfaceBoundary="freeSurface");
             basis = solver.solveEVP(evp,nModes=options.nModes+3);
             z = linspace(options.zDomain(1),options.zDomain(2),options.nGrid).';
             depth = diff(options.zDomain);

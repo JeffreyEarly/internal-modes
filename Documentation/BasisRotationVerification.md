@@ -1,5 +1,7 @@
 # Zero-APV form and rotation verification
 
+This record describes the earlier integration. For the current normalization, exact-count and projection contracts, see [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md) and [CommonScalarProjection](CommonScalarProjection.md). Historical test counts and retired API names below are preserved as evidence of that earlier state.
+
 Historical verification of the incoming implementation before the capable-basis integration. Code examples and class names below describe that historical API; current usage is documented in [the integration plan](APISimplificationPlan.md). These results do not replace verification of the integrated implementation.
 
 This increment implements #49 from `InternalModesEVP` at `73e5e69` (merged PR #64). The common basis owns the physical forms and changes of continuous coefficient coordinates; the existing shared engine owns numerical recovery. No new EVP family, observation-grid design, source adapter or WVM dependency is introduced.

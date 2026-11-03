@@ -41,7 +41,7 @@ classdef IMHorizontalIdentityTests < matlab.unittest.TestCase
             end
         end
         function solvedWavenumbersCannotBeReassigned(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             for family = ["wave","inertial","enstrophy"]
                 b = createIMTestBasis(family,bg);
                 testCase.verifyEqual(b.horizontalKind,"fixedWavenumber");

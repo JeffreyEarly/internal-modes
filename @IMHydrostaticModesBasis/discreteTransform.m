@@ -22,17 +22,14 @@ if ~isequal(grid.zDomain,self.zDomain)
     error("IMHydrostaticModesBasis:IncompatibleDomain","The basis and sampling grid must have the same zDomain.");
 end
 F = self.F(grid.z); G = self.G(grid.z);
-if ismember(string(self.normalization),["depth","depthRMSF"])
-    HF = diff(self.zDomain)*ones(1,numel(self.h));
-else
-    HF = diag(self.gramMatrix(variable="F")).';
-end
-HG = HF./self.h;
-HG(~isfinite(self.h)) = 0;
+HF = self.gramMatrix(variable="F");
+HG = self.gramMatrix(variable="G");
+majorantF = self.majorantGramMatrix(variable="F");
+majorantG = self.majorantGramMatrix(variable="G");
 activeG = isfinite(self.h);
 N2 = self.N2(grid.z);
-channel = @(interior,target,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=diag(target),targetMajorantGramMatrix=diag(target));
-channels = struct(F=channel(ones(size(grid.z)),HF,true(1,numel(self.h))),G=channel(N2/self.evp.g,HG,activeG));
+channel = @(interior,target,majorant,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=target,targetMajorantGramMatrix=majorant);
+channels = struct(F=channel(ones(size(grid.z)),HF,majorantF,true(1,numel(self.h))),G=channel(N2/self.evp.g,HG,majorantG,activeG));
 if ~isempty(options.recoveryF), channels.F.recovery = options.recoveryF; end
 if ~isempty(options.recoveryG), channels.G.recovery = options.recoveryG; end
 if options.forwardOperator ~= ""

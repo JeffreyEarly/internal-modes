@@ -2,28 +2,28 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
     % Verify direct special-family construction after facade removal.
     methods (Test)
         function neutralBackgroundSelectionAndNormalizedDual(testCase)
-            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            basis = IMNeutralLabelModesBasis(background,neutralIntervals=[-1000 0],nModes=4);
+            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            basis = IMNeutralLabelModesBasis(background,neutralIntervals=[-1000 0],nModesPerInterval=4);
             selected = basis.selectColumns([4 2]);
             testCase.verifyEqual(selected.localModeNumber,[4 2]);
             selected.normalization = "maxAbsG";
             z = linspace(-1000,0,1001).';
             weights = ones(size(z)); weights([1 end]) = 0.5;
             projection = selected.projectionOnGrid(z,weights,variable="APV");
-            testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
+            testCase.verifyEqual(projection.physicalDualMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
             testCase.verifyEqual(selected.gramMatrix(),0.5*eye(2),AbsTol=1e-15);
             custom = selected.addNormalization("double",@(~,~) 2);
-            testCase.verifyEqual(custom.G(z,normalization="double"),0.5*selected.G(z,normalization="unity"));
-            testCase.verifyError(@() IMNeutralLabelModesBasis(background,neutralIntervals=[-1000 0],zDomain=[-1000 0]),"IMNeutralLabelModesBasis:ConflictingBackground");
-            nonneutral = IMBackground(N2=@(z) 1e-30*ones(size(z)),zDomain=[-1000 0]);
-            testCase.verifyError(@() IMNeutralLabelModesBasis(nonneutral,neutralIntervals=[-1000 0],nModes=0),"IMNeutralLabelModesBasis:InconsistentInterval");
+            testCase.verifyEqual(custom.G(z,normalization="double"),0.5*selected.G(z,normalization="rmsG"));
+            testCase.verifyError(@() IMNeutralLabelModesBasis(background,neutralIntervals=[-1000 0],nModesPerInterval=4,zDomain=[-1000 0]),"IMNeutralLabelModesBasis:ConflictingBackground");
+            nonneutral = IMBackground(N2=@(z) 1e-30*ones(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            testCase.verifyError(@() IMNeutralLabelModesBasis(nonneutral,neutralIntervals=[-1000 0],nModesPerInterval=0),"IMNeutralLabelModesBasis:InconsistentInterval");
         end
 
         function zeroDepthWaveHasExactIdentitiesAndCounts(testCase)
             rotationRate = 7.2921e-5; latitude = 33;
             f0 = 2*rotationRate*sind(latitude);
-            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude);
-            basis = IMZeroDepthWaveModesBasis(background,2e-4,criticalIntervals=[-1000 0],nModes=3);
+            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude,surfaceCondition="freeSurface");
+            basis = IMZeroDepthWaveModesBasis(background,2e-4,criticalIntervals=[-1000 0],nModesPerInterval=3);
             z = linspace(-1000,0,1001).';
             testCase.verifyEqual(basis.F(z),1000*basis.Gz(z),AbsTol=1e-14);
             testCase.verifyEqual(basis.Fz(z),1000*basis.Gzz(z),AbsTol=1e-16);
@@ -33,7 +33,7 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.G([-1000;0]),zeros(2,3));
             selected = basis.selectColumns([3 1]);
             testCase.verifyEqual(selected.G(z),basis.G(z)*[0 1;0 0;1 0]);
-            empty = IMZeroDepthWaveModesBasis(background,2e-4,criticalIntervals=[-1000 0],nModes=0);
+            empty = IMZeroDepthWaveModesBasis(background,2e-4,criticalIntervals=[-1000 0],nModesPerInterval=0);
             testCase.verifyEqual(empty.nColumns,0);
             testCase.verifySize(empty.F(z),[1001 0]);
             testCase.verifySize(empty.gramMatrix(),[0 0]);
@@ -41,8 +41,8 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
 
         function selectedSpecialColumnsKeepCustomNormalizationAndDuals(testCase)
             callbacks = 0;
-            neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=[-1000 0],nModes=4);
+            neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=[-1000 0],nModesPerInterval=4);
             labels = labels.addNormalization("identityDependent",@countedFactor);
             labels.normalization = "identityDependent";
             selected = labels.selectColumns([4 2]);
@@ -52,13 +52,13 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
             testCase.verifyEqual(selected.G(z),original(:,[4 2]),AbsTol=1e-15);
             weights = ones(size(z)); weights([1 end]) = 0.5;
             projection = selected.projectionOnGrid(z,weights,variable="APV");
-            testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
+            testCase.verifyEqual(projection.physicalDualMatrix*selected.APV(z),eye(2),AbsTol=1e-12);
             referenceGram = labels.gramMatrix();
             testCase.verifyEqual(selected.gramMatrix(),referenceGram([4 2],[4 2]));
 
             f0 = neutral.f0;
-            critical = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=neutral.zDomain);
-            waves = IMZeroDepthWaveModesBasis(critical,1e-4,criticalIntervals=[-1000 0],nModes=4);
+            critical = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=neutral.zDomain,surfaceCondition="freeSurface");
+            waves = IMZeroDepthWaveModesBasis(critical,1e-4,criticalIntervals=[-1000 0],nModesPerInterval=4);
             waves = waves.addNormalization("identityDependent",@countedFactor);
             waves.normalization = "identityDependent";
             countBeforeSelection = callbacks;
@@ -76,7 +76,7 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
         end
 
         function analyticalBackendReturnsExactCountedFamily(testCase)
-            background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0],surfaceCondition="freeSurface");
             solver = IMSolverAnalytical();
             problem = IMInternalModes.waveModesAtWavenumber(background,k=1e-3);
             basis = solver.solveEVP(problem,nModes=4);
@@ -90,7 +90,7 @@ classdef IMSpecialFamilyConsolidationTests < matlab.unittest.TestCase
         end
 
         function endpointBackgroundAndExactDerivatives(testCase)
-            background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0],surfaceCondition="freeSurface");
             problem = IMGeostrophicZeroAPVModes.atWavenumber(background,[1e-4 2e-4],endpoints="surface");
             solver = IMSolverAnalytical();
             basis = solver.solveGeostrophicZeroAPVModes(problem);

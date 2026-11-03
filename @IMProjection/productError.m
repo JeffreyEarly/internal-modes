@@ -5,6 +5,8 @@ function errors = productError(self,sampledProducts,referenceCoefficients,produc
 % coordinates, and normalization. A zero product norm returns zero only when
 % sampled values and reference coefficients are both zero, and infinity
 % otherwise. This method does not assert reference convergence or coverage.
+% Galerkin records assess explicitly prepared sample recovery; prescribed
+% duals assess their physical source functional without an inverse fit.
 %
 % - Topic: Measure projection quality
 % - Declaration: errors = productError(self,sampledProducts,referenceCoefficients,productNormSquared)
@@ -32,7 +34,7 @@ end
 if any(referenceCoefficients(~self.activeColumnMask,:) ~= 0,"all")
     error("IMProjection:InactiveReferenceCoefficient","Reference coefficients must be zero on inactive columns.");
 end
-difference = self.project(sampledProducts)-referenceCoefficients;
+difference = self.applyAssessmentOperator(sampledProducts)-referenceCoefficients;
 errors = IMProjection.relativeCoefficientNorm(difference,self.majorantGramMatrix,productNormSquared);
 zero = productNormSquared == 0;
 errors(zero) = Inf;

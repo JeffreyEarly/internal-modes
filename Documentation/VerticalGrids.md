@@ -3,7 +3,7 @@
 A model samples every mode family, at every horizontal wavenumber, on one fixed set of depths. `IMVerticalGrid` holds those depths and their quadrature weights. It is separate from the numerical coordinate of an eigenvalue solver: modes can be solved at much higher resolution and evaluated on the grid afterwards.
 
 ```matlab
-background = IMBackground(N2=@(z) 1e-6+5e-5*exp(z/300),zDomain=[-4000 0],latitude=33);
+background = IMBackground(N2=@(z) 1e-6+5e-5*exp(z/300),zDomain=[-4000 0],latitude=33,surfaceCondition="freeSurface");
 grid = IMVerticalGrid.smoothedBandwidth(background,65);
 grid.z          % increasing depths, both endpoints included
 grid.weights    % nonnegative weights with sum(grid.weights) == background.D

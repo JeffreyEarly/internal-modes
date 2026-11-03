@@ -31,7 +31,7 @@ for iMode = 1:length(k)
     evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k(iMode), rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g, ...
         surfaceBoundary=surfaceBoundary, bottomBoundary=bottomBoundary);
     basisSet = solver.solveEVP(evp, nModes=nModes);
-    basisSet.normalization = "surfacePressure";
+    basisSet.normalization = "surfaceF";
 
     h(iMode) = basisSet.h(1);
     omega = sqrt(f0*f0 + g*h(iMode)*k(iMode)*k(iMode));

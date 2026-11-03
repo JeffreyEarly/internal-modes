@@ -11,8 +11,8 @@ classdef IMBackground
     % $$N^2(z)=N_0^2\exp(2(z-z_{\mathrm{surface}})/b)$$.
     %
     % ```matlab
-    % background = IMBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
-    % exactBackground = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
+    % background = IMBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+    % exactBackground = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0],surfaceCondition="freeSurface");
     % ```
     %
     % - Topic: Create a mode background
@@ -90,7 +90,7 @@ classdef IMBackground
             % - Parameter options.rotationRate: planetary rotation rate
             % - Parameter options.latitude: latitude in degrees north
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceCondition: physical surface convention
+            % - Parameter options.surfaceCondition: required physical surface convention, freeSurface or rigidLid
             % - Returns self: read-only physical background
             arguments
                 options.N2 (1,1) function_handle
@@ -98,7 +98,10 @@ classdef IMBackground
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceCondition {mustBeTextScalar} = "freeSurface"
+                options.surfaceCondition {mustBeTextScalar}
+            end
+            if ~isfield(options,"surfaceCondition")
+                error("IMBackground:MissingSurfaceCondition","Supply surfaceCondition=""freeSurface"" or surfaceCondition=""rigidLid"" explicitly.");
             end
             if options.zDomain(2) <= options.zDomain(1)
                 error("IMBackground:InvalidDomain","zDomain must be strictly increasing, with the bottom before the surface.");
@@ -165,7 +168,7 @@ classdef IMBackground
             % - Parameter options.rotationRate: planetary rotation rate
             % - Parameter options.latitude: latitude in degrees north
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceCondition: physical surface convention
+            % - Parameter options.surfaceCondition: required physical surface convention, freeSurface or rigidLid
             % - Returns self: constant-stratification background
             arguments
                 options.N0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 5.2e-3
@@ -173,7 +176,10 @@ classdef IMBackground
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceCondition {mustBeTextScalar} = "freeSurface"
+                options.surfaceCondition {mustBeTextScalar}
+            end
+            if ~isfield(options,"surfaceCondition")
+                error("IMBackground:MissingSurfaceCondition","Supply surfaceCondition=""freeSurface"" or surfaceCondition=""rigidLid"" explicitly.");
             end
             N0 = options.N0;
             options = rmfield(options,"N0");
@@ -198,7 +204,7 @@ classdef IMBackground
             % - Parameter options.rotationRate: planetary rotation rate
             % - Parameter options.latitude: latitude in degrees north
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceCondition: physical surface convention
+            % - Parameter options.surfaceCondition: required physical surface convention, freeSurface or rigidLid
             % - Returns self: exponential-stratification background
             arguments
                 options.N0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 5.2e-3
@@ -207,7 +213,10 @@ classdef IMBackground
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceCondition {mustBeTextScalar} = "freeSurface"
+                options.surfaceCondition {mustBeTextScalar}
+            end
+            if ~isfield(options,"surfaceCondition")
+                error("IMBackground:MissingSurfaceCondition","Supply surfaceCondition=""freeSurface"" or surfaceCondition=""rigidLid"" explicitly.");
             end
             N0 = options.N0;
             b = options.b;

@@ -18,7 +18,7 @@ classdef IMModeBasisProvenanceTests < matlab.unittest.TestCase
             testCase.verifyEqual(r.resolved.horizontal.kind,"independent");
         end
         function resolvedDefaultAlphaIsDistinctFromRequestedDefault(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             b = createIMTestBasis("enstrophy",bg); r = b.scientificSpecification;
             testCase.verifyEmpty(r.requested.alpha0);
             testCase.verifyEqual(r.resolved.evp.parameters.alpha0Source,"stratification");
@@ -26,7 +26,7 @@ classdef IMModeBasisProvenanceTests < matlab.unittest.TestCase
             testCase.verifyEqual(r.resolved.evp.parameters.alpha0,bg.f0^2/250,RelTol=2e-14);
         end
         function constructionUsesConfiguredCoordinateWithoutClaimingConvergence(testCase)
-            bg = IMBackground.exponentialStratification(N0=.01,b=500,zDomain=[-1000 0]);
+            bg = IMBackground.exponentialStratification(N0=.01,b=500,zDomain=[-1000 0],surfaceCondition="freeSurface");
             for coordinate = ["z","wkb","bandwidth"]
                 b = createIMTestBasis("wave",bg,solver=IMSolverSpectral(nEVP=48,coordinateKind=coordinate)); r = b.constructionRecord;
                 testCase.verifyEqual(r.requested.solver.coordinateKind,coordinate);
@@ -39,13 +39,13 @@ classdef IMModeBasisProvenanceTests < matlab.unittest.TestCase
             end
         end
         function finiteDifferenceRequestedGridIsReproducible(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]); z = linspace(-1000,0,81).';
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface"); z = linspace(-1000,0,81).';
             b = createIMTestBasis("wave",bg,solver=IMSolverFiniteDifference(z=z)); r = b.constructionRecord;
             testCase.verifyEqual(sort(r.requested.solver.zNative),z);
             testCase.verifyEqual(r.resolved.solver.zNative,r.requested.solver.zNative);
         end
         function emptyEVPKeepsItsScientificAndConstructionRequests(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             b = createIMTestBasis("wave",bg,nModes=0,solver=IMSolverSpectral(nEVP=48,coordinateKind="bandwidth"));
             testCase.verifyEqual(b.scientificSpecification.requested.k,1e-3);
             testCase.verifyEqual(b.scientificSpecification.resolved.evp.name,"waveModesAtWavenumber");
@@ -64,18 +64,18 @@ classdef IMModeBasisProvenanceTests < matlab.unittest.TestCase
             testCase.verifyEqual(barotropic.constructionRecord.selection.request.nModes,1);
         end
         function DDIntervalsPreserveFixedEndpointAndCoefficientRoles(testCase)
-            bg = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]); intervals = [-1000 -800;-200 0];
-            b = IMNeutralLabelModesBasis(bg,neutralIntervals=intervals,nModes=[1 2],g0=.03,gd=Inf); r = b.scientificSpecification;
-            testCase.verifyEqual(r.requested.nModes,[1 2]); testCase.verifyEqual(r.resolved.intervals,intervals);
+            bg = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface"); intervals = [-1000 -800;-200 0];
+            b = IMNeutralLabelModesBasis(bg,neutralIntervals=intervals,nModesPerInterval=[1 2],g0=.03,gd=Inf); r = b.scientificSpecification;
+            testCase.verifyEqual(r.requested.nModesPerInterval,[1 2]); testCase.verifyEqual(r.resolved.intervals,intervals);
             testCase.verifyEqual(r.resolved.intervalBoundaryTypes,repmat("Dirichlet",2,2));
             testCase.verifyEqual(r.resolved.energyBoundaryRole,"provenanceOnly");
             testCase.verifyEqual(r.resolved.energyBoundary,struct(g0=.03,gd=Inf));
             testCase.verifyEqual(b.G(intervals(:)),zeros(4,3));
         end
         function criticalIntervalsAndEndpointSelectionsRemainExplicit(testCase)
-            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            critical = IMBackground(N2=@(z) bg.f0^2*ones(size(z)),zDomain=bg.zDomain);
-            b = IMZeroDepthWaveModesBasis(critical,1e-3,criticalIntervals=[-900 -700],nModes=2);
+            bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
+            critical = IMBackground(N2=@(z) bg.f0^2*ones(size(z)),zDomain=bg.zDomain,surfaceCondition="freeSurface");
+            b = IMZeroDepthWaveModesBasis(critical,1e-3,criticalIntervals=[-900 -700],nModesPerInterval=2);
             testCase.verifyEqual(b.scientificSpecification.requested.criticalIntervals,[-900 -700]);
             testCase.verifyEqual(b.scientificSpecification.resolved.intervalKind,"critical");
             testCase.verifyEqual(b.constructionRecord.resolved.backendKind,"analyticalDDKernel");

@@ -9,7 +9,7 @@ classdef IMSolverSpectral < IMSolver
     % reconstruction and sampled-field calculus share the same coordinate.
     %
     % ```matlab
-    % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
+    % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
     % solver = IMSolverSpectral(nEVP=64);
     % basisSet = solver.solveEVP(evp,nModes=10);
     % ```

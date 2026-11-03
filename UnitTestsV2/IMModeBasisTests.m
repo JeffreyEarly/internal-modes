@@ -11,7 +11,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
         function numericalAndAnalyticalWavesShareTheDepthConvention(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             k = 1e-3;
-            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=k,rotationRate=background.rotationRate,latitude=background.latitude);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=k,rotationRate=background.rotationRate,latitude=background.latitude,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numerical = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
             solution = background.analyticalSolution();
             analytical = solution.internalModes(evp,nModes=4);
@@ -34,27 +34,27 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
 
         function normalizationsScaleBothWaveProfilesTogether(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=1e-3);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=1e-3,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = background.analyticalSolution();
             source = solution.internalModes(evp,nModes=3);
-            rmsF = testCase.wrap(background,source,"depthRMSF",true,1e-3);
-            rmsG = testCase.wrap(background,source,"depthRMSG",true,1e-3);
+            rmsF = testCase.wrap(background,source,"rmsF",true,1e-3);
+            rmsG = testCase.wrap(background,source,"rmsG",true,1e-3);
             z = linspace(-1000,0,201).';
             testCase.verifyEqual(trapz(z,rmsF.F(z).^2)/1000,ones(1,3),AbsTol=2e-13)
             testCase.verifyEqual(trapz(z,rmsG.G(z).^2)/1000,ones(1,3),AbsTol=2e-13)
             testCase.verifyEqual(rmsF.F(z).*rmsG.G(z),rmsG.F(z).*rmsF.G(z),AbsTol=1e-14)
             % Changing the active normalization of a value copy preserves the source.
             expected = rmsF.F(z);
-            source.normalization = "uMax";
+            source.normalization = "maxAbsF";
             source.F(z);
             testCase.verifyEqual(rmsF.F(z),expected)
-            testCase.verifyEqual(rmsF.normalization,"depthRMSF")
+            testCase.verifyEqual(rmsF.normalization,"rmsF")
         end
 
         function analyticalSecondDerivativesRespectRotatingWaveEquation(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             k = 1e-3;
-            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=k,rotationRate=background.rotationRate,latitude=background.latitude);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=k,rotationRate=background.rotationRate,latitude=background.latitude,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = background.analyticalSolution();
             source = solution.internalModes(evp,nModes=4);
             basis = testCase.wrap(background,source,"waveEnergy",true,k);
@@ -66,12 +66,12 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
         end
 
         function signedMDAEnergyRetainsItsMetricSignature(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             g0 = -.04;
             gd = .03;
             evp = IMInternalModes.meanDensityAnomalyModes(N2=background.N2,zDomain=background.zDomain,g0=g0,gd=gd);
             source = IMSolverSpectral(nEVP=96,coordinateKind="z").solveEVP(evp,nModes=5);
-            basis = testCase.wrap(background,source,"generalizedEnergy",false,0);
+            basis = testCase.wrap(background,source,"meanDensityAnomalyEnergy",false,0);
             [z,weights] = source.solver.nativeQuadratureRule(background.zDomain);
             G = basis.G(z);
             endpoints = basis.G(background.zDomain.');
@@ -83,7 +83,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
         end
 
         function generalizedEnstrophyUsesTheSameNamedPairing(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(N2=background.N2,zDomain=background.zDomain,k=1e-3,rotationRate=background.rotationRate,latitude=background.latitude);
             source = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
             basis = testCase.wrap(background,source,"generalizedPotentialEnstrophy",false,1e-3);
@@ -100,9 +100,9 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
         end
 
         function neutralLabelsExposeOnlyTheirScientificChannels(testCase)
-            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModes=2);
-            basis = testCase.wrap(background,source,"depthRMSG",false,0);
+            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModesPerInterval=2);
+            basis = testCase.wrap(background,source,"rmsG",false,0);
             z = [-1000;-700;-100;0];
             testCase.verifyEqual(basis.nColumns,2)
             testCase.verifyEqual(basis.G(z),source.G(z))
@@ -113,12 +113,12 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             testCase.verifyFalse(ismethod(basis,"F"))
             testCase.verifyFalse(isprop(basis,"h"))
             testCase.verifyFalse(isprop(basis,"eigenvalues"))
-            testCase.verifyError(@() basis.G(z,normalization="depthRMSF"),"IMNeutralLabelModesBasis:UnsupportedNormalization")
+            testCase.verifyError(@() basis.G(z,normalization="rmsF"),"IMNeutralLabelModesBasis:UnsupportedNormalization")
         end
 
         function scaledSelectedNeutralProjectionRecoversItsOwnCoefficients(testCase)
-            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            source = IMNeutralLabelModesBasis([-800 -600],zDomain=background.zDomain,nModes=3);
+            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            source = IMNeutralLabelModesBasis([-800 -600],zDomain=background.zDomain,nModesPerInterval=3);
             basis = source.selectColumns([3 1]);
             basis.normalization = "maxAbsG";
             z = linspace(-800,-600,4001).';
@@ -126,27 +126,27 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             weights([1 end]) = .025;
             projection = basis.projectionOnGrid(z,weights,variable="APV");
             coefficients = [2.5;-.75];
-            testCase.verifyEqual(projection.project(basis.APV(z)*coefficients),coefficients,AbsTol=2e-12)
+            testCase.verifyEqual(projection.projectPhysical(basis.APV(z)*coefficients),coefficients,AbsTol=2e-12)
             testCase.verifyEqual(projection.columnLabels,basis.columnLabels)
             originalG = source.G(z);
             testCase.verifyEqual(basis.G(z),originalG(:,[3 1])./sqrt(10),AbsTol=1e-14)
         end
 
         function fullyNeutralLabelsAllHaveObservableAPV(testCase)
-            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-            source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModes=2);
-            basis = testCase.wrap(background,source,"depthRMSG",false,0);
+            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="freeSurface");
+            source = IMNeutralLabelModesBasis([-1000 0],zDomain=background.zDomain,nModesPerInterval=2);
+            basis = testCase.wrap(background,source,"rmsG",false,0);
             z = linspace(-1000,0,1001).';
             weights = ones(size(z));
             weights([1 end]) = .5;
             projection = basis.projectionOnGrid(z,weights,variable="APV");
-            testCase.verifyEqual(projection.forwardMatrix*basis.APV(z),eye(2),AbsTol=2e-12)
+            testCase.verifyEqual(projection.physicalDualMatrix*basis.APV(z),eye(2),AbsTol=2e-12)
             selected = basis.projectionOnGrid(z,weights,variable="APV",columns=[2 1]);
-            testCase.verifyEqual(selected.forwardMatrix*basis.APV(z),[0 1;1 0],AbsTol=2e-12)
+            testCase.verifyEqual(selected.physicalDualMatrix*basis.APV(z),[0 1;1 0],AbsTol=2e-12)
         end
 
         function endpointResponsesKeepCanonicalScaling(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             k = 1e-4;
             problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=background.N2,zDomain=background.zDomain,k=k,rotationRate=background.rotationRate,latitude=background.latitude,surfaceBoundary=background.surfaceCondition,endpoints=["surface","bottom"]);
             source = IMSolverSpectral(nEVP=64,coordinateKind="z").solveGeostrophicZeroAPVModes(problem);
@@ -164,12 +164,12 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             rotationRate = 7.2921e-5;
             latitude = 33;
             f0 = 2*rotationRate*sind(latitude);
-            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude);
-            basis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=[-1000 0],nModes=1);
+            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude,surfaceCondition="freeSurface");
+            basis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=[-1000 0],nModesPerInterval=1);
             z = linspace(-1000,0,31).';
             testCase.verifyEqual(basis.F(z),1000*basis.Gz(z),AbsTol=1e-14)
             testCase.verifyEqual(basis.h,0)
-            emptyBasis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=[-1000 0],nModes=0);
+            emptyBasis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=[-1000 0],nModesPerInterval=0);
             testCase.verifySize(emptyBasis.G(z),[31 0])
             testCase.verifySize(emptyBasis.F(z),[31 0])
             testCase.verifyEqual(emptyBasis.nColumns,0)
@@ -179,7 +179,7 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
 
         function maximumNormalizationResolvesInteriorExtrema(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=1e-3);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=background.N2,zDomain=background.zDomain,k=1e-3,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numerical = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=3);
             solution = background.analyticalSolution();
             analytical = solution.internalModes(evp,nModes=3);
@@ -198,9 +198,9 @@ classdef IMModeBasisTests < matlab.unittest.TestCase
             rotationRate = 7.2921e-5;
             latitude = 33;
             f0 = 2*rotationRate*sind(latitude);
-            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude);
+            background = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0],rotationRate=rotationRate,latitude=latitude,surfaceCondition="freeSurface");
             intervals = [-812 -631;-111 -34];
-            basis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=intervals,nModes=[1 1],normalization="depthRMSG");
+            basis = IMZeroDepthWaveModesBasis(background,1e-3,criticalIntervals=intervals,nModesPerInterval=[1 1],normalization="rmsG");
             peaks = mean(intervals,2);
             expected = diag(sqrt(2000./diff(intervals,1,2)));
             testCase.verifyEqual(basis.G(peaks),expected,AbsTol=2e-13)

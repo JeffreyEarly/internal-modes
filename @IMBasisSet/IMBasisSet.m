@@ -12,10 +12,11 @@ classdef IMBasisSet
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
-    % basisSet.normalization = "unity";
+    % rmsFactors = basisSet.normalizationFactors("rms");
+    % basisSet = basisSet.addNormalization("twiceRms",@(~,j) 2*rmsFactors(j));
+    % basisSet.normalization = "twiceRms";
     % u = basisSet.u(z);
-    % factors = basisSet.normalizationFactors("unity");
+    % factors = basisSet.normalizationFactors();
     % ```
     %
     % - Topic: Create basis sets
@@ -37,7 +38,7 @@ classdef IMBasisSet
         % evaluation method overrides this property for that call.
         %
         % - Topic: Normalize modes
-        normalization = "unity"
+        normalization = "rms"
     end
 
     properties (SetAccess = protected)
@@ -256,7 +257,7 @@ classdef IMBasisSet
             self.modeNumber = reshape(options.modeNumber,1,[]);
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
             if isempty(options.normalization)
-                self.normalization = "unity";
+                self.normalization = "rms";
             else
                 self.normalization = options.normalization;
             end
@@ -265,7 +266,9 @@ classdef IMBasisSet
             self.normalizationNameMap = configureDictionary("string","cell");
             self.normalizationVectorRuleMap = configureDictionary("string","cell");
             self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
-            self = self.addVectorNormalization("unity",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode),@(basisSet) basisSet.innerProductNormFactors());
+            if ~isa(self,"IMInternalModesBasis")
+                self = self.addVectorNormalization("rms",@(basis,j) IMInternalModesNormalizationTools.selectedNormFactor(basis,"rms",j),@(basis) basis.rmsNormFactors());
+            end
             self.normalizationBuiltins_ = self.normalizationNames();
             if ~isa(self,"IMInternalModesBasis"), IMBasisContracts.validateNormalization(self,self.normalization); end
             self.basisContractState = IMBasisContracts.initialState(self);
@@ -280,25 +283,20 @@ classdef IMBasisSet
             % factor $$s_j$$ for retained mode `iMode`. Evaluated modes use
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
             %
-            % For a constant-scaled norm,
-            % $$s_j=C\|u_j\|_\mu,$$
-            % use:
+            % To set a dimensionless scalar profile RMS of one half, use
+            % a positive multiplier of its existing RMS divisor:
+            % $$s_j=2\sqrt{D^{-1}\int |u_j^{\mathrm{raw}}|^2\,dz}.$$
             %
             % ```matlab
-            % C = 2;
-            % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
-            % basisSet.normalization = "constantScaled";
+            % rmsFactors = basisSet.normalizationFactors("rms");
+            % basisSet = basisSet.addNormalization("twiceRms",@(~,j) 2*rmsFactors(j));
+            % basisSet.normalization = "twiceRms";
             % ```
             %
-            % For an eigenvalue-scaled norm,
-            % $$s_j=\sqrt{|\lambda_j|}\|u_j\|_\mu,$$
-            % use:
+            % Each custom rule must return one numeric scalar that is real,
+            % positive, and finite. Validation occurs when the rule is used.
             %
-            % ```matlab
-            % basisSet = basisSet.addNormalization("eigenvalueScaled", @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j)))*basisSet.innerProductNormFactor(j));
-            % ```
-            %
-            % If `name` already exists, the rule is overwritten.
+            % Existing custom names may be replaced; built-in names are reserved.
             %
             % - Topic: Normalize modes
             % - Declaration: basisSet = addNormalization(basisSet,name,rule)
@@ -311,8 +309,7 @@ classdef IMBasisSet
                 rule (1,1) function_handle
             end
 
-            name = self.normalizationName(name);
-            self.normalizationBuiltins_ = setdiff(self.normalizationBuiltins_,string(name),"stable");
+            name = IMInternalModesNormalizationTools.customName(name,"IMBasisSet");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = [];
             self = self.resetNormalizationCache();
@@ -501,16 +498,15 @@ classdef IMBasisSet
             % For a requested rule name this returns the row vector
             % $$s_j$$ used by evaluation methods:
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-            % The default scalar `"unity"` rule is installed on every
-            % scalar basis set and uses
-            % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-            % product. Custom rules are added to the basis set with
+            % The default scalar `"rms"` rule is installed on every
+            % scalar basis set and uses the dimensionless profile convention
+            % $$s_j=\sqrt{D^{-1}\int |u_j|^2\,dz},\quad D=z_s-z_b.$$ Custom rules are added to the basis set with
             % `addNormalization`, and the active rule is selected by
             % `basisSet.normalization`.
             %
             % ```matlab
-            % factors = basisSet.normalizationFactors("unity");
-            % uUnity = basisSet.u(z,normalization="unity");
+            % factors = basisSet.normalizationFactors("rms");
+            % uRms = basisSet.u(z,normalization="rms");
             % ```
             %
             % - Topic: Normalize modes
@@ -540,7 +536,9 @@ classdef IMBasisSet
             if isempty(vectorRule)
                 factors = zeros(1,nModes);
                 for iMode = 1:nModes
-                    factors(iMode) = normalizeMode(self,iMode);
+                    value = normalizeMode(self,iMode);
+                    IMInternalModesNormalizationTools.validateCustomFactor(value,"IMBasisSet");
+                    factors(iMode) = value;
                 end
             else
                 factors = vectorRule(self);
@@ -816,68 +814,6 @@ classdef IMBasisSet
             self.nativeModes = self.nativeModes .* signs;
         end
 
-        function factor = innerProductNormFactor(self, iMode)
-            % Return the scalar inner-product norm factor.
-            %
-            % This developer utility returns the raw scale factor used by
-            % the default `"unity"` normalization rule before any modal
-            % normalization has been applied:
-            % $$s_j=\sqrt{|\langle u_j,u_j\rangle_\mu|}.$$
-            % The scalar inner product includes the interior weight and
-            % any canonical endpoint terms prepared by `endpointGramTerms`.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
-            % - Parameter iMode: retained mode index
-            % - Returns factor: raw scalar inner-product scale factor
-            % - Developer: true
-            arguments
-                self IMBasisSet
-                iMode (1,1) double {mustBeInteger, mustBePositive}
-            end
-
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            values = self.rawU(z);
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            end
-            integrand = weight(:).*values(:,iMode).*values(:,iMode);
-            value = self.solver.integrateInnerProduct(z, integrand, self.zDomain);
-            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                valuesAtEndpoint = endpointTerms(iTerm).values;
-                value = value + endpointTerms(iTerm).coefficient*valuesAtEndpoint(iMode)^2;
-            end
-            factor = sqrt(abs(value));
-        end
-
-        function factors = innerProductNormFactors(self)
-            % Return raw scalar inner-product factors for the whole family.
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            values = self.rawU(z);
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            else
-                weight = weight(:);
-            end
-            normSquared = zeros(1,size(values,2));
-            for iMode = 1:size(values,2)
-                normSquared(iMode) = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
-            end
-            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                endpointValues = endpointTerms(iTerm).values;
-                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
-            end
-            factors = sqrt(abs(normSquared));
-        end
-
         function factor = maxAmplitudeNormFactor(self, iMode)
             % Return the maximum scalar amplitude.
             %
@@ -951,6 +887,14 @@ classdef IMBasisSet
     end
 
     methods (Access = protected)
+        function factors = rmsNormFactors(self)
+            % Normalize the scalar profile without changing its scientific pairing.
+            z = self.solver.innerProductGrid(self.zDomain);
+            weights = self.solver.innerProductWeights(z,self.zDomain);
+            values = self.rawU(z);
+            factors = sqrt(sum(weights.*abs(values).^2,1)/diff(self.zDomain));
+        end
+
         function self = resetNormalizationCache(self)
             self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
         end
@@ -1054,13 +998,76 @@ classdef IMBasisSet
         end
 
         function name = normalizationName(~, normalization)
-            parts = split(string(normalization), ".");
-            name = parts(end);
+            name = IMInternalModesNormalizationTools.name(normalization,"IMBasisSet");
         end
 
         function unsupported(~, operationName)
             error("IMBasisSet:UnsupportedOperation", "IMBasisSet does not support %s for this basis.", operationName);
         end
+    end
+
+    methods (Hidden)
+        function factor = innerProductNormFactor(self, iMode)
+            % Return the square-root magnitude of the raw scalar pairing.
+            %
+            % This mathematical utility returns the raw diagonal pairing
+            % magnitude before any modal normalization has been applied:
+            % $$s_j=\sqrt{|\langle u_j,u_j\rangle_\mu|}.$$
+            % The scalar inner product includes the interior weight and
+            % any canonical endpoint terms prepared by `endpointGramTerms`.
+            %
+            % - Topic: Developer topics — Normalization rules
+            % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: square-root magnitude of the weighted scalar pairing
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+            end
+
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            end
+            integrand = weight(:).*values(:,iMode).*values(:,iMode);
+            value = self.solver.integrateInnerProduct(z, integrand, self.zDomain);
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values;
+                value = value + endpointTerms(iTerm).coefficient*valuesAtEndpoint(iMode)^2;
+            end
+            factor = sqrt(abs(value));
+        end
+
+        function factors = innerProductNormFactors(self)
+            % Return raw scalar inner-product factors for the whole family.
+            z = self.solver.innerProductGrid(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            normSquared = zeros(1,size(values,2));
+            for iMode = 1:size(values,2)
+                normSquared(iMode) = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
+            end
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            end
+            factors = sqrt(abs(normSquared));
+        end
+
     end
 
 end

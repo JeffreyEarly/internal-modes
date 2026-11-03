@@ -1,7 +1,7 @@
 function recipe = projectionRecipe(self,options)
 % Bind an analytical aligned basis without requiring a numerical solver.
 %
-% Gram targets use the 1025-point physical Clenshaw-Curtis reference rule;
+% Gram targets use the basis's physical Gauss-Legendre reference rule;
 % analytical evaluation does not make this quadrature convergence-qualified.
 % - Topic: Analyze Gram matrices
 % - Parameter options.variable: "F" or "G", the solved formulation by default
@@ -14,7 +14,8 @@ arguments (Output)
     recipe (1,1) struct
 end
 spec = self.evp.innerProduct(options.variable);
-provenance = struct("representation","analytical","referenceIntegration","1025-point Clenshaw-Curtis rule","referencePointCount",1025,"solveAccuracy","unverified","referenceConvergence","unverified");
+referencePoints = self.integrationGrid(self.zDomain);
+provenance = struct("representation","analytical","referenceIntegration","Gauss-Legendre rule","referencePointCount",numel(referencePoints),"solveAccuracy","unverified","referenceConvergence","unverified");
 if ~spec.hasInnerProduct
     recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
     return;

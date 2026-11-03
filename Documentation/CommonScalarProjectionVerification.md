@@ -1,5 +1,7 @@
 # Common scalar adapter verification
 
+Historical verification record. The current analytical reference rule and projection defaults are documented in [CommonScalarProjection](CommonScalarProjection.md); the earlier integration evidence below is preserved.
+
 Historical verification of the incoming implementation before the capable-basis integration. Code examples and class names below describe that historical API; current usage is documented in [the integration plan](APISimplificationPlan.md). These results do not replace verification of the integrated implementation.
 
 This bounded #48 increment starts from `InternalModesEVP` at `e8fb1e8` (merged PR #65). It connects existing scalar physical recipes to the common selected/normalized basis and shared recovery engine. It does not complete #48's coupled state/source or augmented endpoint-observation adapters.

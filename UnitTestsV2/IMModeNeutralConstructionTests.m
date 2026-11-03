@@ -16,7 +16,7 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
             testCase.verifyEqual(basis.modeInfo.branch,"barotropic");
             testCase.verifyEqual(basis.eigenvalues,0);
             testCase.verifyEqual(basis.h,Inf);
-            testCase.verifyEqual(basis.normalization,"depthRMSF");
+            testCase.verifyEqual(basis.normalization,"rmsF");
             z = linspace(-1000,0,13).';
             testCase.verifyEqual(basis.F(z),ones(size(z)),AbsTol=2e-13);
             testCase.verifyEqual(basis.G(z),zeros(size(z)),AbsTol=2e-13);
@@ -82,7 +82,7 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
         end
 
         function emptyEndpointInventoryHasNoFictitiousSpectrum(testCase)
-            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=32)}
                 problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=strings(1,0));
                 basis = solver{1}.solveGeostrophicZeroAPVModes(problem);
@@ -96,7 +96,7 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
         end
 
         function numericalAndExactEndpointsKeepTheSameExplicitResponses(testCase)
-            background = IMBackground.constantStratification(N0=.005,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.005,zDomain=[-1000 0],surfaceCondition="freeSurface");
             z = linspace(-1000,0,41).';
             endpoints = {["surface","bottom"],"surface","bottom"};
             for iEndpoints = 1:numel(endpoints)

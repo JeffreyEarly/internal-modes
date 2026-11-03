@@ -161,7 +161,7 @@ for i = 1:size(boundaries,1)
     gd = boundaries{i,3};
     parameters = struct("g0",g0,"gd",gd,"surfaceBoundary","freeSurface");
     cases{end+1} = struct("name","apv-"+name,"family","apv","parameters",parameters, ...
-        "create",@() IMInternalModes.geostrophicAPVModes(N2=p.N2,zDomain=p.zDomain,rotationRate=rotation,latitude=45,g0=g0,gd=gd)); %#ok<AGROW>
+        "create",@() IMInternalModes.geostrophicAPVModes(N2=p.N2,zDomain=p.zDomain,rotationRate=rotation,latitude=45,g0=g0,gd=gd,surfaceBoundary="freeSurface")); %#ok<AGROW>
     cases{end+1} = struct("name","mda-"+name,"family","mda","parameters",parameters, ...
         "create",@() IMInternalModes.meanDensityAnomalyModes(N2=p.N2,zDomain=p.zDomain,rotationRate=rotation,latitude=45,g0=g0,gd=gd)); %#ok<AGROW>
 end

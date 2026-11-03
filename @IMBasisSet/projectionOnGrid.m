@@ -13,7 +13,7 @@ function projection = projectionOnGrid(self,z,weights,options)
 % - Parameter weights: fixed physical quadrature weights
 % - Parameter options.variable: required independent scalar channel
 % - Parameter options.columns: distinct column indices, all by default
-% - Parameter options.prepareRecovery: also prepare sampled recovery, true by default
+% - Parameter options.prepareRecovery: also prepare sampled recovery, false by default
 % - Parameter options.failureMode: diagnostic or error for unresolved recovery
 % - Parameter options.rankTolerance: relative numerical rank cutoff
 % - Returns projection: physical projection record
@@ -23,7 +23,7 @@ arguments (Input)
     weights (:,1) double {mustBeReal,mustBeFinite}
     options.variable (1,1) string = ""
     options.columns (1,:) double {mustBeInteger,mustBePositive} = 1:self.nColumns
-    options.prepareRecovery (1,1) logical = true
+    options.prepareRecovery (1,1) logical = false
     options.rankTolerance (1,1) double {mustBeReal,mustBeFinite,mustBePositive} = 1e-12
     options.failureMode (1,1) string {mustBeMember(options.failureMode,["diagnostic","error"])} = "diagnostic"
 end

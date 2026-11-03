@@ -37,7 +37,7 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
         function selectedColumnDefinesRootsWhenLabelsIncludeNullMode(testCase)
             solver = IMSolverSpectral(nEVP=96);
             N2 = @(z) ones(size(z));
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0],surfaceBoundary=IMBoundaryCondition.neumann());
             basisSet = solver.solveEVP(evp,nModes=5);
             z = basisSet.pointsFromModeRoots(nModes=4);
             G = basisSet.G(z(2:end-1));
@@ -76,7 +76,7 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             grids = zeros(6,length(coordinateKinds));
             for iKind = 1:length(coordinateKinds)
                 solver = IMSolverSpectral(nEVP=128,coordinateKind=coordinateKinds(iKind));
-                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 basisSet = solver.solveEVP(evp,nModes=5);
                 grids(:,iKind) = basisSet.pointsFromModeRoots(nModes=4);
                 G = basisSet.G(grids(2:end-1,iKind));
@@ -223,7 +223,7 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-4000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
         end
     end
 end

@@ -109,20 +109,12 @@ classdef (Hidden, Sealed) IMGeostrophicZeroAPVFormTools
                     directions = basis.endpointUnscaledResponseMatrix();
                     factors = reshape(sqrt(sum(abs(directions(:,:,page)).^2,1)),n,1);
                     return
-                case "generalizedEnergy"
-                    matrix = basis.endpointUnscaledGeneralizedEnergy();
-                    bound = basis.endpointEnergyCancellationBound();
-                    squares = diag(matrix(:,:,page));
-                    if any(abs(squares)<=1e-12*bound(:,page)) || any(bound(:,page)<=0)
-                        error(string(class(basis))+":NullNormalization","A retained generalized-energy norm is unresolved relative to canonical cancellation. Keep the state with a profile normalization instead.");
-                    end
-                    factors = sqrt(abs(squares));
-                    return
+
             end
             [z,weights] = basis.endpointNormalizationQuadrature();
             if endsWith(name,"F"), variable="F"; else, variable="G"; end
             values = basis.endpointUnscaledProfiles(variable,z,page);
-            if startsWith(name,"depthRMS")
+            if startsWith(name,"rms")
                 factors = sqrt(sum(weights.*abs(values).^2,1)/diff(basis.zDomain)).';
             else
                 points = [z;basis.zDomain.'];
