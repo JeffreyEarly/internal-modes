@@ -11,7 +11,7 @@ classdef IMSolverSpectral < IMSolver
     % ```matlab
     % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
     % solver = IMSolverSpectral(nEVP=64);
-    % basisSet = solver.solveEVP(evp);
+    % basisSet = solver.solveEVP(evp,nModes=10);
     % ```
     %
     % - Topic: Create solvers

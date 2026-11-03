@@ -155,6 +155,7 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
             self.nativeGModes = self.nativeGModes.*signs;
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
             self.metadata.dominantGOrientationFallback = fallback;
+            self = self.resetNormalizationCache();
         end
 
         function values = rawVariable(self,variable,z)
@@ -178,4 +179,20 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
             end
         end
     end
+    methods (Access = protected)
+        function values = rawVariableDerivative(self,variable,z,order)
+            if variable == "G" && ismember(order,[1 2])
+                values = self.gSolver.evaluatePhysicalDerivative(self.nativeGModes,z,order);
+            else
+                values = rawVariableDerivative@IMInternalModesBasis(self,variable,z,order);
+            end
+        end
+
+        function self = selectAlignedColumns(self,columns)
+            self = selectAlignedColumns@IMInternalModesBasis(self,columns);
+            self.nativeGModes = self.nativeGModes(:,columns);
+            self.inverseDepth = self.inverseDepth(columns);
+        end
+    end
+
 end

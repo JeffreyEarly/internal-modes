@@ -7,6 +7,7 @@ classdef IMWaveInnerProductTests < matlab.unittest.TestCase
                     f0 = .003; g = 9.81;
                     evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,surfaceBoundary=surface);
                     basis = IMSolverSpectral(nEVP=96,coordinateKind="wkb").solveEVP(evp,nModes=6);
+                    basis = basis.withNormalization("kConstant");
                     [z,weights] = basis.solver.nativeQuadratureRule([-1000 0]);
                     G = basis.G(z);
                     gram = G'*(weights.*((N2(z)-f0^2)/g).*G);
@@ -23,6 +24,7 @@ classdef IMWaveInnerProductTests < matlab.unittest.TestCase
             omega = .003; g = 9.81;
             evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2,zDomain=[-1000 0],omega=omega,g=g);
             basis = IMSolverSpectral(nEVP=96,coordinateKind="wkb").solveEVP(evp,nModes=5);
+            basis = basis.withNormalization("unity");
             [z,weights] = basis.solver.nativeQuadratureRule([-1000 0]);
             G = basis.G(z);
             gram = G'*(weights.*((N2(z)-omega^2)/g).*G);
@@ -35,6 +37,7 @@ classdef IMWaveInnerProductTests < matlab.unittest.TestCase
             evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=1e-3,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g);
             solution = IMConstantStratificationSolution(rotationRate=0,N0=N0,zDomain=[-1000 0]);
             basis = solution.internalModes(evp,nModes=4);
+            basis = basis.withNormalization("kConstant");
             z = linspace(-1000,0,1001).';
             G = basis.G(z);
             testCase.verifyEqual(trapz(z,((N0^2-f0^2)/g)*G.^2),ones(1,4),AbsTol=1e-10)

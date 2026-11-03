@@ -134,6 +134,7 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             % - Developer: true
             [self,signs] = orientModeSigns@IMInternalModesBasis(self);
             self.nativeFModes = self.nativeFModes.*signs;
+            self = self.resetNormalizationCache();
         end
     end
 
@@ -159,4 +160,20 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             end
         end
     end
+    methods (Access = protected)
+        function values = rawVariableDerivative(self,variable,z,order)
+            if variable == "F" && ismember(order,[1 2])
+                values = self.solver.evaluatePhysicalDerivative(self.nativeFModes,z,order);
+            else
+                values = rawVariableDerivative@IMInternalModesBasis(self,variable,z,order);
+            end
+        end
+
+        function self = selectAlignedColumns(self,columns)
+            self = selectAlignedColumns@IMInternalModesBasis(self,columns);
+            self.nativeFModes = self.nativeFModes(:,columns);
+            self.signatures = self.signatures(columns);
+        end
+    end
+
 end

@@ -80,6 +80,18 @@ classdef IMAnalyticalInternalModesBasis
         rawUzFunction
         orientationSigns
         normalizationNameMap
+        normalizationVectorRules_
+        normalizationCache_
+    end
+
+    properties (Dependent, SetAccess = private)
+        nColumns
+        family
+        columnLabels
+        modeInfo
+        frequency
+        capabilities
+        normSignatures
     end
 
     methods (Hidden)
@@ -92,7 +104,7 @@ classdef IMAnalyticalInternalModesBasis
             %
             % - Topic: Evaluate analytical modes
             % - Declaration: basisSet = IMAnalyticalInternalModesBasis(options)
-            % - Parameter options.solution: analytical solution family
+            % - Parameter options.solution: analytical solution family, or `[]` for profile-independent sectors
             % - Parameter options.evp: internal-mode EVP
             % - Parameter options.h: equivalent depths
             % - Parameter options.modeNumber: retained-mode labels
@@ -103,7 +115,7 @@ classdef IMAnalyticalInternalModesBasis
             % - Parameter options.metadata: creation metadata
             % - Returns basisSet: exact internal-mode basis
             arguments
-                options.solution IMAnalyticalSolution
+                options.solution = []
                 options.evp IMInternalModes
                 options.h double
                 options.modeNumber double
@@ -115,12 +127,16 @@ classdef IMAnalyticalInternalModesBasis
                 options.modeSelectionDiagnostics struct = struct()
             end
 
+            if ~isempty(options.solution) && ~isa(options.solution,"IMAnalyticalSolution")
+                error("IMAnalyticalInternalModesBasis:InvalidSolution", ...
+                    "solution must be an IMAnalyticalSolution or [] for an exact profile-independent sector.");
+            end
             self.solution = options.solution;
             self.evp = options.evp;
             self.h = reshape(options.h,1,[]);
             self.eigenvalues = 1 ./ self.h;
             self.modeNumber = reshape(options.modeNumber,1,[]);
-            self.zDomain = options.solution.zDomain;
+            self.zDomain = options.evp.zDomain;
             self.N2 = options.N2;
             self.metadata = options.metadata;
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
@@ -128,8 +144,8 @@ classdef IMAnalyticalInternalModesBasis
             self.rawUzFunction = options.rawUzFunction;
             self.orientationSigns = ones(1,length(self.h));
             zOrientation = self.integrationGrid(self.zDomain);
-            GValues = self.rawVariableFunction(self,"G",zOrientation);
-            FValues = self.rawVariableFunction(self,"F",zOrientation);
+            GValues = self.rawVariable("G",zOrientation);
+            FValues = self.rawVariable("F",zOrientation);
             if self.evp.formulation == "G"
                 GzSurface = self.rawUzFunction(self,self.zDomain(2));
             else
@@ -142,6 +158,8 @@ classdef IMAnalyticalInternalModesBasis
                 surfaceIndex=size(GValues,1),allowFFallback=allowFFallback);
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
             self.normalizationNameMap = configureDictionary("string","cell");
+            self.normalizationVectorRules_ = configureDictionary("string","cell");
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
             self = self.installNormalizationRules();
             if isempty(options.normalization)
                 self.normalization = IMInternalModesNormalizationTools.default(self.evp);
@@ -166,6 +184,183 @@ classdef IMAnalyticalInternalModesBasis
 
             name = self.normalizationName(name);
             self.normalizationNameMap{name} = rule;
+            self.normalizationVectorRules_{name} = [];
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+        end
+
+        function value = get.nColumns(self)
+            value = numel(self.h);
+        end
+
+        function value = get.family(self)
+            value = string(self.evp.name);
+            if isfield(self.metadata,"family"), value = string(self.metadata.family); end
+        end
+
+        function value = get.modeInfo(self)
+            value = IMInternalModesNormalizationTools.modeInfo(self.evp,self.modeNumber,self.eigenvalues,self.metadata,self.modeSelectionDiagnostics);
+        end
+
+        function value = get.columnLabels(self)
+            value = self.modeInfo.columnLabel.';
+        end
+
+        function value = get.frequency(self)
+            value = IMInternalModesNormalizationTools.frequency(self.evp,self.h);
+        end
+
+        function value = get.capabilities(self)
+            value = ["F","G",self.evp.formulation+"z"];
+            if IMInternalModesNormalizationTools.isWave(self.evp) || IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                value = ["F","G","Fz","Gz","Gzz"];
+            end
+        end
+
+        function value = get.normSignatures(self)
+            value = sign(real(diag(self.gramMatrix(variable="G")))).';
+        end
+
+        function self = withNormalization(self,name)
+            name = self.normalizationName(name);
+            if ~isKey(self.normalizationNameMap,name)
+                error("IMAnalyticalInternalModesBasis:UnsupportedNormalization","The analytical basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
+        end
+
+        function self = selectColumns(self,columns,options)
+            arguments
+                self IMAnalyticalInternalModesBasis
+                columns (1,:) double {mustBeInteger,mustBePositive}
+                options.modeInfo table = table()
+            end
+            if any(columns > self.nColumns) || numel(unique(columns)) ~= numel(columns)
+                error("IMAnalyticalInternalModesBasis:InvalidColumns","Select distinct existing columns.");
+            end
+            source = self;
+            info = self.modeInfo(columns,:);
+            self.rawVariableFunction = @(~,variable,z) IMInternalModesNormalizationTools.columns(source.rawVariable(variable,z),columns);
+            self.rawUzFunction = @(~,z) IMInternalModesNormalizationTools.columns(source.rawUz(z),columns);
+            self.orientationSigns = ones(1,numel(columns));
+            self.h = self.h(columns);
+            self.eigenvalues = self.eigenvalues(columns);
+            self.modeNumber = self.modeNumber(columns);
+            if width(options.modeInfo) > 0, info = options.modeInfo; end
+            if height(info) ~= numel(columns)
+                error("IMAnalyticalInternalModesBasis:InvalidModeInfo","modeInfo must have one row per selected column.");
+            end
+            self.metadata.modeInfo = info;
+            self.modeSelectionDiagnostics.modeInfo = info;
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+            for name = reshape(self.normalizationNames(),1,[])
+                self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
+                if ~isempty(self.normalizationVectorRules_{name})
+                    self.normalizationVectorRules_{name} = @(~) IMInternalModesNormalizationTools.columns(source.normalizationFactors(name),columns);
+                end
+            end
+        end
+
+        function values = evaluate(self,z,options)
+            % Evaluate exact fields and supported physical derivatives.
+            %
+            % Custom callbacks retain their supplied solved-variable first
+            % derivative. Further derivative recovery uses only the defining
+            % equations of a known physical family.
+            %
+            % Use variable="F" or variable="G" and derivativeOrder to select
+            % a physical channel. Per-call normalization leaves the basis's
+            % active normalization unchanged.
+            %
+            % - Topic: Evaluate analytical modes
+            % - Declaration: values = evaluate(self,z,options)
+            % - Parameter z: physical coordinate column within zDomain
+            % - Parameter options.variable: required physical channel F or G
+            % - Parameter options.derivativeOrder: supported nonnegative vertical derivative order, zero by default
+            % - Parameter options.normalization: normalization rule for this call
+            % - Returns values: sample-by-mode physical profiles or derivatives
+            arguments (Input)
+                self IMAnalyticalInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
+                options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+                options.normalization = self.normalization
+            end
+            arguments (Output)
+                values double
+            end
+            variable = options.variable;
+            derivativeOrder = options.derivativeOrder;
+            if variable == ""
+                error("IMAnalyticalInternalModesBasis:MissingVariable","Specify the channel with variable= followed by a supported channel name.");
+            end
+            if ~ismember(variable,["F","G"])
+                error("IMAnalyticalInternalModesBasis:UnsupportedVariable","Unsupported channel %s. Inspect capabilities for supported channels and derivatives.",variable);
+            end
+            if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
+                error("IMAnalyticalInternalModesBasis:OutsideDomain","Evaluation points must lie within zDomain.");
+            end
+            values = self.rawVariableDerivative(variable,z,derivativeOrder)./self.normalizationFactors(options.normalization);
+        end
+
+        function values = Fz(self,z,options)
+            arguments
+                self IMAnalyticalInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="F",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gz(self,z,options)
+            arguments
+                self IMAnalyticalInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gzz(self,z,options)
+            arguments
+                self IMAnalyticalInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=2,normalization=options.normalization);
+        end
+
+        function transform = discreteTransform(self,grid)
+            % Build a fixed-grid F/G transform from the retained rigid hydrostatic basis.
+            arguments
+                self IMAnalyticalInternalModesBasis
+                grid (1,1) IMVerticalGrid
+            end
+            if ~isequal(grid.zDomain,self.zDomain)
+                error("IMAnalyticalInternalModesBasis:IncompatibleDomain","The basis and grid must have the same zDomain.");
+            end
+            rigid = true;
+            for boundary = [self.evp.surfaceBoundary,self.evp.bottomBoundary]
+                if self.evp.formulation == "F"
+                    rigid = rigid && boundary.a == 0 && boundary.b ~= 0 && boundary.c == 0 && boundary.d == 0;
+                else
+                    rigid = rigid && boundary.a ~= 0 && boundary.b == 0 && boundary.c == 0 && boundary.d == 0;
+                end
+            end
+            if self.evp.modeFamily ~= "hydrostatic" || ~rigid || any(self.h < 0)
+                error("IMAnalyticalInternalModesBasis:UnavailableDiscreteTransform","The fixed-grid analytical bridge requires a rigid hydrostatic F/G basis including its barotropic sector.");
+            end
+            F = self.F(grid.z); G = self.G(grid.z);
+            HF = real(diag(self.gramMatrix(variable="F"))).';
+            if ismember(string(self.normalization),["depth","depthRMSF"])
+                HF(:) = diff(self.zDomain);
+            end
+            HG = HF./self.h;
+            HG(~isfinite(self.h)) = 0;
+            N2Values = self.N2(grid.z);
+            channel = @(interior,target,active) struct(available=true,reason="",activeModeMask=active,interiorWeight=interior,endpointMetricMatrix=zeros(grid.nPoints),metricMatrix=diag(interior.*grid.weights),targetGramMatrix=diag(target),targetMajorantGramMatrix=diag(target));
+            channels = struct(F=channel(ones(size(grid.z)),HF,true(1,self.nColumns)),G=channel(N2Values/self.evp.g,HG,isfinite(self.h)));
+            transformMetadata = struct(construction="IMAnalyticalInternalModesBasis.discreteTransform",columnLabels=self.columnLabels,relation="F=h Gz with F0=1 and G0=0");
+            transform = IMInternalModesDiscreteTransform(z=grid.z,weights=grid.weights,modeNumber=self.modeNumber,h=self.h,normalization=string(self.normalization),inverseF=F,inverseG=G,endpointF=self.F(self.zDomain([2 1]).'),endpointG=self.G(self.zDomain([2 1]).'),channelData=channels,primaryVariable="F",zDomain=self.zDomain,g=self.evp.g,modeFamily="hydrostatic",N2Values=N2Values,problemMetadata=transformMetadata,basis=self);
         end
 
         function names = normalizationNames(self)
@@ -245,6 +440,19 @@ classdef IMAnalyticalInternalModesBasis
                 error("IMAnalyticalInternalModesBasis:UnsupportedNormalization", "The analytical basis does not define a ""%s"" normalization.", name);
             end
             rule = self.normalizationNameMap{name};
+            vectorRule = self.normalizationVectorRules_{name};
+            if ~isempty(vectorRule)
+                factors = self.normalizationCache_(name);
+                if isempty(factors) && self.nColumns > 0
+                    factors = vectorRule(self);
+                    factors = abs(factors);
+                    factors(factors == 0 | ~isfinite(factors)) = 1;
+                    self.normalizationCache_(name,factors);
+                elseif self.nColumns == 0
+                    factors = zeros(1,0);
+                end
+                return
+            end
             factors = zeros(1,length(self.h));
             for iMode = 1:length(self.h)
                 factors(iMode) = rule(self, iMode);
@@ -584,9 +792,9 @@ classdef IMAnalyticalInternalModesBasis
                 iMode (1,1) double {mustBeInteger, mustBePositive}
             end
 
-            z = self.integrationGrid(self.zDomain);
+            [z,w] = self.integrationGrid(self.zDomain);
             F = self.rawVariable("F", z);
-            factor = sqrt(max(0, real(trapz(z, F(:,iMode).*F(:,iMode)))/diff(self.zDomain)));
+            factor = sqrt(max(0, real(sum(w.*F(:,iMode).*F(:,iMode)))/diff(self.zDomain)));
         end
 
         function factor = maxAmplitudeNormFactor(self, iMode, options)
@@ -654,14 +862,102 @@ classdef IMAnalyticalInternalModesBasis
             if ismember("kConstant",availableNormalizations)
                 self = self.addNormalization("kConstant", @(basisSet,iMode) basisSet.innerProductNormFactor(iMode, variable="G"));
             end
+            descriptive = ["depthRMSF","depthRMSG","maxAbsF","maxAbsG","generalizedEnergy","waveEnergy","generalizedPotentialEnstrophy"];
+            for name = descriptive(ismember(descriptive,availableNormalizations))
+                self = self.addNormalization(name,@(basis,j) basis.profileNormFactor(j,name));
+            end
+            for name = reshape(self.normalizationNames(),1,[])
+                self.normalizationVectorRules_{name} = @(basis) basis.profileNormFactors(name);
+            end
         end
 
         function values = rawVariable(self, variable, z)
-            values = self.rawVariableFunction(self, string(variable), z(:)).*self.orientationSigns;
+            if variable == "F" && IMInternalModesNormalizationTools.isWave(self.evp)
+                values = diff(self.zDomain)*self.rawUz(z);
+            else
+                values = self.rawVariableFunction(self, string(variable), z(:)).*self.orientationSigns;
+            end
         end
 
         function values = rawUz(self, z)
             values = self.rawUzFunction(self, z(:)).*self.orientationSigns;
+        end
+
+        function values = rawVariableDerivative(self,variable,z,order)
+            if order == 0
+                values = self.rawVariable(variable,z);
+            elseif variable == self.evp.formulation && order == 1
+                values = self.rawUz(z);
+            elseif variable == "G" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = self.rawVariable("F",z)./self.h;
+            elseif variable == "G" && order == 2 && (IMInternalModesNormalizationTools.isWave(self.evp) || IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp))
+                potential = 0;
+                weight = self.N2(z)/self.evp.g;
+                if self.evp.name == "waveModesAtWavenumber"
+                    potential = self.evp.parameters.k^2;
+                    weight = (self.N2(z)-self.evp.f0^2)/self.evp.g;
+                elseif self.evp.name == "waveModesAtFrequency"
+                    weight = (self.N2(z)-self.evp.parameters.omega^2)/self.evp.g;
+                end
+                values = (potential-weight./self.h).*self.rawVariable("G",z);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.isWave(self.evp)
+                values = diff(self.zDomain)*self.rawVariableDerivative("G",z,2);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = -self.N2(z)/self.evp.g.*self.rawVariable("G",z);
+            else
+                error("IMAnalyticalInternalModesBasis:UnsupportedDerivative","Derivative order %d of %s is unavailable.",order,variable);
+            end
+        end
+
+        function factor = profileNormFactor(self,j,name)
+            factors = self.profileNormFactors(name);
+            factor = factors(j);
+        end
+
+        function factors = profileNormFactors(self,name)
+            [z,w] = self.integrationGrid(self.zDomain);
+            D = diff(self.zDomain);
+            switch name
+                case {"unity","kConstant","generalizedEnergy","geostrophic","generalizedPotentialEnstrophy"}
+                    variable = string(self.evp.formulation);
+                    if ismember(name,["kConstant","generalizedEnergy","geostrophic"]), variable = "G"; end
+                    if name == "generalizedPotentialEnstrophy", variable = "F"; end
+                    spec = self.evp.innerProduct(variable);
+                    self.assertInnerProductAvailable(spec);
+                    values = self.rawVariable(variable,z);
+                    weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,self.context());
+                    normSquared = sum(w.*weight.*values.^2,1);
+                    terms = self.endpointGramTerms(variable=variable,useNormalized=false);
+                    for term = terms(:).', normSquared = normSquared+term.coefficient*term.values.^2; end
+                    factors = sqrt(abs(normSquared));
+                    if name == "geostrophic"
+                        zero = self.modeNumber == 0;
+                        if any(zero)
+                            F = self.rawVariable("F",z);
+                            factors(zero) = sqrt(sum(w.*abs(F(:,zero)).^2,1)/D);
+                        end
+                    elseif name == "generalizedPotentialEnstrophy"
+                        factors = factors/sqrt(D);
+                    end
+                case "surfacePressure"
+                    factors = abs(self.rawVariable("F",self.zDomain(2)));
+                    factors(factors <= 1e-12 | ~isfinite(factors)) = 1;
+                case "waveEnergy"
+                    F = self.rawVariable("F",z); G = self.rawVariable("G",z);
+                    factors = sqrt(sum(w.*(abs(F).^2+(self.evp.parameters.k*D)^2*abs(G).^2),1)/D);
+                otherwise
+                    variable = "F";
+                    if ismember(name,["depthRMSG","maxAbsG","wMax"]), variable = "G"; end
+                    values = self.rawVariable(variable,z);
+                    if ismember(name,["depth","depthRMSF","depthRMSG"])
+                        factors = sqrt(sum(w.*abs(values).^2,1)/D);
+                    else
+                        factors = IMInternalModesNormalizationTools.maximumAmplitudes(@(zz) self.rawVariable(variable,zz),z,values);
+                    end
+            end
+            if any(factors <= 0 | ~isfinite(factors)) && ismember(name,["depthRMSF","depthRMSG","maxAbsF","maxAbsG","waveEnergy","generalizedEnergy"])
+                error("IMAnalyticalInternalModesBasis:NullNormalization","A retained mode has zero or nonfinite %s norm.",name);
+            end
         end
 
         function gram = variableGramMatrix(self, variable, zBounds, useNormalized, useMajorant)
@@ -674,7 +970,7 @@ classdef IMAnalyticalInternalModesBasis
                 spec = self.evp.innerProduct(variable);
             end
             IMAnalyticalInternalModesBasis.assertInnerProductAvailable(spec);
-            z = self.integrationGrid(zBounds);
+            [z,integrationWeights] = self.integrationGrid(zBounds);
             context = self.context();
             normalizationFactors = [];
             if useNormalized
@@ -687,14 +983,8 @@ classdef IMAnalyticalInternalModesBasis
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    value = trapz(z, weight(:).*values(:,iMode).*values(:,jMode));
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
-            end
+            gram = values.'*((integrationWeights.*weight(:)).*values);
+            gram = 0.5*(gram+gram.');
 
             endpointTerms = self.endpointGramTerms(variable=variable, zBounds=zBounds, useNormalized=useNormalized);
             for iTerm = 1:numel(endpointTerms)
@@ -707,8 +997,10 @@ classdef IMAnalyticalInternalModesBasis
             end
         end
 
-        function z = integrationGrid(~, zBounds)
-            z = linspace(min(zBounds), max(zBounds), 1024).';
+        function [z,weights] = integrationGrid(~, zBounds)
+            grid = IMVerticalGrid.physicalDepth(sort(zBounds),1025);
+            z = grid.z;
+            weights = grid.weights;
         end
 
         function context = context(self)

@@ -132,6 +132,16 @@ classdef IMBasisSet
         normalizationNameMap
         % Optional whole-family normalization rule handles.
         normalizationVectorRuleMap
+        normalizationCache_
+    end
+
+    properties (Dependent, SetAccess = private)
+        % Number of retained columns, including all special sectors.
+        nColumns
+        % Scientific family name and retained column identities.
+        family
+        columnLabels
+        modeInfo
     end
 
     methods (Hidden)
@@ -186,6 +196,7 @@ classdef IMBasisSet
             self.zDomain = self.evp.zDomain;
             self.normalizationNameMap = configureDictionary("string","cell");
             self.normalizationVectorRuleMap = configureDictionary("string","cell");
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
             self = self.addVectorNormalization("unity",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode),@(basisSet) basisSet.innerProductNormFactors());
         end
 
@@ -232,6 +243,71 @@ classdef IMBasisSet
             name = self.normalizationName(name);
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = [];
+            self = self.resetNormalizationCache();
+        end
+
+        function value = get.nColumns(self)
+            value = size(self.nativeModes,2);
+        end
+
+        function value = get.family(self)
+            value = string(self.evp.name);
+            if isfield(self.metadata,"family"), value = string(self.metadata.family); end
+        end
+
+        function value = get.modeInfo(self)
+            if isa(self.evp,"IMInternalModes")
+                value = IMInternalModesNormalizationTools.modeInfo(self.evp,self.modeNumber,self.eigenvalues,self.metadata,self.modeSelectionDiagnostics);
+            else
+                value = table(string(self.modeNumber(:)),repmat("mode",self.nColumns,1),self.modeNumber(:),self.eigenvalues(:),VariableNames=["columnLabel","branch","branchIndex","eigenvalue"]);
+            end
+        end
+
+        function value = get.columnLabels(self)
+            value = self.modeInfo.columnLabel.';
+        end
+
+        function self = withNormalization(self,name)
+            % Select a registered normalization without solving or evaluating it.
+            name = self.normalizationName(name);
+            if ~isKey(self.normalizationNameMap,name)
+                error("IMBasisSet:UnsupportedNormalization","The basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
+        end
+
+        function self = selectColumns(self,columns,options)
+            % Keep the concrete basis type, scientific identities and coupled fields.
+            arguments
+                self IMBasisSet
+                columns (1,:) double {mustBeInteger,mustBePositive}
+                options.modeInfo table = table()
+            end
+            if any(columns > self.nColumns) || numel(unique(columns)) ~= numel(columns)
+                error("IMBasisSet:InvalidColumns","Select distinct existing columns.");
+            end
+            source = self;
+            info = self.modeInfo(columns,:);
+            self = self.selectAlignedColumns(columns);
+            self.nativeModes = self.nativeModes(:,columns);
+            self.eigenvalues = self.eigenvalues(columns);
+            self.modeNumber = self.modeNumber(columns);
+            if width(options.modeInfo) > 0, info = options.modeInfo; end
+            if height(info) ~= numel(columns)
+                error("IMBasisSet:InvalidModeInfo","modeInfo must contain one row per selected column.");
+            end
+            self.metadata.modeInfo = info;
+            self.modeSelectionDiagnostics.modeInfo = info;
+            if isfield(self.modeSelectionDiagnostics,"geostrophicInverseDepth")
+                self.modeSelectionDiagnostics.geostrophicInverseDepth = self.modeSelectionDiagnostics.geostrophicInverseDepth(columns);
+            end
+            self = self.resetNormalizationCache();
+            for name = reshape(self.normalizationNames(),1,[])
+                self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
+                if ~isempty(self.normalizationVectorRuleMap{name})
+                    self.normalizationVectorRuleMap{name} = @(~) IMInternalModesNormalizationTools.columns(source.normalizationFactors(name),columns);
+                end
+            end
         end
 
         function names = normalizationNames(self)
@@ -249,6 +325,47 @@ classdef IMBasisSet
             end
 
             names = sort(string(keys(self.normalizationNameMap)));
+        end
+
+        function values = evaluate(self,z,options)
+            % Evaluate the solved scalar channel and its first derivative.
+            %
+            % Use variable="u" and derivativeOrder=0 or 1. Per-call
+            % normalization leaves the active basis normalization unchanged.
+            %
+            % - Topic: Evaluate modes
+            % - Declaration: values = evaluate(self,z,options)
+            % - Parameter z: physical coordinate column within zDomain
+            % - Parameter options.variable: required solved channel u
+            % - Parameter options.derivativeOrder: zero for values or one for the vertical derivative
+            % - Parameter options.normalization: normalization rule for this call
+            % - Returns values: sample-by-mode scalar profiles or derivatives
+            arguments (Input)
+                self IMBasisSet
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
+                options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+                options.normalization = self.normalization
+            end
+            arguments (Output)
+                values double
+            end
+            if options.variable == ""
+                error("IMBasisSet:MissingVariable","Specify the solved channel with variable=""u"".");
+            end
+            if options.variable ~= "u"
+                error("IMBasisSet:UnsupportedVariable","The solved scalar channel is u.");
+            end
+            if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
+                error("IMBasisSet:OutsideDomain","Evaluation points must lie within zDomain.");
+            end
+            if options.derivativeOrder == 0
+                values = self.u(z,normalization=options.normalization);
+            elseif options.derivativeOrder == 1
+                values = self.uz(z,normalization=options.normalization);
+            else
+                error("IMBasisSet:UnsupportedDerivative","The solved scalar channel supports derivative orders zero and one.");
+            end
         end
 
         function values = u(self, z, options)
@@ -326,6 +443,14 @@ classdef IMBasisSet
             normalizeMode = self.normalizationNameMap{name};
             nModes = size(self.nativeModes,2);
             vectorRule = self.normalizationVectorRuleMap{name};
+            if ~isempty(vectorRule)
+                cached = self.normalizationCache_(name);
+                if ~isempty(cached) || nModes == 0
+                    factors = cached;
+                    if nModes == 0, factors = zeros(1,0); end
+                    return
+                end
+            end
             if isempty(vectorRule)
                 factors = zeros(1,nModes);
                 for iMode = 1:nModes
@@ -340,6 +465,7 @@ classdef IMBasisSet
             end
             factors = abs(factors);
             factors(factors == 0 | ~isfinite(factors)) = 1;
+            if ~isempty(vectorRule), self.normalizationCache_(name,factors); end
         end
 
         function gram = gramMatrix(self, options)
@@ -738,6 +864,14 @@ classdef IMBasisSet
     end
 
     methods (Access = protected)
+        function self = resetNormalizationCache(self)
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+        end
+
+        function self = selectAlignedColumns(self,~)
+            % Family subclasses select companion coefficient arrays here.
+        end
+
         function self = addVectorNormalization(self,name,rule,vectorRule)
             arguments
                 self IMBasisSet
@@ -748,6 +882,7 @@ classdef IMBasisSet
             name = self.normalizationName(name);
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = vectorRule;
+            self = self.resetNormalizationCache();
         end
 
         function transform = buildDiscreteTransform(self, z, weights, nModes)

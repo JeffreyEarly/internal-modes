@@ -121,7 +121,7 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             zDepth = linspace(zDomain(1), zDomain(2), 4001).';
             FDepth = basisSet.F(zDepth);
 
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
+            testCase.verifyEqual(string(basisSet.normalization), "depthRMSF")
             testCase.verifyEqual(trapz(zDepth,FDepth.*FDepth,1)/diff(zDomain), ones(1,4), RelTol=2e-5, AbsTol=2e-5)
             testCase.verifyLessThan(max(abs(G + (g/(N0*N0))*Fz),[],"all"), 2e-12)
             testCase.verifyLessThan(max(abs(odeResidual(2:end-1,:))./odeScale,[],"all"), 2e-6)

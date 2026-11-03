@@ -1,4 +1,4 @@
-classdef IMModeBackground
+classdef IMBackground
     % Define the shared physical column used to create every mode family.
     %
     % A background owns the buoyancy-frequency-squared profile `N2`, its
@@ -11,14 +11,14 @@ classdef IMModeBackground
     % $$N^2(z)=N_0^2\exp(2(z-z_{\mathrm{surface}})/b)$$.
     %
     % ```matlab
-    % background = IMModeBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
-    % exactBackground = IMModeBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
+    % background = IMBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0]);
+    % exactBackground = IMBackground.constantStratification(N0=1e-2,zDomain=[-1000 0]);
     % ```
     %
     % - Topic: Create a mode background
     % - Topic: Inspect the physical column
     % - Topic: Create analytical solutions
-    % - Declaration: classdef IMModeBackground
+    % - Declaration: classdef IMBackground
 
     properties (SetAccess = private)
         % Buoyancy-frequency-squared profile in radians squared per second squared.
@@ -80,11 +80,11 @@ classdef IMModeBackground
     end
 
     methods
-        function self = IMModeBackground(options)
+        function self = IMBackground(options)
             % Create a background from a declared stratification profile.
             %
             % - Topic: Create a mode background
-            % - Declaration: background = IMModeBackground(options)
+            % - Declaration: background = IMBackground(options)
             % - Parameter options.N2: shape-preserving physical-depth profile
             % - Parameter options.zDomain: strictly increasing `[bottom surface]` domain
             % - Parameter options.rotationRate: planetary rotation rate
@@ -101,11 +101,11 @@ classdef IMModeBackground
                 options.surfaceCondition {mustBeTextScalar} = "freeSurface"
             end
             if options.zDomain(2) <= options.zDomain(1)
-                error("IMModeBackground:InvalidDomain","zDomain must be strictly increasing, with the bottom before the surface.");
+                error("IMBackground:InvalidDomain","zDomain must be strictly increasing, with the bottom before the surface.");
             end
             surfaceCondition = string(options.surfaceCondition);
             if ~ismember(surfaceCondition,["freeSurface", "rigidLid"])
-                error("IMModeBackground:InvalidSurfaceCondition","surfaceCondition must be ""freeSurface"" or ""rigidLid"".");
+                error("IMBackground:InvalidSurfaceCondition","surfaceCondition must be ""freeSurface"" or ""rigidLid"".");
             end
             self.N2 = options.N2;
             self.zDomain = options.zDomain;
@@ -138,18 +138,18 @@ classdef IMModeBackground
             % - Declaration: solution = analyticalSolution(background)
             % - Returns solution: matching analytical solution family
             arguments
-                self (1,1) IMModeBackground
+                self (1,1) IMBackground
             end
             switch self.profileKind
                 case "constant"
                     solution = IMConstantStratificationSolution(N0=self.profileParameters.N0,zDomain=self.zDomain,rotationRate=self.rotationRate,latitude=self.latitude,g=self.g);
                 case "exponential"
                     if self.zDomain(2) ~= 0
-                        error("IMModeBackground:UnsupportedAnalyticalDomain","The exponential analytical solver requires zDomain(2)=0. Use a numerical solver for a translated domain.");
+                        error("IMBackground:UnsupportedAnalyticalDomain","The exponential analytical solver requires zDomain(2)=0. Use a numerical solver for a translated domain.");
                     end
                     solution = IMExponentialStratificationSolution(N0=self.profileParameters.N0,b=self.profileParameters.b,zDomain=self.zDomain,rotationRate=self.rotationRate,latitude=self.latitude,g=self.g);
                 otherwise
-                    error("IMModeBackground:UnsupportedAnalyticalProfile","An arbitrary N2 profile has no declared analytical solution. Use a source-specific background factory or a numerical solver.");
+                    error("IMBackground:UnsupportedAnalyticalProfile","An arbitrary N2 profile has no declared analytical solution. Use a source-specific background factory or a numerical solver.");
             end
         end
     end
@@ -159,7 +159,7 @@ classdef IMModeBackground
             % Create a constant background with one authoritative $$N_0$$.
             %
             % - Topic: Create a mode background
-            % - Declaration: background = IMModeBackground.constantStratification(options)
+            % - Declaration: background = IMBackground.constantStratification(options)
             % - Parameter options.N0: positive constant buoyancy frequency
             % - Parameter options.zDomain: strictly increasing physical domain
             % - Parameter options.rotationRate: planetary rotation rate
@@ -179,7 +179,7 @@ classdef IMModeBackground
             options = rmfield(options,"N0");
             options.N2 = @(z) N0^2*ones(size(z));
             args = namedargs2cell(options);
-            self = IMModeBackground(args{:});
+            self = IMBackground(args{:});
             self.profileKind = "constant";
             self.profileParameters = struct("N0",N0);
         end
@@ -191,7 +191,7 @@ classdef IMModeBackground
             % is unchanged by translating the physical coordinate origin.
             %
             % - Topic: Create a mode background
-            % - Declaration: background = IMModeBackground.exponentialStratification(options)
+            % - Declaration: background = IMBackground.exponentialStratification(options)
             % - Parameter options.N0: positive surface buoyancy frequency
             % - Parameter options.b: positive buoyancy-frequency e-folding depth
             % - Parameter options.zDomain: strictly increasing physical domain
@@ -215,7 +215,7 @@ classdef IMModeBackground
             options = rmfield(options,["N0", "b"]);
             options.N2 = @(z) N0^2*exp(2*(z-zSurface)/b);
             args = namedargs2cell(options);
-            self = IMModeBackground(args{:});
+            self = IMBackground(args{:});
             self.profileKind = "exponential";
             self.profileParameters = struct("N0",N0,"b",b);
         end

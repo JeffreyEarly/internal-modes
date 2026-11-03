@@ -3,8 +3,9 @@ classdef IMInternalModesBasis < IMBasisSet
     %
     % `IMInternalModesBasis` evaluates the physical variables with explicit
     % `F(z)` and `G(z)` methods. If the EVP solves `G`, then `F(z)` is
-    % recovered by `evp.FfromGz`, whose default relation is
-    % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+    % recovered by `evp.FfromGz`. Hydrostatic modes use
+    % $$F_j=h_j G_j',$$ while wave and inertial auxiliary modes use
+    % $$F_j=D G_j',\qquad D=z_s-z_b.$$
     % If the EVP solves `F`, then `G(z)` is recovered by `evp.GfromFz`.
     % The default inverse is hydrostatic, but wave factories install
     % wave-specific inverse relations.
@@ -44,6 +45,15 @@ classdef IMInternalModesBasis < IMBasisSet
         %
         % - Topic: Inspect basis sets
         N2
+    end
+
+    properties (Dependent, SetAccess = private)
+        % Physical modal frequencies; imaginary values indicate nonpropagating roots.
+        frequency
+        % Available fields and vertical derivative channels.
+        capabilities
+        % Signs of the family G pairing in the active normalization.
+        normSignatures
     end
 
     methods (Hidden)
@@ -103,9 +113,98 @@ classdef IMInternalModesBasis < IMBasisSet
             if ismember("kConstant",availableNormalizations)
                 self = self.addVectorNormalization("kConstant",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode,variable="G"),@(basisSet) basisSet.innerProductNormFactors(variable="G"));
             end
+            descriptive = ["depthRMSF","depthRMSG","maxAbsF","maxAbsG","generalizedEnergy","waveEnergy"];
+            for name = descriptive(ismember(descriptive,availableNormalizations))
+                self = self.addVectorNormalization(name,@(basis,j) basis.profileNormFactor(j,name),@(basis) basis.profileNormFactors(name));
+            end
             if isempty(options.normalization)
                 self.normalization = IMInternalModesNormalizationTools.default(self.evp);
             end
+        end
+
+        function value = get.frequency(self)
+            value = IMInternalModesNormalizationTools.frequency(self.evp,self.h);
+        end
+
+        function value = get.capabilities(self)
+            value = ["F","G"];
+            if self.evp.formulation == "F", value(end+1) = "Fz"; else, value = [value,"Gz","Gzz"]; end
+            if IMInternalModesNormalizationTools.isWave(self.evp) || IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp) || isa(self,"IMGeostrophicModesBasis") || isa(self,"IMMeanDensityAnomalyModesBasis")
+                value = ["F","G","Fz","Gz","Gzz"];
+            end
+        end
+
+        function value = get.normSignatures(self)
+            value = sign(real(diag(self.gramMatrix(variable="G")))).';
+        end
+
+        function values = evaluate(self,z,options)
+            % Evaluate physical fields and derivatives with one shared normalization.
+            %
+            % Custom diagnostic callbacks supply values only. Their
+            % derivatives require a defining family or a subclass override;
+            % solved-variable derivatives use the native representation.
+            %
+            % Use variable="F" or variable="G" and derivativeOrder to select
+            % a physical channel. Per-call normalization leaves the basis's
+            % active normalization unchanged.
+            %
+            % - Topic: Evaluate modes
+            % - Declaration: values = evaluate(self,z,options)
+            % - Parameter z: physical coordinate column within zDomain
+            % - Parameter options.variable: required physical channel F or G
+            % - Parameter options.derivativeOrder: supported nonnegative vertical derivative order, zero by default
+            % - Parameter options.normalization: normalization rule for this call
+            % - Returns values: sample-by-mode physical profiles or derivatives
+            arguments (Input)
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
+                options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+                options.normalization = self.normalization
+            end
+            arguments (Output)
+                values double
+            end
+            variable = options.variable;
+            derivativeOrder = options.derivativeOrder;
+            if variable == ""
+                error("IMInternalModesBasis:MissingVariable","Specify the channel with variable= followed by a supported channel name.");
+            end
+            if ~ismember(variable,["F","G"])
+                error("IMInternalModesBasis:UnsupportedVariable","Unsupported channel %s. Inspect capabilities for supported channels and derivatives.",variable);
+            end
+            if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
+                error("IMInternalModesBasis:OutsideDomain","Evaluation points must lie within zDomain.");
+            end
+            values = self.rawVariableDerivative(variable,z,derivativeOrder)./self.normalizationFactors(options.normalization);
+        end
+
+        function values = Fz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="F",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gzz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=2,normalization=options.normalization);
         end
 
         function G = G(self, z, options)
@@ -138,8 +237,8 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % If the EVP formulation is `F`, this evaluates the solved
             % canonical variable. If the formulation is `G`, `F` is recovered
-            % by `evp.FfromGz`; the default relation is
-            % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+            % by `evp.FfromGz`: hydrostatic modes use $$F_j=h_jG_j'$$,
+            % while wave and inertial auxiliary modes use $$F_j=DG_j'$$.
             %
             % - Topic: Evaluate modes
             % - Declaration: F = F(basisSet,z,options)
@@ -498,6 +597,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 GValues=GValues,GzSurface=GzSurface,FValues=FValues, ...
                 depth=diff(self.zDomain),surfaceIndex=surfaceIndex,allowFFallback=allowFFallback);
             self.nativeModes = self.nativeModes .* signs;
+            self = self.resetNormalizationCache();
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
         end
 
@@ -720,6 +820,39 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Hidden)
+        function factor = profileNormFactor(self,iMode,name)
+            factors = self.profileNormFactors(name);
+            factor = factors(iMode);
+        end
+
+        function factors = profileNormFactors(self,name)
+            if name == "generalizedEnergy"
+                factors = self.innerProductNormFactors(variable="G");
+                return
+            end
+            [z,weights] = self.normalizationQuadrature();
+            if startsWith(name,"maxAbs"), z = unique([z;self.zDomain.']); end
+            D = diff(self.zDomain);
+            switch name
+                case "waveEnergy"
+                    F = self.rawVariable("F",z); G = self.rawVariable("G",z);
+                    factors = sqrt(sum(weights.*(abs(F).^2+(self.evp.parameters.k*D)^2*abs(G).^2),1)/D);
+                otherwise
+                    variable = extractAfter(name,3);
+                    if startsWith(name,"depthRMS"), variable = extractAfter(name,"depthRMS"); end
+                    if startsWith(name,"maxAbs"), variable = extractAfter(name,"maxAbs"); end
+                    values = self.rawVariable(variable,z);
+                    if startsWith(name,"depthRMS")
+                        factors = sqrt(sum(weights.*abs(values).^2,1)/D);
+                    else
+                        factors = IMInternalModesNormalizationTools.maximumAmplitudes(@(zz) self.rawVariable(variable,zz),z,values);
+                    end
+            end
+            if any(factors <= 0 | ~isfinite(factors))
+                error("IMInternalModesBasis:NullNormalization","A retained mode has zero or nonfinite %s norm.",name);
+            end
+        end
+
         function factors = innerProductNormFactors(self, options)
             % Return raw variable inner-product factors for the whole family.
             arguments
@@ -794,6 +927,42 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Access = protected)
+        function [z,weights] = normalizationQuadrature(self)
+            if isa(self.solver,"IMSolverSpectral")
+                bounds = [min(self.solver.xNative),max(self.solver.xNative)];
+                [x,nativeWeights] = legpts(max(128,2*self.solver.nEVP),bounds);
+                z = self.solver.zOfX(x);
+                coordinate = zeros(self.solver.nEVP,1);
+                coordinate(1:2) = [mean(bounds);diff(bounds)/2];
+                jacobian = self.solver.evaluatePhysicalDerivative(coordinate,z,1);
+                weights = nativeWeights(:)./jacobian;
+            else
+                [z,weights] = self.solver.nativeQuadratureRule(self.zDomain);
+            end
+        end
+
+        function self = selectAlignedColumns(self,columns)
+            self.h = self.h(columns);
+        end
+
+        function values = rawVariableDerivative(self,variable,z,order)
+            if order == 0
+                values = self.rawVariable(variable,z);
+            elseif variable == self.evp.formulation && order <= 2
+                values = self.solver.evaluatePhysicalDerivative(self.nativeModes,z,order);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.isWave(self.evp)
+                values = diff(self.zDomain)*self.solver.evaluatePhysicalDerivative(self.nativeModes,z,2);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = -self.N2(z)/self.evp.g.*self.rawVariable("G",z);
+            elseif variable == "G" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = self.rawVariable("F",z)./self.h;
+            elseif variable == "G" && order == 2 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = -self.N2(z)/self.evp.g.*self.rawVariable("G",z)./self.h;
+            else
+                error("IMInternalModesBasis:UnsupportedDerivative","This family does not provide derivative order %d of %s.",order,variable);
+            end
+        end
+
         function transform = buildInternalModesDiscreteTransform(self, z, weights, nModes, variables)
             arguments
                 self IMInternalModesBasis

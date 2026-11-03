@@ -173,6 +173,30 @@ classdef IMGeostrophicZeroAPVModesBasis
         metadata
     end
 
+    properties (Dependent, SetAccess = private)
+        % Number of retained endpoint-response columns per page.
+        % - Topic: Inspect geostrophic zero-APV modes
+        nColumns
+        % Scientific family identifier.
+        % - Topic: Inspect geostrophic zero-APV modes
+        family
+        % Scientific labels in the current boundary coordinates.
+        % - Topic: Inspect geostrophic zero-APV modes
+        columnLabels
+        % Branch identities in current column order.
+        % - Topic: Inspect geostrophic zero-APV modes
+        modeInfo
+        % Zero physical frequencies of geostrophic endpoint responses.
+        % - Topic: Inspect geostrophic zero-APV modes
+        frequency
+        % Current canonical or rotated normalization convention.
+        % - Topic: Inspect geostrophic zero-APV modes
+        normalization
+        % Supported profile and derivative channels.
+        % - Topic: Inspect geostrophic zero-APV modes
+        capabilities
+    end
+
     properties (Access = private)
         canonicalNativeModes
         currentNativeModes
@@ -190,6 +214,39 @@ classdef IMGeostrophicZeroAPVModesBasis
     end
 
     methods
+        function value = get.nColumns(self)
+            value = numel(self.endpoints);
+        end
+        function value = get.family(~)
+            value = "geostrophicZeroAPV";
+        end
+        function value = get.columnLabels(self)
+            if self.rotationName == "boundaryNormalized"
+                value = reshape(string(self.endpoints),1,[]);
+            else
+                value = self.rotationName+string(1:self.nColumns);
+            end
+        end
+        function value = get.modeInfo(self)
+            branch = repmat("endpointResponse",self.nColumns,1);
+            if self.rotationName ~= "boundaryNormalized", branch(:) = "endpointRotation"; end
+            value = table(self.columnLabels(:),branch,(1:self.nColumns).',VariableNames=["columnLabel","branch","branchIndex"]);
+        end
+        function value = get.frequency(self)
+            value = zeros(1,self.nColumns);
+        end
+        function value = get.normalization(self)
+            value = self.normalizationConvention;
+        end
+        function value = get.capabilities(~)
+            value = ["F","Fz","G","Gz","Gzz"];
+        end
+
+        values = evaluate(self,z,variable,derivativeOrder,options)
+        values = Fz(self,z,options)
+        values = Gz(self,z,options)
+        values = Gzz(self,z,options)
+
         function self = IMGeostrophicZeroAPVModesBasis(options)
             % Create a canonical boundary-normalized zero-APV basis.
             %
@@ -235,7 +292,9 @@ classdef IMGeostrophicZeroAPVModesBasis
             self.N2 = options.problem.N2;
             self.canonicalNativeModes = options.nativeModes;
             self.currentNativeModes = options.nativeModes;
-            if isempty(options.nativeGModes)
+            if nEndpoints == 0
+                self.canonicalNativeGModes = zeros(size(options.nativeModes));
+            elseif isempty(options.nativeGModes)
                 if ~isempty(options.companionSolver)
                     error("IMGeostrophicZeroAPVModesBasis:MissingCompanionModes","An explicit companionSolver requires aligned nativeGModes.");
                 end

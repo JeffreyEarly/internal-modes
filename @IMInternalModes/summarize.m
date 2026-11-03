@@ -92,8 +92,8 @@ fprintf('  diagnostic variable: %s\n', diagnosticVariable(self));
 fprintf('  diagnostic relation: %s\n', diagnosticRelationText(self));
 
 fprintf('\nInternal-mode inner products\n');
-printInnerProductSpec(self.innerProduct("F"));
-printInnerProductSpec(self.innerProduct("G"));
+printInnerProductSpec(self,self.innerProduct("F"));
+printInnerProductSpec(self,self.innerProduct("G"));
 
 fprintf('\nInternal-mode normalization\n');
 printNormalizationSummary(self);
@@ -119,6 +119,8 @@ end
 function text = diagnosticRelationText(evp)
 if evp.modeFamily == "meanDensityAnomaly"
     text = "F_j(z) = (1/g) integral_z^surface N^2(z') G_j(z') dz'";
+elseif IMInternalModesNormalizationTools.isWave(evp)
+    text = "F_j(z) = D dG_j/dz(z), D = z_surface - z_bottom";
 elseif evp.formulation == "G"
     text = "F_j(z) = h_j dG_j/dz(z)";
 elseif evp.modeFamily == "hydrostatic"
@@ -143,9 +145,9 @@ else
 end
 end
 
-function printInnerProductSpec(spec)
+function printInnerProductSpec(evp,spec)
 fprintf('  %s\n', spec.variable);
-fprintf('    interior weight: %s\n', interiorWeightText(spec.variable));
+fprintf('    interior weight: %s\n', interiorWeightText(evp,spec.variable));
 fprintf('    endpoint terms: %s\n', endpointTermsText(spec));
 if spec.hasInnerProduct
     fprintf('    inner product: known\n');
@@ -155,9 +157,13 @@ end
 fprintf('    reason: %s\n', spec.reason);
 end
 
-function text = interiorWeightText(variable)
+function text = interiorWeightText(evp,variable)
 if string(variable) == "F"
     text = "1";
+elseif evp.name == "waveModesAtWavenumber"
+    text = "(N^2(z)-f0^2)/g";
+elseif evp.name == "waveModesAtFrequency"
+    text = "(N^2(z)-omega^2)/g";
 else
     text = "N^2(z)/g";
 end

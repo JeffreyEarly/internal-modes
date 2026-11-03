@@ -19,25 +19,30 @@ The executable [UnifiedBasisAssessment.m](../ExamplesV2/UnifiedBasisAssessment.m
 collection = IMBasisCollection({basis1,basis2},kappa=[k2 k1 k2],basisIndex=[2 1 2]);
 G = collection.evaluate(z,variable="G",pages=[3 1]);
 Gz = collection.evaluate(z,variable="G",derivativeOrder=1,pages=2);
+GzDepth = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="depthRMSF",pages=2);
 ```
 
 `bases` stores continuous value objects. `basisIndex` maps each requested page to a stored basis; `sourcePage` selects a page inside existing multi-κ boundary objects. `kappa` preserves requested values/order and must equal any known underlying solved κ. It never substitutes a nearby representative. Metadata preserves the family, normalization snapshot, domain, mode labels or endpoint labels, boundary rotation, variables, and supported derivative orders. Equal κ permits exact sharing only within the same scientific problem, normalization, selection, and discretization context.
 
+Scalar `basis.evaluate(z,variable="G",derivativeOrder=1)` and collection evaluation use the same options: `variable` is required and `derivativeOrder` defaults to zero. Use the underlying variable plus derivative order rather than aliases such as `"Gz"`. Convenient scalar `F`, `G`, `Gz` and `Gzz` methods remain available where supported.
+
 Evaluation returns `nZ × nColumns × nSelectedPages`; MATLAB omits trailing singleton dimensions. Pages and explicit column selections preserve caller ordering. Evaluate families with different column counts separately or select an explicit common subset. [BulkWaveBases.md](BulkWaveBases.md) documents the exact shared solver preparation and bounded/streamed evaluation added in [#20](https://github.com/JeffreyEarly/internal-modes/issues/20).
 
 Numerical mode labels, endpoint identities, κ pages, and frequency signs are distinct. Negative mode numbers are ordinal eigenvalue labels, not permanent boundary-branch identities. Rotated boundary coordinates retain their rotation and endpoint metadata. Boundary coordinates have no automatic retained-prefix policy. Frequency signs remain in caller-supplied interaction identities and do not duplicate a continuous vertical basis. A zero-κ inertial basis/count is independent of the uniform requested wave count.
+
+A per-call `normalization` override is available on both `evaluate` and `evaluateChunks`; omission uses each stored basis default. Overrides apply to profiles and derivatives and leave stored bases and metadata unchanged. Endpoint-coordinate families reject overrides that would change their coordinate meaning. Evaluation validates variable, derivative and normalization support across all selected bases before streaming begins, using each basis's declared capabilities rather than assuming every aligned basis has every companion derivative.
 
 ## Capabilities
 
 | Family or representation | Continuous evaluation | Fixed scalar-variable projection | Assessment limits |
 | --- | --- | --- | --- |
 | Numerical scalar | `u`, first derivative `uz` | Supplied value-only metric with required endpoints | Gram; positive targets support leakage and products; signed scalar norm policies remain unsupported |
-| Aligned F/G, including APV | F/G; first derivative of solved variable | Per-variable signed pairing when all required observations are represented | Gram; positive targets support leakage; signed APV products use a positive majorant for errors |
-| Waves and zero-κ inertial modes | F/G; first derivative of solved variable | Projection depends on variable and boundary metric; synthesis does not imply projection | Companion-variable or derivative endpoint observations are explicitly unsupported by value-only projection |
-| Mean-density-anomaly modes | F/G; first derivative of solved variable | G projection, diagnostic F synthesis as supported by the family | Coupled quadratic assessment remains explicitly unsupported |
+| Aligned F/G, including APV | F/G and the derivatives declared by the actual family | Per-variable signed pairing when all required observations are represented | Gram; positive targets support leakage; signed APV products use a positive majorant for errors |
+| Waves and zero-κ inertial modes | F/G and the derivatives declared by the actual family | Projection depends on variable and boundary metric; synthesis does not imply projection | Companion-variable or derivative endpoint observations are explicitly unsupported by value-only projection |
+| Mean-density-anomaly modes | F/G and supported companion derivatives | G projection, diagnostic F synthesis as supported by the family | Coupled quadratic assessment remains explicitly unsupported |
 | Analytical aligned modes | Same continuous evaluation contract | Same basis-owned recipe, with no spectral-solver requirement | Analytical functions do not make numerically integrated target Grams exact |
 | Analytical neutral-label modes | G and its first two interval-interior derivatives; APV | Prescribed continuous APV dual with exact normalization | Generic Galerkin, Gram, round-trip and automatic collection leakage/product assessments are unavailable; check recovery explicitly |
-| Numerical/analytical zero-APV boundary bases | F/G and F derivative, with endpoint/page/rotation labels | Automatic scalar F/G projection is explicitly unavailable | Coefficient-space energy/response forms are not scalar sampled projection metrics; no endpoint-prefix selection |
+| Numerical/analytical zero-APV boundary bases | F/G and supported derivatives, with endpoint/page/rotation labels | Automatic scalar F/G projection is explicitly unavailable | Coefficient-space energy/response forms are not scalar sampled projection metrics; no endpoint-prefix selection |
 
 The [neutral-label API](NeutralLabelModes.md) uses explicit neutral intervals and the manuscript's depth normalization. Its APV projector preserves quadrature errors and records the exact physical enstrophy Gram as the positive error metric. The prescribed coefficient system is a row-scaled identity, so its rank and conditioning do not certify the sampling grid.
 

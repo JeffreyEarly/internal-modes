@@ -1,151 +1,183 @@
 # Creating mode families in V2
 
-`IMModes` creates continuous bases from one read-only `IMModeBackground`. Each factory returns an `IMModeBasis` with the same scientific identity, evaluation and normalization vocabulary. Mode requests count the regular ladders; every admissible finite special sector is additional and is returned automatically.
+The canonical workflow is physical background → family problem → solver → capable family basis. `IMModes` and `IMModeBasis` have been removed. Construction returns the numerical, analytical or specialized family object directly, retaining its applicable diagnostics, normalizations, projections, transforms and boundary-coordinate rotations.
 
 ```matlab
-background = IMModeBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
+background = IMBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
+problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
 solver = IMSolverSpectral(nEVP=128,coordinateKind="bandwidth");
-k = 2e-4;
-waves = IMModes.waveModesAtWavenumber(background,k,solver=solver,nInternalModes=12,nSubinertialModes=0);
+waves = solver.solveEVP(problem,nModes=13);
 z = linspace(-1000,0,201).';
 F = waves.F(z);
 G = waves.G(z);
 waves.modeInfo
 ```
 
-This free-surface request returns thirteen columns: the surface-gravity mode and twelve internal modes. A rigid-lid background has no surface-gravity mode. `nInternalModes=0,nSubinertialModes=0` requests only the admissible special sector, which can be empty.
+Every numerical and analytical `solveEVP` call requires an explicit `nModes`; solver resolution does not choose a scientific mode inventory. Omitting the count raises an error before solving. `nModes=13` requests thirteen total columns. For this free-surface problem that prefix contains one surface-gravity mode and twelve internal modes. Every special sector consumes a requested column. `nModes=0` returns zero columns for either surface convention.
 
-## Shared physics and independent solver choices
+## Shared physics and independent solvers
 
-The background owns `N2`, `zDomain=[bottom surface]`, `rotationRate`, `latitude`, `g` and `surfaceCondition`. The default surface convention is `"freeSurface"`. Its derived quantities are the positive depth `D=diff(zDomain)` and signed Coriolis frequency `f0=2*rotationRate*sind(latitude)`.
-
-For an arbitrary profile, use the constructor directly:
+The read-only background owns `N2`, `zDomain=[bottom surface]`, `rotationRate`, `latitude`, `g` and `surfaceCondition`. Defaults are Earth rotation, 33 degrees north, gravity 9.81 and `"freeSurface"`. Its derived quantities are the positive depth `D=diff(zDomain)` and signed Coriolis frequency `f0=2*rotationRate*sind(latitude)`.
 
 ```matlab
-background = IMModeBackground(N2=@(z) 1e-4*exp(z/1000),zDomain=[-4000 0],latitude=33,surfaceCondition="rigidLid");
-```
-
-`constantStratification` and `exponentialStratification` also record the profile parameters needed by an analytical backend. For an exponential background, `N0` is defined at `zDomain(2)`. The exact exponential backend currently requires that endpoint to be zero. An analytical solver reads the background's recorded source; it owns no independent stratification that could disagree with the physical problem.
-
-```matlab
-constant = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-exact = IMModes.waveModesAtWavenumber(constant,k,solver=IMSolverAnalytical(),nInternalModes=12,nSubinertialModes=0);
-```
-
-Numerical resolution and coordinate choices belong to the numerical solver. `IMSolverSpectral` accepts `"z"`, classical `"wkb"`, `"bandwidth"` and `"density"` coordinates. Classical WKB uses the monitor $$N$$ and requires strictly positive stratification. Bandwidth uses $$\sqrt{B}$$ with the rotation-aware bandwidth defined by the solver. Neither coordinate changes the physical rotation parameters or adds nontraditional wave dynamics. In particular, `rotationRate=0` changes the physical problem and is not a switch for selecting classical WKB.
-
-The existing finite-difference solver can also be passed to the factories:
-
-```matlab
-solver = IMSolverFiniteDifference(z=linspace(-1000,0,257).');
-waves = IMModes.waveModesAtWavenumber(constant,k,solver=solver,nInternalModes=8,nSubinertialModes=0);
-```
-
-Generalized-energy families additionally require explicit `IMGeneralizedEnergyBoundary(g0=...,gd=...)` coefficients. These describe the basis pairing separately from the physical surface convention. Every finite coefficient, including zero, activates its endpoint coordinate; positive infinity removes it. Negative infinity and NaN are rejected.
-
-## Family catalog and count semantics
-
-| Factory | Requested regular counts | Additional modes returned automatically | Default normalization |
-| --- | --- | --- | --- |
-| `waveModesAtWavenumber(background,k,...)` | `nInternalModes`, `nSubinertialModes` | Free-surface gravity mode | `"waveEnergy"` |
-| `waveModesAtFrequency(background,omega,...)` | `nPropagatingModes`, `nEvanescentModes` | Free-surface mode | `"depthRMSF"` |
-| `inertialModes(background,...)` | `nPositiveModes`, `nNegativeModes` of the auxiliary vertical problem | External auxiliary mode for a free surface | `"depthRMSF"` |
-| `hydrostaticFModes(background,...)` | `nInternalModes` | External or rigid-lid barotropic sector | `"depthRMSF"` |
-| `hydrostaticGModes(background,...)` | `nInternalModes` | Free-surface external mode | `"depthRMSF"` |
-| `geostrophicAPVModes(background,...)` | `nPositiveModes` | Every negative and zero eigenvalue mode | `"depthRMSF"` |
-| `meanDensityAnomalyModes(background,...)` | `nPositiveModes` | Every negative mode and the admissible constant mode | `"generalizedEnergy"` |
-| `geostrophicGeneralizedPotentialEnstrophyModes(background,k,...)` | `nModes` | None | `"generalizedPotentialEnstrophy"` |
-| `geostrophicZeroAPVModesAtWavenumber(background,k,...)` | None | Every active surface/bottom response | `"endpointResponse"` |
-| `neutralLabelModes(background,...)` | `nModesPerInterval` | Fully neutral constant label when admissible | `"depthRMSG"` |
-| `zeroDepthWaveModesAtWavenumber(background,k,...)` | `nModesPerInterval` | None; this explicitly truncates an infinite kernel | `"waveEnergy"` |
-
-All counts are nonnegative integers, and special modes never consume a requested count. Per-interval counts accept a scalar broadcast or one count per declared interval. Numerical requests are exact: insufficient availability throws `IMModes:InsufficientModes` with requested and available counts. Increase solver resolution when the discretization is too small; a physically absent branch cannot be obtained by refining it. A returned count does not certify convergence or recoverability on a separate sampling grid.
-
-Fixed-wavenumber waves are ordered surface first, then internal modes by decreasing frequency, then subinertial modes by increasing frequency. APV and mean-density modes are ordered negative eigenvalues, zero/constant, then the positive ladder. Zero eigenvalue APV modes have infinite equivalent depth; they are distinct from exact zero-depth waves.
-
-`waveModesAtWavenumbers(background,k,...)` returns an `IMBasisCollection`, preserving requested page order and repeated wavenumbers. Counts may be scalar or one value per requested page; repeated wavenumbers must have identical counts and are solved once. Pages may retain different column counts. Zero horizontal wavenumber uses the separate inertial factory.
-
-For example, create the balanced families from the same physical column:
-
-```matlab
-background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+background = IMBackground(N2=@(z) 1e-4*exp(z/1000),zDomain=[-4000 0],latitude=33,surfaceCondition="rigidLid");
+problem = IMInternalModes.geostrophicAPVModes(background,g0=-.02,gd=.01);
 solver = IMSolverSpectral(nEVP=128,coordinateKind="z");
-energyBoundary = IMGeneralizedEnergyBoundary(g0=-.02,gd=.01);
-apv = IMModes.geostrophicAPVModes(background,solver=solver,energyBoundary=energyBoundary,nPositiveModes=12);
-mda = IMModes.meanDensityAnomalyModes(background,solver=solver,energyBoundary=energyBoundary,nPositiveModes=8);
-zeroAPV = IMModes.geostrophicZeroAPVModesAtWavenumber(background,2e-4,solver=solver,energyBoundary=energyBoundary);
+apv = solver.solveEVP(problem,nModes=4);
 ```
 
-The zero-APV basis contains both endpoint responses because both coefficients are finite. Their numerical values select the generalized-energy pairing, while the canonical unit-response profiles depend on the physical background and the active endpoint identities.
+Family factories retain their explicit physical-input forms, such as `IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=k,...)`. With a background, physical inputs and the surface convention must agree with that authoritative column. The explicit form retains its documented boundary defaults; it does not silently acquire the background constructor's free-surface default.
 
-At a fixed frequency, the requested propagating and evanescent counts exclude the automatic surface mode. Use `inertialModes` at `omega=abs(background.f0)`; the fixed-frequency horizontal dispersion is degenerate there. Inertial modes all have physical frequency $$|f_0|$$. Their positive and negative eigendepths label an auxiliary vertical basis, and their G profile is auxiliary rather than a displacement mode.
+`constantStratification` and `exponentialStratification` backgrounds record the source parameters needed by `IMSolverAnalytical`. For an exponential background, `N0` is defined at `zDomain(2)`; the exact exponential backend currently requires that endpoint to be zero. The analytical solver owns no independent stratification.
 
-The analytical backend supports only families implemented for the declared profile. Arbitrary profiles have no declared exact backend, and mean-density and generalized-potential-enstrophy families currently require numerical solvers. Unsupported combinations produce an explicit error. Generalized-potential-enstrophy creation currently requires `surfaceCondition="freeSurface"` and accepts its existing `alpha0`/`alphaD` choices.
+```matlab
+background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
+exact = IMSolverAnalytical().solveEVP(problem,nModes=13);
+finiteDifference = IMSolverFiniteDifference(z=linspace(-1000,0,257).').solveEVP(problem,nModes=13);
+```
 
-## Profile convention and normalization
+An arbitrary profile has no declared exact solution. The profile-independent rigid-lid barotropic sector can nevertheless be constructed exactly, including for a fully neutral column. Mean-density-anomaly and generalized-potential-enstrophy families currently require numerical backends.
 
-Wave, fixed-frequency wave, inertial auxiliary and exact zero-depth wave profiles use one definition:
+Numerical resolution and coordinates belong to the solver. Spectral `"wkb"` means the classical N coordinate and requires strictly positive stratification. `"bandwidth"` uses the rotation-aware squared-frequency bandwidth. `"z"` and `"density"` are also available. Coordinates do not change rotation parameters or add nontraditional wave equations. Use `rotationRate=0` when the physical problem is nonrotating.
+
+## Exact counts and explicit branches
+
+Without `branch`, `nModes` selects an exact prefix of the family's physical ordering. Requests larger than the available inventory raise `IMSolver:InsufficientModes`. A returned count does not certify numerical convergence or recovery on a separate sampling grid.
+
+For explicit inventories, provide one count per requested branch:
+
+```matlab
+problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
+internal = solver.solveEVP(problem,branch="internal",nModes=3);
+mixed = solver.solveEVP(problem,branch=["surface","internal","subinertial"],nModes=[1 3 2]);
+```
+
+The first request returns exactly three internal columns and no surface column. The second returns six columns in the requested branch order, provided the physical profile and resolution support those branches. A constant strongly stratified column has no subinertial branch; refining it cannot create one. There is no scalar broadcast across multiple explicit branches.
+
+| Problem factory | Principal inventory or branches | Default normalization |
+| --- | --- | --- |
+| `waveModesAtWavenumber(background,k=k)` | `surface`, `internal`, `subinertial`; includes auxiliary inertial modes at k=0 | `"waveEnergy"` |
+| `waveModesAtFrequency(background,omega=omega)` | `surface`, `propagating`, `evanescent` | `"depthRMSF"` |
+| `hydrostaticFModes(background)` | Rigid-lid `barotropic` plus positive modes, or free-surface external and positive modes | `"depthRMSF"` |
+| `hydrostaticGModes(background)` | Free-surface external and positive modes, or rigid-lid positive modes | `"depthRMSF"` |
+| `geostrophicAPVModes(background,g0=g0,gd=gd)` | `negative`, `zeroEigenvalue`, `positive` | `"depthRMSF"` |
+| `meanDensityAnomalyModes(background,g0=g0,gd=gd)` | `negative`, `constant`, `positive` | Family `"unity"`, equivalent to signed generalized-energy normalization |
+| `geostrophicGeneralizedPotentialEnstrophyModes(background,k=k)` | Positive generalized-enstrophy ladder | `"generalizedPotentialEnstrophy"` |
+
+Fixed-wavenumber wave prefixes contain the surface mode first, then internal modes by decreasing frequency, then subinertial modes by increasing frequency. APV and mean-density prefixes contain negative eigenvalues, then the zero/constant sector, then positive eigenvalues. A zero APV eigenvalue means `h=Inf`; it is distinct from an exact zero-depth wave.
+
+At `omega=abs(background.f0)`, use `waveModesAtWavenumber(background,k=0)` because fixed-frequency horizontal dispersion is degenerate. All inertial auxiliary columns have physical frequency $$|f_0|$$; their positive and negative equivalent depths label an auxiliary vertical problem, and G is auxiliary rather than a displacement profile.
+
+The bulk API preserves requested page order, repeated wavenumbers and unequal counts. Each distinct wavenumber is solved once. Positive pages require an explicit `nModes`, scalar or aligned with `kappa(kappa>0)`; zero pages require the separate exact `nInertialModes` count. A zero-only request needs only `nInertialModes`, without an irrelevant positive-wave count. Repeated wavenumbers must request identical counts.
+
+```matlab
+collection = solver.solveWaveModesAtWavenumbers(background,[2e-4 0 1e-4 2e-4],nModes=[5 7 5],nInertialModes=3);
+F = collection.evaluate(z,variable="F",pages=[4 1]);
+```
+
+Numerical bulk construction reuses the prepared pencil; analytical bulk construction reuses exact solutions only for identical wavenumbers. Neither approximates distinct pages.
+
+## Consistent evaluation
+
+Scalar bases and collections use the same explicit variable and derivative options:
+
+```matlab
+G = waves.evaluate(z,variable="G");
+Gz = waves.evaluate(z,variable="G",derivativeOrder=1,normalization="kConstant");
+collection = IMBasisCollection({waves});
+GzPages = collection.evaluate(z,variable="G",derivativeOrder=1,normalization="kConstant");
+```
+
+`variable` is required. `derivativeOrder` defaults to zero; derivative names such as `"Gz"` are not variable aliases. Convenient methods such as `F(z)`, `G(z)`, `Gz(z)` and `Gzz(z)` remain available where the family supports them. Collections return `nZ × nColumns × nSelectedPages` values, with selected page and column order preserved.
+
+Ordinary and streamed collection evaluation both accept `normalization`. Omitting it uses each stored basis's default. An override scales the requested profiles and derivatives without changing stored defaults, mode identities or the eigensolve. Collection metadata records each stored default and is unchanged by a per-call override. Unsupported variables, derivative orders and normalization overrides are checked across the selected bases before any streaming callback. Endpoint-coordinate bases reject overrides that would reinterpret their canonical or rotated coordinates; change those coordinates through the family's explicit rotation methods. See [bounded collection evaluation](BulkWaveBases.md).
+
+## Profile convention and lazy normalization
+
+Every public wave construction path, including fixed-frequency, inertial and exact zero-depth waves, uses the manuscript definition
 
 $$F_j = D G_j', \qquad D = z_{\mathrm{surface}} - z_{\mathrm{bottom}}.$$
 
-Normalization multiplies every field in a column by the same positive factor and preserves this relation. APV, zero-APV, hydrostatic and mean-density families retain their defining coupled or integral profile relations. Neutral labels have no F profile.
+APV, zero-APV, hydrostatic and mean-density families retain their distinct defining relations. Neutral labels have no F profile. Normalization divides every aligned field in a column by the same positive factor and preserves its diagnostic relations.
 
-| Name | Meaning |
+```matlab
+Fdepth = waves.F(z,normalization="depthRMSF");
+Gdepth = waves.G(z,normalization="depthRMSF");
+waves.normalization = "maxAbsF";
+Fmax = waves.F(z);
+waves = waves.addNormalization("custom",@(~,~) 2);
+```
+
+Custom rules have signature `factor=rule(basis,j)`. Profile factors are computed when requested; numerical and analytical family bases reuse expensive factors without repeating the eigensolve. Reading a spectrum does not evaluate profiles merely to choose a normalization. `selectColumns` retains aligned scientific identities, profiles and family data without solving again.
+
+| Name | Meaning where supported |
 | --- | --- |
 | `"depthRMSF"` | $$D^{-1}\int |F_j|^2\,dz = 1$$ |
 | `"depthRMSG"` | $$D^{-1}\int |G_j|^2\,dz = 1$$ |
-| `"waveEnergy"` | $$D^{-1}\int [|F_j|^2 + (kD)^2|G_j|^2]\,dz = 1$$ for the fixed-wavenumber wave convention |
+| `"waveEnergy"` | $$D^{-1}\int [|F_j|^2 + (kD)^2|G_j|^2]\,dz = 1$$ at a fixed wavenumber |
 | `"generalizedEnergy"` | Unit magnitude under the family's signed generalized-energy G pairing |
-| `"generalizedPotentialEnstrophy"` | $$D^{-1}H_Z(F_j,F_j)=1$$ for the family's prescribed generalized-potential-enstrophy pairing $$H_Z$$ |
-| `"endpointResponse"` | Canonical unit response at the associated endpoint |
-| `"maxAbsF"` | $$\max_z |F_j(z)| = 1$$ |
-| `"maxAbsG"` | $$\max_z |G_j(z)| = 1$$ |
+| `"generalizedPotentialEnstrophy"` | Unit value under the family's prescribed generalized-enstrophy normalization |
+| `"maxAbsF"`, `"maxAbsG"` | Unit maximum absolute profile amplitude |
 
-The names have the same meaning wherever the required profiles or pairing exist. Unsupported names or family pairings produce an explicit error. Signed normalization preserves its signs in `basis.normSignatures`. A genuinely null generalized-energy mode cannot be assigned unit generalized energy; construction reports the null normalization rather than dropping the mode. Endpoint rotations remain coordinate changes in the existing lower-level zero-APV API.
+`normalizationNames()` reports available rules. Legacy rule names retain their family-specific definitions; they are not assumed interchangeable with descriptive names. Fixed-frequency modes do not offer one fixed-wavenumber `waveEnergy` normalization. A genuinely null pairing cannot define a unit norm and raises an error when that normalization is evaluated; it does not remove a retained column.
 
-`waveEnergy` reduces to `depthRMSF` at zero horizontal wavenumber. Fixed-frequency creation defaults to `depthRMSF`, because each returned root has its own horizontal dispersion. The new factory interface does not reinterpret legacy names such as `"kConstant"` or `"geostrophic"` as these different definitions.
+The returned family objects retain applicable `gramMatrix`, `majorantGramMatrix`, `endpointGramTerms`, derivatives, spectra and transform methods. Neutral labels retain their prescribed APV dual. Endpoint-response families retain their canonical or rotated coordinate normalization and quadratic matrices; their normalization is not an ordinary EVP profile-normalization override. A capability present on the returned family is not hidden behind a generic wrapper.
 
-## Neutral labels and the constant kernel
+## Explicit zero-APV endpoints
 
-Neutral intervals are explicit declarations of exact $$N^2 = 0$$, ordered and strictly separated. They are never inferred from sampled stratification. Merge touching intervals first. Boundary conditions are Dirichlet at joins to stratified water. At a physical endpoint they are Neumann only when its generalized-energy coefficient is zero, and Dirichlet otherwise.
+Generalized-energy coefficients define APV problems, pairings and endpoint-coordinate rotations. They do not select canonical endpoint responses.
 
 ```matlab
-background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
-energyBoundary = IMGeneralizedEnergyBoundary(g0=0,gd=0);
-labels = IMModes.neutralLabelModes(background,neutralIntervals=[-1000 0],energyBoundary=energyBoundary,nModesPerInterval=3);
+problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints="surface");
+surface = solver.solveGeostrophicZeroAPVModes(problem);
+
+problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=["surface","bottom"]);
+boundary = solver.solveGeostrophicZeroAPVModes(problem);
+depth = boundary.rotateBoundaryDepth(g0=-.02,gd=.01);
+Hg = boundary.generalizedEnergyMatrix(g0=-.02,gd=.01);
 ```
 
-This returns four columns: the constant label $$G=1$$, followed by three positive-wavenumber cosine modes. The constant has local mode number zero, does not consume `nModesPerInterval`, and has zero APV. `nModesPerInterval=0` returns that constant alone. Neutral labels have neither equivalent depths nor EVP eigenvalues.
+Canonical columns have unit response at the requested endpoint and zero response at the other endpoint. Both endpoint identities are returned in surface/bottom order. `endpoints=strings(1,0)` explicitly requests an empty coordinate inventory. These bases have no ordinary EVP eigenvalues or equivalent-depth property; the boundary-depth rotation separately exposes `h0`. Numerical and analytical endpoint families preserve pagewise response, energy, signed rotation and derivative operations.
 
-APV cannot determine the constant amplitude. A projection request containing it throws `IMNeutralLabelModesBasis:UnobservableConstantLabel`. Select the observable columns explicitly and supply the constant amplitude from independent particle-label information:
+## Neutral labels and exact critical intervals
+
+Neutral intervals are caller declarations of exact $$N^2 = 0$$, never inferred from sampled stratification. Declare ordered, strictly separated intervals and merge touching intervals first. Profiles vanish at both interval ends, including physical endpoints. Independent boundary anomalies belong to endpoint-response families.
 
 ```matlab
+neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0]);
+labels = IMNeutralLabelModesBasis(neutral,neutralIntervals=[-1000 0],nModes=3);
 z = -1000+((1:256).'-0.5)*(1000/256);
 weights = (1000/256)*ones(size(z));
-columns = find(labels.modeInfo.branch == "neutralLabel").';
-projection = labels.projectionOnGrid(z,weights,columns=columns);
-sampledAPV = labels.APV(z)*[5;1;-2;.5];
-positiveAmplitudes = projection.project(sampledAPV);
+projection = labels.projectionOnGrid(z,weights);
+amplitudes = projection.project(labels.APV(z)*[1;-2;.5]);
 ```
 
-The projector uses the prescribed continuous APV dual and fixed physical-depth quadrature. Quadrature error remains visible in the coefficients. Zero rotation makes every neutral APV column unobservable and is rejected by projection. See [neutral-label profiles and projection](NeutralLabelModes.md) for the exact formulas and endpoint traces.
+This returns exactly three positive-wavenumber DD sine modes. There is no constant label. Specialized interval families use `nModes` as an explicit count per interval, scalar broadcast or one count per declared interval; zero retains no columns on that interval. Optional `g0` and `gd` on labels record provenance and do not alter the profiles. Labels have neither ordinary eigenvalues nor equivalent depths. APV projection uses the prescribed continuous dual, including the active normalization, and fixed physical-depth quadrature. Quadrature error remains visible; zero rotation makes APV unobservable and is rejected. See [neutral-label profiles and projection](NeutralLabelModes.md).
 
-## Exact zero-depth waves
-
-Exact $$h=0$$ waves are supported on explicitly declared critical intervals where $$N^2=f_0^2$$. Their kernel can be infinite dimensional, so this family requires its own finite auxiliary-basis request. Small numerical eigendepths are not classified as this exact kernel.
+Exact $$h=0$$ waves use a separate family on declared critical intervals where $$N^2=f_0^2$$. Small numerical depths are not classified as this exact kernel.
 
 ```matlab
 f0 = 2*7.2921e-5*sind(33);
-background = IMModeBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0]);
-critical = IMModes.zeroDepthWaveModesAtWavenumber(background,2e-4,criticalIntervals=[-1000 0],nModesPerInterval=4);
+critical = IMBackground(N2=@(z) f0^2*ones(size(z)),zDomain=[-1000 0]);
+zeroDepth = IMZeroDepthWaveModesBasis(critical,2e-4,criticalIntervals=[-1000 0],nModes=4);
 ```
 
-The implementation uses interval-local Dirichlet sine modes, zero outside their intervals, with $$F=DG'$$ and physical frequency $$|f_0|$$. The caller owns the declaration that the intervals are exact critical regions. This auxiliary truncation is distinct from automatic inclusion of finite special sectors.
+The DD sine profiles are zero outside their intervals, satisfy $$F=DG'$$ with one-sided interval derivative traces, and have physical frequency $$|f_0|$$. The caller explicitly truncates the infinite-dimensional kernel. `h` is exactly zero; this family has no finite inverse-depth EVP eigenvalue. Exact analytical profile norms, derivatives, column selection and Gram matrices remain available.
 
-## Returned basis and compatibility
+## Migration from the removed creation layer
 
-`basis.nColumns` reports the full returned inventory. `basis.modeInfo` is a table with `columnLabel`, `branch` and `branchIndex`, plus relevant family metadata such as interval and local mode identity. `columnLabels` preserves identity independently of eigenvalue sign or array position. `F`, `G`, `Gz`, `Gzz` and, when available, `APV` return sample-by-column matrices. Inspect `basis.capabilities` before requesting a channel. `h` and `eigenvalues` report unavailable quantities explicitly for families that do not define them.
+The earlier facade counted regular modes and appended special sectors. Replace it with an explicit total or branch request:
 
-The creation layer provides the neutral-label APV projector above. Rigid-lid `hydrostaticFModes` obtains both fields from one G EVP and appends the analytical barotropic F0=1, G0=0 sector. That common basis supports `basis.discreteTransform(grid)` for a fixed `IMVerticalGrid`, preserving identities and normalization without another solve or weight fit. `IMInternalModesDiscreteTransform.hydrostaticRoot` coordinates converged continuous construction, G-root sampling, weight fitting and band qualification and returns its retained basis as well as the grid, transform and assessment. See [hydrostatic root transforms](HydrostaticRootTransform.md). A generic shared wave projection/transform interface is not yet provided by `IMModeBasis`; other existing lower-level basis APIs remain available for their supported transforms and assessments.
+```matlab
+% Before: two negative APV columns were added to two positive columns.
+% IMModes.geostrophicAPVModes(background,solver=solver,energyBoundary=energy,nPositiveModes=2)
 
-`IMInternalModes`, canonical boundary objects, existing numerical/analytical bases and their direct solver entry points remain available. Their original F/G equations, normalization names and count semantics are preserved. In particular, a direct lower-level wave basis retains its existing profile convention; the standard $$F=DG'$$ convention is applied by the new `IMModes`/`IMModeBasis` creation layer. The direct neutral-label constructor now also includes its admissible constant by default; explicit legacy `constantLabelPolicy="reject"` and `"exclude"` remain available there. Existing bulk APIs continue to use their documented lower-level contracts.
+% After: request four total columns without predicting the negative count.
+problem = IMInternalModes.geostrophicAPVModes(background,g0=energy.g0,gd=energy.gd);
+apv = solver.solveEVP(problem,nModes=4);
+```
+
+Replace `IMModes.geostrophicZeroAPVModesAtWavenumber` with an explicit `IMGeostrophicZeroAPVModes.atWavenumber(...,endpoints=...)` problem and `solveGeostrophicZeroAPVModes`. Construct labels and exact zero-depth waves with their specialized classes. `IMInternalModesDiscreteTransform.hydrostaticRoot` returns a capable native hydrostatic basis; its fixed-grid transform and qualification contracts remain available. See [hydrostatic root transforms](HydrostaticRootTransform.md).
+
+When migrating direct lower-level wave users, update dimensional modal coefficients and physical reconstruction alongside profiles: the former definition was $$F_{\mathrm{old}}=hG_{\mathrm{old}}'$$, while the new definition is $$F=DG'$$. For the same unscaled G, $$F=(D/h)F_{\mathrm{old}}$$ for finite nonzero h. A chosen shared normalization adds another common factor to both fields. Remove obsolete workaround conversions when the target already uses the public manuscript wave convention. An adapter preserving an existing consumer's physical F convention can legitimately apply `h/D` to the new F profiles; the WaveVortexModel integration uses that explicit boundary conversion. Normalized figure agreement alone does not establish coefficient equivalence. Hydrostatic and balanced conventions have not received that wave-specific conversion.

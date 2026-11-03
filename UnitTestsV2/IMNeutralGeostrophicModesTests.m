@@ -223,7 +223,9 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
         function fullyNeutralAPVUsesOnlyItsFiniteFamily(testCase)
             N2 = @(z) zeros(size(z));
             evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0.02,gd=0.03);
-            basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=6);
+            solver = IMSolverSpectral(nEVP=48,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=6),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             expected = evp.g*(1/evp.g+1/0.02+1/0.03)/1000;
             testCase.verifySize(basis.nativeModes,[48 1])
             testCase.verifyEqual(basis.inverseDepth,expected,RelTol=1e-12)
@@ -231,7 +233,8 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             testCase.verifyAPVBoundaryConditions(basis,1e-10)
 
             zeroEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=Inf,gd=Inf,surfaceBoundary="rigidLid");
-            zeroBasis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(zeroEVP,nModes=6);
+            testCase.verifyError(@() solver.solveEVP(zeroEVP,nModes=6),"IMSolver:InsufficientModes")
+            zeroBasis = solver.solveEVP(zeroEVP,nModes=1);
             testCase.verifyEqual(zeroBasis.inverseDepth,0,AbsTol=0)
             testCase.verifyEqual(zeroBasis.h,Inf,AbsTol=0)
             testCase.verifyLessThan(max(abs(zeroBasis.G([-1000;0]))),1e-10)
@@ -244,7 +247,9 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             alphaD = 3e-11;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
                 N2=N2,zDomain=[-1000 0],k=k,alpha0=alpha0,alphaD=alphaD);
-            basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=6);
+            solver = IMSolverSpectral(nEVP=48,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=6),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             weightSum = 1/alpha0+1/alphaD;
             expectedR = (1-evp.g*k*k*weightSum)/(1000+evp.f0^2*weightSum);
             expectedLambda = (k*k*1000+evp.f0^2/evp.g)/(1000+evp.f0^2*weightSum);
@@ -262,7 +267,9 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             g = 9.81;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
                 N2=@(z) zeros(size(z)),zDomain=[-1000 0],k=k,g=g,alpha0=g*k*k,alphaD=Inf);
-            basis = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
+            solver = IMSolverSpectral(nEVP=64,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=4),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             testCase.verifyNumElements(basis.h,1)
             testCase.verifyEqual(basis.inverseDepth,0,AbsTol=0)
             testCase.verifyEqual(basis.h,Inf,AbsTol=0)

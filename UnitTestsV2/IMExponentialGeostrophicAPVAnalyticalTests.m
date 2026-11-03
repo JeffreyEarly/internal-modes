@@ -53,7 +53,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
             testCase.verifyEqual(basisSet.h, expectedH, RelTol=5e-11)
             testCase.verifyEqual(basisSet.modeNumber, [-1 1 2 3])
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
+            testCase.verifyEqual(string(basisSet.normalization), "depthRMSF")
             testCase.verifyEqual(basisSet.metadata.g0, g0, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.gd, Inf, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.surfaceBoundary, "freeSurface")

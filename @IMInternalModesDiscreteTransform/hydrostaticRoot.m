@@ -5,7 +5,7 @@ function [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,
 %
 % $$-G_j''=\frac{N^2}{g h_j}G_j,\qquad G_j(z_b)=G_j(z_s)=0,\qquad F_j=h_jG_j',$$
 %
-% using the common `depthRMSF` normalization:
+% using the shared `depthRMSF` normalization:
 % $$\int F_iF_j\,dz=D\delta_{ij}$$ and
 % $$\int (N^2/g)G_iG_j\,dz=(D/h_j)\delta_{ij}$$. The aligned family is
 % $$F_0,\ldots,F_r$$ and $$G_0,\ldots,G_r$$, where the analytical barotropic
@@ -59,7 +59,7 @@ function [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,
 % Root-count failures are recorded and refined. A supplied solver is used as given.
 %
 % ```matlab
-% background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
+% background = IMBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
 % [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
 % coefficients = transform.transformForward(F,variable="F");
 % assessment.retainedInternalModeCount
@@ -69,7 +69,7 @@ function [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,
 %
 % - Topic: Create discrete transforms
 % - Declaration: [transform,grid,assessment,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints,options)
-% - Parameter background: rigid-lid IMModeBackground with positive N2
+% - Parameter background: rigid-lid IMBackground with positive N2
 % - Parameter nPoints: number of sample points, including both endpoints
 % - Parameter options.nInternalModes: strict retained internal count r; empty selects automatically
 % - Parameter options.solver: IMSolverSpectral used as given; default refines WKB with physical-z fallback
@@ -81,9 +81,9 @@ function [transform,grid,assessment,basis] = hydrostaticRoot(background,nPoints,
 % - Returns transform: aligned IMInternalModesDiscreteTransform with columns F0..Fr
 % - Returns grid: IMVerticalGrid holding the final points and fitted weights
 % - Returns assessment: IMHydrostaticRootTransformAssessment
-% - Returns basis: retained reusable IMModeBasis, also available as transform.basis
+% - Returns basis: retained native IMHydrostaticModesBasis, also available as transform.basis
 arguments (Input)
-    background (1,1) IMModeBackground
+    background (1,1) IMBackground
     nPoints (1,1) double {mustBeInteger,mustBeGreaterThanOrEqual(nPoints,3)}
     options.nInternalModes double {mustBeInteger,mustBeNonnegative,mustBeFinite} = zeros(1,0)
     options.solver = []
@@ -97,7 +97,7 @@ arguments (Output)
     transform (1,1) IMInternalModesDiscreteTransform
     grid (1,1) IMVerticalGrid
     assessment (1,1) IMHydrostaticRootTransformAssessment
-    basis (1,1) IMModeBasis
+    basis (1,1) IMHydrostaticModesBasis
 end
 
 if background.surfaceCondition ~= "rigidLid"
@@ -155,7 +155,7 @@ for nEVP = resolutions
                 && convergence.maximumShapeError <= options.convergenceTolerance && convergence.rootDisplacement <= options.convergenceTolerance;
         catch exception
             recoverable = ismember(string(exception.identifier),["IMInternalModesDiscreteTransform:HydrostaticRootCount", ...
-                "IMBasisSet:InsufficientQuadraturePoints","IMModes:InsufficientModes"]);
+                "IMBasisSet:InsufficientQuadraturePoints","IMSolver:InsufficientModes"]);
             if ~recoverable, rethrow(exception); end
             attempt = struct(nEVP=nEVP,coordinateKind=coordinateKind,maximumEquivalentDepthError=Inf, ...
                 maximumShapeError=Inf,rootDisplacement=Inf,status="underresolved",errorIdentifier=string(exception.identifier));
@@ -245,8 +245,9 @@ assessment = IMHydrostaticRootTransformAssessment(selection=selection,nPoints=nP
 end
 
 function [basis,convergence,z,rootDesign] = convergedFamily(background,solver,refinedSolver,nSolved,nPoints,zDomain)
-basis = IMModes.hydrostaticFModes(background,solver=solver,nInternalModes=nSolved);
-refined = IMModes.hydrostaticFModes(background,solver=refinedSolver,nInternalModes=nSolved);
+evp = IMInternalModes.hydrostaticGModes(background);
+basis = IMHydrostaticModesBasis(solver.solveEVP(evp,nModes=nSolved),normalization="depthRMSF");
+refined = IMHydrostaticModesBasis(refinedSolver.solveEVP(evp,nModes=nSolved),normalization="depthRMSF");
 [zFine,wFine] = physicalReferenceQuadrature(zDomain);
 labels = basis.columnLabels(2:end);
 identity = struct(family="hydrostaticF",columnLabels=labels,normalization=basis.normalization,zDomain=zDomain);

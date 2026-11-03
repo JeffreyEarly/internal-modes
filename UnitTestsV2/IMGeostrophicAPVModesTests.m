@@ -156,7 +156,7 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             rawBasis = basisSet.addNormalization("raw", @(~,~) 1);
             rawF = rawBasis.F(z, normalization="raw");
             rawG = rawBasis.G(z, normalization="raw");
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
+            testCase.verifyEqual(string(basisSet.normalization), "depthRMSF")
             testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
             testCase.verifyTrue(all(isfinite(factors) & factors > 0))
             testCase.verifyTrue(any(basisSet.h < 0))
@@ -210,8 +210,8 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
 
             testCase.verifyTrue(ismember("depth", numerical.normalizationNames()))
             testCase.verifyTrue(ismember("depth", analytical.normalizationNames()))
-            testCase.verifyEqual(string(numerical.normalization), "geostrophic")
-            testCase.verifyEqual(string(analytical.normalization), "geostrophic")
+            testCase.verifyEqual(string(numerical.normalization), "depthRMSF")
+            testCase.verifyEqual(string(analytical.normalization), "depthRMSF")
         end
 
         function numericalZeroModeIsRetainedExactly(testCase)

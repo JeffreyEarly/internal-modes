@@ -42,6 +42,6 @@ for i = 1:numel(terms)
     isPositiveMetric = isPositiveMetric && terms(i).coefficient >= 0;
 end
 provenance = struct("representation","numerical","referenceIntegration","solver inner-product rule","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
-recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant, ...
     supportsLeakage=isPositiveMetric,supportsQuadratic=isPositiveMetric,provenance=provenance,zDomain=self.zDomain,evaluateFunction=@(z) self.u(z),weightFunction=weightFunction,spec=spec);
 end

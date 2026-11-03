@@ -282,7 +282,7 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
 
             testCase.verifyFalse(isprop(evp, removedZeroProperty))
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
-            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "present")
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "analyticalBarotropic")
             testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeCount, 1)
         end
 

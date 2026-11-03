@@ -3,7 +3,7 @@
 A model samples every mode family, at every horizontal wavenumber, on one fixed set of depths. `IMVerticalGrid` holds those depths and their quadrature weights. It is separate from the numerical coordinate of an eigenvalue solver: modes can be solved at much higher resolution and evaluated on the grid afterwards.
 
 ```matlab
-background = IMModeBackground(N2=@(z) 1e-6+5e-5*exp(z/300),zDomain=[-4000 0],latitude=33);
+background = IMBackground(N2=@(z) 1e-6+5e-5*exp(z/300),zDomain=[-4000 0],latitude=33);
 grid = IMVerticalGrid.smoothedBandwidth(background,65);
 grid.z          % increasing depths, both endpoints included
 grid.weights    % nonnegative weights with sum(grid.weights) == background.D
@@ -35,9 +35,11 @@ $$L_s = 2.5\,\frac{D}{N_z-1}.$$
 
 This is provisional. It comes from the joint modal-recovery study in the `wave-vortex-model-coordinate-grid` note. The counts below hold only under that study's conditions: a 1000 m column with a 200 m neutral surface layer, latitude 45°, a 10 km wavelength, `g0 = 0` and `gd = -0.01`, data containing only the retained modes, and the study's joint overlap correction applied after the direct projectors, with fixed energy, enstrophy, boundary and noise tolerances. Under those conditions, at 65 points, the default recovers 151 physical plus 2 neutral-label amplitudes, against 127 on a piecewise grid split at the neutral-layer joins. Smoothing lengths below about 1.2 grid spacings fail to resolve the mandatory boundary modes. `IMVerticalGrid` supplies only points and weights; ordinary manuscript projections on these points do not inherit that recovery result.
 
-Retained-band recovery is a separate question from contamination by omitted modes. Near the maximum retained counts, unresolved modes produce large false retained amplitudes on every tested grid, and retaining about 10% fewer modes per family reduces that aliasing sharply.
+The original neutral-label counts used the historical generalized-energy-dependent endpoint policy: `g0=0` selected a Neumann surface for the neutral cap. The current manuscript and provider instead fix both interval endpoint labels (DD sine modes). The [DD requalification](NeutralLabelGridRequalification.md) independently confirms 151 physical plus two neutral amplitudes at the exact 65-point default, `Ls=39.0625 m`, with the same acceptance budgets and study joint correction. The original archive contained neighboring smoothing lengths rather than that exact default; its previously quoted default count is now directly measured.
 
-At 33 points, among the tested candidates and with the study's degree-five local reconstruction, the smallest boundary errors occur for smoothing lengths near 2.4–3.4 grid spacings, while a fixed length in metres does markedly worse. On that evidence the length is scaled with the grid spacing. Other stratifications, boundary choices and wavenumbers are still being validated.
+Retained-band recovery is a separate question from contamination by omitted modes. Near the maximum retained counts, unresolved modes produce large false retained amplitudes on every tested grid. The DD requalification confirms that retaining about 10% fewer physical modes per family sharply reduces this amplification on the exact default, from 151 to 134 physical amplitudes with both labels retained. Substantial physical-tail contamination remains, and reducing physical counts leaves unresolved neutral-label contamination unchanged. A count margin is not an aliasing guarantee; see the separate identical-source and adjacent-tail controls in the [requalification report](NeutralLabelGridRequalification.md).
+
+At 33 points, among the tested candidates and with the study's degree-five local reconstruction, the smallest boundary errors occur for smoothing lengths near 2.4–3.4 grid spacings, while a fixed length in metres does markedly worse. On that evidence the length is scaled with the grid spacing. The DD requalification directly measures 3.92325% boundary-shape error at the exact default of 78.125 m, which fails the 1% criterion along with every other tested 33-point grid. The error is not monotone in smoothing length and the exact default is not the best 33-point candidate. Other stratifications, boundary choices and wavenumbers are still being validated.
 
 Supply `breakpoints` at depths where `N2` is not smooth, for example the ends of a neutral layer, so the bandwidth is represented accurately. Supply `smoothingLength` to override the default.
 

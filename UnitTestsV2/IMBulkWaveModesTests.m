@@ -104,8 +104,8 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
             N2 = @(z) 1e-4*ones(size(z));
             testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([1e-4 0],rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:MissingInertialModeCount")
             testCase.verifyError(@() solver.solveWaveModesAtWavenumbers([],rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3),"IMSolver:EmptyWavenumberCollection")
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(1e-4,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=30),"IMSolver:InsufficientWaveModes")
-            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(0,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3,nInertialModes=30),"IMSolver:InsufficientWaveModes")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(1e-4,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=30),"IMSolver:InsufficientModes")
+            testCase.verifyError(@() solver.solveWaveModesAtWavenumbers(0,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3,nInertialModes=30),"IMSolver:InsufficientModes")
             [collection,diagnostics] = solver.solveWaveModesAtWavenumbers(1e-4,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=3);
             testCase.verifyEqual(numel(collection.bases),1)
             testCase.verifyEqual(diagnostics.solveCount,1)
@@ -115,7 +115,8 @@ classdef IMBulkWaveModesTests < matlab.unittest.TestCase
             N2 = @(z) ones(size(z));
             surface = IMBoundaryCondition(a=2,b=1);
             bottom = IMBoundaryCondition.neumann();
-            [collection,~] = solver.solveWaveModesAtWavenumbers([0.2 0.1],rotationRate=0,N2=N2,zDomain=[-1 0],surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
+            % N0<abs(f0) gives physically real subinertial negative-depth waves.
+            [collection,~] = solver.solveWaveModesAtWavenumbers([0.2 0.1],rotationRate=1/sind(33),latitude=33,N2=N2,zDomain=[-1 0],surfaceBoundary=surface,bottomBoundary=bottom,nModes=4);
             for i = 1:2
                 basis = collection.bases{i};
                 scalar = solver.solveEVP(basis.evp,nModes=4);

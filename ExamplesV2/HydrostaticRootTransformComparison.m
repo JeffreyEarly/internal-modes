@@ -45,7 +45,7 @@ profiles = {
 rows = {};
 for p = 1:size(profiles,1)
     [name,N2,D] = profiles{p,:};
-    background = IMModeBackground(N2=N2,zDomain=[-D 0],latitude=33,surfaceCondition="rigidLid");
+    background = IMBackground(N2=N2,zDomain=[-D 0],latitude=33,surfaceCondition="rigidLid");
     for nPoints = options.nPoints
         if options.verbose, fprintf("%s, %d points: building transforms\n",name,nPoints); end
         t0 = tic;
@@ -55,7 +55,8 @@ for p = 1:size(profiles,1)
         % Continuous reference modes at the converged resolution, beyond the retained band.
         solver = IMSolverSpectral(nEVP=2*assessment.convergence.candidateNEVP,coordinateKind=assessment.convergence.coordinateKind);
         nModes = nPoints+8;
-        basis = IMModes.hydrostaticFModes(background,solver=solver,nInternalModes=nModes);
+        evp = IMInternalModes.hydrostaticGModes(background);
+        basis = IMHydrostaticModesBasis(solver.solveEVP(evp,nModes=nModes),normalization="depthRMSF");
         z = grid.z; g = background.g; h = basis.h(2:end);
         F = basis.F(z); G = basis.G(z);
         HF = D*ones(1,nModes+1); HG = D./h; GMetric = N2(z)/g;

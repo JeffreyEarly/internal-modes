@@ -41,7 +41,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             basis.normalization = "wMax";
             testCase.verifyEqual(collection.evaluate(z,variable="G"),expected,AbsTol=1e-12)
             testCase.verifyEqual(collection.evaluate(z,variable="G",columns=[3 1]),expected(:,[3 1]),AbsTol=1e-12)
-            testCase.verifyEqual(projection.provenance.referencePointCount,1024)
+            testCase.verifyEqual(projection.provenance.referencePointCount,1025)
             testCase.verifyEqual(projection.provenance.referenceConvergence,"unverified")
             testCase.verifyEqual(projection.provenance.solveAccuracy,"unverified")
             testCase.verifyEqual(projection.prefix(2).provenance,projection.provenance)

@@ -214,6 +214,10 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Parameter nativeModes: native mode columns
             % - Parameter z: physical evaluation points
             % - Returns values: interpolated mode values
+            if size(nativeModes,2) == 0
+                values = zeros(numel(z),0,"like",nativeModes);
+                return
+            end
             values = interp1(flip(self.zNative), flip(nativeModes,1), z(:), "pchip");
         end
 
@@ -227,6 +231,10 @@ classdef IMSolverFiniteDifference < IMSolver
             % - Parameter derivativeOrder: physical derivative order
             % - Returns values: derivative values
             derivativeValues = self.physicalDerivativeMatrix(derivativeOrder)*nativeModes;
+            if size(nativeModes,2) == 0
+                values = zeros(numel(z),0,"like",derivativeValues);
+                return
+            end
             values = interp1(flip(self.zNative), flip(derivativeValues,1), z(:), "pchip");
         end
 

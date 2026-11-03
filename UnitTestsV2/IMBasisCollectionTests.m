@@ -21,16 +21,16 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             basis = basis.addNormalization("twice",@(b,j) 2*b.innerProductNormFactor(j));
             basis.normalization = "twice";
             expected = 2*basis.u(z);
-            values = collection.evaluate(z);
+            values = collection.evaluate(z,variable="u");
             testCase.verifyEqual(values(:,:,1),expected,AbsTol=1e-13);
             testCase.verifyEqual(values(:,:,2),expected,AbsTol=1e-13);
-            derivative = collection.evaluate(z,derivativeOrder=1,pages=2,columns=[3 1]);
+            derivative = collection.evaluate(z,variable="u",derivativeOrder=1,pages=2,columns=[3 1]);
             expectedDerivative = 2*basis.uz(z);
             testCase.verifyEqual(derivative,expectedDerivative(:,[3 1]),AbsTol=1e-13);
             testCase.verifyEqual(collection.metadata.normalization,"unity");
-            testCase.verifyEqual(collection.metadata.columnLabels,string(basis.modeNumber));
+            testCase.verifyEqual(collection.metadata.columnLabels,basis.columnLabels);
             testCase.verifyEmpty(collection.kappa);
-            testCase.verifyError(@() collection.evaluate(z,derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyError(@() collection.evaluate(z,variable="u",derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
             testCase.verifyError(@() collection.evaluate(z,variable="F"),"IMBasisCollection:UnsupportedVariable");
         end
 
@@ -50,8 +50,10 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             derivatives = collection.evaluate(z,variable="G",derivativeOrder=1);
             testCase.verifyEqual(derivatives(:,:,1),derivatives(:,:,2),AbsTol=1e-11);
             testCase.verifyEqual(collection.metadata(1).variables,["F" "G"]);
-            testCase.verifyEqual(collection.metadata(2).derivativeOrders,{0,[0 1]});
-            testCase.verifyError(@() collection.evaluate(z,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyEqual(collection.metadata(2).derivativeOrders,{[0 1],0:2});
+            derivativeF = collection.evaluate(z,variable="F",derivativeOrder=1);
+            testCase.verifyEqual(derivativeF(:,:,1),numerical.evaluate(z,variable="F",derivativeOrder=1),AbsTol=1e-13);
+            testCase.verifyEqual(derivativeF(:,:,2),analytical.evaluate(z,variable="F",derivativeOrder=1),AbsTol=1e-13);
         end
 
         function waveKappaMappingsRejectApproximateSubstitution(testCase)
@@ -90,7 +92,8 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
                 testCase.verifyEqual(derivative,-N0^2/basis{1}.g*G,AbsTol=1e-15);
                 selected = collection.evaluate([0;-1000],variable="G",pages=[3 1],columns=2);
                 testCase.verifyEqual(selected,G(:,2,[3 1]),AbsTol=0);
-                testCase.verifyError(@() collection.evaluate(0,variable="G",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+                expectedDerivative = basis{1}.evaluate(0,variable="G",derivativeOrder=1,pages=[2 1 2]);
+                testCase.verifyEqual(collection.evaluate(0,variable="G",derivativeOrder=1),expectedDerivative,AbsTol=1e-12);
             end
             rotated = analytical.rotateBoundaryDepth();
             rotatedCollection = IMBasisCollection({rotated});
@@ -133,11 +136,11 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             basis3 = testCase.scalarBasis(3);
             basis2 = testCase.scalarBasis(2);
             collection = IMBasisCollection({basis3,basis2});
-            testCase.verifyError(@() collection.evaluate(-0.5),"IMBasisCollection:HeterogeneousColumns");
-            testCase.verifySize(collection.evaluate(-0.5,columns=[2 1]),[1 2 2]);
-            testCase.verifyError(@() collection.evaluate(-0.5,columns=3),"IMBasisCollection:InvalidColumn");
-            testCase.verifyError(@() collection.evaluate(-0.5,pages=3),"IMBasisCollection:InvalidPage");
-            testCase.verifyError(@() collection.evaluate(1,pages=1),"IMBasisCollection:OutsideDomain");
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u"),"IMBasisCollection:HeterogeneousColumns");
+            testCase.verifySize(collection.evaluate(-0.5,variable="u",columns=[2 1]),[1 2 2]);
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u",columns=3),"IMBasisCollection:InvalidColumn");
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u",pages=3),"IMBasisCollection:InvalidPage");
+            testCase.verifyError(@() collection.evaluate(1,variable="u",pages=1),"IMBasisCollection:OutsideDomain");
             testCase.verifyError(@() IMBasisCollection({}),"IMBasisCollection:EmptyCollection");
             testCase.verifyError(@() IMBasisCollection({1}),"IMBasisCollection:UnsupportedBasis");
             testCase.verifyError(@() IMBasisCollection({basis3},basisIndex=2),"IMBasisCollection:InvalidBasisIndex");

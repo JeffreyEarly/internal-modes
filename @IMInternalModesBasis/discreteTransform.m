@@ -306,7 +306,12 @@ function basis = auxiliaryBasis(source,nCheckModes,candidateModeCount,nAvailable
 basis = source;
 if nCheckModes > nAvailableModes
     try
-        basis = source.solver.solveEVP(source.evp,nModes=nCheckModes);
+        if isa(source,"IMHydrostaticModesBasis")
+            internal = source.solver.solveEVP(source.evp,nModes=nCheckModes-1);
+            basis = IMHydrostaticModesBasis(internal);
+        else
+            basis = source.solver.solveEVP(source.evp,nModes=nCheckModes);
+        end
         basis.normalization = source.normalization;
     catch cause
         exception = MException("IMBasisSet:AuxiliaryModeUnavailable", "The leakage policy could not obtain %d source modes.",nCheckModes);

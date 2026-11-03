@@ -35,7 +35,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
 
             testCase.verifyClass(transform,"IMInternalModesDiscreteTransform")
             testCase.verifyEqual(transform.availableVariables,variables)
-            testCase.verifyEqual(transform.primaryVariable,"F")
+            testCase.verifyEqual(transform.primaryVariable,"G")
             testCase.verifyEqual(transform.modeNumber,0:5,AbsTol=0)
             testCase.verifyEqual(transform.h,testCase.basisSet.h(1:6),AbsTol=0)
             expectedF = testCase.basisSet.F(testCase.z);
@@ -51,7 +51,7 @@ classdef IMInternalModesDiscreteTransformTests < matlab.unittest.TestCase
             coefficients = reshape(1:12,6,2);
             expectedG = testCase.basisSet.G(testCase.z);
             testCase.verifyEqual(transform.transformBack(coefficients,variable="G"),expectedG(:,1:6)*coefficients,RelTol=1e-12,AbsTol=1e-12)
-            testCase.verifyEqual(transform.transformBack(coefficients),transform.inverseMatrix(variable="F")*coefficients,RelTol=1e-12,AbsTol=1e-12)
+            testCase.verifyEqual(transform.transformBack(coefficients),transform.inverseMatrix(variable="G")*coefficients,RelTol=1e-12,AbsTol=1e-12)
         end
 
         function solvedGFormIsThePrimaryTransformVariable(testCase)

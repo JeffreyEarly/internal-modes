@@ -9,26 +9,28 @@ The classes contain many options, but also try to remain simple to use. Use `hel
 
 ## V2 prerelease API
 
-The repository also contains the parallel V2 API under active prerelease development. The [mode-creation API](Documentation/ModeCreationAPI.md) uses one shared physical background and returns continuous bases with explicit family identities:
+The prerelease [V2 API](Documentation/ModeCreationAPI.md) uses one physical background, an explicit family problem and a numerical or analytical solver. The result is the capable scientific family basis:
 
 ```matlab
-background = IMModeBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0]);
+background = IMBackground.constantStratification(N0=5.2e-3,zDomain=[-1000 0]);
+problem = IMInternalModes.waveModesAtWavenumber(background,k=2e-4);
 solver = IMSolverSpectral(nEVP=128,coordinateKind="bandwidth");
-basis = IMModes.waveModesAtWavenumber(background,2e-4,solver=solver,nInternalModes=12,nSubinertialModes=0);
+basis = solver.solveEVP(problem,nModes=13);
 z = linspace(-1000,0,201).';
 F = basis.F(z);
-G = basis.G(z);
+G = basis.G(z,normalization="maxAbsF");
+Gz = basis.evaluate(z,variable="G",derivativeOrder=1);
 ```
 
-Regular ladder counts exclude automatically returned special modes. Waves use `F=D*Gz`, independent internal/subinertial counts and `"waveEnergy"` normalization. The same factory namespace covers hydrostatic, inertial, APV, mean-density, generalized-potential-enstrophy, zero-APV, neutral-label and exact zero-depth wave families. Read the creation guide for common normalization names, analytical backends, endpoint coefficients and count-zero requests.
+Every numerical and analytical `solveEVP` call requires an explicit mode count. Counts include every returned column. This request returns one surface-gravity mode and twelve internal modes; `nModes=0` returns none. Explicit branch requests such as `branch="internal",nModes=3` return only those columns. All wave construction paths use the manuscript convention `F=D*Gz`. Normalization overrides share the solved basis and do not repeat the eigensolve. Numerical bases retain their native coefficients, diagnostics, signed Gram matrices and applicable transforms. The former `IMModes` namespace and `IMModeBasis` wrapper are removed.
 
-The existing lower-level V2 APIs retain their original equations, normalizations, mode-count contracts and sampled transforms. Their guides cover [mode families](Documentation/WebsiteDocumentation/classes-v2/index.md), [normalization](Documentation/WebsiteDocumentation/classes-v2/supporting-types/index.md), and [discrete transforms](Documentation/WebsiteDocumentation/classes-v2/discrete-transforms/index.md). Developer-facing scripts in `ExamplesV2` demonstrate those APIs; the stable `InternalModes` quick start below remains unchanged.
+Scalar and collection evaluation use `evaluate(z,variable="G",derivativeOrder=1)`, with an explicit variable and derivative order defaulting to zero. Collections also support per-call normalization in ordinary and streamed evaluation; unsupported requests fail before streaming callbacks.
 
-For the rigid-lid hydrostatic problem, `IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/HydrostaticRootTransform.md): root grid, fitted weights, cached collocation or Galerkin operators, a reusable common continuous basis and an explicit retained-band assessment.
+Canonical zero-APV responses use `IMGeostrophicZeroAPVModes.atWavenumber(background,k,endpoints="surface")` followed by `solver.solveGeostrophicZeroAPVModes(problem)`. Endpoint identities are explicit; generalized-energy coefficients specify APV problems, pairings and boundary-coordinate rotations. Specialized `IMNeutralLabelModesBasis` and `IMZeroDepthWaveModesBasis` preserve the separate neutral-label and exact critical-interval mathematics.
 
-A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies the fixed points and weights used by all families and wavenumbers. The provisional default is the smoothed-bandwidth grid, `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the mode-root grid remains available.
+For the rigid-lid hydrostatic problem, `IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints)` builds the [qualified F/G mode-root transform](Documentation/HydrostaticRootTransform.md), returning its root grid, fitted weights, reusable capable continuous basis and retained-band assessment. A shared [vertical sampling grid](Documentation/VerticalGrids.md) supplies fixed points and weights independently of the EVP solver coordinate. The provisional sampling default remains `IMVerticalGrid.smoothedBandwidth(background,nPoints)`; the mode-root grid is also available.
 
-Independent zero-energy [neutral-label modes](Documentation/NeutralLabelModes.md) provide analytical profiles on explicit neutral intervals, automatically retain the admissible constant label, and project observable amplitudes from labeled APV with continuous normalization. APV cannot identify the constant-label amplitude.
+The creation guide covers [normalizations, analytical backends, counts and migration](Documentation/ModeCreationAPI.md). Independent [neutral-label modes](Documentation/NeutralLabelModes.md) use fixed-endpoint sine profiles on explicitly declared neutral intervals and project labeled APV with continuous normalization; they include no constant label. The stable `InternalModes` quick start below is unchanged.
 
 If you use these classes to compute the vertical modes, please cite the following paper,
 - J. Early, M. P. Lelong, and K. S. Smith. Fast and Accurate Coputation of Vertical Modes. Journal of Advances in Modeling Earth Systems. 2020. [doi](https://doi.org/10.1029/2019MS001939)

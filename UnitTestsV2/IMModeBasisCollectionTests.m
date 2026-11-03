@@ -8,16 +8,17 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
 
     methods (Test)
         function wavePagesPreserveTheStandardConventionAndScientificIdentity(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            first = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=3);
-            second = IMModes.waveModesAtWavenumber(background,2e-3,solver=IMSolverAnalytical(),nInternalModes=3);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            solver = IMSolverAnalytical();
+            first = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=1e-3),nModes=4).withNormalization("waveEnergy");
+            second = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=2e-3),nModes=4).withNormalization("waveEnergy");
             collection = IMBasisCollection({first,second},basisIndex=[2 1 2]);
             testCase.verifyEqual(collection.kappa,[2e-3 1e-3 2e-3]);
             testCase.verifyEqual(collection.metadata(1).family,first.family);
             testCase.verifyEqual(collection.metadata(1).columnLabels,first.columnLabels);
             testCase.verifyEqual(collection.metadata(1).normalization,"waveEnergy");
             testCase.verifyEqual(collection.metadata(1).variables,["F", "G"]);
-            testCase.verifyEqual(collection.metadata(1).derivativeOrders,{0,0:2});
+            testCase.verifyEqual(collection.metadata(1).derivativeOrders,{[0 1],0:2});
             z = linspace(-1000,0,17).';
             pages = [3 2 3 1];
             columns = [3 1 3];
@@ -29,12 +30,13 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
                 expected = basis.F(z);
                 testCase.verifyEqual(F(:,:,j),expected(:,columns),AbsTol=0);
             end
-            testCase.verifyError(@() collection.evaluate(z,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            derivativeF = collection.evaluate(z,variable="F",derivativeOrder=1);
+            testCase.verifyEqual(derivativeF(:,:,1),second.evaluate(z,variable="F",derivativeOrder=1),AbsTol=1e-13);
         end
 
-        function streamedFacadePagesKeepRepeatedPositionsAndBoundedChunks(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            basis = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=2);
+        function streamedNativePagesKeepRepeatedPositionsAndBoundedChunks(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            basis = IMSolverAnalytical().solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=1e-3),nModes=3);
             collection = IMBasisCollection({basis},basisIndex=[1 1 1]);
             z = linspace(-1000,0,19).';
             pages = [3 1 3 2 1];
@@ -58,16 +60,16 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             end
         end
 
-        function endpointFacadesUseScalarEvaluatorsAcrossCollectionPages(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            energy = IMGeneralizedEnergyBoundary(g0=0,gd=0);
-            basis = IMModes.geostrophicZeroAPVModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),energyBoundary=energy);
+        function endpointBasesUseNativeEvaluatorsAcrossCollectionPages(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(background,1e-3,endpoints=["surface" "bottom"]);
+            basis = IMSolverAnalytical().solveGeostrophicZeroAPVModes(problem);
             collection = IMBasisCollection({basis},basisIndex=[1 1]);
             testCase.verifyEqual(collection.metadata.columnKind,"endpoint");
             testCase.verifyEqual(collection.metadata.endpointLabels,["surface", "bottom"]);
             z = [-1000;-700;-100;0];
             for variable = ["F", "G"]
-                expected = basis.evaluate(z,variable);
+                expected = basis.evaluate(z,variable=variable);
                 sampled = collection.evaluate(z,variable=variable,pages=[2 1 2],columns=[2 1],sampleChunkSize=2,pageChunkSize=2);
                 testCase.verifyEqual(sampled,repmat(expected(:,[2 1]),1,1,3),AbsTol=0);
             end
@@ -75,20 +77,19 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
         end
 
         function emptyEndpointInventoryRemainsAnEmptyContinuousBasis(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            energy = IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf);
-            basis = IMModes.geostrophicZeroAPVModesAtWavenumber(background,1e-3,energyBoundary=energy);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            problem = IMGeostrophicZeroAPVModes.atWavenumber(background,1e-3,endpoints=strings(1,0));
+            basis = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(problem);
             collection = IMBasisCollection({basis},basisIndex=[1 1]);
             testCase.verifyEqual(basis.nColumns,0);
             testCase.verifyEmpty(collection.metadata.columnLabels);
             testCase.verifySize(collection.evaluate([-1000;-500;0],variable="F"),[3 0 2]);
         end
 
-        function neutralAPVProjectionPreservesTheFacadeNormalization(testCase)
-            background = IMModeBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0]);
-            energy = IMGeneralizedEnergyBoundary(g0=0,gd=Inf);
-            depth = IMModes.neutralLabelModes(background,neutralIntervals=[-200 0],energyBoundary=energy,nModesPerInterval=3);
-            maximum = IMModes.neutralLabelModes(background,neutralIntervals=[-200 0],energyBoundary=energy,nModesPerInterval=3,normalization="maxAbsG");
+        function neutralAPVProjectionPreservesNativeNormalization(testCase)
+            background = IMBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0]);
+            depth = IMNeutralLabelModesBasis(background,neutralIntervals=[-200 0],g0=0,gd=Inf,nModes=3);
+            maximum = IMNeutralLabelModesBasis(background,neutralIntervals=[-200 0],g0=0,gd=Inf,nModes=3,normalization="maxAbsG");
             collection = IMBasisCollection({depth,maximum},basisIndex=[2 1 2]);
             testCase.verifyEqual(collection.metadata(1).family,"neutralLabel");
             testCase.verifyEqual(collection.metadata(1).variables,["G", "APV"]);
@@ -110,17 +111,59 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             end
             sampled = collection.evaluate(z,variable="APV",pages=[3 1 2],columns=[3 1]);
             testCase.verifyEqual(sampled(:,:,1),sampled(:,:,2),AbsTol=0);
-            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G"),"IMModeBasis:UnavailableProjection");
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G"),"MATLAB:validators:mustBeMember");
         end
 
-        function collectionDoesNotInventAProjectionForWaveProfiles(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            basis = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=2);
+        function emptyNeutralViewsAndScaledSelectionsPreserveDualMetadata(testCase)
+            background = IMBackground(N2=@(z) 1e-4*double(z < -200),zDomain=[-1000 0]);
+            maximum = IMNeutralLabelModesBasis(background,neutralIntervals=[-200 0],nModes=3,normalization="maxAbsG");
+            requestedEmpty = IMNeutralLabelModesBasis(background,neutralIntervals=[-200 0],nModes=0);
+            selectedEmpty = maximum.selectColumns([]);
+            collection = IMBasisCollection({requestedEmpty,selectedEmpty},basisIndex=[2 1 2]);
+            z = linspace(-200,0,401).';
+            weights = .5*ones(size(z)); weights([1 end]) = .25;
+            for basis = {requestedEmpty,selectedEmpty}
+                projection = basis{1}.projectionOnGrid(z,weights);
+                recipe = basis{1}.projectionRecipe();
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)]);
+                testCase.verifyEqual(projection.majorantGramMatrix,zeros(0));
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0));
+                testCase.verifyEqual(recipe.provenance.continuousAPVGramMatrix,zeros(0));
+                testCase.verifyEmpty(projection.columnLabels);
+                testCase.verifySize(projection.project(ones(numel(z),2)),[0 2]);
+            end
+            for derivativeOrder = 0:2
+                testCase.verifySize(collection.evaluate(z,variable="G",derivativeOrder=derivativeOrder,pages=[3 1 3 2],sampleChunkSize=100,pageChunkSize=2),[numel(z) 0 4]);
+            end
+            testCase.verifySize(collection.evaluate(z,variable="APV",pages=[3 1 3 2]),[numel(z) 0 4]);
+            for page = [3 1 3 2]
+                projection = collection.projectionOnGrid(z,weights,page=page);
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)]);
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0));
+            end
+            selected = maximum.selectColumns([3 1]);
+            expected = diag(background.f0^2*100*(pi*[3 1]/200).^2);
+            projection = selected.projectionOnGrid(z,weights);
+            recipe = selected.projectionRecipe();
+            testCase.verifyEqual(projection.majorantGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(recipe.majorantGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(recipe.provenance.continuousAPVGramMatrix,expected,RelTol=5e-15);
+            testCase.verifyEqual(projection.columnLabels,maximum.columnLabels([3 1]));
+            testCase.verifyEqual(projection.forwardMatrix*selected.APV(z),eye(2),AbsTol=2e-13);
+        end
+
+        function collectionPreservesNativeWaveProjectionCapabilities(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            basis = IMSolverAnalytical().solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=1e-3),nModes=3);
             collection = IMBasisCollection({basis});
             z = linspace(-1000,0,11).';
             weights = 100*ones(size(z));
             weights([1 end]) = 50;
-            testCase.verifyError(@() collection.projectionOnGrid(z,weights),"IMModeBasis:UnavailableProjection");
+            projection = collection.projectionOnGrid(z,weights,variable="G");
+            testCase.verifyEqual(projection.columnLabels,basis.columnLabels);
+            testCase.verifyEqual(projection.targetGramMatrix,basis.gramMatrix(variable="G"),AbsTol=1e-12);
+            testCase.verifyEqual(projection.forwardMatrix*basis.G(z),eye(3),AbsTol=1e-12);
         end
     end
 end

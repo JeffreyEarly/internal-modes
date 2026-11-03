@@ -34,7 +34,8 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(surface,"g0"))
             testCase.verifyFalse(isprop(surface,"gd"))
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=0,latitude=33,k=2),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
+            empty = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=strings(1,0));
+            testCase.verifyEqual(empty.modesPerWavenumber(),0)
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
             testCase.verifyTrue(testCase.throwsAny(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,surfaceBoundary="bad")))

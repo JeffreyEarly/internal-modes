@@ -14,7 +14,7 @@ classdef IMVerticalGrid
     % $$L_s=2.5\,D/(N_z-1)$$.
     %
     % ```matlab
-    % background = IMModeBackground(N2=@(z) 1e-5+5e-5*exp(z/300),zDomain=[-2000 0]);
+    % background = IMBackground(N2=@(z) 1e-5+5e-5*exp(z/300),zDomain=[-2000 0]);
     % grid = IMVerticalGrid.smoothedBandwidth(background,65);
     % grid.z; grid.weights;
     % ```
@@ -171,14 +171,14 @@ classdef IMVerticalGrid
             %
             % - Topic: Create a vertical grid
             % - Declaration: grid = IMVerticalGrid.physicalDepth(zDomain,nPoints)
-            % - Parameter zDomain: increasing `[bottom surface]`, or an IMModeBackground
+            % - Parameter zDomain: increasing `[bottom surface]`, or an IMBackground
             % - Parameter nPoints: number of points, at least three
             % - Returns grid: physical-depth Chebyshev-Lobatto grid
             arguments
                 zDomain
                 nPoints (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(nPoints,3)}
             end
-            if isa(zDomain,"IMModeBackground"), zDomain = zDomain.zDomain; end
+            if isa(zDomain,"IMBackground"), zDomain = zDomain.zDomain; end
             [z,w] = IMVerticalGrid.clenshawCurtis(nPoints,zDomain);
             grid = IMVerticalGrid(z=z,weights=w,zDomain=zDomain,kind="physicalDepth", ...
                 design=struct(rule="Clenshaw-Curtis in physical depth"));
@@ -195,13 +195,13 @@ classdef IMVerticalGrid
             %
             % - Topic: Create a vertical grid
             % - Declaration: grid = IMVerticalGrid.smoothedBandwidth(background,nPoints,options)
-            % - Parameter background: IMModeBackground
+            % - Parameter background: IMBackground
             % - Parameter nPoints: number of points, at least three
             % - Parameter options.smoothingLength: positive length in meters; default 2.5*D/(nPoints-1)
             % - Parameter options.breakpoints: interior depths where N2 is not smooth
             % - Returns grid: smoothed-bandwidth grid with filter and map diagnostics in `design`
             arguments
-                background (1,1) IMModeBackground
+                background (1,1) IMBackground
                 nPoints (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(nPoints,3)}
                 options.smoothingLength double {mustBeReal} = []
                 options.breakpoints (1,:) double {mustBeReal, mustBeFinite} = zeros(1,0)

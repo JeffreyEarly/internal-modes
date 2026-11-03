@@ -10,33 +10,24 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
     methods (Test)
         function analyticalProfilesAndDerivatives(testCase)
             intervals = {[-800 -600],[-200 0],[-1000 -850],[-1000 0]};
-            types = ["DD","DN","ND","NN"];
             for i = 1:numel(intervals)
                 bounds = intervals{i};
-                basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=3,constantLabelPolicy="exclude");
+                basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=3);
                 L = diff(bounds);
-                n = 1:3;
-                if types(i) == "DN" || types(i) == "ND"
-                    n = n-0.5;
-                end
-                m = pi*n/L;
+                m = pi*(1:3)/L;
                 z = linspace(bounds(1),bounds(2),31).';
                 x = z-bounds(1);
                 amplitude = sqrt(2000/L);
-                if startsWith(types(i),"D")
-                    expectedG = amplitude*sin(x*m);
-                    expectedGz = amplitude*m.*cos(x*m);
-                    expectedGzz = -amplitude*m.^2.*sin(x*m);
-                else
-                    expectedG = amplitude*cos(x*m);
-                    expectedGz = -amplitude*m.*sin(x*m);
-                    expectedGzz = -amplitude*m.^2.*cos(x*m);
-                end
+                expectedG = amplitude*sin(x*m);
+                expectedGz = amplitude*m.*cos(x*m);
+                expectedGzz = -amplitude*m.^2.*sin(x*m);
                 testCase.verifyEqual(basis.m_n,m,AbsTol=1e-16)
                 testCase.verifyEqual(basis.G(z),expectedG,AbsTol=5e-14)
                 testCase.verifyEqual(basis.Gz(z),expectedGz,AbsTol=2e-15)
                 testCase.verifyEqual(basis.Gzz(z),expectedGzz,AbsTol=1e-16)
-                testCase.verifyEqual(basis.boundaryTypes,[extractBefore(types(i),2),extractAfter(types(i),1)])
+                testCase.verifyEqual(basis.G(bounds.'),zeros(2,3))
+                testCase.verifyEqual(basis.Gzz(bounds.'),zeros(2,3))
+                testCase.verifyEqual(basis.boundaryTypes,["D","D"])
                 testCase.verifyEqual(basis.APV(z),-basis.f0*expectedGz,AbsTol=1e-18)
             end
         end
@@ -90,82 +81,102 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             testCase.verifyError(@() basis.G(-1001),"IMNeutralLabelModesBasis:OutsideDomain")
         end
 
-        function endpointAccelerationPolicy(testCase)
-            for acceleration = [0 0.1 -0.1 Inf -Inf]
-                basis = IMNeutralLabelModesBasis([-1000 -800;-200 0],zDomain=[-1000 0],nModes=2,g0=acceleration,gd=acceleration);
-                G = basis.G([-1000;0]);
-                Gz = basis.Gz([-1000;0]);
-                if acceleration == 0
-                    testCase.verifyEqual(basis.boundaryTypes,["N","D";"D","N"])
-                    testCase.verifyEqual(Gz(1,1:2),zeros(1,2),AbsTol=1e-16)
-                    testCase.verifyEqual(Gz(2,3:4),zeros(1,2),AbsTol=1e-16)
-                    testCase.verifyGreaterThan(min(abs([G(1,1:2),G(2,3:4)])),1)
-                else
-                    testCase.verifyEqual(basis.boundaryTypes,repmat("D",2,2))
-                    testCase.verifyEqual(G,zeros(2,4),AbsTol=2e-14)
+        function endpointAccelerationsDoNotChangeFixedLabels(testCase)
+            intervals = {[-800 -600],[-200 0],[-1000 -850],[-1000 0]};
+            for i = 1:numel(intervals)
+                bounds = intervals{i};
+                reference = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=3);
+                z = linspace(bounds(1),bounds(2),31).';
+                for acceleration = [0 0.1 -0.1 Inf -Inf]
+                    basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=3,g0=acceleration,gd=-acceleration);
+                    testCase.verifyEqual(basis.boundaryTypes,["D","D"])
+                    testCase.verifyEqual(basis.m_n,reference.m_n)
+                    testCase.verifyEqual(basis.G(z),reference.G(z))
+                    testCase.verifyEqual(basis.G(bounds.'),zeros(2,3))
+                    testCase.verifyEqual(basis.g0,acceleration)
+                    testCase.verifyEqual(basis.gd,-acceleration)
                 end
             end
-            mixed = IMNeutralLabelModesBasis([-1000 -800;-200 0],zDomain=[-1000 0],gd=-Inf,g0=0,nModes=1);
-            testCase.verifyEqual(mixed.boundaryTypes,["D","D";"D","N"])
         end
 
-        function constantLabelKernelIsExplicit(testCase)
-            testCase.verifyError(@() IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],constantLabelPolicy="reject"),"IMNeutralLabelModesBasis:ConstantLabelKernel")
-            basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3,constantLabelPolicy="exclude");
+        function fullyNeutralColumnHasOnlyPositiveSineModes(testCase)
+            basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3);
+            testCase.verifyEqual(basis.localModeNumber,1:3)
             testCase.verifyEqual(basis.m_n,pi*(1:3)/1000,AbsTol=1e-16)
-            z = linspace(-1000,0,1001).';
-            testCase.verifyEqual(trapz(z,basis.G(z)),zeros(1,3),AbsTol=1e-12)
+            testCase.verifyGreaterThan(basis.m_n,zeros(1,3))
+            testCase.verifyEqual(basis.columnLabels,"interval1:mode"+string(1:3))
             testCase.verifyFalse(isprop(basis,"h"))
             testCase.verifyFalse(isprop(basis,"eigenvalues"))
-            % A nonzero surface acceleration removes the constant kernel.
-            fixed = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],g0=9.81,nModes=1);
-            testCase.verifyEqual(fixed.boundaryTypes,["N","D"])
+            testCase.verifyFalse(isprop(basis,"constantLabelPolicy"))
         end
 
-        function constantLabelIsAutomaticAndDoesNotConsumeCount(testCase)
-            basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=0);
+        function zeroCountsReturnEmptyColumnsAndBroadcast(testCase)
             z = linspace(-1000,0,17).';
-            testCase.verifyEqual(basis.constantLabelPolicy,"include")
-            testCase.verifyEqual(basis.normalization,"depthRMSG")
-            testCase.verifyEqual(basis.nModes,0)
-            testCase.verifyEqual(basis.intervalIndex,1)
-            testCase.verifyEqual(basis.localModeNumber,0)
-            testCase.verifyEqual(basis.columnLabels,"interval1:mode0")
-            testCase.verifyEqual(basis.m_n,0)
-            testCase.verifyEqual(basis.G(z),ones(size(z)))
-            testCase.verifyEqual(basis.Gz(z),zeros(size(z)))
-            testCase.verifyEqual(basis.Gzz(z),zeros(size(z)))
-            testCase.verifyEqual(basis.APV(z),zeros(size(z)))
-            testCase.verifyEqual(basis.gramMatrix(),1)
-            testCase.verifyEqual(basis.gramMatrix(variable="APV"),0)
-            testCase.verifyError(@() basis.projectionOnGrid(z,ones(size(z))),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            for intervals = {[-1000 0],[-1000 -800;-200 0]}
+                basis = IMNeutralLabelModesBasis(intervals{1},zDomain=[-1000 0],nModes=0);
+                testCase.verifyEqual(basis.normalization,"depthRMSG")
+                testCase.verifyEqual(basis.nModes,zeros(1,size(intervals{1},1)))
+                testCase.verifyEmpty(basis.intervalIndex)
+                testCase.verifyEmpty(basis.localModeNumber)
+                testCase.verifyEmpty(basis.columnLabels)
+                testCase.verifyEmpty(basis.m_n)
+                testCase.verifySize(basis.G(z),[numel(z) 0])
+                testCase.verifySize(basis.Gz(z),[numel(z) 0])
+                testCase.verifySize(basis.Gzz(z),[numel(z) 0])
+                testCase.verifySize(basis.APV(z),[numel(z) 0])
+                testCase.verifyEqual(basis.gramMatrix(),zeros(0))
+                testCase.verifyEqual(basis.gramMatrix(variable="APV"),zeros(0))
+                testCase.verifySize(basis.projectionOnGrid(z,ones(size(z))).forwardMatrix,[0 numel(z)])
+            end
             regular = IMNeutralLabelModesBasis([-500 -400;-200 0],zDomain=[-1000 0],nModes=[0 2]);
             testCase.verifyEqual(regular.intervalIndex,[2 2])
             testCase.verifyEqual(regular.localModeNumber,[1 2])
+            repeated = IMNeutralLabelModesBasis([-500 -400;-200 0],zDomain=[-1000 0],nModes=2);
+            testCase.verifyEqual(repeated.nModes,[2 2])
+            testCase.verifyEqual(repeated.intervalIndex,[1 1 2 2])
+            testCase.verifyEqual(repeated.localModeNumber,[1 2 1 2])
         end
 
-        function constantLabelPositiveSubsetHasIndependentAPVDual(testCase)
+        function emptyRawCollectionPreservesRepeatedPagesAndProjection(testCase)
+            basis = IMNeutralLabelModesBasis([-1000 -800;-200 0],zDomain=[-1000 0],nModes=0);
+            collection = IMBasisCollection({basis},basisIndex=[1 1]);
+            z = [-1000;-900;-500;-100;0];
+            weights = [50;150;350;400;50];
+            testCase.verifyEmpty(collection.metadata.columnLabels)
+            for derivativeOrder = 0:2
+                values = collection.evaluate(z,variable="G",derivativeOrder=derivativeOrder,pages=[2 1 2],sampleChunkSize=2,pageChunkSize=1);
+                testCase.verifySize(values,[numel(z) 0 3])
+            end
+            testCase.verifySize(collection.evaluate(z,variable="APV",pages=[2 1 2]),[numel(z) 0 3])
+            for page = [2 1 2]
+                projection = collection.projectionOnGrid(z,weights,page=page);
+                testCase.verifySize(projection.forwardMatrix,[0 numel(z)])
+                testCase.verifyEqual(projection.majorantGramMatrix,zeros(0))
+                testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,zeros(0))
+                testCase.verifySize(projection.project(ones(numel(z),2)),[0 2])
+                testCase.verifyEmpty(projection.columnLabels)
+            end
+        end
+
+        function fullyNeutralColumnHasIndependentAPVDual(testCase)
             basis = IMNeutralLabelModesBasis([-1000 0],zDomain=[-1000 0],nModes=3);
-            testCase.verifyEqual(basis.localModeNumber,[0 1 2 3])
-            testCase.verifyEqual(basis.m_n,pi*(0:3)/1000,AbsTol=1e-16)
             [z,w] = intervalMidpoints([-1000 0],101);
-            testCase.verifyError(@() basis.projectionOnGrid(z,w),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
-            testCase.verifyError(@() basis.projectionOnGrid(z,w,columns=[2 1]),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
-            columns = [4 2 3];
+            columns = [3 1 2];
             projection = basis.projectionOnGrid(z,w,columns=columns);
             m = pi*(1:3)/1000;
-            q = basis.f0*sqrt(2)*m.*sin((z+1000)*m);
+            q = -basis.f0*sqrt(2)*m.*cos((z+1000)*m);
             coefficients = [1+2i;-3i;2];
-            testCase.verifyEqual(projection.project(q*coefficients),coefficients(columns-1),AbsTol=2e-13)
+            testCase.verifyEqual(projection.project(q*coefficients),coefficients(columns),AbsTol=2e-13)
             testCase.verifyEqual(projection.targetGramMatrix,eye(3))
             testCase.verifyEqual(projection.majorantGramMatrix,diag(basis.f0^2*1000*basis.m_n(columns).^2))
-            testCase.verifyEqual(projection.provenance.unobservableColumns,1)
+            testCase.verifyEqual(projection.provenance.continuousAPVGramMatrix,projection.majorantGramMatrix)
+            testCase.verifyEqual(projection.provenance.boundaryConditions,"Dirichlet at both interval endpoints")
             testCase.verifyEqual(projection.columnLabels,basis.columnLabels(columns))
             collection = IMBasisCollection({basis});
-            testCase.verifyEqual(collection.evaluate(z,variable="G",columns=1),ones(size(z)))
-            testCase.verifyError(@() collection.projectionOnGrid(z,w,variable="APV"),"IMNeutralLabelModesBasis:UnobservableConstantLabel")
+            testCase.verifyEqual(collection.projectionOnGrid(z,w).project(q*coefficients),coefficients,AbsTol=2e-13)
             selected = collection.projectionOnGrid(z,w,variable="APV",columns=columns);
-            testCase.verifyEqual(selected.project(q*coefficients),coefficients(columns-1),AbsTol=2e-13)
+            testCase.verifyEqual(selected.project(q*coefficients),coefficients(columns),AbsTol=2e-13)
+            testCase.verifyEqual(selected.provenance.continuousAPVGramMatrix,projection.majorantGramMatrix)
         end
 
         function complexAPVProjectionAcrossIntervals(testCase)
@@ -191,7 +202,7 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             testCase.verifyFalse(recipe.isAvailable)
             testCase.verifyFalse(recipe.supportsQuadratic)
             testCase.verifyError(@() IMProjection.fromRecipe(recipe,z,w),"IMProjection:UnavailableProjection")
-            testCase.verifyEqual(collection.assess(z,w).identity.family,"neutralLabelModes")
+            testCase.verifyEqual(collection.assess(z,w).identity.family,"neutralLabel")
         end
 
         function prescribedDualPreservesQuadratureError(testCase)
@@ -214,8 +225,6 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             % Audit the continuous projector with a source outside the retained span.
             intervals = {[-600 -200],[-200 0],[-1000 -700],[-1000 0],[-200 0],[-1000 -700],[-200 0]};
             accelerations = [0 0;0 0;0 0;0 0;-Inf 0;0 0.1;0 0];
-            lowerIsDirichlet = [true true false false true true true];
-            halfInteger = [false true true false false false true];
             rotations = [repmat(7.2921e-5,1,6),1e-12];
             % Independent Gauss-Legendre rule from its Jacobi matrix.
             beta = (1:63)./sqrt(4*(1:63).^2-1);
@@ -225,19 +234,15 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             for i = 1:numel(intervals)
                 bounds = intervals{i};
                 L = diff(bounds);
-                basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=7,g0=accelerations(i,1),gd=accelerations(i,2),constantLabelPolicy="exclude",latitude=-45,rotationRate=rotations(i));
+                basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=7,g0=accelerations(i,1),gd=accelerations(i,2),latitude=-45,rotationRate=rotations(i));
                 z = bounds(1)+L*(nodes+1)/2;
                 f = 2*rotations(i)*sind(-45);
                 source = @(x) 1+0.25i+0.7*x/L+0.4*(x/L).^3;
                 actual = basis.projectionOnGrid(z,L*weights/2).project(f*source(z-bounds(1)));
                 expected = zeros(7,1);
                 for j = 1:7
-                    m = pi*(j-0.5*halfInteger(i))/L;
-                    if lowerIsDirichlet(i)
-                        derivative = @(x) sqrt(2000/L)*m*cos(m*x);
-                    else
-                        derivative = @(x) -sqrt(2000/L)*m*sin(m*x);
-                    end
+                    m = pi*j/L;
+                    derivative = @(x) sqrt(2000/L)*m*cos(m*x);
                     % Cancel f analytically; adaptive integration is independent
                     % of both the basis evaluator and the supplied sample rule.
                     expected(j) = -integral(@(x) derivative(x).*source(x),0,L,AbsTol=1e-12,RelTol=1e-12)/(1000*m^2);
@@ -246,22 +251,41 @@ classdef IMNeutralLabelModesTests < matlab.unittest.TestCase
             end
         end
 
-        function constantAPVHasIndependentEndpointIntegral(testCase)
-            intervals = {[-800 -600],[-200 0],[-1000 -800]};
+        function constantAPVIsOrthogonalOnEveryInterval(testCase)
+            intervals = {[-800 -600],[-200 0],[-1000 -800],[-1000 0]};
             for i = 1:numel(intervals)
                 bounds = intervals{i};
                 basis = IMNeutralLabelModesBasis(bounds,zDomain=[-1000 0],nModes=3);
-                [z,w] = intervalMidpoints(bounds,10001);
-                projection = basis.projectionOnGrid(z,w);
-                endpointG = basis.G(bounds.');
-                expected = -diff(endpointG,1,1).'./(basis.f0*1000*basis.m_n(:).^2);
-                actual = projection.project(ones(size(z)));
-                testCase.verifyEqual(actual,expected,AbsTol=1e-4,RelTol=1e-7)
-                if i == 1
-                    testCase.verifyEqual(actual,zeros(3,1),AbsTol=1e-9)
-                else
-                    testCase.verifyGreaterThan(min(abs(actual)),1e4)
+                [z,w] = intervalMidpoints(bounds,101);
+                testCase.verifyEqual(w.'*basis.APV(z),zeros(1,3),AbsTol=2e-18)
+                actual = basis.projectionOnGrid(z,w).project(ones(size(z)));
+                testCase.verifyEqual(actual,zeros(3,1),AbsTol=2e-9)
+            end
+        end
+
+        function displacementSourceIncludesIntervalEndpointTerms(testCase)
+            % Independently compare the APV dual and the integrated-by-parts
+            % displacement functional, including nonzero endpoint sources.
+            for bounds = {[-800 -600],[-200 0],[-1000 -800],[-1000 0]}
+                L = diff(bounds{1});
+                lower = bounds{1}(1);
+                basis = IMNeutralLabelModesBasis(bounds{1},zDomain=[-1000 0],nModes=3);
+                [z,w] = intervalMidpoints(bounds{1},20001);
+                source = @(x) 1+0.3i+(x-lower)/L+0.4*((x-lower)/L).^3;
+                derivative = (1+1.2*((z-lower)/L).^2)/L;
+                actual = basis.projectionOnGrid(z,w).project(-basis.f0*derivative);
+                expected = zeros(3,1);
+                for j = 1:3
+                    m = j*pi/L;
+                    G = @(x) sqrt(2000/L)*sin(m*(x-lower));
+                    volume = integral(@(x) G(x).*source(x),bounds{1}(1),bounds{1}(2),AbsTol=1e-12)/1000;
+                    traces = sqrt(2000/L)*m*[1 (-1)^j].*source(bounds{1});
+                    expected(j) = volume+diff(traces)/(1000*m^2);
                 end
+                testCase.verifyEqual(actual,expected,AbsTol=5e-10)
+                % Affine vertical displacement has constant APV and no
+                % neutral-label component, including free-surface stretching.
+                testCase.verifyEqual(basis.projectionOnGrid(z,w).project((-basis.f0/1000)*ones(size(z))),zeros(3,1),AbsTol=5e-15)
             end
         end
 

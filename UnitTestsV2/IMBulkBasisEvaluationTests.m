@@ -77,8 +77,8 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             scalar = solver.solveEVP(scalarEVP,nModes=3);
             collection = IMBasisCollection({scalar});
             z = linspace(-1,0,11).';
-            testCase.verifyEqual(collection.evaluate(z,sampleChunkSize=3),scalar.u(z),AbsTol=1e-13);
-            testCase.verifyEqual(collection.evaluate(z,derivativeOrder=1,sampleChunkSize=3),scalar.uz(z),AbsTol=1e-12);
+            testCase.verifyEqual(collection.evaluate(z,variable="u",sampleChunkSize=3),scalar.u(z),AbsTol=1e-13);
+            testCase.verifyEqual(collection.evaluate(z,variable="u",derivativeOrder=1,sampleChunkSize=3),scalar.uz(z),AbsTol=1e-12);
             N2 = @(z) 2.5e-5*ones(size(z));
             evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1000 0]);
             solution = IMConstantStratificationSolution(rotationRate=0,N0=5e-3,zDomain=[-1000 0]);
@@ -130,8 +130,8 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
         function invalidRequestsFailBeforeCallingConsumer(testCase)
             collection = testCase.waveCollection();
             callbacks = 0;
-            testCase.verifyError(@() collection.evaluateChunks([-100;1],@consume,sampleChunkSize=1),"IMBasisCollection:OutsideDomain");
-            testCase.verifyError(@() collection.evaluateChunks(-100,@consume,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyError(@() collection.evaluateChunks([-100;1],@consume,variable="F",sampleChunkSize=1),"IMBasisCollection:OutsideDomain");
+            testCase.verifyError(@() collection.evaluateChunks(-100,@consume,variable="F",derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
             testCase.verifyEqual(callbacks,0);
             function consume(varargin)
                 callbacks = callbacks+1;

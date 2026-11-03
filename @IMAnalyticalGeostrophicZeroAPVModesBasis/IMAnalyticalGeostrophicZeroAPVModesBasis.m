@@ -150,6 +150,30 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         metadata
     end
 
+    properties (Dependent, SetAccess = private)
+        % Number of retained endpoint-response columns per page.
+        % - Topic: Inspect geostrophic zero-APV modes
+        nColumns
+        % Scientific family identifier.
+        % - Topic: Inspect geostrophic zero-APV modes
+        family
+        % Scientific labels in the current boundary coordinates.
+        % - Topic: Inspect geostrophic zero-APV modes
+        columnLabels
+        % Branch identities in current column order.
+        % - Topic: Inspect geostrophic zero-APV modes
+        modeInfo
+        % Zero physical frequencies of geostrophic endpoint responses.
+        % - Topic: Inspect geostrophic zero-APV modes
+        frequency
+        % Current canonical or rotated normalization convention.
+        % - Topic: Inspect geostrophic zero-APV modes
+        normalization
+        % Supported profile and derivative channels.
+        % - Topic: Inspect geostrophic zero-APV modes
+        capabilities
+    end
+
     properties (Access = private)
         canonicalFFunction
         canonicalGFunction
@@ -160,10 +184,55 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
     end
 
     methods (Hidden)
+        function self = withProblem(self,problem)
+            % Retain the authoritative descriptor after exact source dispatch.
+            arguments
+                self IMAnalyticalGeostrophicZeroAPVModesBasis
+                problem (1,1) IMGeostrophicZeroAPVModes
+            end
+            if ~isequal(problem.zDomain,self.zDomain) || ~isequal(problem.k,self.k) || ~isequal(problem.endpoints,self.endpoints) || problem.g ~= self.g || problem.f0 ~= self.f0 || problem.surfaceBoundary ~= self.surfaceBoundary
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:IncompatibleProblem","The descriptor must represent the same exact physical endpoint problem.");
+            end
+            self.problem = problem;
+        end
+
         recipe = projectionRecipe(self,options)
     end
 
     methods
+        function value = get.nColumns(self)
+            value = numel(self.endpoints);
+        end
+        function value = get.family(~)
+            value = "geostrophicZeroAPV";
+        end
+        function value = get.columnLabels(self)
+            if self.rotationName == "boundaryNormalized"
+                value = reshape(string(self.endpoints),1,[]);
+            else
+                value = self.rotationName+string(1:self.nColumns);
+            end
+        end
+        function value = get.modeInfo(self)
+            branch = repmat("endpointResponse",self.nColumns,1);
+            if self.rotationName ~= "boundaryNormalized", branch(:) = "endpointRotation"; end
+            value = table(self.columnLabels(:),branch,(1:self.nColumns).',VariableNames=["columnLabel","branch","branchIndex"]);
+        end
+        function value = get.frequency(self)
+            value = zeros(1,self.nColumns);
+        end
+        function value = get.normalization(self)
+            value = self.normalizationConvention;
+        end
+        function value = get.capabilities(~)
+            value = ["F","Fz","G","Gz","Gzz"];
+        end
+
+        values = evaluate(self,z,variable,derivativeOrder,options)
+        values = Fz(self,z,options)
+        values = Gz(self,z,options)
+        values = Gzz(self,z,options)
+
         function self = IMAnalyticalGeostrophicZeroAPVModesBasis(options)
             % Create an exact canonical boundary-normalized basis.
             %

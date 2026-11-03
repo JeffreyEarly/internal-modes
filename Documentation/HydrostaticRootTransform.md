@@ -1,9 +1,9 @@
 # Hydrostatic mode-root transform
 
-`IMInternalModesDiscreteTransform.hydrostaticRoot` builds the vertical transform for the rigid-lid hydrostatic problem with non-active boundaries: a rigid lid and rigid bottom, with no independent boundary displacement. It returns the final sampling grid, aligned F/G operators, retained-band assessment and reusable continuous `IMModeBasis` in one call. `IMModes` continues to create continuous bases; the transform factory coordinates the subsequent sampling and qualification steps.
+`IMInternalModesDiscreteTransform.hydrostaticRoot` builds the vertical transform for the rigid-lid hydrostatic problem with non-active boundaries: a rigid lid and rigid bottom, with no independent boundary displacement. It returns the final sampling grid, aligned F/G operators, retained-band assessment and reusable continuous `IMHydrostaticModesBasis` in one call. Family problems and solvers create continuous bases; the transform factory coordinates the subsequent sampling and qualification steps.
 
 ```matlab
-background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
+background = IMBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
 [transform,grid,assessment,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
 a = transform.transformForward(u,variable="F");   % coefficients of F0..Fr
 u = transform.transformBack(a,variable="F");
@@ -16,7 +16,7 @@ One G family is solved and reused:
 
 $$-G_j''=\frac{N^2}{g h_j}G_j,\qquad G_j(z_b)=G_j(z_s)=0,\qquad F_j=h_jG_j',$$
 
-using the common `depthRMSF` normalization, $$\int F_iF_j\,dz=D\delta_{ij}$$ and $$\int (N^2/g)G_iG_j\,dz=(D/h_j)\delta_{ij}$$. All fields of each internal column use the same scale; this changes coefficient units relative to lower-level legacy geostrophic normalization, while normalized Gram errors and retained-band decisions are invariant under consistent rescaling. The analytical barotropic sector $$F_0=1$$, $$G_0=0$$ is appended explicitly. The aligned family is $$F_0,\ldots,F_r$$ and $$G_0,\ldots,G_r$$: `transform.modeNumber` is `0:r`, `h(1)` is `Inf`, and $$G_0$$ is inactive, so its forward row is zero. This relation, $$F=hG'$$, differs from the wave creation layer's $$F=DG'$$.
+using the common `depthRMSF` normalization, $$\int F_iF_j\,dz=D\delta_{ij}$$ and $$\int (N^2/g)G_iG_j\,dz=(D/h_j)\delta_{ij}$$. All fields of each internal column use the same scale; this changes coefficient units relative to lower-level legacy geostrophic normalization, while normalized Gram errors and retained-band decisions are invariant under consistent rescaling. The analytical barotropic sector $$F_0=1$$, $$G_0=0$$ is appended explicitly. The aligned family is $$F_0,\ldots,F_r$$ and $$G_0,\ldots,G_r$$: `transform.modeNumber` is `0:r`, `h(1)` is `Inf`, and $$G_0$$ is inactive, so its forward row is zero. This relation, $$F=hG'$$, differs from the wave family's $$F=DG'$$.
 
 Before any fitting, the retained candidates, the omitted-check modes and the generating mode are compared with an independent solve at `refinementFactor` (default 1.5) times the resolution. Equivalent depths, F and G shapes and the root points must agree within `convergenceTolerance` (default 1e-6). Without a supplied solver the spectral resolution starts at max(128, 4 Nz) and doubles for at most five resolution levels, capped at 2048 unless the starting resolution is larger. At each level WKB is attempted first and physical z provides a fallback for strongly stretched backgrounds. Root-count failures are recorded as underresolved attempts rather than aborting the search. A supplied `IMSolverSpectral` is used as given with no coordinate fallback; failure reports the tested coordinate and resolution. The evidence is in `assessment.convergence`.
 
@@ -37,11 +37,12 @@ The fixed-grid bridge currently supports rigid-lid hydrostatic F/G families only
 To construct a continuous family and obtain candidate points independently:
 
 ```matlab
-family = IMModes.hydrostaticFModes(background,solver=IMSolverSpectral(nEVP=256,coordinateKind="z"),nInternalModes=32);
+solver = IMSolverSpectral(nEVP=256,coordinateKind="z");
+family = solver.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=33); % F0 plus 32 internal columns
 [zRoots,rootDesign] = family.modeRootPoints(32);
 ```
 
-`modeRootPoints` requires the generating mode to be present and returns points, without another solve or a weight fit. `IMVerticalGrid` holds the final physical points, quadrature weights and construction provenance. The solver's numerical coordinate grid remains independent. `nInternalModes=0` is a valid barotropic-only retained band; its G channel has no active modes.
+`modeRootPoints` requires the generating mode to be present and returns points, without another solve or a weight fit. `IMVerticalGrid` holds the final physical points, quadrature weights and construction provenance. The solver's numerical coordinate grid remains independent. For continuous construction, `nModes=1` retains only the barotropic column, while `nModes=0` returns an empty basis. The root factory's separate `nInternalModes=0` option retains a barotropic-only transform band; its G channel has no active modes.
 
 ## Points and weights
 

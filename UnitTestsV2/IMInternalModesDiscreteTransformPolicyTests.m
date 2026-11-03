@@ -146,10 +146,12 @@ classdef IMInternalModesDiscreteTransformPolicyTests < matlab.unittest.TestCase
             testCase.verifyEqual(length(transform.z),6)
             testCase.verifyEqual(assessment.requestedPointCount,6)
             testCase.verifyEqual(assessment.actualPointCount,6)
-            testCase.verifyEqual(assessment.candidateModeCount,4)
-            testCase.verifyEqual(assessment.weightFit.transform.modeNumber,0:3,AbsTol=0)
-            testCase.verifyError(@() testCase.cosineBasis.discreteTransform(nPoints=2,variables=["F","G"]), ...
-                "IMBasisSet:UnattainableDiscretePointCount")
+            testCase.verifyEqual(assessment.candidateModeCount,5)
+            testCase.verifyEqual(assessment.weightFit.transform.modeNumber,0:4,AbsTol=0)
+            endpointTransform = testCase.cosineBasis.discreteTransform(nPoints=2,variables=["F","G"]);
+            testCase.verifyEqual(endpointTransform.z,testCase.cosineBasis.zDomain.',AbsTol=0)
+            testCase.verifyEqual(endpointTransform.modeNumber,0,AbsTol=0)
+            testCase.verifyEqual(endpointTransform.activeModeMask(variable="G"),false)
             testCase.verifyError(@() testCase.cosineBasis.discreteTransform(z=testCase.z,weights=testCase.weights,nModes=13,variables=["F","G"],gramTolerance=10), ...
                 "IMBasisSet:StrictDiscreteModeCountRejected")
         end

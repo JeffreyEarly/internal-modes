@@ -1,104 +1,96 @@
 classdef (Hidden, Sealed) IMModeSelection
     % Select scientific ladders separately from finite exceptional sectors.
     methods (Static)
-        function selection = select(evp,lambda,request,options)
+        function selection = selectCounted(evp,lambda,nModes,branch,options)
+            % Select an exact total inventory, or explicit counted branches.
             arguments (Input)
-                evp IMInternalModes
+                evp IMEigenvalueProblem
                 lambda (:,1) double {mustBeReal,mustBeFinite}
-                request (1,1) struct
+                nModes (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite}
+                branch (1,:) string = ""
                 options.solver = []
                 options.A double = []
                 options.diagnostics (1,1) struct = struct()
                 options.zeroIndices (1,:) double = []
             end
+            explicit = ~(isscalar(branch) && ismember(branch,["","all"]));
+            if (~explicit && ~isscalar(nModes)) || (explicit && numel(branch) ~= numel(nModes)) || numel(unique(branch)) ~= numel(branch)
+                error("IMSolver:InvalidModeRequest","Use one total nModes count, or one count for each distinct explicitly requested branch.");
+            end
             diagnostics = options.diagnostics;
-            kind = request.kind;
-            if ismember(kind,["wave","inertial","frequency"])
+            wave = isa(evp,"IMInternalModes") && ismember(string(evp.name),["waveModesAtWavenumber","waveModesAtFrequency"]);
+            if wave
                 positive = find(lambda > 0);
-                [~,order] = sort(lambda(positive));
-                positive = positive(order);
+                [~,order] = sort(lambda(positive)); positive = positive(order);
                 negative = find(lambda < 0);
-                [~,order] = sort(lambda(negative),"descend");
-                negative = negative(order);
-                if kind == "frequency"
-                    surface = zeros(0,1);
-                    if request.hasSurface
-                        if isempty(positive), error("IMModes:MissingSpecialMode","The fixed-frequency surface mode was not resolved."); end
-                        surface = positive(1);
+                [~,order] = sort(lambda(negative),"descend"); negative = negative(order);
+                surface = zeros(0,1);
+                if evp.surfaceBoundary.isEigenvalueDependent() && ~isempty(positive)
+                    surface = positive(1); positive(1) = [];
+                end
+                if evp.name == "waveModesAtWavenumber"
+                    k = evp.parameters.k;
+                    if k > 0
+                        negative = negative(evp.f0^2+evp.g*k^2./lambda(negative) > 0);
                     end
-                    numerator = evp.parameters.omega^2-evp.f0^2;
-                    k2 = numerator*lambda/evp.g;
+                    index = [surface;positive;negative];
+                    branches = [repmat("surface",numel(surface),1);repmat("internal",numel(positive),1);repmat("subinertial",numel(negative),1)];
+                    numbers = [ones(numel(surface),1);(1:numel(positive))';(1:numel(negative))'];
+                else
+                    k2 = (evp.parameters.omega^2-evp.f0^2)*lambda/evp.g;
                     propagating = find(k2 > 0 & ~ismember((1:numel(lambda))',surface));
                     evanescent = find(k2 < 0 & ~ismember((1:numel(lambda))',surface));
                     [~,order] = sort(abs(lambda(propagating))); propagating = propagating(order);
                     [~,order] = sort(abs(lambda(evanescent))); evanescent = evanescent(order);
-                    p = IMModeSelection.take(propagating,request.nPropagatingModes,"propagating");
-                    e = IMModeSelection.take(evanescent,request.nEvanescentModes,"evanescent");
-                    index = [surface(:);p(:);e(:)];
-                    branch = [repmat("surface",numel(surface),1);repmat("propagating",numel(p),1);repmat("evanescent",numel(e),1)];
-                    number = [ones(numel(surface),1);(1:numel(p))';(1:numel(e))'];
-                else
-                    surface = zeros(0,1);
-                    if request.hasSurface
-                        if isempty(positive)
-                            error("IMModes:MissingSpecialMode","The free-surface mode was not resolved. Increase the solver resolution.");
-                        end
-                        surface = positive(1); positive(1) = [];
-                    end
-                    if kind == "wave"
-                        k = evp.parameters.k;
-                        frequencySquared = evp.f0^2+evp.g*k^2./lambda(negative);
-                        negative = negative(frequencySquared > 0);
-                    end
-                    p = IMModeSelection.take(positive,request.nPositiveModes,"internal/positive-depth");
-                    n = IMModeSelection.take(negative,request.nNegativeModes,"subinertial/negative-depth");
-                    index = [surface(:);p(:);n(:)];
-                    names = ["surface","internal","subinertial"];
-                    if kind == "inertial", names = ["external","positiveDepth","negativeDepth"]; end
-                    branch = [repmat(names(1),numel(surface),1);repmat(names(2),numel(p),1);repmat(names(3),numel(n),1)];
-                    number = [ones(numel(surface),1);(1:numel(p))';(1:numel(n))'];
+                    index = [surface;propagating;evanescent];
+                    branches = [repmat("surface",numel(surface),1);repmat("propagating",numel(propagating),1);repmat("evanescent",numel(evanescent),1)];
+                    numbers = [ones(numel(surface),1);(1:numel(propagating))';(1:numel(evanescent))'];
                 end
                 labels = 1:numel(index);
                 labels(lambda(index)<0) = -1:-1:-nnz(lambda(index)<0);
             else
-                if ~isempty(options.solver)
+                if ~isempty(options.solver) && ~isempty(lambda)
                     base = evp.selectModes(lambda,max(1,numel(lambda)),options.solver,options.A,diagnostics=diagnostics);
-                    candidates = base.sortIndex;
+                    index = base.sortIndex;
+                    labels = base.modeNumber;
                     diagnostics = base.modeSelectionDiagnostics;
-                    zero = candidates(base.modeNumber == 0);
                 else
-                    candidates = (1:numel(lambda))';
+                    negative = find(lambda < 0); [~,order] = sort(lambda(negative)); negative = negative(order);
                     zero = options.zeroIndices(:);
+                    positive = find(lambda > 0 & ~ismember((1:numel(lambda))',zero));
+                    [~,order] = sort(lambda(positive)); positive = positive(order);
+                    index = [negative;zero;positive];
+                    labels = [-1:-1:-numel(negative),zeros(1,numel(zero)),1:numel(positive)];
                 end
-                negative = candidates(lambda(candidates)<0 & ~ismember(candidates,zero));
-                [~,order] = sort(lambda(negative)); negative = negative(order);
-                positive = candidates(lambda(candidates)>0 & ~ismember(candidates,zero));
-                [~,order] = sort(lambda(positive)); positive = positive(order);
-                surface = zeros(0,1);
-                if kind == "hydrostaticG" && request.hasSurface
-                    if isempty(positive), error("IMModes:MissingSpecialMode","The hydrostatic surface mode was not resolved."); end
-                    surface = positive(1); positive(1) = [];
+                branches = repmat("positive",numel(index),1);
+                branches(labels < 0) = "negative";
+                branches(labels == 0) = "zeroEigenvalue";
+                if isa(evp,"IMInternalModes") && evp.modeFamily == "meanDensityAnomaly"
+                    branches(labels == 0) = "constant";
                 end
-                p = IMModeSelection.take(positive,request.nPositiveModes,"positive/internal");
-                index = [negative(:);zero(:);surface(:);p(:)];
-                zeroName = "zeroEigenvalue";
-                if kind == "mda", zeroName = "constant"; end
-                if kind == "hydrostaticF", zeroName = "barotropic"; end
-                branch = [repmat("negative",numel(negative),1);repmat(zeroName,numel(zero),1);repmat("surface",numel(surface),1);repmat("positive",numel(p),1)];
-                number = [(1:numel(negative))';zeros(numel(zero),1);ones(numel(surface),1);(1:numel(p))'];
-                labels = [-1:-1:-numel(negative),zeros(1,numel(zero)),1:(numel(surface)+numel(p))];
+                if isa(evp,"IMInternalModes") && evp.name == "hydrostaticFModes"
+                    branches(labels == 0) = "barotropic";
+                end
+                numbers = abs(labels(:));
             end
-            columnLabel = branch+":"+string(number);
-            info = table(columnLabel,branch,number,lambda(index),VariableNames=["columnLabel","branch","branchIndex","eigenvalue"]);
-            selection = struct("sortIndex",index(:),"modeNumber",labels,"modeSelectionDiagnostics",diagnostics,"modeInfo",info);
-        end
-    end
-    methods (Static, Access = private)
-        function selected = take(candidates,count,branch)
-            if numel(candidates) < count
-                error("IMModes:InsufficientModes","Requested %d %s modes, but only %d were available. Increase solver resolution or revise the request.",count,branch,numel(candidates));
+            inventory = table(branches+":"+string(numbers),branches,numbers,lambda(index),VariableNames=["columnLabel","branch","branchIndex","eigenvalue"]);
+            if explicit
+                positions = zeros(0,1);
+                for j = 1:numel(branch)
+                    available = find(inventory.branch == branch(j));
+                    if numel(available) < nModes(j)
+                        error("IMSolver:InsufficientModes","Requested %d %s columns, but only %d are available. Increase resolution or revise the request.",nModes(j),branch(j),numel(available));
+                    end
+                    positions = [positions;available(1:nModes(j))]; %#ok<AGROW>
+                end
+            else
+                if numel(index) < nModes
+                    error("IMSolver:InsufficientModes","Requested %d total columns, but only %d are available. Increase resolution or revise the request.",nModes,numel(index));
+                end
+                positions = (1:nModes)';
             end
-            selected = candidates(1:count);
+            selection = struct("sortIndex",index(positions),"modeNumber",reshape(labels(positions),1,[]),"modeSelectionDiagnostics",diagnostics,"modeInfo",inventory(positions,:));
         end
+
     end
 end

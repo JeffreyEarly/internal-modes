@@ -14,7 +14,12 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
             ordinary = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
             smoothed = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=65).configuredForEVP(evp);
             testCase.verifyEqual(smoothed.zNative,ordinary.zNative,AbsTol=2e-9);
-            testCase.verifyEqual(smoothed.qReference,ordinary.qReference,RelTol=2e-11);
+            % Constant coordinates give the same physical grid while their
+            % coordinate scales retain distinct N and bandwidth definitions.
+            horizontalCoriolis = 2*evp.rotationRate*cosd(evp.latitude);
+            expectedBandwidth = sqrt(hypot(N2(smoothed.zReference)+horizontalCoriolis^2-evp.f0^2,2*evp.f0*horizontalCoriolis));
+            testCase.verifyEqual(ordinary.qReference,sqrt(N2(ordinary.zReference)),RelTol=2e-11);
+            testCase.verifyEqual(smoothed.qReference,expectedBandwidth,RelTol=2e-11);
             testCase.verifyEqual(smoothed.N2(smoothed.zReference),N2(smoothed.zReference));
             basis = smoothed.solveEVP(evp,nModes=4);
             expectedH = 2.5e-5*1000^2./(evp.g*pi^2*(1:4).^2);

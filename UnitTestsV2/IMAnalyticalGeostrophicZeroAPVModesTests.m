@@ -209,7 +209,10 @@ classdef IMAnalyticalGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             constant = IMConstantStratificationSolution(rotationRate=0,latitude=33);
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
             constant = IMConstantStratificationSolution(rotationRate=1/(2*sind(33)),latitude=33);
-            testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
+            empty = constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=strings(1,0));
+            testCase.verifyEqual(empty.nColumns,0)
+            testCase.verifySize(empty.F([-1;0]),[2 0])
+            testCase.verifySize(empty.G([-1;0]),[2 0])
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
             testCase.verifyError(@() constant.geostrophicZeroAPVModesAtWavenumber(1,surfaceBoundary="other"),"MATLAB:validators:mustBeMember")

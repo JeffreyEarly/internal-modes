@@ -12,12 +12,17 @@ function evaluateChunks(self,z,consumer,options)
 % to callbacks and the built-in evaluation paths, not arbitrary user code.
 % Neutral-label G derivatives are interval-interior derivatives with inside
 % endpoint traces. In particular, order 2 omits distributional interface terms.
+% A normalization override applies to every selected basis for this call.
+% Omit it to preserve each basis's stored normalization. Fixed endpoint
+% conventions accept only their existing normalization; use an explicit
+% boundary-coordinate rotation to change their scientific columns.
 %
 % - Topic: Evaluate collections
 % - Parameter z: physical coordinate column
 % - Parameter consumer: callback receiving values, rows, positions, and page IDs
-% - Parameter options.variable: scalar variable name, first available by default
+% - Parameter options.variable: required scalar variable name
 % - Parameter options.derivativeOrder: supported vertical derivative order
+% - Parameter options.normalization: optional common normalization override
 % - Parameter options.pages: requested collection pages, empty means all
 % - Parameter options.columns: explicit scientific column indices
 % - Parameter options.sampleChunkSize: maximum coordinate rows per callback
@@ -28,6 +33,7 @@ arguments (Input)
     consumer (1,1) function_handle
     options.variable (1,1) string = ""
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+    options.normalization = []
     options.pages (1,:) double {mustBeInteger,mustBePositive} = []
     options.columns (1,:) double {mustBeInteger,mustBePositive} = []
     options.sampleChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 1024
@@ -41,7 +47,7 @@ elseif any(pages > numel(self.basisIndex))
 end
 variable = options.variable;
 if variable == ""
-    variable = self.metadata(self.basisIndex(pages(1))).variables(1);
+    error("IMBasisCollection:MissingVariable","Supply variable explicitly, such as variable=""G"". Inspect metadata.variables for supported channels.");
 end
 columnCounts = arrayfun(@(i) numel(self.metadata(self.basisIndex(i)).columnLabels),pages);
 columns = options.columns;
@@ -53,7 +59,9 @@ if isempty(columns)
 elseif any(columns > min(columnCounts))
     error("IMBasisCollection:InvalidColumn","columns must exist on every selected page. Evaluate differing column counts separately.");
 end
-for iBasis = unique(self.basisIndex(pages),"stable")
+indices = unique(self.basisIndex(pages),"stable");
+factors = cell(size(self.bases));
+for iBasis = indices
     entry = self.metadata(iBasis);
     iVariable = find(entry.variables == variable,1);
     if isempty(iVariable)
@@ -65,9 +73,26 @@ for iBasis = unique(self.basisIndex(pages),"stable")
     if any(z < entry.zDomain(1) | z > entry.zDomain(2))
         error("IMBasisCollection:OutsideDomain","Evaluation coordinates must lie inside every selected basis domain.");
     end
+    basis = self.bases{iBasis};
+    if entry.columnKind == "endpoint"
+        if ~isempty(options.normalization) && (~isscalar(string(options.normalization)) || string(options.normalization) ~= string(basis.normalizationConvention))
+            error("IMBasisCollection:UnsupportedNormalization","Basis %d has fixed normalization %s. Change endpoint coordinates with an explicit basis rotation before constructing the collection.",iBasis,basis.normalizationConvention);
+        end
+    else
+        if isempty(options.normalization)
+            normalization = basis.normalizationFactors();
+        else
+            normalization = basis.normalizationFactors(options.normalization);
+        end
+        factors{iBasis} = normalization(columns);
+    end
 end
 % Normalize each immutable stored basis once, including repeated requests.
-[groups,basisGroup,factors] = prepareNativeGroups(self,unique(self.basisIndex(pages),"stable"),columns,variable,options.derivativeOrder);
+[groups,basisGroup] = prepareNativeGroups(self,indices,variable,options.derivativeOrder);
+normalizationArguments = {};
+if ~isempty(options.normalization)
+    normalizationArguments = namedargs2cell(struct(normalization=options.normalization));
+end
 % Sample chunks are outermost so evaluation matrices can serve every page
 % chunk without retaining operators for the complete physical grid.
 for firstRow = 1:options.sampleChunkSize:numel(z)
@@ -118,32 +143,12 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
             basis = self.bases{iBasis};
             entry = self.metadata(iBasis);
             selected = find(self.basisIndex(chunkPages) == iBasis);
-            if isa(basis,"IMModeBasis")
-                sampled = basis.evaluate(zChunk,variable,options.derivativeOrder);
-                if size(sampled,2) ~= numel(entry.columnLabels)
-                    error("IMBasisCollection:InvalidEvaluationShape","Basis evaluation must return one column per scientific label.");
-                end
-                sampled = repmat(sampled(:,columns),1,1,numel(selected));
-            elseif entry.columnKind == "endpoint"
+            if entry.columnKind == "endpoint"
                 sourcePages = self.sourcePage(chunkPages(selected));
-                if options.derivativeOrder == 0
-                    sampled = basis.(variable)(zChunk,pages=sourcePages);
-                else
-                    sampled = -(basis.N2(zChunk)./basis.g).*basis.G(zChunk,pages=sourcePages);
-                end
+                sampled = basis.evaluate(zChunk,normalizationArguments{:},variable=variable,derivativeOrder=options.derivativeOrder,pages=sourcePages);
                 sampled = sampled(:,columns,:);
             else
-                if isa(basis,"IMNeutralLabelModesBasis") && options.derivativeOrder > 0
-                    if options.derivativeOrder == 1
-                        sampled = basis.Gz(zChunk);
-                    else
-                        sampled = basis.Gzz(zChunk);
-                    end
-                elseif options.derivativeOrder == 0
-                    sampled = basis.(variable)(zChunk);
-                else
-                    sampled = basis.uz(zChunk);
-                end
+                sampled = basis.evaluate(zChunk,normalizationArguments{:},variable=variable,derivativeOrder=options.derivativeOrder);
                 if size(sampled,2) ~= numel(entry.columnLabels)
                     error("IMBasisCollection:InvalidEvaluationShape","Basis evaluation must return one column per scientific label.");
                 end
@@ -159,10 +164,9 @@ for firstRow = 1:options.sampleChunkSize:numel(z)
 end
 end
 
-function [groups,basisGroup,factors] = prepareNativeGroups(self,indices,columns,variable,derivativeOrder)
+function [groups,basisGroup] = prepareNativeGroups(self,indices,variable,derivativeOrder)
 groups = {};
 basisGroup = zeros(1,numel(self.bases));
-factors = cell(size(self.bases));
 for iBasis = indices
     basis = self.bases{iBasis};
     if ~ismember(string(class(basis)),["IMBasisSet","IMInternalModesBasis"]) || ~strcmp(class(basis.solver),'IMSolverSpectral')
@@ -170,10 +174,11 @@ for iBasis = indices
     end
     nativeOrder = derivativeOrder;
     if isa(basis,"IMInternalModesBasis") && variable ~= string(basis.evp.formulation)
+        if derivativeOrder > 0
+            continue
+        end
         nativeOrder = 1;
     end
-    normalization = basis.normalizationFactors();
-    factors{iBasis} = normalization(columns);
     nPolynomials = size(basis.nativeModes,1);
     iGroup = find(cellfun(@(g) g.derivativeOrder == nativeOrder && g.nPolynomials == nPolynomials && isequal(g.solver,basis.solver),groups),1);
     if isempty(iGroup)

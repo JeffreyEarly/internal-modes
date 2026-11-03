@@ -34,6 +34,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
                     solver = IMSolverSpectral(nEVP=128,coordinateKind=coordinateKinds(iCoordinate));
                     basisSet = solver.solveEVP(evps(iEVP),nModes=12);
                     [transform,assessment] = basisSet.discreteTransform(nPoints=8);
+                    maximumCandidateCount = 6 + double(isa(basisSet,"IMHydrostaticModesBasis"));
 
                     testCase.verifyClass(assessment,"IMInternalModesDiscreteTransformAssessment")
                     testCase.verifyEqual(assessment.requestedPointCount,8)
@@ -41,11 +42,11 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
                     testCase.verifyEqual(length(transform.z),8)
                     testCase.verifyEqual(transform.z(1),zDomain(1),AbsTol=0)
                     testCase.verifyEqual(transform.z(end),zDomain(2),AbsTol=0)
-                    testCase.verifyEqual(max(assessment.certificationSearch.modeCount),6)
+                    testCase.verifyEqual(max(assessment.certificationSearch.modeCount),maximumCandidateCount)
                     testCase.verifyEqual(assessment.candidateModeCount,assessment.retainedModeCount)
                     testCase.verifyEqual(assessment.weightFitModeCount,assessment.retainedModeCount)
                     testCase.verifyGreaterThanOrEqual(assessment.retainedModeCount,1)
-                    testCase.verifyLessThanOrEqual(assessment.retainedModeCount,6)
+                    testCase.verifyLessThanOrEqual(assessment.retainedModeCount,maximumCandidateCount)
                     testCase.verifyEqual(assessment.gramPolicy.tolerance,1e-2,AbsTol=0)
                     testCase.verifyLessThanOrEqual(assessment.prefixDiagnostics.gramError(assessment.retainedModeCount),1e-2)
                     testCase.verifyEqual(assessment.gridDesign.kind,"modeRoot")
@@ -75,7 +76,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
                 testCase.verifyEqual(assessment.transform.forwardMatrix(variable=variable),transform.forwardMatrix(variable=variable),AbsTol=0)
                 channelErrors(iVariable) = candidate.relativeGramOperatorError(variable=variable);
                 variableDiagnostics = assessment.variablePrefixDiagnostics(variable=variable);
-                testCase.verifyEqual(variableDiagnostics.roundTripError(end),candidate.roundTripError(variable=variable),AbsTol=0)
+                testCase.verifyEqual(variableDiagnostics.roundTripError(end),candidate.roundTripError(variable=variable),AbsTol=10*eps)
                 testCase.verifyEqual(variableDiagnostics.inverseMatrixConditionNumber(end),candidate.inverseMatrixConditionNumber(variable=variable),AbsTol=0)
                 testCase.verifyEqual(variableDiagnostics.gramConditionNumber(end),candidate.gramConditionNumber(variable=variable),AbsTol=0)
             end
@@ -95,9 +96,10 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             testCase.verifyEmpty(assessment.certificationSearch)
             testCase.verifyEqual(assessment.gridDesign.kind,"modeRoot")
             testCase.verifyEqual(assessment.gridDesign.sourceFamily,"hydrostatic")
-            testCase.verifyEqual(assessment.gridDesign.generatingVariable,"F")
+            testCase.verifyEqual(assessment.gridDesign.generatingVariable,"G")
             testCase.verifyEqual(assessment.gridDesign.generatingModeIndex,7)
-            testCase.verifySubstring(assessment.gridDesign.interpretationForG,"G-extrema-like")
+            testCase.verifyEqual(assessment.gridDesign.generatingModeNumber,6)
+            testCase.verifySubstring(assessment.gridDesign.interpretationForG,"Roots of G")
         end
 
         function certifiedSelectionIsUnaffectedByAdditionalSolvedModes(testCase)
@@ -214,7 +216,7 @@ classdef IMDiscreteTransformAssessmentTests < matlab.unittest.TestCase
             catch exception
                 testCase.verifyEqual(string(exception.identifier),"IMBasisSet:UnattainableDiscretePointCount")
                 testCase.verifySubstring(exception.message,"exactly 15 points")
-                testCase.verifySubstring(exception.message,"14")
+                testCase.verifySubstring(exception.message,"13")
             end
         end
 

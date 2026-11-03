@@ -8,8 +8,10 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
 
     methods (Test)
         function fullyNeutralRigidHydrostaticFKeepsItsBarotropicMode(testCase)
-            background = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="rigidLid");
-            basis = IMModes.hydrostaticFModes(background,solver=IMSolverSpectral(nEVP=32),nInternalModes=0);
+            background = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            problem = IMInternalModes.hydrostaticFModes(background);
+            basis = IMSolverSpectral(nEVP=32).solveEVP(problem,nModes=1);
+            exact = IMSolverAnalytical().solveEVP(problem,nModes=1);
             testCase.verifyEqual(basis.nColumns,1);
             testCase.verifyEqual(basis.modeInfo.branch,"barotropic");
             testCase.verifyEqual(basis.eigenvalues,0);
@@ -18,12 +20,20 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
             z = linspace(-1000,0,13).';
             testCase.verifyEqual(basis.F(z),ones(size(z)),AbsTol=2e-13);
             testCase.verifyEqual(basis.G(z),zeros(size(z)),AbsTol=2e-13);
+            testCase.verifyEqual(exact.F(z),basis.F(z),AbsTol=2e-13);
+            testCase.verifyEqual(exact.G(z),basis.G(z),AbsTol=2e-13);
+            for backend = {IMSolverAnalytical(),IMSolverSpectral(nEVP=32)}
+                explicit = backend{1}.solveEVP(problem,branch="barotropic",nModes=1);
+                mixedEmpty = backend{1}.solveEVP(problem,branch=["barotropic","positive"],nModes=[1 0]);
+                testCase.verifyEqual(explicit.F(z),ones(size(z)),AbsTol=2e-13);
+                testCase.verifyEqual(mixedEmpty.F(z),ones(size(z)),AbsTol=2e-13);
+            end
         end
 
         function rigidHydrostaticFUsesTheSameRegularAnalyticalAndNumericalPair(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            exact = IMModes.hydrostaticFModes(background,solver=IMSolverAnalytical(),nInternalModes=3);
-            numerical = IMModes.hydrostaticFModes(background,solver=IMSolverSpectral(nEVP=64),nInternalModes=3);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            exact = IMSolverAnalytical().solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=4);
+            numerical = IMSolverSpectral(nEVP=64).solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=4);
             testCase.verifyEqual(numerical.nColumns,4);
             testCase.verifyEqual(numerical.modeInfo.branch,["barotropic";"positive";"positive";"positive"]);
             testCase.verifyEqual(numerical.columnLabels,exact.columnLabels);
@@ -33,12 +43,12 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
             testCase.verifyEqual(numerical.G(z),exact.G(z),AbsTol=2e-9);
         end
 
-        function balancedZeroCountsRetainAdmissibleSpecialSectors(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+        function balancedExplicitCountsRetainRequestedSpecialSectors(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             inactive = IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf);
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=48)}
-                apv = IMModes.geostrophicAPVModes(background,solver=solver{1},energyBoundary=inactive,nPositiveModes=0);
-                hydrostatic = IMModes.hydrostaticFModes(background,solver=solver{1},nInternalModes=0);
+                apv = solver{1}.solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=inactive.g0,gd=inactive.gd),nModes=1,branch="zeroEigenvalue");
+                hydrostatic = solver{1}.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=1);
                 testCase.verifyEqual(apv.nColumns,1);
                 testCase.verifyEqual(hydrostatic.nColumns,1);
                 testCase.verifyEqual(apv.eigenvalues,0);
@@ -47,7 +57,7 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
                 testCase.verifyEqual(hydrostatic.modeInfo.branch,"barotropic");
             end
             neumann = IMGeneralizedEnergyBoundary(g0=0,gd=0);
-            mda = IMModes.meanDensityAnomalyModes(background,solver=IMSolverSpectral(nEVP=48),energyBoundary=neumann,nPositiveModes=0);
+            mda = IMSolverSpectral(nEVP=48).solveEVP(IMInternalModes.meanDensityAnomalyModes(background,g0=neumann.g0,gd=neumann.gd),nModes=1,branch="constant");
             testCase.verifyEqual(mda.nColumns,1);
             testCase.verifyEqual(mda.modeInfo.branch,"constant");
             testCase.verifyEqual(mda.eigenvalues,0);
@@ -56,11 +66,11 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
         end
 
         function zeroCountsKeepEmptyEVPSpectraAvailable(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=48)}
-                wave = IMModes.waveModesAtWavenumber(background,2e-4,solver=solver{1},nInternalModes=0,nSubinertialModes=0);
-                inertial = IMModes.inertialModes(background,solver=solver{1},nPositiveModes=0,nNegativeModes=0);
-                hydrostatic = IMModes.hydrostaticGModes(background,solver=solver{1},nInternalModes=0);
+                wave = solver{1}.solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=2e-4),nModes=0);
+                inertial = solver{1}.solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=0),nModes=0);
+                hydrostatic = solver{1}.solveEVP(IMInternalModes.hydrostaticGModes(background),nModes=0);
                 for basis = {wave,inertial,hydrostatic}
                     testCase.verifyEqual(basis{1}.nColumns,0);
                     testCase.verifyEmpty(basis{1}.h);
@@ -71,28 +81,29 @@ classdef IMModeNeutralConstructionTests < matlab.unittest.TestCase
             end
         end
 
-        function inactiveZeroAPVEndpointsHaveNoFictitiousSpectrum(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-            inactive = IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf);
+        function emptyEndpointInventoryHasNoFictitiousSpectrum(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=32)}
-                basis = IMModes.geostrophicZeroAPVModesAtWavenumber(background,2e-4,solver=solver{1},energyBoundary=inactive);
+                problem = IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=strings(1,0));
+                basis = solver{1}.solveGeostrophicZeroAPVModes(problem);
                 testCase.verifyEqual(basis.nColumns,0);
                 testCase.verifyEmpty(basis.columnLabels);
                 testCase.verifySize(basis.F([-1000;0]),[2 0]);
                 testCase.verifySize(basis.G([-1000;0]),[2 0]);
-                testCase.verifyError(@() basis.h,"IMModeBasis:UnavailableEquivalentDepth");
-                testCase.verifyError(@() basis.eigenvalues,"IMModeBasis:UnavailableEigenvalues");
+                testCase.verifyFalse(isprop(basis,"h"));
+                testCase.verifyFalse(isprop(basis,"eigenvalues"));
             end
         end
 
-        function numericalAndExactEndpointsKeepTheSameAutomaticResponses(testCase)
-            background = IMModeBackground.constantStratification(N0=.005,zDomain=[-1000 0]);
+        function numericalAndExactEndpointsKeepTheSameExplicitResponses(testCase)
+            background = IMBackground.constantStratification(N0=.005,zDomain=[-1000 0]);
             z = linspace(-1000,0,41).';
-            for energy = {IMGeneralizedEnergyBoundary(g0=0,gd=0),IMGeneralizedEnergyBoundary(g0=-.02,gd=Inf),IMGeneralizedEnergyBoundary(g0=Inf,gd=.02)}
-                exact = IMModes.geostrophicZeroAPVModesAtWavenumber(background,2e-4,solver=IMSolverAnalytical(),energyBoundary=energy{1});
-                numerical = IMModes.geostrophicZeroAPVModesAtWavenumber(background,2e-4,solver=IMSolverSpectral(nEVP=64),energyBoundary=energy{1});
+            endpoints = {["surface","bottom"],"surface","bottom"};
+            for iEndpoints = 1:numel(endpoints)
+                exact = IMSolverAnalytical().solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=endpoints{iEndpoints}));
+                numerical = IMSolverSpectral(nEVP=64).solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,2e-4,endpoints=endpoints{iEndpoints}));
                 testCase.verifyEqual(numerical.columnLabels,exact.columnLabels);
-                testCase.verifyEqual(numerical.nColumns,numel(energy{1}.activeEndpoints));
+                testCase.verifyEqual(numerical.nColumns,numel(endpoints{iEndpoints}));
                 testCase.verifyEqual(numerical.F(z),exact.F(z),AbsTol=2e-9);
                 testCase.verifyEqual(numerical.G(z),exact.G(z),AbsTol=2e-9);
             end

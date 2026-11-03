@@ -101,7 +101,14 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
             profiles = {@(z) (5e-3)^2*ones(size(z)),@IMNeutralGeostrophicFiniteDifferenceTests.neutralCap,@(z) zeros(size(z))};
             for i = 1:numel(profiles)
                 evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(N2=profiles{i},zDomain=[-1000 0],k=k,alpha0=9.81*k^2,alphaD=Inf);
-                basis = IMSolverFiniteDifference(z=linspace(-1000,0,65).').solveEVP(evp,nModes=4);
+                solver = IMSolverFiniteDifference(z=linspace(-1000,0,65).');
+                if i==3
+                    testCase.verifyError(@() solver.solveEVP(evp,nModes=4),"IMSolver:InsufficientModes")
+                    count = 1;
+                else
+                    count = 4;
+                end
+                basis = solver.solveEVP(evp,nModes=count);
                 zero = find(basis.inverseDepth==0);
                 testCase.verifyNumElements(zero,1)
                 testCase.verifyEqual(basis.eigenvalues(zero),k^2,AbsTol=0)
@@ -112,11 +119,11 @@ classdef IMNeutralGeostrophicFiniteDifferenceTests < matlab.unittest.TestCase
             end
             alternate = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(N2=@(z) zeros(size(z)), ...
                 zDomain=[-1000 0],k=k,alpha0=(9.81*k)*k,alphaD=Inf);
-            alternateBasis = IMSolverFiniteDifference(z=linspace(-1000,0,65).').solveEVP(alternate,nModes=4);
+            alternateBasis = IMSolverFiniteDifference(z=linspace(-1000,0,65).').solveEVP(alternate,nModes=1);
             testCase.verifyEqual(alternateBasis.inverseDepth,0,AbsTol=0)
             testCase.verifyTrue(isinf(alternateBasis.h))
             apv = IMInternalModes.geostrophicAPVModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],g0=0.02,gd=0.03);
-            neutral = IMSolverFiniteDifference(z=linspace(-1000,0,33).').solveEVP(apv,nModes=6);
+            neutral = IMSolverFiniteDifference(z=linspace(-1000,0,33).').solveEVP(apv,nModes=1);
             expected = apv.g*(1/apv.g+1/0.02+1/0.03)/1000;
             testCase.verifyNumElements(neutral.h,1)
             testCase.verifyEqual(neutral.inverseDepth,expected,RelTol=1e-13)

@@ -5,11 +5,14 @@ function values = evaluate(self,z,options)
 % repeated selections. Empty pages/columns selects all. The final output is
 % allocated in full; use evaluateChunks to stream without that allocation.
 % sampleChunkSize and pageChunkSize bound evaluation temporaries.
+% A normalization override applies to this evaluation only. Omit it to use
+% each stored basis's normalization. Requests are validated before sampling.
 %
 % - Topic: Evaluate collections
 % - Parameter z: physical coordinate column
-% - Parameter options.variable: scalar variable name
+% - Parameter options.variable: required scalar variable name
 % - Parameter options.derivativeOrder: supported vertical derivative order
+% - Parameter options.normalization: optional common normalization override
 % - Parameter options.pages: requested-page indices, empty means all
 % - Parameter options.columns: explicit scientific column indices
 % - Parameter options.sampleChunkSize: maximum rows evaluated together
@@ -20,6 +23,7 @@ arguments (Input)
     z (:,1) double {mustBeReal,mustBeFinite}
     options.variable (1,1) string = ""
     options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+    options.normalization = []
     options.pages (1,:) double {mustBeInteger,mustBePositive} = []
     options.columns (1,:) double {mustBeInteger,mustBePositive} = []
     options.sampleChunkSize (1,1) double {mustBeInteger,mustBePositive,mustBeFinite} = 1024

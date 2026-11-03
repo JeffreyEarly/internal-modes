@@ -7,6 +7,8 @@ classdef IMBasisCollection
     % `sourcePage` selects a page within a multi-wavenumber boundary basis.
     % Supported bases are value objects, so subsequent changes to the input
     % basis normalization do not change this collection.
+    % Evaluation can override normalization for one call without changing
+    % these stored defaults or the collection's scientific column identity.
     %
     % ```matlab
     % collection = IMBasisCollection({basis1,basis2},kappa=[k2 k1 k2],basisIndex=[2 1 2]);
@@ -73,7 +75,7 @@ classdef IMBasisCollection
             end
             for iBasis = 1:numel(bases)
                 basis = bases{iBasis};
-                supported = isa(basis,"IMModeBasis") || isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis");
+                supported = isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis") || isa(basis,"IMZeroDepthWaveModesBasis");
                 if ~supported || ~isscalar(basis) || isa(basis,"handle")
                     error("IMBasisCollection:UnsupportedBasis","Entry %d must be a supported scalar continuous value basis.",iBasis);
                 end
@@ -129,25 +131,7 @@ classdef IMBasisCollection
     methods (Static, Access = private)
         function entry = describeBasis(basis)
             entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"rotationName","","rotationMatrix",[]);
-            if isa(basis,"IMModeBasis")
-                entry.family = basis.family;
-                entry.columnLabels = basis.columnLabels;
-                entry.normalization = basis.normalization;
-                entry.variables = ["F", "G", "APV"];
-                entry.variables = entry.variables(ismember(entry.variables,basis.capabilities));
-                entry.derivativeOrders = repmat({0},1,numel(entry.variables));
-                iG = find(entry.variables == "G",1);
-                if ~isempty(iG)
-                    entry.derivativeOrders{iG} = find(ismember(["G", "Gz", "Gzz"],basis.capabilities))-1;
-                end
-                if basis.family == "geostrophicZeroAPV"
-                    entry.columnKind = "endpoint";
-                    entry.endpointLabels = entry.columnLabels;
-                end
-                if numel(entry.columnLabels) ~= basis.nColumns
-                    error("IMBasisCollection:InvalidColumnLabels","Mode labels must match the facade column count.");
-                end
-            elseif isa(basis,"IMNeutralLabelModesBasis")
+            if isa(basis,"IMNeutralLabelModesBasis")
                 entry.family = "neutralLabelModes";
                 entry.columnKind = "mode";
                 entry.columnLabels = basis.columnLabels;
@@ -166,7 +150,14 @@ classdef IMBasisCollection
                 end
                 entry.normalization = string(basis.normalizationConvention);
                 entry.variables = ["F" "G"];
-                entry.derivativeOrders = {[0 1],0};
+                entry.derivativeOrders = {[0 1],0:2};
+            elseif isa(basis,"IMZeroDepthWaveModesBasis")
+                entry.family = basis.family;
+                entry.columnLabels = basis.columnLabels;
+                entry.modeNumber = basis.modeInfo.branchIndex.';
+                entry.normalization = string(basis.normalization);
+                entry.variables = ["F" "G"];
+                entry.derivativeOrders = {[0 1],0:2};
             else
                 entry.family = string(basis.evp.name);
                 entry.modeNumber = reshape(basis.modeNumber,1,[]);
@@ -177,12 +168,37 @@ classdef IMBasisCollection
                 end
                 if isa(basis,"IMInternalModesBasis") || isa(basis,"IMAnalyticalInternalModesBasis")
                     entry.variables = ["F" "G"];
-                    entry.derivativeOrders = {0,0};
-                    entry.derivativeOrders{entry.variables == basis.evp.formulation} = [0 1];
+                    entry.derivativeOrders = {[0 1],0:2};
                 end
             end
-            if (isempty(entry.columnLabels) && ~isa(basis,"IMModeBasis")) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
-                error("IMBasisCollection:InvalidColumnLabels","Each basis must have nonempty, distinct scientific column labels.");
+            if isprop(basis,"columnLabels")
+                entry.columnLabels = basis.columnLabels;
+            end
+            if isprop(basis,"family")
+                entry.family = basis.family;
+            end
+            if isprop(basis,"capabilities")
+                capabilities = reshape(string(basis.capabilities),1,[]);
+                for iVariable = 1:numel(entry.variables)
+                    variable = entry.variables(iVariable);
+                    orders = [];
+                    for capability = capabilities
+                        if startsWith(capability,variable)
+                            suffix = extractAfter(capability,strlength(variable));
+                            if all(char(suffix) == 'z')
+                                orders(end+1) = strlength(suffix); %#ok<AGROW>
+                            end
+                        end
+                    end
+                    entry.derivativeOrders{iVariable} = unique(orders);
+                end
+                available = ~cellfun(@isempty,entry.derivativeOrders);
+                entry.variables = entry.variables(available);
+                entry.derivativeOrders = entry.derivativeOrders(available);
+            end
+            supportsEmptyColumns = isprop(basis,"nColumns") && basis.nColumns == 0;
+            if (isempty(entry.columnLabels) && ~supportsEmptyColumns) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
+                error("IMBasisCollection:InvalidColumnLabels","Each retained column must have a distinct scientific label.");
             end
         end
 

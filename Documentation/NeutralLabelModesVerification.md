@@ -1,5 +1,35 @@
 # Neutral-label API verification
 
+The qualification below records the historical generalized-energy-dependent endpoint policy and is preserved as an implementation ledger. The current manuscript fixes both interval endpoints and excludes the constant label; the updated qualification appears first.
+
+## Fixed-endpoint manuscript alignment
+
+Verified locally on 2026-11-02 against the manuscript's neutral-label structure and projection equations. Every interval uses DD sine modes, including at physical boundaries; zero, finite signed and infinite generalized-energy coefficients do not alter profiles. There is no constant-label sector. The direct constructor retains `g0`/`gd` as provenance, and the common factory accepts optional `energyBoundary` provenance. The former `constantLabelPolicy` option is removed.
+
+All 70 distinct methods passed across the following focused suites:
+
+| Test class | Passing methods |
+| --- | ---: |
+| `IMNeutralLabelModesTests` | 15 |
+| `IMModeCreationTests` | 17 |
+| `IMModeBasisTests` | 12 |
+| `IMModeBasisCollectionTests` | 7 |
+| `IMProjectionOnGridTests` | 5 |
+| `IMBasisCollectionTests` | 7 |
+| `IMBulkBasisEvaluationTests` | 7 |
+
+The first batch passed 67 of 68 methods. The new affine-source cancellation assertion differed from zero by `1.67e-16` with a `1e-16` tolerance. Its tolerance was changed to `5e-15` to allow floating-point summation error; only that failing method and two subsequently extended creation methods were rerun, and all passed. No numerical source correction was needed for that roundoff-level test failure.
+
+Independent formulas in the tests check sine profiles and derivatives for interior, surface, bottom and whole-column intervals; exact endpoint zeros; one-sided derivative traces and zero extension; depth and enstrophy normalization; zero counts and scalar count broadcasting; complex and nonmodal APV recovery; interval-constant APV orthogonality; and the integrated-by-parts displacement-source functional with nonzero endpoint values and affine cancellation. Common-factory tests reject even `N2=1e-30` as a declared exact neutral interval, preserve scientific identities, and retain the exact zero-depth wave regression.
+
+An independent audit then found two empty-inventory integration failures: a raw zero-count neutral basis was rejected by collection metadata validation, and an empty selected common view forwarded an empty column selection as all source columns. Both are fixed. Two new permanent regression methods cover raw and common empty inventories, repeated-page evaluation and projection, and reordered `maxAbsG` metrics. Seven new or affected methods passed after the fixes. Prescribed-dual and recipe provenance now report the selected, normalized continuous APV Gram, including a `0x0` matrix for an empty view. A final metadata check extended this guarantee to raw reordered-column projectors and their collection path. The affected selected-column regression passed after updating only provenance; the numerical dual was unchanged, and Code Analyzer remained clean for the projector and test.
+
+The independent final audit passed all seven groups after these fixes. It used a shifted physical domain of depth 1321 m; interior, surface, bottom and full-column intervals through 13 modes; signed/infinite energy coefficients; both Coriolis signs and rotation as small as `1e-12`; independent Gauss/adaptive Grams and zero APV integrals; complex sources outside the retained span with both volume and endpoint terms; affine cancellation; disjoint, reordered and scaled common/collection projections; raw, factory and selected empty paths; and analytical critical `h=0` wave-energy formulas. The largest normalized residual was `1.14e-13` for affine cancellation; all other reported residuals were at most `6.6e-15`. These are independent audit groups, separate from the 70 permanent test methods.
+
+Code Analyzer reported no findings across all ten changed MATLAB files. The four MATLAB files changed by the audit fixes were checked after those fixes; the other six retain their prior successful result. Whitespace, local Markdown links and fences, supported inline documentation tokens, repository scope, unchanged package manifest/dependencies and unchanged generated artifacts were checked. This repository has no configured `docs:check` task; static documentation checks were used. No website build or generated website update was performed. All MATLAB commands used `matlab -batch` outside the sandbox; existing package path-order warnings did not prevent execution.
+
+The historical grid-recovery counts below used the old Neumann surface policy for a neutral cap. A subsequent [shared-grid DD requalification](NeutralLabelGridRequalification.md) reran 38 grid/budget cases, preserved all archived counts and boundary decisions, and directly qualified 151 physical plus two DD neutral amplitudes at the exact 65-point default. Its 23 focused study tests and independent numerical audits are separate from the 70 provider test methods above. No full-suite, clean exported-package or production WVM qualification is claimed. Earlier Neumann and constant-label claims below describe only the historical API.
+
 Implemented and audited against the neutral-label structure, generalized-energy endpoint conditions, and APV projection in `literature/ape-apv-free-surface/main.tex`, starting from InternalModes V2 commit `9cf40ef`. The original qualification below used explicit constant-label exclusion. The subsequent creation-API update retains that label automatically and gives its APV degeneracy an explicit projection error.
 
 ## Automatic-constant update
