@@ -111,7 +111,7 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             end
             sampled = collection.evaluate(z,variable="APV",pages=[3 1 2],columns=[3 1]);
             testCase.verifyEqual(sampled(:,:,1),sampled(:,:,2),AbsTol=0);
-            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G"),"MATLAB:validators:mustBeMember");
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G"),"IMScalarProjection:UnavailableProjection");
         end
 
         function emptyNeutralViewsAndScaledSelectionsPreserveDualMetadata(testCase)
@@ -174,14 +174,16 @@ classdef IMModeBasisCollectionTests < matlab.unittest.TestCase
             testCase.verifyError(@() selected.projectionOnGrid([z(1);z(1)],weights(1:2),variable="APV"),"IMNeutralLabelModesBasis:InvalidGrid");
         end
 
-        function collectionPreservesNativeWaveProjectionCapabilities(testCase)
+        function collectionPreservesAuxiliaryWaveAssessmentCapabilities(testCase)
             background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             basis = IMSolverAnalytical().solveEVP(IMInternalModes.waveModesAtWavenumber(background,k=1e-3),nModes=3);
             collection = IMBasisCollection({basis});
             z = linspace(-1000,0,11).';
             weights = 100*ones(size(z));
             weights([1 end]) = 50;
-            projection = collection.projectionOnGrid(z,weights,variable="G",prepareRecovery=true);
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G",prepareRecovery=true),"IMScalarProjection:UnavailableProjection");
+            assessment = collection.assess(z,weights,variable="G");
+            projection = assessment.projection;
             testCase.verifyEqual(projection.columnLabels,basis.columnLabels);
             testCase.verifyEqual(projection.targetGramMatrix,basis.gramMatrix(variable="G"),AbsTol=1e-12);
             testCase.verifyEqual(projection.recovery.transformForward(basis.G(z)),eye(3),AbsTol=1e-12);

@@ -736,20 +736,6 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Access = protected)
-        function [z,weights] = normalizationQuadrature(self)
-            if isa(self.solver,"IMSolverSpectral")
-                bounds = [min(self.solver.xNative),max(self.solver.xNative)];
-                [x,nativeWeights] = legpts(max(128,2*self.solver.nEVP),bounds);
-                z = self.solver.zOfX(x);
-                coordinate = zeros(self.solver.nEVP,1);
-                coordinate(1:2) = [mean(bounds);diff(bounds)/2];
-                jacobian = self.solver.evaluatePhysicalDerivative(coordinate,z,1);
-                weights = nativeWeights(:)./jacobian;
-            else
-                [z,weights] = self.solver.nativeQuadratureRule(self.zDomain);
-            end
-        end
-
         function self = selectAlignedColumns(self,columns)
             self.h = self.h(columns);
         end

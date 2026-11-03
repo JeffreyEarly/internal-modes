@@ -60,6 +60,41 @@ classdef IMNormalizationCatalogueTests < matlab.unittest.TestCase
             end
         end
 
+        function scalarRmsResolvesTheSquareOfTheHighestChebyshevProfile(testCase)
+            degree = 23;
+            evp = IMEigenvalueProblem(zDomain=[-3 0],p=1,q=0,r=1);
+            solver = IMSolverSpectral(nEVP=degree+1).configuredForEVP(evp);
+            coefficients = zeros(degree+1,1);
+            coefficients(end) = 1;
+            % The exactly represented T_degree profile isolates quadrature
+            % accuracy from the convergence of a solved eigenfunction.
+            basis = IMBasisSet(solver=solver,evp=evp,nativeModes=coefficients,eigenvalues=1,modeNumber=1);
+            exactRms = sqrt((1-1/(4*degree^2-1))/2);
+            testCase.verifyEqual(basis.normalizationFactors(),exactRms,AbsTol=3e-14);
+            measuredRms = sqrt(integral(@(z) abs(basis.u(z)).^2,-3,0,ArrayValued=true,AbsTol=1e-12,RelTol=1e-12)/3);
+            testCase.verifyEqual(measuredRms,1,AbsTol=3e-12);
+        end
+
+        function scalarRmsNearCapacityAgreesWithIndependentIntegration(testCase)
+            evp = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
+            basis = IMSolverSpectral(nEVP=24).solveEVP(evp,nModes=22);
+            % Adaptive physical-coordinate integration is independent of
+            % the fixed Gauss rule used to prepare normalization divisors.
+            measuredRms = sqrt(integral(@(z) abs(basis.u(z)).^2,-1,0,ArrayValued=true,AbsTol=1e-12,RelTol=1e-12));
+            testCase.verifyEqual(measuredRms,ones(1,22),AbsTol=3e-12);
+        end
+
+        function pairedRmsRetainsPhysicalDepthMeasureInStretchedCoordinates(testCase)
+            background = IMBackground.exponentialStratification(N0=.01,b=700,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            evp = IMInternalModes.waveModesAtWavenumber(background,k=1e-3);
+            basis = IMSolverSpectral(nEVP=32,coordinateKind="wkb").solveEVP(evp,nModes=4);
+            for variable = ["F","G"]
+                normalized = basis.withNormalization("rms"+variable);
+                measuredRms = sqrt(integral(@(z) abs(normalized.evaluate(z,variable=variable)).^2,-1000,0,ArrayValued=true,AbsTol=1e-10,RelTol=1e-12)/1000);
+                testCase.verifyEqual(measuredRms,ones(1,4),AbsTol=3e-11);
+            end
+        end
+
         function canonicalAndRetiredNamesCannotBeRepurposed(testCase)
             bg = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             neutral = IMBackground(N2=@(z) zeros(size(z)),zDomain=bg.zDomain,surfaceCondition="freeSurface");

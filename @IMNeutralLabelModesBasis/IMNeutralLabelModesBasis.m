@@ -19,7 +19,7 @@ classdef IMNeutralLabelModesBasis
     % ```matlab
     % basis = IMNeutralLabelModesBasis([-200 -100],zDomain=[-1000 0],nModesPerInterval=4);
     % G = basis.G(linspace(-1000,0,1001).');
-    % projection = basis.projectionOnGrid(z,weights);
+    % projection = basis.projectionOnGrid(z,weights,variable="APV");
     % amplitudes = projection.projectPhysical(APV);
     % ```
     %

@@ -1,5 +1,13 @@
 # V2 API integration verification
 
+## PR review corrections
+
+The follow-up to `c2f7b50` resolves scalar spectral RMS products with the same oversampled physical-depth quadrature used for paired F/G profiles. Collection `projectionOnGrid` now enforces the selected basis's physical scalar capabilities; `assess` retains auxiliary EVP pairings. The neutral-label quick start supplies `variable="APV"`, and the earlier coordinate-study result below explicitly identifies its working-tree dependencies.
+
+All **111 current cases in ten affected provider suites** are covered by passing results: 110 passed the initial focused run, and one old test that expected the collection capability bypass passed after migration to the assessment API. Five new regressions cover an exactly represented high-degree Chebyshev profile, a near-capacity scalar solve, physical-depth normalization in stretched coordinates, wave capability parity across backends, and collection page/column selection. RMS checks use an analytic integral and independent adaptive integration. The two affected class references were generated and checked in temporary output.
+
+This follow-up does not rerun the full provider or consumer suites. The paired F/G quadrature algorithm is unchanged. High-degree RMS verification does not qualify the separate native-quadrature scalar Gram calculations. Execution evidence is in `/private/tmp/pr68-comment-fixes`.
+
 ## Post-review normalization and count hardening
 
 Completed on 2026-11-03 from provider `6ba7b6e` and WVM `c4621b3e`. This follow-up implements the revised contracts in [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md), [CommonScalarProjection](CommonScalarProjection.md) and [HydrostaticRootTransform](HydrostaticRootTransform.md).
@@ -13,13 +21,13 @@ Completed on 2026-11-03 from provider `6ba7b6e` and WVM `c4621b3e`. This follow-
 
 ### Verification
 
-The current provider inventory contains **737 distinct cases**, all covered by passing results. One complete run exercised 731 cases: 727 passed and four stale test expectations failed. The corrected four passed focused reruns. Six additional regression cases passed separately: five custom-divisor cases and the finite-difference full-Gram case. Five targeted checks also passed after the final root/provenance corrections. The final inventory comparison found no unverified cases. This is a full run plus targeted repairs and additions, not a second full-suite run.
+At `c2f7b50`, the provider inventory contained **737 distinct cases**, all covered by passing results. One complete run exercised 731 cases: 727 passed and four stale test expectations failed. The corrected four passed focused reruns. Six additional regression cases passed separately: five custom-divisor cases and the finite-difference full-Gram case. Five targeted checks also passed after the final root/provenance corrections. The final inventory comparison found no unverified cases. This is a full run plus targeted repairs and additions, not a second full-suite run.
 
 | Check | Result |
 | --- | --- |
 | Provider V2 | 737 distinct cases covered; no unresolved failures |
 | Affected WVM suites and field/source/restart checks | 30 passed |
-| Affected coordinate-grid study suites | 31 passed |
+| Affected coordinate-grid study suites | 31 passed in the working tree, including pre-existing uncommitted DD neutral-label fixes; not independent qualification of clean companion commit `f459aa8` |
 | Independent neutral-label validation | 154 checks passed |
 | Original-code NetCDF restart | Exact arrays, coefficients, fields and energy |
 | Two-profile old/new WVM comparison | 66 quantities; maximum relative difference 4.25e-15 |
@@ -31,7 +39,7 @@ The current provider inventory contains **737 distinct cases**, all covered by p
 
 Provider execution evidence is in `/private/tmp/im-v2-implementation`; consumer evidence is in `/private/tmp/im-v2-caller-migration-20261103`. Temporary runner-path errors were corrected without changing source behavior. No `docs:check` target is configured in this provider checkout; canonical Markdown links and source documentation were checked, and website generation was excluded by the requested scope. No local asset prevented completion.
 
-Existing user edits in the provider example and coordinate study were preserved. Full performance campaigns and archived grid-qualification datasets were not regenerated. A complete non-surface-active `WVTransformBoussinesq` port, model-owned grid calculus choices and release/export remain separate work. No commits, pushes or external tracker communication were performed.
+Existing user edits in the provider example and coordinate study were preserved. The coordinate-study tests depended on those existing DD fixes, including removal of `constantLabelPolicy` and updated endpoint expectations. Those fixes remain outside companion commit `f459aa8`; the 31 passing cases describe the tested working tree, not that commit alone. Full performance campaigns and archived grid-qualification datasets were not regenerated. A complete non-surface-active `WVTransformBoussinesq` port, model-owned grid calculus choices and release/export remain separate work. This verification preceded the subsequent commits and provider push.
 
 ## Earlier integration record
 

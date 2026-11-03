@@ -24,19 +24,7 @@ arguments (Input)
     options.columns = ":"
     options.prepareRecovery (1,1) logical = true
 end
-if options.page > numel(self.basisIndex)
-    error("IMBasisCollection:InvalidPage","page must select an existing requested page.");
-end
-columns = options.columns;
-if isequal(columns,":") || isequal(columns,':')
-    columns = self.allColumnIndices(options.page);
-end
-if ~isa(columns,"double") || ~isrow(columns) && ~isempty(columns) || ~isreal(columns) ...
-        || any(~isfinite(columns) | columns < 1 | columns ~= fix(columns),"all")
-    error("IMProjection:InvalidColumns","columns must be a row of positive integer indices, [] or ':' for all columns.");
-end
-columns = reshape(columns,1,[]);
-basis = self.bases{self.basisIndex(options.page)}.selectColumns(columns);
+basis = self.selectProjectionBasis(options.page,options.columns);
 if options.variable == ""
     recipe = basis.projectionRecipe();
 else

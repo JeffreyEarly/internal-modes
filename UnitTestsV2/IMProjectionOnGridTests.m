@@ -25,6 +25,50 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
             end
         end
 
+        function collectionsKeepAuxiliaryWavePairingsInAssessment(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            problems = {IMInternalModes.waveModesAtWavenumber(background,k=0),IMInternalModes.waveModesAtWavenumber(background,k=1e-3),IMInternalModes.waveModesAtFrequency(background,omega=.005)};
+            z = linspace(-1000,0,65).';
+            weights = 1000/64*[.5;ones(63,1);.5];
+            for solver = {IMSolverSpectral(nEVP=48),IMSolverAnalytical()}
+                for problem = problems
+                    basis = solver{1}.solveEVP(problem{1},nModes=4);
+                    collection = IMBasisCollection({basis});
+                    for source = {basis,collection}
+                        testCase.verifyError(@() source{1}.projectionOnGrid(z,weights,variable="G"),"IMScalarProjection:UnavailableProjection");
+                        testCase.verifyError(@() source{1}.projectionOnGrid(z,weights,variable="G",prepareRecovery=true),"IMScalarProjection:UnavailableProjection");
+                    end
+                    assessment = collection.assess(z,weights,variable="G");
+                    testCase.verifyEqual(assessment.identity.variable,"G");
+                    testCase.verifyTrue(assessment.projection.recovery.success);
+                    testCase.verifyEqual(assessment.projection.recovery.transformForward(basis.G(z)),eye(4),AbsTol=1e-11);
+                end
+            end
+        end
+
+        function collectionPhysicalSelectionMatchesRequestedBasis(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            first = IMSolverAnalytical().solveEVP(IMInternalModes.hydrostaticGModes(background),nModes=4);
+            second = first.selectColumns([4 2 1]);
+            collection = IMBasisCollection({first,second},basisIndex=[2 1 2]);
+            z = linspace(-1000,0,33).';
+            weights = 1000/32*[.5;ones(31,1);.5];
+            for page = 1:3
+                basis = collection.bases{collection.basisIndex(page)};
+                for columns = {":",[3 1],[]}
+                    indices = columns{1};
+                    if isequal(indices,":"), indices = 1:basis.nColumns; end
+                    expected = basis.projectionOnGrid(z,weights,variable="G",columns=indices);
+                    actual = collection.projectionOnGrid(z,weights,page=page,variable="G",columns=columns{1});
+                    testCase.verifyEqual(actual.physicalDualMatrix,expected.physicalDualMatrix);
+                    testCase.verifyEqual(actual.columnLabels,expected.columnLabels);
+                    testCase.verifyEmpty(actual.recovery);
+                end
+            end
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G",page=4),"IMBasisCollection:InvalidPage");
+            testCase.verifyError(@() collection.projectionOnGrid(z,weights,variable="G",columns=[1;2]),"IMProjection:InvalidColumns");
+        end
+
         function scalarAndAlignedRecipesPreserveExistingTransforms(testCase)
             solver = IMSolverSpectral(nEVP=48);
             scalarEVP = IMEigenvalueProblem(zDomain=[-1 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
@@ -118,7 +162,7 @@ classdef IMProjectionOnGridTests < matlab.unittest.TestCase
                 testCase.verifyFalse(recipe.isAvailable)
                 testCase.verifyEqual(recipe.columnLabels,["surface","bottom"])
                 testCase.verifyEqual(recipe.provenance.requestedKappa,[1e-4 2e-4])
-                testCase.verifyError(@() IMBasisCollection(basis).projectionOnGrid([-1000;0],[500;500],variable="F"),"IMProjection:UnavailableProjection")
+                testCase.verifyError(@() IMBasisCollection(basis).projectionOnGrid([-1000;0],[500;500],variable="F"),"IMScalarProjection:UnavailableProjection")
             end
         end
     end

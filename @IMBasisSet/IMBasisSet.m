@@ -889,10 +889,24 @@ classdef IMBasisSet
     methods (Access = protected)
         function factors = rmsNormFactors(self)
             % Normalize the scalar profile without changing its scientific pairing.
-            z = self.solver.innerProductGrid(self.zDomain);
-            weights = self.solver.innerProductWeights(z,self.zDomain);
+            [z,weights] = self.normalizationQuadrature();
             values = self.rawU(z);
             factors = sqrt(sum(weights.*abs(values).^2,1)/diff(self.zDomain));
+        end
+
+        function [z,weights] = normalizationQuadrature(self)
+            % Resolve squared spectral profiles in the physical depth measure.
+            if isa(self.solver,"IMSolverSpectral")
+                bounds = [min(self.solver.xNative),max(self.solver.xNative)];
+                [x,nativeWeights] = legpts(max(128,2*self.solver.nEVP),bounds);
+                z = self.solver.zOfX(x);
+                coordinate = zeros(self.solver.nEVP,1);
+                coordinate(1:2) = [mean(bounds);diff(bounds)/2];
+                jacobian = self.solver.evaluatePhysicalDerivative(coordinate,z,1);
+                weights = nativeWeights(:)./jacobian;
+            else
+                [z,weights] = self.solver.nativeQuadratureRule(self.zDomain);
+            end
         end
 
         function self = resetNormalizationCache(self)

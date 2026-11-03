@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Resolve squared spectral profiles when computing scalar `rms` normalization. Enforce the same physical-projection capabilities for individual bases and collection pages while preserving auxiliary EVP pairings for assessment.
 - Modernize V2 normalization with dimensionless `rmsF`, `rmsG`, generic `rms`, `maxAbsF`, `maxAbsG`, `surfaceF`, `waveEnergy`, `generalizedPotentialEnstrophy`, `meanDensityAnomalyEnergy` and `endpointResponse`. Reserve canonical names, remove legacy aliases and enum inputs, and retain replaceable custom rules. Remove `generalizedEnergy` normalization while preserving physical energy matrices and orthogonalization.
 - Derive fixed-grid hydrostatic metrics from the actual normalized basis. Physical projection defaults to no recovery; use `projectPhysical`/`physicalDualMatrix` or explicit `recovery.transformForward`/`recovery.forwardMatrix`. Remove ambiguous `IMProjection.project` and `IMProjection.forwardMatrix` aliases.
 - Require an explicit physical surface choice and `nModesPerInterval` for specialized interval families. Bulk `nModes` applies to every requested wavenumber, including zero; a full input-aligned vector permits unequal counts at repeated wavenumbers, sharing one maximal solve with selected-prefix provenance.
