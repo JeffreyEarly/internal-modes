@@ -81,17 +81,51 @@ classdef (Abstract) IMSolver
             % - Topic: Solve EVPs
             % - Declaration: basisSet = solveEVP(solver,evp,options)
             % - Parameter evp: canonical EVP descriptor
-            % - Parameter options.nModes: number of modes to retain
+            % - Parameter options.nModes: required exact total columns, or one count per explicit branch; zero returns an empty basis
+            % - Parameter options.branch: explicit branch names aligned with nModes; omitted selects a total prefix
+            % - Parameter options.normalization: optional active profile normalization, evaluated lazily
             % - Returns basisSet: solved basis set
             arguments
                 self IMSolver
                 evp IMEigenvalueProblem
-                options.nModes (1,1) double {mustBeInteger, mustBePositive} = 100
+                options.nModes (1,:) double {mustBeInteger,mustBeNonnegative,mustBeFinite} = []
+                options.branch (1,:) string = ""
+                options.normalization = []
             end
 
-            solver = self.configuredForEVP(evp);
-            [A, B] = evp.assemble(solver);
-            basisSet = solver.solveAssembledEVP(evp,A,B,options.nModes);
+            if isempty(options.nModes)
+                error("IMSolver:MissingModeCount","Supply an explicit nModes count. Use nModes=0 to request an empty basis.");
+            end
+            IMModeSelection.validateRequest(evp,options.nModes,options.branch);
+
+            % The rigid-lid F family contains one exact analytical F0.
+            % Reuse the regular G problem for the remaining finite modes.
+            if isa(evp,"IMInternalModes") && evp.name == "hydrostaticFModes" && evp.surfaceBoundary.a == 0 && evp.surfaceBoundary.c == 0 && evp.surfaceBoundary.d == 0 && evp.bottomBoundary.a == 0 && evp.bottomBoundary.c == 0 && evp.bottomBoundary.d == 0
+                total = isscalar(options.branch) && ismember(options.branch,["","all"]);
+                if total && ~isscalar(options.nModes)
+                    error("IMSolver:InvalidModeRequest","Use one total count, or one count per explicit branch.");
+                end
+                if ~total && (numel(options.nModes) ~= numel(options.branch) || numel(unique(options.branch)) ~= numel(options.branch))
+                    error("IMSolver:InvalidModeRequest","Supply one count for each distinct explicit branch.");
+                end
+                if total
+                    count = max(0,options.nModes-1);
+                else
+                    count = sum(options.nModes(options.branch ~= "barotropic"));
+                end
+                sourceProblem = IMInternalModes.hydrostaticGModes(evp.background);
+                source = self.solveEVP(sourceProblem,nModes=count);
+                basisSet = IMHydrostaticModesBasis(source);
+                selection = IMModeSelection.selectCounted(evp,basisSet.eigenvalues(:),options.nModes,options.branch,zeroIndices=1);
+                basisSet = basisSet.selectColumns(selection.sortIndex,modeInfo=selection.modeInfo);
+            else
+                solver = self.configuredForEVP(evp);
+                [A, B] = evp.assemble(solver);
+                request = struct(counted=true,nModes=options.nModes,branch=options.branch);
+                basisSet = solver.solveAssembledEVP(evp,A,B,max(1,sum(options.nModes)),struct(),request);
+            end
+            basisSet = basisSet.withConstructionRequest(struct(nModes=options.nModes,branch=options.branch),self);
+            if ~isempty(options.normalization), basisSet.normalization = options.normalization; end
         end
 
         function zRoots = rootsOfNativeMode(self, nativeMode)
@@ -228,18 +262,6 @@ classdef (Abstract) IMSolver
     end
 
     methods (Hidden)
-        function [basisSet,selection] = solveRequestedEVP(self,evp,request)
-            % Build a family request before qualifying retained eigenpairs.
-            arguments (Input)
-                self IMSolver
-                evp IMEigenvalueProblem
-                request (1,1) struct
-            end
-            solver = self.configuredForEVP(evp);
-            [A,B] = evp.assemble(solver);
-            [basisSet,~,selection] = solver.solveAssembledEVP(evp,A,B,1,struct(),request);
-        end
-
         function weights = innerProductWeights(self, z, zBounds)
             % Return the linear weights used by integrateInnerProduct.
             %
@@ -277,6 +299,17 @@ classdef (Abstract) IMSolver
                 request (1,1) struct = struct()
             end
             timer = tic;
+            if isfield(request,"counted") && sum(request.nModes) == 0
+                [emptyA,~,emptyMap] = evp.prepareSolvePencil(self,A,B);
+                selection = IMModeSelection.selectCounted(evp,zeros(0,1),request.nModes,request.branch);
+                emptyNative = emptyMap.expandEigenvectors(zeros(size(emptyA,2),0));
+                emptyDiagnostics = selection.modeSelectionDiagnostics;
+                emptyDiagnostics.modeInfo = selection.modeInfo;
+                if emptyMap.hasInverseDepth, emptyDiagnostics.geostrophicInverseDepth = zeros(1,0); end
+                basisSet = evp.makeBasisSet(self,emptyNative,zeros(1,0),zeros(1,0),emptyDiagnostics);
+                costs = struct(eigensolveSeconds=0,finalizationSeconds=toc(timer));
+                return
+            end
             % Equilibrate the equations without changing the physical matrices
             % used for classification and diagnostics. Filter null modes in
             % this same equation scaling for scalar and bulk construction.
@@ -305,11 +338,8 @@ classdef (Abstract) IMSolver
             eigenvalues = diag(D);
             [V,solveEigenvalues] = evp.prepareGeneralizedEigenpairs(self,solveA,solveB,V,eigenvalues);
             if isempty(solveEigenvalues)
-                if ~isempty(fieldnames(request)) && ismember(request.kind,["wave","inertial","frequency"])
-                    selection = IMModeSelection.select(evp,zeros(0,1),request);
-                    basisSet = [];
-                    costs.finalizationSeconds = toc(timer);
-                    return
+                if isfield(request,"counted") && isa(evp,"IMInternalModes") && IMInternalModesNormalizationTools.isWave(evp)
+                    IMModeSelection.selectCounted(evp,zeros(0,1),request.nModes,request.branch);
                 end
                 error("IMSolver:NoValidEigenvalues", "%s", ...
                     self.noValidEigenvalueMessage(evp, A, B, eigenvalues, false(size(eigenvalues))));
@@ -327,10 +357,13 @@ classdef (Abstract) IMSolver
                 publicValid = true(size(eigenvalues));
             end
             if isempty(fieldnames(request))
-                selection = evp.selectModes(eigenvalues(:),nModes,self,A,diagnostics=diagnostics);
+                selection = IMModeSelection.selectCounted(evp,eigenvalues(:),nModes,"",solver=self,A=A,diagnostics=diagnostics);
+            elseif isfield(request,"counted")
+                selection = IMModeSelection.selectCounted(evp,eigenvalues(:),request.nModes,request.branch,solver=self,A=A,diagnostics=diagnostics);
             else
-                selection = IMModeSelection.select(evp,eigenvalues(:),request,solver=self,A=A,diagnostics=diagnostics);
+                error("IMSolver:InvalidModeRequest","Use a counted total or explicit branch request.");
             end
+            if isfield(selection,"modeInfo"), selection.modeSelectionDiagnostics.modeInfo = selection.modeInfo; end
             if any(~publicValid(selection.sortIndex))
                 first = find(~publicValid(selection.sortIndex),1);
                 error("IMGeostrophicModes:UnresolvedMode", ...
@@ -342,13 +375,10 @@ classdef (Abstract) IMSolver
             if map.hasInverseDepth
                 selection.modeSelectionDiagnostics.geostrophicInverseDepth = reshape(solveEigenvalues(selection.sortIndex),1,[]);
             end
-            if isempty(selection.sortIndex) && ~isempty(fieldnames(request))
-                basisSet = [];
-            else
-                basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
-                    selection.modeNumber, selection.modeSelectionDiagnostics);
-                basisSet = basisSet.orientModeSigns();
-            end
+            basisSet = evp.makeBasisSet(self, V, eigenvalues(:).', ...
+                selection.modeNumber, selection.modeSelectionDiagnostics);
+            basisSet = basisSet.orientModeSigns();
+            basisSet = basisSet.withConstructionRequest(request,self,selection);
             costs.finalizationSeconds = toc(timer);
         end
 
@@ -365,6 +395,8 @@ classdef (Abstract) IMSolver
     end
 
     methods (Access = private)
+        [collection,diagnostics] = solveWaveModesAtWavenumbersFromOptions(self,kappa,options)
+
         function message = noValidEigenvalueMessage(~, evp, A, B, eigenvalues, valid)
             normA = norm(A, "fro");
             normB = norm(B, "fro");

@@ -4,6 +4,8 @@ function errors = leakage(self,checkValues,checkNormSquared)
 % Positive norms are supplied explicitly; no check modes are solved here.
 % A zero-norm profile reports zero only when its sampled profile is zero;
 % otherwise it reports infinity. Values are returned independently per input.
+% Galerkin records require explicitly prepared recovery; prescribed duals
+% apply their physical source functional.
 %
 % - Topic: Measure projection quality
 % - Declaration: errors = leakage(self,checkValues,checkNormSquared)
@@ -25,7 +27,7 @@ checkNormSquared = reshape(checkNormSquared,1,[]);
 if size(checkValues,2) ~= numel(checkNormSquared)
     error("IMProjection:InvalidShape","Supply one squared reference norm per check profile.");
 end
-coefficients = self.project(checkValues);
+coefficients = self.applyAssessmentOperator(checkValues);
 errors = IMProjection.relativeCoefficientNorm(coefficients,self.majorantGramMatrix,checkNormSquared);
 zero = checkNormSquared == 0;
 errors(zero) = Inf;

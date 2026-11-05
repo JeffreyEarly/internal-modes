@@ -14,10 +14,10 @@ N0 = 5.2e-3;
 zDomain = [-D 0];
 N2 = @(z) N0*N0*ones(size(z));
 
-evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
+evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
 solver = IMSolverSpectral(nEVP=160);
 basisSet = solver.solveEVP(evp,nModes=30);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 
 M = 12;
 z = linspace(zDomain(1),zDomain(2),M+1).';

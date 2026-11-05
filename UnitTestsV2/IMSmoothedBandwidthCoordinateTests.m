@@ -10,15 +10,16 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
     methods (Test)
         function constantControlKeepsTheGridAndPhysicalSpectrum(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=45);
-            ordinary = IMSolverSpectral(nEVP=65,coordinateKind="bandwidth").configuredForEVP(evp);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            ordinary = IMSolverSpectral(nEVP=65,coordinateKind="wkb").configuredForEVP(evp);
             smoothed = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=65).configuredForEVP(evp);
             testCase.verifyEqual(smoothed.zNative,ordinary.zNative,AbsTol=2e-9);
-            testCase.verifyEqual(smoothed.qReference,ordinary.qReference,RelTol=2e-11);
-            % At 45 degrees, tildeF^2=f0^2. A constant bandwidth is
-            % unchanged by the Neumann filter, but differs from WKB's N.
-            expectedQ = (N2(0)^2+4*evp.f0^4)^(1/4);
-            testCase.verifyEqual(smoothed.qReference,expectedQ*ones(size(smoothed.qReference)),RelTol=2e-11);
+            % Constant coordinates give the same physical grid while their
+            % coordinate scales retain distinct N and bandwidth definitions.
+            horizontalCoriolis = 2*evp.rotationRate*cosd(evp.latitude);
+            expectedBandwidth = sqrt(hypot(N2(smoothed.zReference)+horizontalCoriolis^2-evp.f0^2,2*evp.f0*horizontalCoriolis));
+            testCase.verifyEqual(ordinary.qReference,sqrt(N2(ordinary.zReference)),RelTol=2e-11);
+            testCase.verifyEqual(smoothed.qReference,expectedBandwidth,RelTol=2e-11);
             testCase.verifyEqual(smoothed.N2(smoothed.zReference),N2(smoothed.zReference));
             basis = smoothed.solveEVP(evp,nModes=4);
             expectedH = 2.5e-5*1000^2./(evp.g*pi^2*(1:4).^2);
@@ -32,7 +33,7 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
             meanN2 = 2e-5;
             amplitude = 1e-5;
             N2 = @(z) meanN2+amplitude*cos(k*(z-zDomain(1)));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,rotationRate=0);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solver = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=65,smoothingLength=smoothingLength).configuredForEVP(evp);
             z = solver.zReference;
             filteredAmplitude = amplitude/(1+(smoothingLength*k)^2);
@@ -47,7 +48,7 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
         function rotatingSourceSatisfiesIndependentPhysicalDepthResidual(testCase)
             zDomain = [-1000 0];
             N2 = @(z) 1e-8*(1+0.7*cos(pi*(z+1000)/1000));
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,latitude=33);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=zDomain,latitude=33,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solver = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=65).configuredForEVP(evp);
             horizontalCoriolis = 2*evp.rotationRate*cosd(evp.latitude);
             z = linspace(zDomain(1),zDomain(2),301).';
@@ -61,7 +62,7 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
 
         function partialNeutralLayerIsInvertibleWithoutRotation(testCase)
             N2 = @IMSmoothedBandwidthCoordinateTests.neutralProfile;
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solver = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=257).configuredForEVP(evp);
             z = linspace(-1000,0,151).';
             testCase.verifyGreaterThan(min(solver.qReference),0);
@@ -80,8 +81,8 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
 
         function invalidPhysicalProfilesAndDegenerateBandwidthAreRejected(testCase)
             solver = IMBandwidthComparison.SmoothedBandwidthSolver();
-            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],rotationRate=0);
-            negative = IMInternalModes.hydrostaticGModes(N2=@(z) -1e-8*ones(size(z)),zDomain=[-1000 0]);
+            neutral = IMInternalModes.hydrostaticGModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            negative = IMInternalModes.hydrostaticGModes(N2=@(z) -1e-8*ones(size(z)),zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             testCase.verifyError(@() solver.configuredForEVP(neutral),"IMSolverSpectral:InvalidCoordinate");
             testCase.verifyError(@() solver.configuredForEVP(negative),"IMSolverSpectral:InvalidCoordinate");
             testCase.verifyError(@() IMBandwidthComparison.SmoothedBandwidthSolver(smoothingLength=0),"MATLAB:validators:mustBePositive");
@@ -90,8 +91,8 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
 
         function canonicalReconfigurationRebuildsWithoutMutatingOriginal(testCase)
             N2 = @(z) 1e-8*exp(2*z/700);
-            firstEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0);
-            secondEVP = IMInternalModes.hydrostaticGModes(N2=@(z) 4e-8*ones(size(z)),zDomain=[-1500 0],latitude=-45);
+            firstEVP = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            secondEVP = IMInternalModes.hydrostaticGModes(N2=@(z) 4e-8*ones(size(z)),zDomain=[-1500 0],latitude=-45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             first = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=33).configuredForEVP(firstEVP);
             originalX = first.xReference;
             originalQ = feval(first.smoothedBandwidthSquared,first.zReference);
@@ -107,7 +108,7 @@ classdef IMSmoothedBandwidthCoordinateTests < matlab.unittest.TestCase
 
         function zeroAPVConfigurationRebuildsAndRestoresPhysicalStratification(testCase)
             N2 = @(z) 1e-8*exp(2*z/700);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-1000 0],rotationRate=0,surfaceBoundary=IMBoundaryCondition.dirichlet());
             original = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=33).configuredForEVP(evp);
             zeroN2 = @(z) 2e-8*ones(size(z));
             problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=zeroN2,zDomain=[-1500 0],k=1e-3,latitude=-45);

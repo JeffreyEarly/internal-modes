@@ -30,13 +30,6 @@ metadata = collection.metadata(collection.basisIndex(options.page));
 description = metadata.capabilities;
 variable = options.variable;
 derivativeOrder = options.derivativeOrder;
-for alias = description.aliases
-    if variable == alias.variable
-        variable = alias.baseVariable;
-        derivativeOrder = derivativeOrder+alias.derivativeOffset;
-        break
-    end
-end
 variableIndex = find(description.variables==variable,1);
 if isempty(variableIndex) || ~ismember(derivativeOrder,description.derivativeOrders{variableIndex})
     error("IMBasisCollection:UnsupportedFactor","The collection does not support the requested variable/derivative.");

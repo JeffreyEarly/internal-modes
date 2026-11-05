@@ -45,7 +45,7 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
 
         function factoryCoefficientsAndDiagnosticRelationAreCanonical(testCase)
             [N2, zDomain, g] = testCase.profile();
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, g0=2, gd=3);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, g0=2, gd=3,surfaceBoundary="freeSurface");
             z = linspace(zDomain(1), zDomain(2), 7).';
             context = struct("N2", N2, "g", g);
             p = IMEigenvalueProblem.evaluateCoefficient(evp.p, z, context);
@@ -61,11 +61,11 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
 
         function endpointAccelerationsAreValidatedAndF0IsNotAnOption(testCase)
             [N2, zDomain] = testCase.profile();
-            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=NaN, gd=1), "IMInternalModes:InvalidSurfaceAcceleration")
-            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=-Inf, gd=1), "IMInternalModes:InvalidSurfaceAcceleration")
-            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=1, gd=NaN), "IMInternalModes:InvalidBottomAcceleration")
-            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=1, gd=-Inf), "IMInternalModes:InvalidBottomAcceleration")
-            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(N2=N2, zDomain=zDomain, g0=1, gd=1, f0=1e-4), "MATLAB:TooManyInputs")
+            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=NaN, gd=1,surfaceBoundary="freeSurface"), "IMInternalModes:InvalidSurfaceAcceleration")
+            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=-Inf, gd=1,surfaceBoundary="freeSurface"), "IMInternalModes:InvalidSurfaceAcceleration")
+            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=1, gd=NaN,surfaceBoundary="freeSurface"), "IMInternalModes:InvalidBottomAcceleration")
+            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g0=1, gd=-Inf,surfaceBoundary="freeSurface"), "IMInternalModes:InvalidBottomAcceleration")
+            testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(N2=N2, zDomain=zDomain, g0=1, gd=1, f0=1e-4,surfaceBoundary="freeSurface"), "MATLAB:TooManyInputs")
         end
 
         function innerProductCatalogMatchesPhysicalEndpointEnergy(testCase)
@@ -136,12 +136,12 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             end
         end
 
-        function depthNormalizationIsDefaultPositiveAndCoupled(testCase)
+        function rmsFIsDefaultPositiveAndCoupled(testCase)
             [N2, zDomain, g] = testCase.profile();
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, g0=-0.02, gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, g0=-0.02, gd=Inf,surfaceBoundary="freeSurface");
             solver = IMSolverSpectral(nEVP=64, coordinateKind="z");
             basisSet = solver.solveEVP(evp, nModes=4);
-            factors = basisSet.normalizationFactors(Normalization.depth);
+            factors = basisSet.normalizationFactors("rmsF");
             z = basisSet.solver.innerProductGrid(zDomain);
             F = basisSet.F(z);
             gram = zeros(4,4);
@@ -156,8 +156,8 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             rawBasis = basisSet.addNormalization("raw", @(~,~) 1);
             rawF = rawBasis.F(z, normalization="raw");
             rawG = rawBasis.G(z, normalization="raw");
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
-            testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
+            testCase.verifyEqual(string(basisSet.normalization), "rmsF")
+            testCase.verifyTrue(ismember("rmsF", basisSet.normalizationNames()))
             testCase.verifyTrue(all(isfinite(factors) & factors > 0))
             testCase.verifyTrue(any(basisSet.h < 0))
             testCase.verifyEqual(gram, eye(4), RelTol=2e-7, AbsTol=2e-7)
@@ -170,7 +170,7 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
 
         function numericalAndAnalyticalMajorantsGivePositiveStateNorms(testCase)
             [N2,zDomain,g] = testCase.profile();
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=-0.02,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,g0=-0.02,gd=Inf,surfaceBoundary="freeSurface");
             numerical = IMSolverSpectral(nEVP=128,coordinateKind="z").solveEVP(evp,nModes=4);
             analytical = IMConstantStratificationSolution(rotationRate=0,N0=sqrt(N2(0)),zDomain=zDomain,g=g).internalModes(evp,nModes=4);
             signedGram = numerical.gramMatrix(variable="G");
@@ -202,16 +202,16 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
                 positiveBasis.gramMatrix(variable="G"),RelTol=2e-10,AbsTol=2e-10)
         end
 
-        function otherHydrostaticBasesGainDepthWithoutDefaultChange(testCase)
+        function hydrostaticBasesShareTheRmsFDefault(testCase)
             [N2, zDomain] = testCase.profile();
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numerical = IMSolverSpectral(nEVP=48).solveEVP(evp, nModes=2);
             analytical = IMConstantStratificationSolution(rotationRate=0,N0=sqrt(N2(0)), zDomain=zDomain).internalModes(evp, nModes=2);
 
-            testCase.verifyTrue(ismember("depth", numerical.normalizationNames()))
-            testCase.verifyTrue(ismember("depth", analytical.normalizationNames()))
-            testCase.verifyEqual(string(numerical.normalization), "geostrophic")
-            testCase.verifyEqual(string(analytical.normalization), "geostrophic")
+            testCase.verifyTrue(ismember("rmsF", numerical.normalizationNames()))
+            testCase.verifyTrue(ismember("rmsF", analytical.normalizationNames()))
+            testCase.verifyEqual(string(numerical.normalization), "rmsF")
+            testCase.verifyEqual(string(analytical.normalization), "rmsF")
         end
 
         function numericalZeroModeIsRetainedExactly(testCase)
@@ -232,7 +232,7 @@ classdef IMGeostrophicAPVModesTests < matlab.unittest.TestCase
             b = 1300;
             N2 = @(z) N0*N0*exp(2*z/b);
             g0 = -integral(N2,-D,0);
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g0=g0,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g0=g0,gd=Inf,surfaceBoundary="freeSurface");
             expected = -0.393119878698696;
 
             for nEVP = [128 256 512]

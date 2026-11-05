@@ -6,9 +6,8 @@ V2 separates the scientific basis, physical projection and numerical recovery. T
 
 | Object | Responsibility |
 | --- | --- |
-| `IMModes` / `IMModeBasis` | Continuous scientific families, labels, normalization, evaluation, derivatives and physical recipes |
+| Capable scientific family bases | Continuous scientific families, labels, normalization, evaluation, derivatives and physical recipes |
 | `IMVerticalGrid` | Physical points, quadrature weights and grid-design provenance |
-| `IMVerticalSampling` | Prescribed point values, cell averages and cell integrals of continuous vertical profiles, with row identities and integration evidence |
 | `IMProjection` | Physical pairings, continuous coefficient normalization, sampled/target Gram diagnostics and physical-dual application |
 | `IMDiscreteTransform` | Prepared synthesis/recovery matrices, coefficient identity, observation metadata and numerical recovery evidence |
 | `IMScalarDiscreteTransform` | Scalar grid/quadrature adapter, with a genuine physical `projection` record |
@@ -21,7 +20,7 @@ Creating a continuous basis does not select a grid. Selecting a grid does not se
 
 For observations `y` and scientific amplitudes `a`, synthesis is `y=A*a` and recovery is `a=R*y`. `A` is a finite real or complex `sampleCount × columnCount` matrix. Unique string `columnLabels` and an explicit `activeColumnMask` preserve coefficient identity and alignment. Inactive columns must be exactly zero; their recovered rows are exactly zero. An active column that vanishes at the selected observations is unobservable and fails recovery.
 
-Observation rows may stack variables on different points, endpoint coordinates, traces, cell averages or other caller-assembled linear observations. Their count is independent of `length(z)`. The generic object requires no `IMVerticalGrid`; a diagnostic application can use another model's prescribed observations directly. [Prescribed vertical sampling](PrescribedVerticalSampling.md) supplies point/cell matrices and their ordering and provenance as a record suitable for `metadata`. WVM ingestion and physical field combinations remain WVM responsibilities.
+Observation rows may stack variables on different points, endpoint coordinates, traces, cell averages or other caller-assembled linear observations. Their count is independent of `length(z)`. The generic object requires no `IMVerticalGrid`; a diagnostic application can use another model's prescribed observations directly. WVM ingestion and physical field combinations remain WVM responsibilities.
 
 The engine keeps four inputs distinct:
 
@@ -76,11 +75,11 @@ Finite inputs alone do not guarantee that every intermediate coordinate change o
 
 ## Physical projection and migration
 
-For a Galerkin physical recipe, `IMProjection` retains raw pairings and the continuous-normalized dual B. `projectPhysical(values)` applies B directly. `project(values)` applies its prepared recovery R. These generally differ off the represented modal span. Physical/source projection remains meaningful even if sample recovery is unavailable, provided the physical coefficient normalization is valid.
+For a Galerkin physical recipe, `IMProjection` retains raw pairings and the continuous-normalized dual B. `projectPhysical(values)` applies B directly. An explicitly prepared `recovery.transformForward(values)` applies R. These generally differ off the represented modal span. Physical/source projection remains meaningful even if sample recovery is unavailable, provided the physical coefficient normalization is valid. The ambiguous `project` and `forwardMatrix` aliases have been removed from `IMProjection`.
 
 Positive physical metrics supply F to the engine. Signed metrics use corrected weak recovery. A sampled Gram that rounds to deficient rank does not veto a resolvable positive fit: for `A=[1 1;0 1e-8]`, the engine recovers both columns even though `A'*A` loses a direction. The actual physical Gram error and rank remain separate evidence; this does not qualify the quadrature. Scalar/F/G count policies still enforce their physical qualification criteria.
 
-`prepareRecovery=false` creates only the physical projection record. A prescribed source dual without synthesis remains a physical projection and does not manufacture a recovery object. A singular prescribed coefficient system retains raw pairings with an unavailable physical dual, rather than a least-squares substitute.
+`projectionOnGrid` defaults to `prepareRecovery=false`, creating only the physical projection record. Direct matrix construction with `IMProjection(...)` retains its `prepareRecovery=true` default for low-level assessment callers; pass false there to request only physical preparation. Collection assessment explicitly prepares its required recovery. A prescribed source dual without synthesis remains a physical projection and does not manufacture a recovery object. A singular prescribed coefficient system retains raw pairings with an unavailable physical dual, rather than a least-squares substitute.
 
 An unrepresentable physical coefficient dual similarly has status `unrepresentableCoefficientSystem` and no applicable matrix. This does not veto independent positive-fit sample recovery. Corrected physical recovery requires a representable normalized dual; otherwise construction reports an actionable error, and `prepareRecovery=false` remains available for inspecting the raw physical record.
 

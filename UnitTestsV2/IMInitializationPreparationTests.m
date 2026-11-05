@@ -53,8 +53,8 @@ classdef IMInitializationPreparationTests < matlab.unittest.TestCase
 
         function preparedDerivativesMatchIndependentEvaluation(testCase)
             for kind=["z","wkb","density"]
-                firstEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0]);
-                secondEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)4e-4+0*z,zDomain=[-500 0]);
+                firstEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)1e-4*exp(2*z/700),zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
+                secondEVP=IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z)4e-4+0*z,zDomain=[-500 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
                 first=IMSolverSpectral(nEVP=33,coordinateKind=kind).configuredForEVP(firstEVP);
                 original=first.differentiateGridValues(eye(33),2);
                 second=first.configuredForEVP(secondEVP);

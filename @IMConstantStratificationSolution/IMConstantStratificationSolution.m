@@ -27,7 +27,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     %
     % ```matlab
     % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-5000 0]);
-    % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain, rotationRate=solution.rotationRate, latitude=solution.latitude);
+    % evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z), zDomain=solution.zDomain, rotationRate=solution.rotationRate, latitude=solution.latitude,surfaceBoundary=IMBoundaryCondition.dirichlet());
     % basisSet = solution.internalModes(evp,nModes=4);
     % exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
     % ```
@@ -207,7 +207,7 @@ classdef IMConstantStratificationSolution < IMAnalyticalSolution
     methods (Access = private)
         function evp = resolveEVP(self, evp)
             if isempty(evp)
-                evp = IMInternalModes.hydrostaticGModes(N2=@(z) self.N2(z), zDomain=self.zDomain, rotationRate=self.rotationRate, latitude=self.latitude, g=self.g);
+                evp = IMInternalModes.hydrostaticGModes(N2=@(z) self.N2(z), zDomain=self.zDomain, rotationRate=self.rotationRate, latitude=self.latitude, g=self.g,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 return;
             end
             if ~isa(evp, "IMInternalModes")

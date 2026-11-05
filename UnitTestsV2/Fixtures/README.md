@@ -23,7 +23,3 @@ For this development run, the WVM-owned export adapter is `/private/tmp/exportIM
 # WVM v4 rigid-lid root points
 
 `IMHydrostaticRootTransformV4Points.csv` freezes the rigid-lid root points from WVM v4's `WVStratification.quadraturePointsForStratifiedFlow` (InternalModes v1 `InternalModesWKBSpectral`, ω = 0) at wave-vortex-model revision `61627812286016cc0fe062d2085308a1d8f6d6f2`, for `N2 = (5.2e-3)^2*exp(2z/1300)` on [-4000, 0] m and `N2 = 1e-6 + 4e-5*exp(-((z+300)/80)^2)` on [-2000, 0] m, latitude 33°, with 17 and 33 points. `IMHydrostaticRootTransformTests` requires `IMInternalModesDiscreteTransform.hydrostaticRoot` to reproduce them within its declared root tolerance (1e-6 D) without a WVM dependency. The v4 values carry v4's own resolution error; the pycnocline points differ from the converged V2 roots by up to 4e-8 D.
-
-# Prescribed staggered observations
-
-`IMPrescribedStaggeredSampling.csv` is synthetic prescribed geometry on [-2, 0] m, with staggered F point values and G cell means in a fixed row order. Every observation lies inside the domain; no physical endpoint is sampled. This is not saved WVM output. `IMVerticalSamplingTests` computes independent expected point, mean and integral values from Fourier formulas, so the fixture requires no WVM classes or model data.

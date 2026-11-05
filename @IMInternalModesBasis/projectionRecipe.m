@@ -14,9 +14,9 @@ arguments (Output)
     recipe (1,1) struct
 end
 spec = self.evp.innerProduct(options.variable);
-provenance = struct("representation","numerical","referenceIntegration","solver inner-product rule","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
+provenance = struct("representation","numerical","referenceIntegration","basis reference quadrature","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
 if ~spec.hasInnerProduct
-    recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
+    recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
     return;
 end
 context = self.evp.contextForSolver(self.solver);
@@ -28,15 +28,14 @@ surface = self.evp.surfaceBoundary;
 bottom = self.evp.bottomBoundary;
 ordinaryNeumann = surface.a == 0 && surface.c == 0 && surface.d == 0 ...
     && bottom.a == 0 && bottom.c == 0 && bottom.d == 0;
-if options.variable == "G" && self.evp.modeFamily == "hydrostatic" ...
-        && self.evp.formulation == "F" && ordinaryNeumann
+if options.variable == "G" && (isa(self,"IMHydrostaticModesBasis") || self.evp.modeFamily == "hydrostatic" && self.evp.formulation == "F" && ordinaryNeumann)
     % The exact zero-eigenvalue F-constant sector has G=0. This includes
     % rigid hydrostatic modes and literal APV Neumann/Neumann limits.
     % No sampled values or magnitude cutoff decide scientific activity.
     active = ~isinf(self.h);
 end
 [~,notPositive] = chol(target(active,active));
-recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant,activeColumnMask=active, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant,activeColumnMask=active, ...
     supportsLeakage=notPositive==0,supportsQuadratic=~isa(self,"IMMeanDensityAnomalyModesBasis"),provenance=provenance,zDomain=self.zDomain, ...
     evaluateFunction=@(z) self.rawVariable(options.variable,z)./factors,weightFunction=@(z) IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context),spec=spec);
 end

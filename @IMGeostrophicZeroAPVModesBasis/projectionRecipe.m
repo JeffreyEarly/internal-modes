@@ -16,5 +16,5 @@ arguments (Output)
 end
 reason = "Zero-APV coefficient-space response and energy forms do not define a scalar F/G sample projection. Paired endpoint-observation projection is not implemented.";
 provenance = struct("representation","numerical","solveAccuracy","unverified","requestedKappa",self.k);
-recipe = IMProjection.createRecipe(isAvailable=false,reason=reason,variable=options.variable,columnLabels=self.endpoints,normalization=string(self.normalizationConvention),provenance=provenance,zDomain=self.zDomain);
+recipe = IMProjection.createRecipe(isAvailable=false,reason=reason,variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalization,provenance=provenance,zDomain=self.zDomain);
 end

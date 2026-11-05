@@ -1,7 +1,7 @@
 function recipe = projectionRecipe(self,options)
 % Bind an analytical aligned basis without requiring a numerical solver.
 %
-% Gram targets use the existing 1024-point trapezoidal reference rule;
+% Gram targets use the basis's physical Gauss-Legendre reference rule;
 % analytical evaluation does not make this quadrature convergence-qualified.
 % - Topic: Analyze Gram matrices
 % - Parameter options.variable: "F" or "G", the solved formulation by default
@@ -14,9 +14,10 @@ arguments (Output)
     recipe (1,1) struct
 end
 spec = self.evp.innerProduct(options.variable);
-provenance = struct("representation","analytical","referenceIntegration","1024-point trapezoidal rule","referencePointCount",1024,"solveAccuracy","unverified","referenceConvergence","unverified");
+referencePoints = self.integrationGrid(self.zDomain);
+provenance = struct("representation","analytical","referenceIntegration","Gauss-Legendre rule","referencePointCount",numel(referencePoints),"solveAccuracy","unverified","referenceConvergence","unverified");
 if ~spec.hasInnerProduct
-    recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
+    recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
     return;
 end
 context = self.context();
@@ -36,7 +37,7 @@ if options.variable == "G" && self.evp.modeFamily == "hydrostatic" ...
     active = ~isinf(self.h);
 end
 [~,notPositive] = chol(target(active,active));
-recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=string(self.modeNumber),normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant,activeColumnMask=active, ...
+recipe = IMProjection.createRecipe(variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),targetGramMatrix=target,majorantGramMatrix=majorant,activeColumnMask=active, ...
     supportsLeakage=notPositive==0,supportsQuadratic=true,provenance=provenance,zDomain=self.zDomain, ...
     evaluateFunction=@(z) self.rawVariable(options.variable,z)./factors,weightFunction=@(z) IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context),spec=spec);
 end

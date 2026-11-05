@@ -22,7 +22,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
     methods (Test)
         function constantStratificationIsScaledDCTAndDST(testCase)
             N0 = 5e-3; D = 1000;
-            background = IMModeBackground.constantStratification(N0=N0,zDomain=[-D 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=N0,zDomain=[-D 0],surfaceCondition="rigidLid");
             for nPoints = [17 33]
                 [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints);
                 r = nPoints-2;
@@ -60,17 +60,16 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function exponentialStratificationMatchesAnalyticalModes(testCase)
-            background = IMModeBackground.exponentialStratification(N0=5.2e-3,b=1300,zDomain=[-4000 0],surfaceCondition="rigidLid");
+            background = IMBackground.exponentialStratification(N0=5.2e-3,b=1300,zDomain=[-4000 0],surfaceCondition="rigidLid");
             [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
             r = assessment.retainedInternalModeCount;
             solution = background.analyticalSolution();
             evp = IMInternalModes.hydrostaticGModes(N2=@(z) solution.N2(z),zDomain=background.zDomain, ...
-                rotationRate=background.rotationRate,latitude=background.latitude,g=background.g);
-            exact = solution.internalModes(evp,nModes=r,normalization="geostrophic");
+                rotationRate=background.rotationRate,latitude=background.latitude,g=background.g,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            exact = solution.internalModes(evp,nModes=r,normalization="rmsF");
             testCase.verifyEqual(transform.h(2:end),exact.h(1:r),RelTol=1e-8)
             F = transform.inverseMatrix(variable="F"); G = transform.inverseMatrix(variable="G");
-            scale = sqrt(background.D./exact.h(1:r));
-            Fexact = exact.F(grid.z,normalization="geostrophic").*scale; Gexact = exact.G(grid.z,normalization="geostrophic").*scale;
+            Fexact = exact.F(grid.z,normalization="rmsF"); Gexact = exact.G(grid.z,normalization="rmsF");
             orientation = sign(sum(G(:,2:end).*Gexact,1));
             testCase.verifyEqual(F(:,2:end),Fexact.*orientation,AbsTol=1e-6*max(abs(Fexact(:))))
             testCase.verifyEqual(G(:,2:end),Gexact.*orientation,AbsTol=1e-6*max(abs(Gexact(:))))
@@ -84,7 +83,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
             cases = unique(fixture(:,["profile","depth","nPoints"]),"rows");
             for k = 1:height(cases)
                 rows = sortrows(fixture(fixture.profile==cases.profile(k) & fixture.nPoints==cases.nPoints(k),:),"node");
-                background = IMModeBackground(N2=profiles.(cases.profile(k)),zDomain=[-cases.depth(k) 0],latitude=33,surfaceCondition="rigidLid");
+                background = IMBackground(N2=profiles.(cases.profile(k)),zDomain=[-cases.depth(k) 0],latitude=33,surfaceCondition="rigidLid");
                 [~,grid] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,cases.nPoints(k));
                 % v4 roots carry their own unqualified resolution error, so
                 % agreement is required to the declared root tolerance.
@@ -93,7 +92,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function stronglyVaryingProfileIsIndependentOfResolution(testCase)
-            background = IMModeBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
             [T1,grid1,A1] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
             % The default path raises resolution until an independent refinement agrees.
             testCase.verifyGreaterThan(height(A1.convergence.attempts),1)
@@ -113,7 +112,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function automaticSelectionRecordsSearchAndLimit(testCase)
-            background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
             [transform,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33);
             search = assessment.search;
             r = assessment.retainedInternalModeCount;
@@ -135,7 +134,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function strictRequestsAreExact(testCase)
-            background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
             [transform,~,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33,nInternalModes=20);
             testCase.verifyEqual(assessment.selection,"strict")
             testCase.verifyEqual(assessment.retainedInternalModeCount,20)
@@ -146,7 +145,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function galerkinRecoveryDiffersFromPrescribedDual(testCase)
-            background = IMModeBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-4*exp(2*z/400),zDomain=[-1000 0],surfaceCondition="rigidLid");
             [transform,grid] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33,forwardOperator="galerkin");
             testCase.verifyEqual(transform.forwardOperator(variable="F"),"galerkin")
             Phi = transform.inverseMatrix(variable="F");
@@ -163,7 +162,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function truncatedCollocationRejectsModesWithinTheRootSpan(testCase)
-            background = IMModeBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-6+4e-5*exp(-((z+300)/80).^2),zDomain=[-2000 0],latitude=33,surfaceCondition="rigidLid");
             nPoints = 33;
             [collocation,grid,assessment] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints);
             galerkin = IMInternalModesDiscreteTransform.hydrostaticRoot(background,nPoints,forwardOperator="galerkin");
@@ -176,11 +175,10 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(collocation.relativeGramOperatorError(variable="F"),galerkin.relativeGramOperatorError(variable="F"),RelTol=1e-12)
             % Independent modes over the whole span, at the converged resolution.
             solver = IMSolverSpectral(nEVP=assessment.convergence.candidateNEVP,coordinateKind=assessment.convergence.coordinateKind);
-            evp = IMInternalModes.hydrostaticGModes(N2=background.N2,zDomain=background.zDomain,latitude=33);
+            evp = IMInternalModes.hydrostaticGModes(N2=background.N2,zDomain=background.zDomain,latitude=33,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basis = solver.solveEVP(evp,nModes=nPoints-1);
-            scale = sqrt(background.D./basis.h);
-            F = basis.F(grid.z,normalization="geostrophic").*scale;
-            G = basis.G(grid.z,normalization="geostrophic").*scale; G([1 end],:) = 0;
+            F = basis.F(grid.z,normalization="rmsF");
+            G = basis.G(grid.z,normalization="rmsF"); G([1 end],:) = 0;
             withinSpanF = F(:,r+1:nPoints-1);
             withinSpanG = G(:,r+1:nPoints-2);
             HF = 2000*ones(r+1,1);
@@ -205,11 +203,11 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function returnedContinuousBasisAndFixedGridBridgeAgree(testCase)
-            background = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
             [T,grid,~,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,17,nInternalModes=8);
-            testCase.verifyClass(basis,"IMModeBasis")
-            testCase.verifyEqual(basis.family,"hydrostaticF")
-            testCase.verifyEqual(basis.normalization,"depthRMSF")
+            testCase.verifyClass(basis,"IMHydrostaticModesBasis")
+            testCase.verifyEqual(basis.family,"hydrostaticFModes")
+            testCase.verifyEqual(basis.normalization,"rmsF")
             testCase.verifyEqual(basis.columnLabels,["barotropic:0" "positive:"+string(1:8)])
             testCase.verifyEqual(T.basis,basis)
             z = linspace(-1000,0,73).';
@@ -218,10 +216,12 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(Gz(:,1),zeros(73,1))
             for variable = ["F","G"]
                 testCase.verifyEqual(T.inverseMatrix(variable=variable),basis.(variable)(grid.z))
+                testCase.verifyEqual(T.targetGramMatrix(variable=variable),basis.gramMatrix(variable=variable))
+                testCase.verifyEqual(T.targetMajorantGramMatrix(variable=variable),basis.majorantGramMatrix(variable=variable))
                 bridge = basis.discreteTransform(grid);
                 collection = IMBasisCollection({basis});
-                projected = collection.projectionOnGrid(grid.z,grid.weights,variable=variable);
-                testCase.verifyEqual(projected.forwardMatrix,bridge.forwardMatrix(variable=variable),AbsTol=1e-10)
+                projected = collection.projectionOnGrid(grid.z,grid.weights,variable=variable,prepareRecovery=true);
+                testCase.verifyEqual(projected.recovery.forwardMatrix,bridge.forwardMatrix(variable=variable),AbsTol=1e-10)
                 testCase.verifyEqual(bridge.inverseMatrix(variable=variable),T.inverseMatrix(variable=variable))
                 testCase.verifyLessThan(bridge.roundTripError(variable=variable),1e-10)
                 context = T.quadratureFitContext(variable=variable);
@@ -242,15 +242,21 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function maxAbsNormalizationHasConsistentContinuousMetrics(testCase)
-            background = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
             grid = IMVerticalGrid.physicalDepth(background.zDomain,65);
             for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=64)}
-                basis = IMModes.hydrostaticFModes(background,solver=solver{1},nInternalModes=5,normalization="maxAbsF");
+                if isa(solver{1},"IMSolverAnalytical")
+                    problem = IMInternalModes.hydrostaticFModes(background);
+                    basis = solver{1}.solveEVP(problem,nModes=6).withNormalization("maxAbsF");
+                else
+                    problem = IMInternalModes.hydrostaticGModes(background);
+                    basis = IMHydrostaticModesBasis(solver{1}.solveEVP(problem,nModes=5),normalization="maxAbsF");
+                end
                 T = basis.discreteTransform(grid);
                 collection = IMBasisCollection({basis});
                 for variable = ["F","G"]
-                    projected = collection.projectionOnGrid(grid.z,grid.weights,variable=variable);
-                    testCase.verifyEqual(projected.forwardMatrix,T.forwardMatrix(variable=variable),AbsTol=1e-10)
+                    projected = collection.projectionOnGrid(grid.z,grid.weights,variable=variable,prepareRecovery=true);
+                    testCase.verifyEqual(projected.recovery.forwardMatrix,T.forwardMatrix(variable=variable),AbsTol=1e-10)
                     testCase.verifyEqual(projected.targetGramMatrix,T.targetGramMatrix(variable=variable),AbsTol=1e-8)
                     testCase.verifyLessThan(T.roundTripError(variable=variable),1e-10)
                 end
@@ -258,9 +264,54 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
             end
         end
 
+        function customScalingPreservesPhysicalMetricsAndOffSpanCoefficients(testCase)
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            grid = IMVerticalGrid.physicalDepth(background.zDomain,65);
+            for solver = {IMSolverAnalytical(),IMSolverSpectral(nEVP=64)}
+                if isa(solver{1},"IMSolverAnalytical")
+                    basis = solver{1}.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=6);
+                else
+                    basis = IMHydrostaticModesBasis(solver{1}.solveEVP(IMInternalModes.hydrostaticGModes(background),nModes=5));
+                end
+                factors = basis.normalizationFactors("rmsF");
+                scaled = basis.addNormalization("halfAmplitude",@(~,j) 2*factors(j)).withNormalization("halfAmplitude");
+                original = basis.discreteTransform(grid);
+                changed = scaled.discreteTransform(grid);
+                input = exp(grid.z/170)+1i*sin(grid.z/213);
+                for variable = ["F","G"]
+                    testCase.verifyEqual(changed.inverseMatrix(variable=variable),0.5*original.inverseMatrix(variable=variable),AbsTol=1e-12);
+                    testCase.verifyEqual(changed.targetGramMatrix(variable=variable),0.25*original.targetGramMatrix(variable=variable),RelTol=1e-11,AbsTol=1e-10);
+                    testCase.verifyEqual(changed.targetGramMatrix(variable=variable),scaled.gramMatrix(variable=variable),RelTol=1e-11,AbsTol=1e-8);
+                    physical = scaled.projectionOnGrid(grid.z,grid.weights,variable=variable);
+                    reference = basis.projectionOnGrid(grid.z,grid.weights,variable=variable);
+                    testCase.verifyEqual(physical.projectPhysical(input),2*reference.projectPhysical(input),AbsTol=1e-10);
+                    testCase.verifyEqual(changed.transformForward(input,variable=variable),2*original.transformForward(input,variable=variable),AbsTol=1e-10);
+                end
+            end
+        end
+
+        function finiteDifferenceBridgePreservesPhysicalGramAndOffSpanDual(testCase)
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            solver = IMSolverFiniteDifference(z=linspace(-1000,0,17).');
+            basis = solver.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=5);
+            grid = IMVerticalGrid.physicalDepth(background.zDomain,33);
+            transform = basis.discreteTransform(grid);
+            input = exp(grid.z/170)+1i*sin(grid.z/213);
+            for variable = ["F","G"]
+                projected = basis.projectionOnGrid(grid.z,grid.weights,variable=variable);
+                physical = transform.physicalProjection(variable=variable);
+                testCase.verifyEqual(transform.targetGramMatrix(variable=variable),projected.targetGramMatrix,RelTol=1e-12,AbsTol=1e-10);
+                testCase.verifyEqual(transform.targetMajorantGramMatrix(variable=variable),projected.majorantGramMatrix,RelTol=1e-12,AbsTol=1e-10);
+                testCase.verifyEqual(physical.projectPhysical(input),projected.projectPhysical(input),RelTol=1e-12,AbsTol=1e-10);
+            end
+            testCase.verifyEqual(transform.activeModeMask(variable="G"),[false true(1,4)]);
+            physicalG = transform.physicalProjection(variable="G");
+            testCase.verifyEqual(physicalG.physicalDualMatrix(1,:),zeros(1,grid.nPoints));
+        end
+
         function weakStratificationRetainsTheAnalyticalBand(testCase)
             for N0 = [1e-6 1e-7]
-                background = IMModeBackground.constantStratification(N0=N0,zDomain=[-1000 0],surfaceCondition="rigidLid");
+                background = IMBackground.constantStratification(N0=N0,zDomain=[-1000 0],surfaceCondition="rigidLid");
                 for operator = ["truncatedCollocation","galerkin"]
                     [T,~,A] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,33,nInternalModes=31,forwardOperator=operator);
                     testCase.verifyEqual(A.retainedInternalModeCount,31)
@@ -273,7 +324,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function rootCountFailuresRefineWithCoordinateFallback(testCase)
-            background = IMModeBackground.exponentialStratification(N0=5e-3,b=50,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.exponentialStratification(N0=5e-3,b=50,zDomain=[-1000 0],surfaceCondition="rigidLid");
             [T,grid,A] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,17);
             testCase.verifyEqual(A.retainedInternalModeCount,15)
             testCase.verifyEqual(A.convergence.coordinateKind,"z")
@@ -285,7 +336,7 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function barotropicOnlyIsAnExplicitValidBand(testCase)
-            background = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
             for operator = ["truncatedCollocation","galerkin"]
                 [T,grid,A,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,17,nInternalModes=0,forwardOperator=operator);
                 testCase.verifyEqual(A.retainedInternalModeCount,0)
@@ -299,11 +350,11 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
         end
 
         function invalidRequestsAreRejected(testCase)
-            free = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
+            free = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="freeSurface");
             testCase.verifyError(@() IMInternalModesDiscreteTransform.hydrostaticRoot(free,17),"IMInternalModesDiscreteTransform:HydrostaticRootRequiresRigidLid")
-            neutral = IMModeBackground(N2=@(z) 1e-5*(z < -200),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            neutral = IMBackground(N2=@(z) 1e-5*(z < -200),zDomain=[-1000 0],surfaceCondition="rigidLid");
             testCase.verifyError(@() IMInternalModesDiscreteTransform.hydrostaticRoot(neutral,17),"IMInternalModesDiscreteTransform:HydrostaticRootRequiresPositiveStratification")
-            rigid = IMModeBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            rigid = IMBackground.constantStratification(N0=5e-3,zDomain=[-1000 0],surfaceCondition="rigidLid");
             testCase.verifyError(@() IMInternalModesDiscreteTransform.hydrostaticRoot(rigid,17,solver=IMSolverFiniteDifference(z=linspace(-1000,0,129).')),"IMInternalModesDiscreteTransform:HydrostaticRootRequiresSpectralSolver")
         end
 
@@ -313,8 +364,8 @@ classdef IMHydrostaticRootTransformTests < matlab.unittest.TestCase
             w = 0.5+rand(RandStream("twister",Seed=3),40,1); w = w/sum(w);
             projection = IMProjection(Phi,diag(w),diag([1 0.5*ones(1,9)]));
             normal = (Phi.'*(w.*Phi))\(Phi.'.*w.');
-            testCase.verifyEqual(projection.forwardMatrix,normal,AbsTol=1e-10*norm(normal))
-            testCase.verifyEqual(projection.forwardMatrix*Phi,eye(10),AbsTol=1e-12)
+            testCase.verifyEqual(projection.recovery.forwardMatrix,normal,AbsTol=1e-10*norm(normal))
+            testCase.verifyEqual(projection.recovery.forwardMatrix*Phi,eye(10),AbsTol=1e-12)
         end
     end
 end

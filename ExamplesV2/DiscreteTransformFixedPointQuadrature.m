@@ -23,7 +23,7 @@ evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g
     surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
 solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 
 %% Choose a surface-refined grid and fit its quadrature weights
 % The points include both boundaries and become more closely spaced toward

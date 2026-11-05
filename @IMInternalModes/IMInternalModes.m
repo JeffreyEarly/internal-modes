@@ -11,10 +11,10 @@ classdef IMInternalModes < IMEigenvalueProblem
     %
     % ```matlab
     % N2 = @(z) (5.2e-3)^2*exp(2*z/1300);
-    % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+    % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
     % solver = IMSolverSpectral(nEVP=128,coordinateKind="wkb");
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet.normalization = Normalization.geostrophic;
+    % basisSet.normalization = "rmsF";
     % G = basisSet.G(linspace(-4000,0,200).');
     % ```
     %
@@ -43,7 +43,7 @@ classdef IMInternalModes < IMEigenvalueProblem
         % EVP. The default `"none"` installs only generic internal-mode
         % behavior. The `"hydrostatic"` family declares the hydrostatic
         % `F`/`G` family, enabling the generalized boundary-condition
-        % catalog and the coupled `geostrophic` normalization convention.
+        % catalog and coupled `rmsF` and `rmsG` normalization rules.
         % The `"meanDensityAnomaly"` family solves generalized-energy
         % `G` modes and carries a surface-referenced diagnostic `F`.
         %
@@ -58,6 +58,14 @@ classdef IMInternalModes < IMEigenvalueProblem
         %
         % - Topic: Inspect internal-mode configuration
         N2
+
+        % Authoritative physical column, including analytical profile provenance.
+        % - Topic: Inspect internal-mode configuration
+        background IMBackground
+
+        % Original scientific factory arguments, before derived defaults.
+        % - Topic: Inspect internal-mode configuration
+        requestedSpecification struct = struct()
 
         % Planetary rotation rate in radians per second.
         %
@@ -201,6 +209,10 @@ classdef IMInternalModes < IMEigenvalueProblem
             self.hFromEigenvalue = options.hFromEigenvalue;
             self.FfromGz = options.FfromGz;
             self.GfromFz = options.GfromFz;
+            surfaceCondition = "rigidLid";
+            if self.surfaceBoundary.isEigenvalueDependent(), surfaceCondition = "freeSurface"; end
+            if isfield(parameters,"surfaceBoundary"), surfaceCondition = string(parameters.surfaceBoundary); end
+            self.background = IMBackground(N2=self.N2,zDomain=self.zDomain,rotationRate=self.rotationRate,latitude=self.latitude,g=self.g,surfaceCondition=surfaceCondition);
         end
 
         summarize(self, solver)
@@ -364,7 +376,7 @@ classdef IMInternalModes < IMEigenvalueProblem
     end
 
     methods (Static)
-        function evp = hydrostaticGModes(options)
+        function evp = hydrostaticGModes(varargin)
             % Create the hydrostatic `G` internal-mode EVP.
             %
             % This factory creates the hydrostatic `G`-form problem
@@ -391,9 +403,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % \right].
             % $$
             %
-            % The default surface and bottom boundary conditions are
-            % `IMBoundaryCondition.dirichlet()`, giving rigid-lid and
-            % rigid-bottom conditions
+            % Without a background, specify surfaceBoundary explicitly. The
+            % bottom defaults to IMBoundaryCondition.dirichlet(). Choosing
+            % Dirichlet at both ends gives rigid-lid and rigid-bottom conditions
             %
             % $$
             % G_j(z_s)=0,\qquad G_j(z_b)=0.
@@ -412,46 +424,43 @@ classdef IMInternalModes < IMEigenvalueProblem
             % After conversion, `innerProduct("F")` and
             % `innerProduct("G")` use the hydrostatic endpoint catalog to
             % report which bilinear forms are known.
-            % Solved hydrostatic basis sets install the `geostrophic`
-            % normalization rule and use it by default because they set
-            % `modeFamily` to `"hydrostatic"`. This factory sets
+            % Solved hydrostatic bases use `rmsF` by default.
+            % This factory sets
             % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
             %
             % ```matlab
-            % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0]);
+            % evp = IMInternalModes.hydrostaticGModes(N2=N2,zDomain=[-4000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             % solver = IMSolverSpectral(nEVP=128);
             % basisSet = solver.solveEVP(evp,nModes=4);
             % G = basisSet.G(z);
             % ```
             %
+            % A positional IMBackground supplies authoritative physical
+            % state and the surface convention. Without a background, supply
+            % the documented physical inputs and an explicit surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
             % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.hydrostaticGModes(options)
+            % - Declaration: evp = IMInternalModes.hydrostaticGModes(background,options)
+            % - Parameter background: optional authoritative IMBackground
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
             % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.surfaceBoundary: required surface boundary condition without a background
             % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: hydrostatic `G` EVP
-            arguments
-                options.N2 function_handle
-                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
-                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
-                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
-                options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
+            arguments (Repeating)
+                varargin
             end
-
-            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="hydrostatic", ...
-                N2=options.N2, zDomain=options.zDomain, ...
-                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
-                r=@(z,ctx) ctx.N2(z)/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
+            [args,background] = IMInternalModes.backgroundArguments("hydrostaticGModes",varargin);
+            evp = IMInternalModes.hydrostaticGModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
         end
 
-        function evp = hydrostaticFModes(options)
+        function evp = hydrostaticFModes(varargin)
             % Create the hydrostatic `F` internal-mode EVP.
             %
             % This factory creates the hydrostatic `F`-form problem
@@ -484,8 +493,9 @@ classdef IMInternalModes < IMEigenvalueProblem
             % \right].
             % $$
             %
-            % The default surface and bottom boundary conditions are
-            % `IMBoundaryCondition.neumann()`, giving
+            % Without a background, specify surfaceBoundary explicitly. The
+            % bottom defaults to IMBoundaryCondition.neumann(). Choosing
+            % Neumann at both ends gives
             %
             % $$
             % \frac{1}{N^2(z_s)}
@@ -525,34 +535,32 @@ classdef IMInternalModes < IMEigenvalueProblem
             % This factory forwards rotation metadata and sets
             % `parameters.formulation`, derived `parameters.f0`, and `parameters.g`.
             %
+            % A positional IMBackground supplies authoritative physical
+            % state and the surface convention. Without a background, supply
+            % the documented physical inputs and an explicit surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
             % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.hydrostaticFModes(options)
+            % - Declaration: evp = IMInternalModes.hydrostaticFModes(background,options)
+            % - Parameter background: optional authoritative IMBackground
             % - Parameter options.N2: buoyancy frequency squared function
             % - Parameter options.zDomain: physical vertical domain
             % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
             % - Parameter options.latitude: central latitude in degrees north; default 33
             % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface boundary condition
+            % - Parameter options.surfaceBoundary: required surface boundary condition without a background
             % - Parameter options.bottomBoundary: bottom boundary condition
             % - Returns evp: hydrostatic `F` EVP
-            arguments
-                options.N2 function_handle
-                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
-                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
-                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
-                options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
+            arguments (Repeating)
+                varargin
             end
-
-            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="hydrostatic", ...
-                N2=options.N2, zDomain=options.zDomain, ...
-                p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
-                r=@(z,ctx) ones(size(z))/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
-                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
+            [args,background] = IMInternalModes.backgroundArguments("hydrostaticFModes",varargin);
+            evp = IMInternalModes.hydrostaticFModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
         end
 
-        function evp = geostrophicAPVModes(options)
+        function evp = geostrophicAPVModes(varargin)
             % Create signed generalized-energy geostrophic APV modes.
             %
             % Numerical solves use the regular paired problem
@@ -598,7 +606,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % constraint. The free-surface `g0=Inf` limit instead has
             % $$c_s=1$$.
             %
-            % Solved bases use `Normalization.depth` by default, so
+            % Solved bases use `rmsF` by default, so
             % $$D^{-1}\int_{z_b}^{z_s}F_j^2\,dz=1$$ without endpoint
             % terms. The same positive factor scales `F` and `G`, including
             % negative-eigendepth modes. Signed `h` values are retained;
@@ -611,7 +619,7 @@ classdef IMInternalModes < IMEigenvalueProblem
             % return one column per retained mode.
             %
             % ```matlab
-            % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-4000 0],g0=-0.02,gd=Inf);
+            % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-4000 0],g0=-0.02,gd=Inf,surfaceBoundary="freeSurface");
             % basisSet = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=4);
             % F = basisSet.F(z);
             % ```
@@ -620,8 +628,14 @@ classdef IMInternalModes < IMEigenvalueProblem
             % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-4000 0],g0=Inf,gd=Inf,surfaceBoundary="rigidLid");
             % ```
             %
+            % A positional IMBackground supplies authoritative physical
+            % state and the surface convention. Without a background, supply
+            % the documented physical inputs and an explicit surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
             % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.geostrophicAPVModes(options)
+            % - Declaration: evp = IMInternalModes.geostrophicAPVModes(background,options)
+            % - Parameter background: optional authoritative IMBackground
             % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
             % - Parameter options.zDomain: physical vertical domain in meters
             % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
@@ -629,8 +643,377 @@ classdef IMInternalModes < IMEigenvalueProblem
             % - Parameter options.g: gravitational acceleration in meters per second squared
             % - Parameter options.g0: signed surface acceleration in meters per second squared
             % - Parameter options.gd: signed bottom acceleration in meters per second squared
-            % - Parameter options.surfaceBoundary: `"freeSurface"` or `"rigidLid"`
+            % - Parameter options.surfaceBoundary: required `"freeSurface"` or `"rigidLid"` without a background
             % - Returns evp: generalized-energy geostrophic APV EVP
+            arguments (Repeating)
+                varargin
+            end
+            [args,background] = IMInternalModes.backgroundArguments("geostrophicAPVModes",varargin);
+            evp = IMInternalModes.geostrophicAPVModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
+        end
+
+        function evp = geostrophicGeneralizedPotentialEnstrophyModes(varargin)
+            % Create free-surface generalized-potential-enstrophy modes.
+            %
+            % At fixed positive horizontal wavenumber `k`, numerical solves
+            % use the regular pair
+            % $$F_j'=-N^2G_j/g,\qquad G_j'=F_j/h_j,$$
+            % with public eigenvalue
+            % $$\Lambda_j=k^2+f_0^2/(g h_j).$$
+            % The endpoint conditions are
+            % $$\alpha_0(G_j(z_s)-F_j(z_s))=-g\Lambda_jF_j(z_s),$$
+            % $$\alpha_DG_j(z_b)=g\Lambda_jF_j(z_b).$$
+            % This formulation allows finite real nonnegative N2. Its
+            % inherited scalar coefficients apply where N2 is positive.
+            % Positive infinity removes the corresponding eigenvalue-side
+            % endpoint term. The default bottom is inactive. When `alpha0`
+            % is omitted, the surface weight is
+            % $$
+            % \alpha_0=\frac{f_0^2}{b_\mathrm{eff}},\qquad
+            % b_\mathrm{eff}=\frac{(\int N\,dz)^2}{4\int N^2\,dz}.
+            % $$
+            %
+            % Solved bases use
+            % `"generalizedPotentialEnstrophy"` by default, so
+            % $$
+            % \frac{1}{D}\left[\int F_iF_j\,dz
+            % +\frac{f_0^2}{\alpha_0}F_i(z_s)F_j(z_s)
+            % +\frac{f_0^2}{\alpha_d}F_i(z_b)F_j(z_b)\right]=\delta_{ij},
+            % $$
+            % with inactive terms omitted. The equivalent depth is retained
+            % from the solved inverse depth, avoiding subtraction of nearly
+            % equal public eigenvalues; exact zero gives h=Inf. Public
+            % eigenvalues use a positive Rayleigh quotient. Fully neutral
+            % stratification requires an explicit alpha0 because its default
+            % stratification scale is undefined.
+            %
+            % ```matlab
+            % evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
+            %     N2=N2,zDomain=[-4000 0],k=2*pi/100e3,rotationRate=7.2921e-5,latitude=45);
+            % basisSet = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=8);
+            % ```
+            %
+            % A positional IMBackground supplies authoritative physical state.
+            % The endpoint laws above are intrinsic to this named problem;
+            % this factory does not accept an independent surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(background,options)
+            % - Parameter background: optional authoritative IMBackground
+            % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
+            % - Parameter options.zDomain: physical vertical domain in meters
+            % - Parameter options.k: positive horizontal wavenumber in radians per meter
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
+            % - Parameter options.g: gravitational acceleration in meters per second squared
+            % - Parameter options.alpha0: optional positive surface generalized-potential-enstrophy weight
+            % - Parameter options.alphaD: positive bottom generalized-potential-enstrophy weight or `Inf`
+            % - Returns evp: generalized-potential-enstrophy mode EVP
+            arguments (Repeating)
+                varargin
+            end
+            [args,background] = IMInternalModes.backgroundArguments("geostrophicGeneralizedPotentialEnstrophyModes",varargin);
+            evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
+        end
+
+        function evp = meanDensityAnomalyModes(varargin)
+            % Create generalized-energy mean-density-anomaly modes.
+            %
+            % This factory creates the `G`-form problem
+            %
+            % $$
+            % -G_j''(z)=\frac{N^2(z)}{g h_j}G_j(z)
+            % $$
+            %
+            % with endpoint conditions
+            %
+            % $$
+            % g h_jG_j'(z_s)=g_0G_j(z_s),\qquad
+            % g h_jG_j'(z_b)=-g_dG_j(z_b).
+            % $$
+            %
+            % `g0` and `gd` are required. A finite value, including zero,
+            % keeps that endpoint active; zero is the Neumann limit.
+            % Positive infinity imposes Dirichlet data and omits the
+            % corresponding generalized-energy endpoint term. `NaN` and
+            % negative infinity are rejected.
+            %
+            % Solved modes use the signed generalized-energy normalization
+            %
+            % $$
+            % \frac{1}{g}\int_{z_b}^{z_s}N^2G_iG_j\,dz
+            % +\frac{g_0}{g}G_i(z_s)G_j(z_s)
+            % +\frac{g_d}{g}G_i(z_b)G_j(z_b)
+            % =\epsilon_j\delta_{ij},
+            % $$
+            %
+            % with inactive terms omitted. The basis exposes
+            % `basisSet.signatures` as $$\epsilon_j\in\{-1,+1\}$$.
+            % For the continuous projection functional
+            % $$\mathcal G_j[X]=\langle G_j,X\rangle_G$$, normalized
+            % coefficients obey $$A_j=\epsilon_j\mathcal G_j[X]$$.
+            % Its aligned diagnostic pressure modes are computed by
+            % surface-referenced integration,
+            %
+            % $$
+            % F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz',
+            % \qquad F_j(z_s)=0.
+            % $$
+            %
+            % Discrete transforms directly project the `G` channel and
+            % synthesize both `G` and `F`. The diagnostic `F` channel does
+            % not define an independent coefficient projection metric.
+            %
+            % ```matlab
+            % evp = IMInternalModes.meanDensityAnomalyModes( ...
+            %     N2=N2,zDomain=[-4000 0],g0=0.02,gd=Inf);
+            % basisSet = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=8);
+            % F = basisSet.F(z);
+            % G = basisSet.G(z);
+            % ```
+            %
+            % A positional IMBackground supplies authoritative physical state.
+            % The endpoint laws above are intrinsic to this named problem;
+            % this factory does not accept an independent surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.meanDensityAnomalyModes(background,options)
+            % - Parameter background: optional authoritative IMBackground
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
+            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.g0: signed finite surface acceleration, zero, or positive infinity
+            % - Parameter options.gd: signed finite bottom acceleration, zero, or positive infinity
+            % - Returns evp: generalized-energy mean-density-anomaly EVP
+            arguments (Repeating)
+                varargin
+            end
+            [args,background] = IMInternalModes.backgroundArguments("meanDensityAnomalyModes",varargin);
+            evp = IMInternalModes.meanDensityAnomalyModesFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
+        end
+
+        function evp = waveModesAtWavenumber(varargin)
+            % Create the fixed-wavenumber wave-mode EVP.
+            %
+            % This factory creates the fixed-wavenumber `G`-form problem
+            %
+            % $$
+            % -\frac{\partial^2 G_j}{\partial z^2}(z)
+            % +k^2G_j(z)
+            % =
+            % \lambda_j\frac{N^2(z)-f_0^2}{g}G_j(z),
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            %
+            % $$
+            % -\left[
+            % a_\ell G_j(z_\ell)
+            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell G_j(z_\ell)
+            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].
+            % $$
+            %
+            % Without a background, specify surfaceBoundary explicitly. The
+            % bottom defaults to IMBoundaryCondition.dirichlet(). Choosing
+            % Dirichlet at both ends gives rigid endpoint conditions
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
+            % A linear free-surface condition at the surface can be written
+            % as
+            %
+            % $$
+            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},
+            % $$
+            %
+            % equivalently
+            %
+            % $$
+            % \frac{\partial G_j}{\partial z}(z_s)
+            % =
+            % \lambda_j G_j(z_s).
+            % $$
+            %
+            % In canonical boundary-condition coefficients this is
+            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
+            % Every wave basis uses the manuscript relation $$F_j=D G_j'$$,
+            % with $$D=z_s-z_b$$, and defaults to `waveEnergy` normalization.
+            % This factory adds `parameters.k` and sets
+            % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
+            %
+            % A positional IMBackground supplies authoritative physical
+            % state and the surface convention. Without a background, supply
+            % the documented physical inputs and an explicit surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(background,options)
+            % - Parameter background: optional authoritative IMBackground
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.k: horizontal wavenumber
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
+            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.surfaceBoundary: required surface boundary condition without a background
+            % - Parameter options.bottomBoundary: bottom boundary condition
+            % - Returns evp: fixed-wavenumber `G` EVP
+            arguments (Repeating)
+                varargin
+            end
+            [args,background] = IMInternalModes.backgroundArguments("waveModesAtWavenumber",varargin);
+            evp = IMInternalModes.waveModesAtWavenumberFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
+        end
+
+        function evp = waveModesAtFrequency(varargin)
+            % Create the fixed-frequency wave-mode EVP.
+            %
+            % This factory creates the fixed-frequency `G`-form problem
+            %
+            % $$
+            % -\frac{\partial^2 G_j}{\partial z^2}(z)
+            % =
+            % \lambda_j\frac{N^2(z)-\omega^2}{g}G_j(z),
+            % \qquad \lambda_j=\frac{1}{h_j}.
+            % $$
+            %
+            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
+            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
+            %
+            % $$
+            % -\left[
+            % a_\ell G_j(z_\ell)
+            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right]
+            % =
+            % \lambda_j\left[
+            % c_\ell G_j(z_\ell)
+            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
+            % \right].
+            % $$
+            %
+            % Without a background, specify surfaceBoundary explicitly. The
+            % bottom defaults to IMBoundaryCondition.dirichlet(). Choosing
+            % Dirichlet at both ends gives rigid endpoint conditions
+            %
+            % $$
+            % G_j(z_s)=0,\qquad G_j(z_b)=0.
+            % $$
+            %
+            % A linear free-surface condition at the surface can be written
+            % as
+            %
+            % $$
+            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
+            % \qquad \lambda_j=\frac{1}{h_j},
+            % $$
+            %
+            % equivalently
+            %
+            % $$
+            % \frac{\partial G_j}{\partial z}(z_s)
+            % =
+            % \lambda_j G_j(z_s).
+            % $$
+            %
+            % In canonical boundary-condition coefficients this is
+            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
+            % Every wave basis uses the manuscript relation $$F_j=D G_j'$$,
+            % with $$D=z_s-z_b$$. Fixed-frequency profiles default to
+            % `rmsF`; a single fixed-wavenumber `waveEnergy` norm is
+            % unavailable. Use the k=0 wave problem at the inertial frequency.
+            % This factory adds `parameters.omega` and sets `parameters.formulation`,
+            % `parameters.f0`, and `parameters.g`.
+            %
+            % A positional IMBackground supplies authoritative physical
+            % state and the surface convention. Without a background, supply
+            % the documented physical inputs and an explicit surfaceBoundary.
+            % nModes belongs to solveEVP and counts all retained columns.
+            %
+            % - Topic: Create internal-mode EVPs
+            % - Declaration: evp = IMInternalModes.waveModesAtFrequency(background,options)
+            % - Parameter background: optional authoritative IMBackground
+            % - Parameter options.N2: buoyancy frequency squared function
+            % - Parameter options.zDomain: physical vertical domain
+            % - Parameter options.omega: wave frequency
+            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
+            % - Parameter options.latitude: central latitude in degrees north; default 33
+            % - Parameter options.g: gravitational acceleration
+            % - Parameter options.surfaceBoundary: required surface boundary condition without a background
+            % - Parameter options.bottomBoundary: bottom boundary condition
+            % - Returns evp: fixed-frequency `G` EVP
+            arguments (Repeating)
+                varargin
+            end
+            [args,background] = IMInternalModes.backgroundArguments("waveModesAtFrequency",varargin);
+            evp = IMInternalModes.waveModesAtFrequencyFromOptions(args{:});
+            evp.requestedSpecification = IMBasisContracts.requestedArguments(args);
+            if ~isempty(background), evp.background = background; end
+        end
+
+    end
+
+    methods (Static, Access = private)
+        function evp = hydrostaticGModesFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
+            arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
+                options.surfaceBoundary (1,1) IMBoundaryCondition
+                options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
+            end
+
+            evp = IMInternalModes(name="hydrostaticGModes", formulation="G", modeFamily="hydrostatic", ...
+                N2=options.N2, zDomain=options.zDomain, ...
+                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
+                r=@(z,ctx) ctx.N2(z)/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
+        end
+        function evp = hydrostaticFModesFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
+            arguments
+                options.N2 function_handle
+                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
+                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
+                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
+                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
+                options.surfaceBoundary (1,1) IMBoundaryCondition
+                options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.neumann()
+            end
+
+            evp = IMInternalModes(name="hydrostaticFModes", formulation="F", modeFamily="hydrostatic", ...
+                N2=options.N2, zDomain=options.zDomain, ...
+                p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), ...
+                r=@(z,ctx) ones(size(z))/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
+                surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary);
+        end
+        function evp = geostrophicAPVModesFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
@@ -639,7 +1022,7 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
                 options.g0 (1,1) double {mustBeReal}
                 options.gd (1,1) double {mustBeReal}
-                options.surfaceBoundary {mustBeTextScalar, mustBeMember(options.surfaceBoundary, ["freeSurface", "rigidLid"])} = "freeSurface"
+                options.surfaceBoundary {mustBeTextScalar, mustBeMember(options.surfaceBoundary, ["freeSurface", "rigidLid"])}
             end
 
             if isnan(options.g0) || options.g0 == -Inf
@@ -675,59 +1058,8 @@ classdef IMInternalModes < IMEigenvalueProblem
             parameters = struct("g0", options.g0, "gd", options.gd, "surfaceBoundary", surfaceConvention);
             evp = IMGeostrophicModes(name="geostrophicAPVModes", formulation="F", modeFamily="hydrostatic", N2=options.N2, zDomain=options.zDomain, p=@(z,ctx) 1./ctx.N2(z), q=@(z,~) zeros(size(z)), r=@(z,ctx) ones(size(z))/ctx.g, rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, surfaceBoundary=surfaceCondition, bottomBoundary=bottomCondition, parameters=parameters);
         end
-
-        function evp = geostrophicGeneralizedPotentialEnstrophyModes(options)
-            % Create free-surface generalized-potential-enstrophy modes.
-            %
-            % At fixed positive horizontal wavenumber `k`, numerical solves
-            % use the regular pair
-            % $$F_j'=-N^2G_j/g,\qquad G_j'=F_j/h_j,$$
-            % with public eigenvalue
-            % $$\Lambda_j=k^2+f_0^2/(g h_j).$$
-            % The endpoint conditions are
-            % $$\alpha_0(G_j(z_s)-F_j(z_s))=-g\Lambda_jF_j(z_s),$$
-            % $$\alpha_DG_j(z_b)=g\Lambda_jF_j(z_b).$$
-            % This formulation allows finite real nonnegative N2. Its
-            % inherited scalar coefficients apply where N2 is positive.
-            % Positive infinity removes the corresponding eigenvalue-side
-            % endpoint term. The default bottom is inactive. When `alpha0`
-            % is omitted, the surface weight is
-            % $$
-            % \alpha_0=\frac{f_0^2}{b_\mathrm{eff}},\qquad
-            % b_\mathrm{eff}=\frac{(\int N\,dz)^2}{4\int N^2\,dz}.
-            % $$
-            %
-            % Solved bases use
-            % `Normalization.generalizedPotentialEnstrophy` by default, so
-            % $$
-            % \frac{1}{D}\left[\int F_iF_j\,dz
-            % +\frac{f_0^2}{\alpha_0}F_i(z_s)F_j(z_s)
-            % +\frac{f_0^2}{\alpha_d}F_i(z_b)F_j(z_b)\right]=\delta_{ij},
-            % $$
-            % with inactive terms omitted. The equivalent depth is retained
-            % from the solved inverse depth, avoiding subtraction of nearly
-            % equal public eigenvalues; exact zero gives h=Inf. Public
-            % eigenvalues use a positive Rayleigh quotient. Fully neutral
-            % stratification requires an explicit alpha0 because its default
-            % stratification scale is undefined.
-            %
-            % ```matlab
-            % evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
-            %     N2=N2,zDomain=[-4000 0],k=2*pi/100e3,rotationRate=7.2921e-5,latitude=45);
-            % basisSet = IMSolverSpectral(nEVP=128,coordinateKind="wkb").solveEVP(evp,nModes=8);
-            % ```
-            %
-            % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(options)
-            % - Parameter options.N2: buoyancy frequency squared function in radians squared per second squared
-            % - Parameter options.zDomain: physical vertical domain in meters
-            % - Parameter options.k: positive horizontal wavenumber in radians per meter
-            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
-            % - Parameter options.latitude: central latitude in degrees north; default 33
-            % - Parameter options.g: gravitational acceleration in meters per second squared
-            % - Parameter options.alpha0: optional positive surface generalized-potential-enstrophy weight
-            % - Parameter options.alphaD: positive bottom generalized-potential-enstrophy weight or `Inf`
-            % - Returns evp: generalized-potential-enstrophy mode EVP
+        function evp = geostrophicGeneralizedPotentialEnstrophyModesFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
@@ -801,73 +1133,8 @@ classdef IMInternalModes < IMEigenvalueProblem
                 surfaceBoundary=surfaceCondition,bottomBoundary=bottomCondition, ...
                 rotationRate=options.rotationRate,latitude=options.latitude,g=g,hFromEigenvalue=@(lambda) f0*f0./(g*(lambda-k*k)),parameters=parameters);
         end
-
-        function evp = meanDensityAnomalyModes(options)
-            % Create generalized-energy mean-density-anomaly modes.
-            %
-            % This factory creates the `G`-form problem
-            %
-            % $$
-            % -G_j''(z)=\frac{N^2(z)}{g h_j}G_j(z)
-            % $$
-            %
-            % with endpoint conditions
-            %
-            % $$
-            % g h_jG_j'(z_s)=g_0G_j(z_s),\qquad
-            % g h_jG_j'(z_b)=-g_dG_j(z_b).
-            % $$
-            %
-            % `g0` and `gd` are required. A finite value, including zero,
-            % keeps that endpoint active; zero is the Neumann limit.
-            % Positive infinity imposes Dirichlet data and omits the
-            % corresponding generalized-energy endpoint term. `NaN` and
-            % negative infinity are rejected.
-            %
-            % Solved modes use the signed generalized-energy normalization
-            %
-            % $$
-            % \frac{1}{g}\int_{z_b}^{z_s}N^2G_iG_j\,dz
-            % +\frac{g_0}{g}G_i(z_s)G_j(z_s)
-            % +\frac{g_d}{g}G_i(z_b)G_j(z_b)
-            % =\epsilon_j\delta_{ij},
-            % $$
-            %
-            % with inactive terms omitted. The basis exposes
-            % `basisSet.signatures` as $$\epsilon_j\in\{-1,+1\}$$.
-            % For the continuous projection functional
-            % $$\mathcal G_j[X]=\langle G_j,X\rangle_G$$, normalized
-            % coefficients obey $$A_j=\epsilon_j\mathcal G_j[X]$$.
-            % Its aligned diagnostic pressure modes are computed by
-            % surface-referenced integration,
-            %
-            % $$
-            % F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz',
-            % \qquad F_j(z_s)=0.
-            % $$
-            %
-            % Discrete transforms directly project the `G` channel and
-            % synthesize both `G` and `F`. The diagnostic `F` channel does
-            % not define an independent coefficient projection metric.
-            %
-            % ```matlab
-            % evp = IMInternalModes.meanDensityAnomalyModes( ...
-            %     N2=N2,zDomain=[-4000 0],g0=0.02,gd=Inf);
-            % basisSet = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=8);
-            % F = basisSet.F(z);
-            % G = basisSet.G(z);
-            % ```
-            %
-            % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.meanDensityAnomalyModes(options)
-            % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
-            % - Parameter options.latitude: central latitude in degrees north; default 33
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.g0: signed finite surface acceleration, zero, or positive infinity
-            % - Parameter options.gd: signed finite bottom acceleration, zero, or positive infinity
-            % - Returns evp: generalized-energy mean-density-anomaly EVP
+        function evp = meanDensityAnomalyModesFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
@@ -880,77 +1147,8 @@ classdef IMInternalModes < IMEigenvalueProblem
 
             evp = IMMeanDensityAnomalyModes(N2=options.N2,zDomain=options.zDomain,rotationRate=options.rotationRate, latitude=options.latitude, g=options.g,g0=options.g0,gd=options.gd);
         end
-
-        function evp = waveModesAtWavenumber(options)
-            % Create the fixed-wavenumber wave-mode EVP.
-            %
-            % This factory creates the fixed-wavenumber `G`-form problem
-            %
-            % $$
-            % -\frac{\partial^2 G_j}{\partial z^2}(z)
-            % +k^2G_j(z)
-            % =
-            % \lambda_j\frac{N^2(z)-f_0^2}{g}G_j(z),
-            % \qquad \lambda_j=\frac{1}{h_j}.
-            % $$
-            %
-            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
-            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            %
-            % $$
-            % -\left[
-            % a_\ell G_j(z_\ell)
-            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right]
-            % =
-            % \lambda_j\left[
-            % c_\ell G_j(z_\ell)
-            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right].
-            % $$
-            %
-            % The default surface and bottom boundary conditions are
-            % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
-            % conditions
-            %
-            % $$
-            % G_j(z_s)=0,\qquad G_j(z_b)=0.
-            % $$
-            %
-            % A linear free-surface condition at the surface can be written
-            % as
-            %
-            % $$
-            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
-            % \qquad \lambda_j=\frac{1}{h_j},
-            % $$
-            %
-            % equivalently
-            %
-            % $$
-            % \frac{\partial G_j}{\partial z}(z_s)
-            % =
-            % \lambda_j G_j(z_s).
-            % $$
-            %
-            % In canonical boundary-condition coefficients this is
-            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
-            % Solved fixed-wavenumber basis sets install the `kConstant`
-            % normalization rule and use it by default.
-            % This factory adds `parameters.k` and sets
-            % `parameters.formulation`, `parameters.f0`, and `parameters.g`.
-            %
-            % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.waveModesAtWavenumber(options)
-            % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.k: horizontal wavenumber
-            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
-            % - Parameter options.latitude: central latitude in degrees north; default 33
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface boundary condition
-            % - Parameter options.bottomBoundary: bottom boundary condition
-            % - Returns evp: fixed-wavenumber `G` EVP
+        function evp = waveModesAtWavenumberFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
@@ -958,92 +1156,24 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
+                options.surfaceBoundary (1,1) IMBoundaryCondition
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
 
             k = options.k;
             parameters = struct("k", k);
-            GfromFz = @(z,dFdz,h,ctx) -(ctx.g./(ctx.N2(z(:)) - ctx.f0*ctx.f0 - ctx.g*reshape(h,1,[])*k*k)).*dFdz;
+            D = diff(sort(options.zDomain));
+            FfromGz = @(~,dGdz,~,~) D*dGdz;
+            GfromFz = @(z,dFdz,h,ctx) -(ctx.g*reshape(h,1,[])/D./(ctx.N2(z(:)) - ctx.f0*ctx.f0 - ctx.g*reshape(h,1,[])*k*k)).*dFdz;
             evp = IMInternalModes(name="waveModesAtWavenumber", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) k*k*ones(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - ctx.f0*ctx.f0)/ctx.g, ...
                 rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                GfromFz=GfromFz, parameters=parameters);
+                FfromGz=FfromGz, GfromFz=GfromFz, parameters=parameters);
         end
-
-        function evp = waveModesAtFrequency(options)
-            % Create the fixed-frequency wave-mode EVP.
-            %
-            % This factory creates the fixed-frequency `G`-form problem
-            %
-            % $$
-            % -\frac{\partial^2 G_j}{\partial z^2}(z)
-            % =
-            % \lambda_j\frac{N^2(z)-\omega^2}{g}G_j(z),
-            % \qquad \lambda_j=\frac{1}{h_j}.
-            % $$
-            %
-            % At each endpoint $$z_\ell\in\{z_b,z_s\}$$, the corresponding
-            % `IMBoundaryCondition(a=...,b=...,c=...,d=...)` is applied as
-            %
-            % $$
-            % -\left[
-            % a_\ell G_j(z_\ell)
-            % -b_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right]
-            % =
-            % \lambda_j\left[
-            % c_\ell G_j(z_\ell)
-            % -d_\ell\frac{\partial G_j}{\partial z}(z_\ell)
-            % \right].
-            % $$
-            %
-            % The default surface and bottom boundary conditions are
-            % `IMBoundaryCondition.dirichlet()`, giving rigid endpoint
-            % conditions
-            %
-            % $$
-            % G_j(z_s)=0,\qquad G_j(z_b)=0.
-            % $$
-            %
-            % A linear free-surface condition at the surface can be written
-            % as
-            %
-            % $$
-            % G_j(z_s)=h_j\frac{\partial G_j}{\partial z}(z_s),
-            % \qquad \lambda_j=\frac{1}{h_j},
-            % $$
-            %
-            % equivalently
-            %
-            % $$
-            % \frac{\partial G_j}{\partial z}(z_s)
-            % =
-            % \lambda_j G_j(z_s).
-            % $$
-            %
-            % In canonical boundary-condition coefficients this is
-            % `IMBoundaryCondition(a=0,b=1,c=1,d=0)` at the surface.
-            % Solved fixed-frequency basis sets use the generic `unity`
-            % normalization by default. A fixed-frequency diagnostic `F`
-            % inner-product normalization is deferred until the wave
-            % diagnostic inner-product catalog is derived. This factory
-            % adds `parameters.omega` and sets `parameters.formulation`,
-            % `parameters.f0`, and `parameters.g`.
-            %
-            % - Topic: Create internal-mode EVPs
-            % - Declaration: evp = IMInternalModes.waveModesAtFrequency(options)
-            % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.omega: wave frequency
-            % - Parameter options.rotationRate: planetary rotation rate in radians per second; default Earth rotation
-            % - Parameter options.latitude: central latitude in degrees north; default 33
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.surfaceBoundary: surface boundary condition
-            % - Parameter options.bottomBoundary: bottom boundary condition
-            % - Returns evp: fixed-frequency `G` EVP
+        function evp = waveModesAtFrequencyFromOptions(options)
+            % Validate explicit inputs and assemble the canonical family descriptor.
             arguments
                 options.N2 function_handle
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
@@ -1051,19 +1181,74 @@ classdef IMInternalModes < IMEigenvalueProblem
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
                 options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.surfaceBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
+                options.surfaceBoundary (1,1) IMBoundaryCondition
                 options.bottomBoundary (1,1) IMBoundaryCondition = IMBoundaryCondition.dirichlet()
             end
 
             omega = options.omega;
+            f0 = 2*options.rotationRate*sind(options.latitude);
+            if omega == abs(f0)
+                error("IMInternalModes:InertialFrequency","Use waveModesAtWavenumber with k=0 for the inertial family.");
+            end
             parameters = struct("omega", omega);
-            GfromFz = @(z,dFdz,h,ctx) -(ctx.g./(ctx.N2(z(:)) - omega*omega)).*dFdz;
+            D = diff(sort(options.zDomain));
+            FfromGz = @(~,dGdz,~,~) D*dGdz;
+            GfromFz = @(z,dFdz,h,ctx) -(ctx.g*reshape(h,1,[])/D./(ctx.N2(z(:)) - omega*omega)).*dFdz;
             evp = IMInternalModes(name="waveModesAtFrequency", formulation="G", N2=options.N2, zDomain=options.zDomain, ...
                 p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), ...
                 r=@(z,ctx) (ctx.N2(z) - omega*omega)/ctx.g, ...
                 rotationRate=options.rotationRate, latitude=options.latitude, g=options.g, ...
                 surfaceBoundary=options.surfaceBoundary, bottomBoundary=options.bottomBoundary, ...
-                GfromFz=GfromFz, parameters=parameters);
+                FfromGz=FfromGz, GfromFz=GfromFz, parameters=parameters);
+        end
+        function [args,background] = backgroundArguments(family,args)
+            background = [];
+            if isempty(args) || ~isa(args{1},"IMBackground")
+                if ismember(family,["waveModesAtWavenumber","waveModesAtFrequency","hydrostaticGModes","hydrostaticFModes","geostrophicAPVModes"]) && mod(numel(args),2) == 0 && ~any(strcmpi(string(args(1:2:end)),"surfaceBoundary"))
+                    error("IMInternalModes:MissingSurfaceBoundary","Supply an explicit surfaceBoundary or an IMBackground with surfaceCondition.");
+                end
+                return
+            end
+            background = args{1}; args(1) = [];
+            if mod(numel(args),2) ~= 0
+                error("IMInternalModes:InvalidOptions","Supply family options as name-value pairs after the background.");
+            end
+            physical = struct(N2=background.N2,zDomain=background.zDomain,rotationRate=background.rotationRate,latitude=background.latitude,g=background.g);
+            names = fieldnames(physical);
+            keep = true(size(args));
+            for j = 1:2:numel(args)
+                name = string(args{j});
+                index = find(strcmpi(name,names),1);
+                if ~isempty(index)
+                    if ~isequal(args{j+1},physical.(names{index}))
+                        error("IMInternalModes:ConflictingBackground","The %s option conflicts with the supplied background.",name);
+                    end
+                    keep(j:j+1) = false;
+                end
+            end
+            args = args(keep);
+            if ismember(family,["waveModesAtWavenumber","waveModesAtFrequency","hydrostaticGModes","hydrostaticFModes","geostrophicAPVModes"])
+                if family == "geostrophicAPVModes"
+                    boundary = background.surfaceCondition;
+                elseif background.surfaceCondition == "freeSurface"
+                    if family == "hydrostaticFModes"
+                        boundary = IMBoundaryCondition(a=-1/background.g,b=1);
+                    else
+                        boundary = IMBoundaryCondition(a=0,b=1,c=1,d=0);
+                    end
+                elseif family == "hydrostaticFModes"
+                    boundary = IMBoundaryCondition.neumann();
+                else
+                    boundary = IMBoundaryCondition.dirichlet();
+                end
+                boundaryIndex = find(strcmpi(string(args(1:2:end)),"surfaceBoundary"),1);
+                if isempty(boundaryIndex)
+                    args = [args,{"surfaceBoundary",boundary}];
+                elseif ~isequal(args{2*boundaryIndex},boundary)
+                    error("IMInternalModes:ConflictingBackground","surfaceBoundary conflicts with the background surfaceCondition.");
+                end
+            end
+            args = [namedargs2cell(physical),args];
         end
     end
 

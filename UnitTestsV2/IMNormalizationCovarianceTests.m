@@ -5,13 +5,14 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         function addProvider(testCase)
             root = fileparts(fileparts(mfilename("fullpath")));
             testCase.applyFixture(matlab.unittest.fixtures.PathFixture(root));
+            testCase.applyFixture(matlab.unittest.fixtures.PathFixture(fullfile(root,"UnitTestsV2","TestSupport")));
         end
     end
 
     methods (Test)
         function complexObservationsCovaryForEveryRecoveryPolicy(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            basis = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=5);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            basis = createIMTestBasis("wave",background,k=1e-3,solver=IMSolverAnalytical(),nModes=5);
             normalized = basis.withNormalization("maxAbsG");
             T = normalizationMap(basis,normalized);
             z = linspace(-970,-30,19).';
@@ -77,8 +78,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function continuousWaveEnergyChangesByCongruence(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            basis = IMModes.waveModesAtWavenumber(background,1e-3,solver=IMSolverAnalytical(),nInternalModes=3);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            basis = createIMTestBasis("wave",background,k=1e-3,solver=IMSolverAnalytical(),nModes=3);
             normalized = basis.withNormalization("maxAbsG");
             T = normalizationMap(basis,normalized);
             [z,w] = legpts(80,background.zDomain); w = w(:);
@@ -94,10 +95,10 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function signedPhysicalPairingAndMajorantCovaryTogether(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
             energy = IMGeneralizedEnergyBoundary(g0=-.04,gd=.03);
-            basis = IMModes.meanDensityAnomalyModes(background,energyBoundary=energy,nPositiveModes=2,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
-            normalized = basis.withNormalization("depthRMSG");
+            basis = createIMTestBasis("MDA",background,energyBoundary=energy,nModes=4,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
+            normalized = basis.withNormalization("rmsG");
             T = normalizationMap(basis,normalized);
             [z,w] = legpts(100,background.zDomain); w = w(:);
             observationZ = [z;background.zDomain([2 1]).'];
@@ -132,8 +133,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function physicalDepthFGAdaptersPreserveActiveAndInactiveCoordinates(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
-            full = IMModes.hydrostaticFModes(background,solver=IMSolverAnalytical(),nInternalModes=3);
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            full = createIMTestBasis("hydrostaticF",background,solver=IMSolverAnalytical(),nModes=4);
             grid = IMVerticalGrid.physicalDepth(background,33);
             for selected = {[1 2 3 4],[4 2 1],[]}
                 basis = full.selectColumns(selected{1});
@@ -148,7 +149,7 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function anExistingRootRuleSupportsTheSameNormalizationCovariance(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             [original,grid,~,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,9,nInternalModes=3,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"),forwardOperator="galerkin");
             normalized = basis.withNormalization("maxAbsF");
             changed = normalized.discreteTransform(grid);
@@ -159,7 +160,7 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         end
 
         function defaultRootRecoveryPreservesItsExtendedSpanUnderNormalization(testCase)
-            background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
             [original,grid,~,basis] = IMInternalModesDiscreteTransform.hydrostaticRoot(background,9,nInternalModes=3,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
             normalized = basis.withNormalization("maxAbsF");
             T = normalizationMap(basis,normalized);
@@ -174,7 +175,7 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
                 extendedT = eye(size(specification.extendedSynthesis,2));
                 extendedT(retained,retained) = T;
                 extendedA = specification.extendedSynthesis*extendedT;
-                normalizedA = normalized.evaluate(grid.z,variable);
+                normalizedA = normalized.evaluate(grid.z,variable=variable);
                 testCase.verifyEqual(extendedA(:,retained),normalizedA,RelTol=5e-13,AbsTol=3e-13);
                 % Bind the retained entries to their actual evaluated
                 % values, preserving exact public synthesis alignment.
@@ -242,8 +243,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
         function neutralAPVPhysicalDualAndMajorantCovaryTogether(testCase)
             intervals = [-400 -200;-100 0];
             N2 = @(z) 1e-4*double(~((z >= -400 & z <= -200) | (z >= -100 & z <= 0)));
-            background = IMModeBackground(N2=N2,zDomain=[-1000 0]);
-            full = IMModes.neutralLabelModes(background,neutralIntervals=intervals,nModesPerInterval=[2 2]);
+            background = IMBackground(N2=N2,zDomain=[-1000 0],surfaceCondition="freeSurface");
+            full = IMNeutralLabelModesBasis(background,neutralIntervals=intervals,nModesPerInterval=[2 2]);
             [first,wFirst] = legpts(80,intervals(1,:));
             [second,wSecond] = legpts(80,intervals(2,:));
             z = [first;second]; weights = [wFirst(:);wSecond(:)];
@@ -252,8 +253,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
                 basis = full.selectColumns(selected{1});
                 normalized = basis.withNormalization("maxAbsG");
                 T = normalizationMap(basis,normalized);
-                original = basis.projectionOnGrid(z,weights);
-                changed = normalized.projectionOnGrid(z,weights);
+                original = basis.projectionOnGrid(z,weights,variable="APV");
+                changed = normalized.projectionOnGrid(z,weights,variable="APV");
                 testCase.verifyEqual(normalized.APV(z),basis.APV(z)*T,RelTol=5e-14,AbsTol=1e-19);
                 testCase.verifyEqual(changed.physicalDualMatrix,T\original.physicalDualMatrix,RelTol=5e-13,AbsTol=3e-9);
                 testCase.verifyEqual(changed.projectPhysical(physicalSource),T\original.projectPhysical(physicalSource),RelTol=5e-13,AbsTol=3e-13);
@@ -271,8 +272,8 @@ classdef IMNormalizationCovarianceTests < matlab.unittest.TestCase
 end
 
 function T = normalizationMap(original,changed)
-oldScales = original.scientificSpecification.resolved.normalization.scales;
-newScales = changed.scientificSpecification.resolved.normalization.scales;
+oldScales = original.normalizationFactors();
+newScales = changed.normalizationFactors();
 T = diag(oldScales./newScales);
 end
 

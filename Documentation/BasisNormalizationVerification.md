@@ -1,5 +1,9 @@
 # Basis normalization verification
 
+This record describes the earlier integration. For the current normalization, exact-count and projection contracts, see [ModeCreationAPI](ModeCreationAPI.md), [BasisNormalization](BasisNormalization.md) and [CommonScalarProjection](CommonScalarProjection.md). Historical test counts and retired API names below are preserved as evidence of that earlier state.
+
+Historical verification of the incoming implementation before the capable-basis integration. Code examples and class names below describe that historical API; current usage is documented in [the integration plan](APISimplificationPlan.md). These results do not replace verification of the integrated implementation.
+
 This increment implements #47 from `InternalModesEVP` at `72d754e` (merged PR #63). It adds an immutable common-basis normalization operation and repairs selected-column normalization integration. It does not add a recovery policy, observation adapter, general rotation API or WVM dependency.
 
 Verified on 2026-11-02 using MATLAB R2026b Update 1, MACA64. Every MATLAB command used `matlab -batch` outside the local sandbox with one computational thread. Applicable package, MATLAB, caching, documentation and focused agent guides were read.

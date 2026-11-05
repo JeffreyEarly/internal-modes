@@ -1,5 +1,7 @@
 # Common basis contract verification
 
+Historical verification of the incoming implementation before the capable-basis integration. Code examples and class names below describe that historical API; current usage is documented in [the integration plan](APISimplificationPlan.md). These results do not replace verification of the integrated implementation.
+
 Verified on 2026-11-02 from `InternalModesEVP` at `16235ef` (the merged manuscript DD correction). This increment implements #44–46 without changing the recovery engine, observation-grid design or WVM code.
 
 All MATLAB commands used `matlab -batch` outside the local sandbox, with one computational thread. Runtime: MATLAB R2026b Update 1, MACA64.

@@ -13,25 +13,20 @@ classdef IMBasisAssessmentTests < matlab.unittest.TestCase
             w = [0.5;ones(11,1);0.5]/12;
             [~,legacy] = basis.discreteTransform(z=z,weights=w,leakageTolerance=1e-8,nCheckModes=18,quadraticAliasingTolerance=1e-8);
             count = 13;
-            p = collection.projectionOnGrid(z,w,columns=1:count);
+            p = collection.projectionOnGrid(z,w,columns=1:count,variable="u");
             checkGram = basis.gramMatrix();
             leakage = struct(sampledValues=basis.u(z),normSquared=diag(checkGram),columnLabels=string(basis.modeNumber));
-            zr = basis.solver.innerProductGrid(basis.zDomain);
-            cardinal = eye(numel(zr));
-            wr = zeros(size(zr));
-            for iPoint = 1:numel(zr)
-                wr(iPoint) = basis.solver.integrateInnerProduct(zr,cardinal(:,iPoint),basis.zDomain);
-            end
-            [zr,order] = sort(zr);
-            wr = wr(order);
-            referenceProjection = collection.projectionOnGrid(zr,wr,columns=1:count);
-            U = referenceProjection.sampledBasis;
-            Mr = referenceProjection.metricMatrix;
+            % Degree-63 spectral profiles need degree-252 quartic products.
+            % This independent 160-point rule resolves that degree exactly.
+            [zr,wr] = legpts(160,basis.zDomain);
+            U = basis.u(zr);
+            U = U(:,1:count);
+            Mr = diag(wr);
             pairs = nchoosek(1:count,2).';
             pairs = [pairs [1:count;1:count]];
             samples = p.sampledBasis(:,pairs(1,:)).*p.sampledBasis(:,pairs(2,:));
             referenceProducts = U(:,pairs(1,:)).*U(:,pairs(2,:));
-            products = struct(sampledValues=samples,referencePairings=U.'*Mr*referenceProducts,normSquared=sum(referenceProducts.*(Mr*referenceProducts),1),inputColumns=pairs,inputLabels=string(basis.modeNumber(pairs)),referenceStatus="qualified",referenceProvenance="same explicit reference rule as the established trigonometric regression");
+            products = struct(sampledValues=samples,referencePairings=U.'*Mr*referenceProducts,normSquared=sum(referenceProducts.*(Mr*referenceProducts),1),inputColumns=pairs,inputLabels=string(basis.modeNumber(pairs)),referenceStatus="qualified",referenceProvenance="independent 160-point Gauss-Legendre rule resolves the represented quartic polynomials");
             result = collection.assess(z,w,columns=1:count,prefixColumnCounts=1:count,leakage=leakage,products=products);
             gram = result.measurements(result.measurements.quantity == "gram",:);
             leak = result.measurements(result.measurements.quantity == "leakage",:);

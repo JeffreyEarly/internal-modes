@@ -1,13 +1,14 @@
 # Common scalar physical projection and recovery
 
-The common continuous basis now supplies scalar physical pairings for hydrostatic F/G, geostrophic APV F/G and mean-density-anomaly (MDA) G. Neutral-label APV retains its prescribed continuous dual. This is the scalar adapter increment of [#48](https://github.com/JeffreyEarly/internal-modes/issues/48). [Prescribed vertical sampling](PrescribedVerticalSampling.md) separately evaluates vertical point and cell observations. Complete physical state and source projectors remain WVM responsibilities.
+The common continuous basis now supplies scalar physical pairings for hydrostatic F/G, geostrophic APV F/G and mean-density-anomaly (MDA) G. Neutral-label APV retains its prescribed continuous dual. This is the scalar adapter increment of [#48](https://github.com/JeffreyEarly/internal-modes/issues/48). Complete physical state and source projectors remain WVM responsibilities.
 
 ## Preparation and application
 
 ```matlab
 boundary = IMGeneralizedEnergyBoundary(g0=0.2,gd=-0.1);
-basis = IMModes.geostrophicAPVModes(background,energyBoundary=boundary,nPositiveModes=6);
-physical = basis.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
+problem = IMInternalModes.geostrophicAPVModes(background,g0=boundary.g0,gd=boundary.gd);
+basis = IMSolverSpectral(nEVP=128).solveEVP(problem,nModes=8);
+physical = basis.projectionOnGrid(z,w,variable="G");
 aPhysical = physical.projectPhysical(sourceG);
 
 transform = basis.scalarTransform(z,w,variable="G");
@@ -17,7 +18,7 @@ reconstructedG = transform.transformBack(aRecovered);
 
 The point column `z` is caller supplied and contains at least two strictly increasing points. Its aligned physical-depth quadrature column `w` may be signed and must contain a nonzero weight. Preparation preserves both. They may come from another model. An `IMVerticalGrid` is useful for designing and storing rules, but is not required by this scalar adapter. Interior-only quadrature is allowed when the physical pairing has no endpoint terms. When it does, supply the required endpoints as additional scalar observations; their volume weights may be zero.
 
-The default scalar channel is F for `hydrostaticF`, APV for `neutralLabel`, and G for the other supported families. Specify `variable` explicitly when the input meaning requires it.
+Specify the scalar `variable` explicitly when preparing a common physical adapter. Supported channels and their required observations are listed below.
 
 Scientific selection and normalization belong to the continuous basis. Select or normalize it before preparing a transform. `projectionOnGrid(...,columns=indices)` constructs a physical projection in those retained coordinates; an explicit `columns=[]` selects no columns. Omitting columns selects all. Collection projection follows the same convention.
 
@@ -79,10 +80,12 @@ Activity is scientific metadata. The exact F-constant, G-zero sector of rigid-li
 
 Targets and positive majorants retain their full matrices. Selection and normalization transform those matrices by congruence. Physical preparation solves in the selected coordinates; selecting rows of a previously prepared full-space B generally gives a different map. String `columnLabels` carry common scientific identities. Integer `modeNumber` is optional metadata on the scalar adapter.
 
-Diagnostic recovery failure returns `success=false`, a status and no applicable R. Synthesis and a valid physical B remain available. Calling `transformForward` then throws. `projectionOnGrid(...,prepareRecovery=false)` requests physical preparation alone. A family without a scalar physical pairing can still use the generic matrix recovery interface; the scalar physical adapter does not invent that pairing.
+Numerical scalar and aligned F/G reference forms integrate products of the represented profiles using oversampled spectral quadrature or per-interval finite-difference reconstruction quadrature. Scalar targets retain off-diagonal entries when the represented columns are not continuously orthogonal. The majorant takes the absolute coefficient of each signed volume or endpoint contribution before summation. These reference forms remain independent of the supplied observation quadrature; a physical dual does not replace its reference Gram with the sampled overlap. Reference-quadrature convergence and eigensolve accuracy remain unverified unless separately established.
+
+Diagnostic recovery failure returns `success=false`, a status and no applicable R. Synthesis and a valid physical B remain available. Calling `transformForward` then throws. `projectionOnGrid` defaults to physical preparation alone. Request `prepareRecovery=true` to expose an additional Galerkin record as `projection.recovery`, then call `recovery.transformForward` or inspect `recovery.forwardMatrix`. `IMProjection` has no public `project` or `forwardMatrix` alias. Use `scalarTransform` to choose another explicit recovery policy. Direct low-level matrix construction with `IMProjection(...)` retains its `prepareRecovery=true` default; pass false there for a physical-only record. A family without a scalar physical pairing can still use the generic matrix recovery interface; the scalar physical adapter does not invent that pairing.
 
 ## Reference and qualification boundary
 
-The bridge exposes the existing continuous reference forms and their provenance. Numerical source recipes use solver integration; analytical source recipes currently use a 1024-point trapezoidal reference. Neither is automatically convergence-qualified. Tests compare supported physical forms against independently refined quadrature, including signed endpoint terms and independent inputs, but do not establish a universal retained band or arbitrary-profile convergence.
+The bridge exposes the existing continuous reference forms and their provenance. Numerical source recipes use solver integration; analytical source recipes use Gauss–Legendre quadrature with `max(128,4*originalColumnCount+32)` points. Selection preserves that original integration budget. Neither is automatically convergence-qualified. Tests compare supported physical forms against independently refined quadrature, including signed endpoint terms and independent inputs, but do not establish a universal retained band or arbitrary-profile convergence.
 
 The aligned `basis.discreteTransform(grid)` remains the rigid-lid hydrostatic F/G adapter. Root-grid construction, external observation-layout qualification, provider grid calculus and WVM-owned physical projector assembly retain their separate scopes. See [verification](CommonScalarProjectionVerification.md) for the evidence and remaining limits of this increment.

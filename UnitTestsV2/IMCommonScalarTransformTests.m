@@ -10,13 +10,39 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
     end
 
     methods (Test)
+        function scalarAdaptersRequireAnExplicitObservationVariable(testCase)
+            background = signedBackground("rigidLid");
+            basis = IMSolverAnalytical().solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=3);
+            [z,w] = endpointRule(background.zDomain,16);
+            testCase.verifyError(@() basis.projectionOnGrid(z,w),"IMScalarProjection:MissingVariable");
+            testCase.verifyError(@() basis.scalarTransform(z,w),"IMScalarProjection:MissingVariable");
+        end
+
+        function nativeHydrostaticActivityAndExplicitSelectionsRemainScientific(testCase)
+            background = signedBackground("rigidLid");
+            [z,w] = endpointRule(background.zDomain,64);
+            for solver = {IMSolverSpectral(nEVP=48),IMSolverFiniteDifference(z=linspace(-1,0,65).'),IMSolverAnalytical()}
+                basis = solver{1}.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=4);
+                transform = basis.scalarTransform(z,w,variable="G");
+                testCase.verifyEqual(transform.activeColumnMask,[false true true true]);
+                testCase.verifyEqual(transform.transformForward(basis.G(z)),diag([0 1 1 1]),AbsTol=3e-11);
+                collection = IMBasisCollection({basis},basisIndex=[1 1]);
+                selected = basis.selectColumns(2:4).withNormalization("rmsG");
+                values = collection.evaluate(z,variable="G",columns=2:4,normalization="rmsG");
+                testCase.verifyEqual(values,repmat(selected.G(z),1,1,2),AbsTol=3e-12);
+                testCase.verifySize(collection.evaluate(z,variable="G",columns=[]),[numel(z) 0 2]);
+                empty = basis.projectionOnGrid(z,w,variable="G",columns=[],prepareRecovery=false);
+                testCase.verifySize(empty.physicalDualMatrix,[0 numel(z)]);
+            end
+        end
+
         function apvPairingsMatchIndependentFormsAndNonmodalSources(testCase)
             background = signedBackground();
             energy = IMGeneralizedEnergyBoundary(g0=-.4,gd=.3);
             solvers = {IMSolverAnalytical(),IMSolverSpectral(nEVP=64,coordinateKind="z")};
             [z,w] = endpointRule(background.zDomain,96);
             for j = 1:numel(solvers)
-                basis = IMModes.geostrophicAPVModes(background,energyBoundary=energy,nPositiveModes=3,solver=solvers{j});
+                basis = solvers{j}.solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=energy.g0,gd=energy.gd),nModes=4);
                 for variable = ["F","G"]
                     physical = basis.projectionOnGrid(z,w,variable=variable,prepareRecovery=false);
                     [H,Hplus] = independentForms(basis,variable,energy,192);
@@ -30,7 +56,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
                     fprintf("Common APV %s/%s physical operator errors: H %.3g, Hplus %.3g.\n",string(class(solvers{j})),variable,targetError,majorantError);
                     testCase.verifyLessThanOrEqual(targetError,tolerance);
                     testCase.verifyLessThanOrEqual(majorantError,tolerance);
-                    A = basis.evaluate(z,variable);
+                    A = basis.evaluate(z,variable=variable);
                     metric = independentMetric(background,energy,"geostrophicAPV",variable,z,w);
                     P = A'*diag(metric);
                     testCase.verifyEqual(physical.samplePairingMatrix,P,AbsTol=2e-13);
@@ -41,7 +67,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
                     testCase.verifyEqual(physical.projectPhysical(input),expected,RelTol=2e-12,AbsTol=2e-12);
                     [zr,wr] = endpointRule(background.zDomain,256);
                     refinedMetric = independentMetric(background,energy,"geostrophicAPV",variable,zr,wr);
-                    continuous = Href\(basis.evaluate(zr,variable)'*(refinedMetric.*independentSource(zr,variable)));
+                    continuous = Href\(basis.evaluate(zr,variable=variable)'*(refinedMetric.*independentSource(zr,variable)));
                     testCase.verifyEqual(physical.projectPhysical(input),continuous,RelTol=2*tolerance,AbsTol=2*tolerance);
                     testCase.verifyEmpty(physical.recovery);
                     if variable == "G"
@@ -55,15 +81,15 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
         function literalEndpointCoefficientsSurvivePhysicalUnitScaling(testCase)
             [z,w] = endpointRule([-1 0],16);
             for g = [2 1e-16]
-                background = IMModeBackground.constantStratification(N0=sqrt(g),zDomain=[-1 0],g=g,rotationRate=.5,latitude=90,surfaceCondition="freeSurface");
+                background = IMBackground.constantStratification(N0=sqrt(g),zDomain=[-1 0],g=g,rotationRate=.5,latitude=90,surfaceCondition="freeSurface");
                 for g0 = [.3 1e-15]
                     boundary = IMGeneralizedEnergyBoundary(g0=g0,gd=Inf);
-                    basis = IMModes.geostrophicAPVModes(background,energyBoundary=boundary,nPositiveModes=0,solver=IMSolverAnalytical());
+                    basis = IMSolverAnalytical().solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=boundary.g0,gd=boundary.gd),nModes=0);
                     physical = basis.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
                     expected = g0/(g+g0);
                     testCase.verifyEqual(physical.metricMatrix(end,end),expected,RelTol=1e-14);
                     testCase.verifyError(@() basis.projectionOnGrid(z(1:end-1),w(1:end-1),variable="G",prepareRecovery=false),"IMProjection:MissingEndpointSample");
-                    mda = IMModes.meanDensityAnomalyModes(background,energyBoundary=boundary,nPositiveModes=0,solver=IMSolverSpectral(nEVP=32,coordinateKind="z"));
+                    mda = IMSolverSpectral(nEVP=32,coordinateKind="z").solveEVP(IMInternalModes.meanDensityAnomalyModes(background,g0=boundary.g0,gd=boundary.gd),nModes=1);
                     physical = mda.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
                     testCase.verifyEqual(physical.metricMatrix(end,end),g0/g,RelTol=1e-14);
                 end
@@ -73,7 +99,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
         function mdaUsesItsOwnSignedGFormAndExplicitRecoveryPolicy(testCase)
             background = signedBackground();
             energy = IMGeneralizedEnergyBoundary(g0=-.4,gd=.3);
-            basis = IMModes.meanDensityAnomalyModes(background,energyBoundary=energy,nPositiveModes=3,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
+            basis = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(IMInternalModes.meanDensityAnomalyModes(background,g0=energy.g0,gd=energy.gd),nModes=5);
             [z,w] = endpointRule(background.zDomain,96);
             [H,Hplus] = independentForms(basis,"G",energy,256);
             transform = basis.scalarTransform(z,w,variable="G");
@@ -83,7 +109,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.projection.majorantGramMatrix,Hplus,RelTol=3e-9,AbsTol=3e-9);
             testCase.verifyTrue(any(eig(H) < -.01));
             testCase.verifyEqual(transform.columnLabels,basis.columnLabels);
-            testCase.verifyEmpty(transform.modeNumber);
+            testCase.verifyEqual(transform.modeNumber,basis.modeNumber);
             testCase.verifyEqual(transform.z,z,AbsTol=0);
             testCase.verifyEqual(transform.weights,w,AbsTol=0);
             A = basis.G(z);
@@ -93,8 +119,8 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.physicalDualMatrix,B,RelTol=3e-12,AbsTol=3e-12);
             testCase.verifyEqual(transform.projection.projectPhysical(source),B*source,RelTol=3e-12,AbsTol=3e-12);
             testCase.verifyEqual(transform.transformForward(A),eye(basis.nColumns),AbsTol=3e-11);
-            testCase.verifyError(@() basis.scalarTransform(z,w,variable="F"),"IMModeBasis:UnavailableProjection");
-            testCase.verifyError(@() basis.scalarTransform(z,w,variable="G",policy="sampledLeastSquares"),"IMModeBasis:MissingFitFactor");
+            testCase.verifyError(@() basis.scalarTransform(z,w,variable="F"),"IMScalarProjection:UnavailableProjection");
+            testCase.verifyError(@() basis.scalarTransform(z,w,variable="G",policy="sampledLeastSquares"),"IMScalarProjection:MissingFitFactor");
             fit = diag(linspace(.6,1.4,numel(z)));
             leastSquares = basis.scalarTransform(z,w,variable="G",policy="sampledLeastSquares",fitFactor=fit);
             testCase.verifyTrue(leastSquares.success);
@@ -106,22 +132,22 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
         function requiredEndpointTracesAndInactiveLimitsAreLiteral(testCase)
             background = signedBackground();
             energy = IMGeneralizedEnergyBoundary(g0=-.4,gd=.3);
-            basis = IMModes.geostrophicAPVModes(background,energyBoundary=energy,nPositiveModes=2,solver=IMSolverSpectral(nEVP=48,coordinateKind="z"));
+            basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=energy.g0,gd=energy.gd),nModes=3);
             [z,w] = endpointRule(background.zDomain,48);
             testCase.verifyError(@() basis.scalarTransform(z(1:end-1),w(1:end-1),variable="G"),"IMProjection:MissingEndpointSample");
             testCase.verifyError(@() basis.scalarTransform(z(2:end),w(2:end),variable="G"),"IMProjection:MissingEndpointSample");
             interior = basis.scalarTransform(z(2:end-1),w(2:end-1),variable="F");
             testCase.verifyTrue(interior.success);
             rigid = signedBackground("rigidLid");
-            noTraces = IMModes.geostrophicAPVModes(rigid,energyBoundary=IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf),nPositiveModes=2,solver=IMSolverSpectral(nEVP=48,coordinateKind="z"));
+            noTraces = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(IMInternalModes.geostrophicAPVModes(rigid,g0=Inf,gd=Inf),nModes=3);
             unaugmented = noTraces.scalarTransform(z(2:end-1),w(2:end-1),variable="G");
             testCase.verifyTrue(unaugmented.success);
             testCase.verifyEqual(unaugmented.metricMatrix,diag(w(2:end-1).*rigid.N2(z(2:end-1))/rigid.g),AbsTol=0);
-            freeInfinite = IMModes.geostrophicAPVModes(background,energyBoundary=IMGeneralizedEnergyBoundary(g0=Inf,gd=Inf),nPositiveModes=2,solver=IMSolverSpectral(nEVP=48,coordinateKind="z"));
+            freeInfinite = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=Inf,gd=Inf),nModes=2);
             testCase.verifyError(@() freeInfinite.scalarTransform(z(2:end-1),w(2:end-1),variable="G"),"IMProjection:MissingEndpointSample");
             freePhysical = freeInfinite.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
             testCase.verifyEqual(freePhysical.metricMatrix(end,end),1,AbsTol=0);
-            singular = IMModes.geostrophicAPVModes(background,energyBoundary=IMGeneralizedEnergyBoundary(g0=-background.g,gd=Inf),nPositiveModes=2,solver=IMSolverSpectral(nEVP=48,coordinateKind="z"));
+            singular = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=-background.g,gd=Inf),nModes=3);
             singularPhysical = singular.projectionOnGrid(z(2:end-1),w(2:end-1),variable="G",prepareRecovery=false);
             testCase.verifyEqual(singularPhysical.metricMatrix,diag(w(2:end-1).*background.N2(z(2:end-1))/background.g),AbsTol=0);
         end
@@ -132,26 +158,25 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             evp = IMInternalModes(zDomain=background.zDomain,N2=@(z) ones(size(z)),formulation="G",modeFamily="hydrostatic",r=.5,rotationRate=background.rotationRate,latitude=background.latitude,g=background.g, ...
                 surfaceBoundary=IMBoundaryCondition(a=1,b=0,c=0,d=1),bottomBoundary=IMBoundaryCondition.dirichlet());
             source = solver.solveEVP(evp,nModes=3);
-            info = table("derivative:"+string((1:3).'),repmat("positive",3,1),(1:3).',VariableNames=["columnLabel","branch","branchIndex"]);
-            wrapper = IMModeBasis(source=source,background=background,family="hydrostaticG",modeInfo=info,normalization="depthRMSG",horizontalKind="independent");
+            wrapper = source.withNormalization("rmsG");
             [z,w] = endpointRule(background.zDomain,48);
             testCase.verifySize(wrapper.G(z),[numel(z) 3]);
-            testCase.verifyError(@() wrapper.scalarTransform(z,w,variable="G"),"IMModeBasis:UnavailableProjection");
-            testCase.verifyError(@() wrapper.selectColumns([]).scalarTransform(z,w,variable="G"),"IMModeBasis:UnavailableProjection");
-            coupled = IMModes.geostrophicGeneralizedPotentialEnstrophyModes(background,.8,nModes=2,alpha0=.7,alphaD=.4,solver=solver);
+            testCase.verifyError(@() wrapper.scalarTransform(z,w,variable="G"),"IMProjection:UnsupportedDerivativeTrace");
+            testCase.verifyError(@() wrapper.selectColumns([]).scalarTransform(z,w,variable="G"),"IMProjection:UnsupportedDerivativeTrace");
+            coupled = solver.solveEVP(IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes(background,k=.8,alpha0=.7,alphaD=.4),nModes=2);
             testCase.verifySize(coupled.G(z),[numel(z) coupled.nColumns]);
-            testCase.verifyError(@() coupled.scalarTransform(z,w,variable="G"),"IMModeBasis:UnavailableProjection");
-            waveBackground = IMModeBackground.constantStratification(N0=2,zDomain=[-1 0],g=2,rotationRate=background.rotationRate,latitude=33);
-            wave = IMModes.waveModesAtWavenumber(waveBackground,.3,nInternalModes=2,solver=solver);
-            testCase.verifyError(@() wave.scalarTransform(z,w,variable="F"),"IMModeBasis:UnavailableProjection");
-            zero = IMModes.geostrophicZeroAPVModesAtWavenumber(background,.3,energyBoundary=IMGeneralizedEnergyBoundary(g0=0,gd=0),solver=solver);
-            testCase.verifyError(@() zero.scalarTransform(z,w,variable="G"),"IMModeBasis:UnavailableProjection");
+            testCase.verifyError(@() coupled.scalarTransform(z,w,variable="G"),"IMScalarProjection:UnavailableProjection");
+            waveBackground = IMBackground.constantStratification(N0=2,zDomain=[-1 0],g=2,rotationRate=background.rotationRate,latitude=33,surfaceCondition="freeSurface");
+            wave = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(waveBackground,k=.3),nModes=3);
+            testCase.verifyError(@() wave.scalarTransform(z,w,variable="F"),"IMScalarProjection:UnavailableProjection");
+            zero = solver.solveGeostrophicZeroAPVModes(IMGeostrophicZeroAPVModes.atWavenumber(background,.3,endpoints=["surface","bottom"]));
+            testCase.verifyError(@() zero.scalarTransform(z,w,variable="G"),"IMScalarProjection:UnavailableProjection");
         end
 
         function selectedNormalizationCovariesWithFixedRecoveryFactors(testCase)
             background = signedBackground();
             energy = IMGeneralizedEnergyBoundary(g0=-.4,gd=.3);
-            full = IMModes.geostrophicAPVModes(background,energyBoundary=energy,nPositiveModes=3,solver=IMSolverSpectral(nEVP=64,coordinateKind="z"));
+            full = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=energy.g0,gd=energy.gd),nModes=4);
             columns = [full.nColumns 1 2];
             basis = full.selectColumns(columns);
             changed = basis.withNormalization("maxAbsG");
@@ -160,8 +185,15 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             physical = basis.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
             changedPhysical = changed.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
             fullPhysical = full.projectionOnGrid(z,w,variable="G",prepareRecovery=false);
-            testCase.verifyEqual(physical.targetGramMatrix,fullPhysical.targetGramMatrix(columns,columns),AbsTol=0);
-            testCase.verifyEqual(physical.samplePairingMatrix,fullPhysical.samplePairingMatrix(columns,:),AbsTol=0);
+            % Retained native normalizations may accumulate roundoff in a
+            % different matrix shape. Compare the actual physical forms in
+            % dimensionless coefficient units, rather than requiring bits.
+            selectedScale = chol(physical.majorantGramMatrix)\eye(basis.nColumns);
+            targetDifference = selectedScale'*(physical.targetGramMatrix-fullPhysical.targetGramMatrix(columns,columns))*selectedScale;
+            pairingScale = max(abs(fullPhysical.samplePairingMatrix(columns,:)),[],2);
+            pairingDifference = max(abs(physical.samplePairingMatrix-fullPhysical.samplePairingMatrix(columns,:)),[],2)./max(pairingScale,realmin);
+            testCase.verifyLessThan(norm(targetDifference,2),3e-13);
+            testCase.verifyLessThan(max(pairingDifference),3e-13);
             testCase.verifyEqual(physical.physicalDualMatrix,physical.targetGramMatrix\physical.samplePairingMatrix,RelTol=3e-12,AbsTol=3e-12);
             C = chol(physical.majorantGramMatrix)\eye(basis.nColumns);
             D = diag(linspace(.8,1.3,numel(z)));
@@ -198,7 +230,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
 
         function hydrostaticActivityEmptyAndFailedRecoveryRemainScientific(testCase)
             background = signedBackground("rigidLid");
-            full = IMModes.hydrostaticFModes(background,nInternalModes=3,solver=IMSolverAnalytical());
+            full = IMSolverAnalytical().solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=4);
             [z,w] = endpointRule(background.zDomain,64);
             for variable = ["F","G"]
                 transform = full.scalarTransform(z,w,variable=variable);
@@ -224,7 +256,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             input = [1+2i;-.4+.7i];
             testCase.verifyEqual(failed.projection.projectPhysical(input),failed.physicalDualMatrix*input,AbsTol=0);
             testCase.verifyEmpty(failed.forwardMatrix);
-            mda = IMModes.meanDensityAnomalyModes(background,energyBoundary=IMGeneralizedEnergyBoundary(g0=0,gd=0),nPositiveModes=2,solver=IMSolverSpectral(nEVP=48,coordinateKind="z"));
+            mda = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(IMInternalModes.meanDensityAnomalyModes(background,g0=0,gd=0),nModes=3);
             constant = find(isinf(mda.h));
             testCase.verifyEqual(numel(constant),1);
             mdaTransform = mda.scalarTransform(z,w,variable="G");
@@ -232,13 +264,13 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             testCase.verifyTrue(mdaTransform.activeColumnMask(constant));
             testCase.verifyGreaterThan(norm(mdaTransform.inverseMatrix(:,constant)),1);
             free = signedBackground();
-            for factory = {@IMModes.hydrostaticFModes,@IMModes.hydrostaticGModes}
-                basis = factory{1}(free,nInternalModes=2,solver=IMSolverAnalytical());
+            for factory = {@IMInternalModes.hydrostaticFModes,@IMInternalModes.hydrostaticGModes}
+                basis = IMSolverAnalytical().solveEVP(factory{1}(free),nModes=3);
                 for variable = ["F","G"]
                     transform = basis.scalarTransform(z,w,variable=variable);
                     testCase.verifyTrue(transform.success);
                     testCase.verifyEqual(transform.columnLabels,basis.columnLabels);
-                    testCase.verifyEqual(transform.transformForward(basis.evaluate(z,variable)),eye(basis.nColumns),AbsTol=3e-11);
+                    testCase.verifyEqual(transform.transformForward(basis.evaluate(z,variable=variable)),eye(basis.nColumns),AbsTol=3e-11);
                 end
             end
         end
@@ -248,7 +280,7 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             counter = IMScalarTransformTestCounter();
             solver = IMScalarTransformCountingSolver(counter);
             energy = IMGeneralizedEnergyBoundary(g0=-.4,gd=.3);
-            full = IMModes.geostrophicAPVModes(background,energyBoundary=energy,nPositiveModes=3,solver=solver);
+            full = solver.solveEVP(IMInternalModes.geostrophicAPVModes(background,g0=energy.g0,gd=energy.gd),nModes=4);
             initialCount = counter.solveCount;
             testCase.verifyGreaterThan(initialCount,0);
             [z,w] = endpointRule(background.zDomain,64);
@@ -260,8 +292,8 @@ classdef IMCommonScalarTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(transform.z,z,AbsTol=0);
             testCase.verifyEqual(transform.weights,w,AbsTol=0);
             testCase.verifyEqual(transform.physicalDualMatrix,projection.physicalDualMatrix,AbsTol=0);
-            neutralBackground = IMModeBackground(N2=@(z) zeros(size(z)),zDomain=[-1 0],rotationRate=background.rotationRate,latitude=33,g=2);
-            neutral = IMModes.neutralLabelModes(neutralBackground,neutralIntervals=[-1 0],energyBoundary=IMGeneralizedEnergyBoundary(g0=0,gd=0),nModesPerInterval=3);
+            neutralBackground = IMBackground(N2=@(z) zeros(size(z)),zDomain=[-1 0],rotationRate=background.rotationRate,latitude=33,g=2,surfaceCondition="freeSurface");
+            neutral = IMNeutralLabelModesBasis(neutralBackground,neutralIntervals=[-1 0],g0=0,gd=0,nModesPerInterval=3);
             physical = neutral.projectionOnGrid(z,w,variable="APV",prepareRecovery=false);
             adapter = neutral.scalarTransform(z,w,variable="APV");
             testCase.verifyTrue(adapter.success);
@@ -283,7 +315,7 @@ function background = signedBackground(surfaceCondition)
 arguments
     surfaceCondition (1,1) string = "freeSurface"
 end
-background = IMModeBackground.constantStratification(N0=1,zDomain=[-1 0],g=2,rotationRate=1/(2*sind(33)),latitude=33,surfaceCondition=surfaceCondition);
+background = IMBackground.constantStratification(N0=1,zDomain=[-1 0],g=2,rotationRate=1/(2*sind(33)),latitude=33,surfaceCondition=surfaceCondition);
 end
 
 function [z,w] = endpointRule(domain,n)
@@ -302,8 +334,8 @@ end
 
 function [H,Hplus] = independentForms(basis,variable,energy,n)
 [z,w] = endpointRule(basis.zDomain,n);
-A = basis.evaluate(z,variable);
-metric = independentMetric(basis.background,energy,basis.family,variable,z,w);
+A = basis.evaluate(z,variable=variable);
+metric = independentMetric(basis.evp.background,energy,string(basis.evp.name),variable,z,w);
 H = A'*(metric.*A);
 Hplus = A'*(abs(metric).*A);
 end
@@ -314,7 +346,7 @@ if variable == "F"
     return
 end
 metric = w.*background.N2(z)/background.g;
-if family == "meanDensityAnomaly"
+if ismember(family,["meanDensityAnomaly","meanDensityAnomalyModes"])
     surface = energy.g0/background.g;
 elseif background.surfaceCondition == "freeSurface"
     if isinf(energy.g0)
@@ -333,7 +365,7 @@ if isfinite(bottom), metric(1) = metric(1)+bottom; end
 end
 
 function T = normalizationMap(basis,changed)
-old = basis.scientificSpecification.resolved.normalization.scales;
-new = changed.scientificSpecification.resolved.normalization.scales;
+old = basis.normalizationFactors();
+new = changed.normalizationFactors();
 T = diag(old./new);
 end

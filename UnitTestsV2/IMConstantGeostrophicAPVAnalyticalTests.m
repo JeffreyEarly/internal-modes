@@ -57,8 +57,8 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
                 evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g, g0=cases{iCase,2}, gd=cases{iCase,3}, surfaceBoundary=surfaceConvention);
                 basisSet = solution.internalModes(evp, nModes=3);
                 zeroIndex = find(basisSet.modeNumber == 0);
-                F = basisSet.F(z, normalization="uMax");
-                G = basisSet.G(z, normalization="uMax");
+                F = basisSet.F(z, normalization="maxAbsF");
+                G = basisSet.G(z, normalization="maxAbsF");
 
                 testCase.verifyNumElements(zeroIndex, 1)
                 testCase.verifyEqual(basisSet.eigenvalues(zeroIndex), 0, AbsTol=0)
@@ -121,11 +121,11 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             zDepth = linspace(zDomain(1), zDomain(2), 4001).';
             FDepth = basisSet.F(zDepth);
 
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
+            testCase.verifyEqual(string(basisSet.normalization), "rmsF")
             testCase.verifyEqual(trapz(zDepth,FDepth.*FDepth,1)/diff(zDomain), ones(1,4), RelTol=2e-5, AbsTol=2e-5)
             testCase.verifyLessThan(max(abs(G + (g/(N0*N0))*Fz),[],"all"), 2e-12)
             testCase.verifyLessThan(max(abs(odeResidual(2:end-1,:))./odeScale,[],"all"), 2e-6)
-            testCase.verifyTrue(all(basisSet.normalizationFactors("depth") > 0))
+            testCase.verifyTrue(all(basisSet.normalizationFactors("rmsF") > 0))
         end
 
         function refinedSpectralSolveMatchesRootsAndClusteredSubspace(testCase)
@@ -141,8 +141,8 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             independentNegativeRoots = [fzero(@(root) testCase.independentDeterminant(N0, zDomain, parameters.betaSurface, parameters.betaBottom, "active", "active", root, "negative"), [7.98 8]), fzero(@(root) testCase.independentDeterminant(N0, zDomain, parameters.betaSurface, parameters.betaBottom, "active", "active", root, "negative"), [8 8.02])];
 
             z = linspace(zDomain(1), zDomain(2), 801).';
-            analyticalF = analytical.F(z, normalization="uMax");
-            numericalF = highOrder.F(z, normalization="uMax");
+            analyticalF = analytical.F(z, normalization="maxAbsF");
+            numericalF = highOrder.F(z, normalization="maxAbsF");
             subspaceError = IMGeostrophicAPVTestSupport.subspaceError(z, analyticalF(:,1:2), numericalF(:,1:2));
 
             testCase.verifyEqual(sort(analytical.metadata.roots(1:2)), sort(independentNegativeRoots), RelTol=2e-10)
@@ -157,7 +157,7 @@ classdef IMConstantGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             solution = IMConstantStratificationSolution(rotationRate=0,N0=N0, zDomain=zDomain, g=g);
             basisSet = solution.internalModes(evp, nModes=3);
 
-            testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
+            testCase.verifyTrue(ismember("rmsF", basisSet.normalizationNames()))
             testCase.verifyEqual(basisSet.metadata.analyticalFamily, "generalizedEnergyAPV")
             testCase.verifyEqual(basisSet.metadata.g0, evp.parameters.g0, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.gd, evp.parameters.gd, AbsTol=0)

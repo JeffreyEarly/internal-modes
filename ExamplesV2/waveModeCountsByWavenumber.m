@@ -58,10 +58,12 @@ referenceGrid = IMSolverSpectral(nEVP=2*options.nEVP(2),coordinateKind="wkb").co
 [zReference,referenceWeights] = referenceGrid.nativeQuadratureRule(zDomain);
 collections = cell(1,2);
 costs = cell(1,2);
+requestedCounts = repmat(options.candidateCount,size(kappa));
+requestedCounts(kappa==0) = options.inertialCount;
 for i = 1:2
     solver = IMSolverSpectral(nEVP=options.nEVP(i),coordinateKind="wkb");
     [collections{i},costs{i}] = solver.solveWaveModesAtWavenumbers(kappa,N2=N2,zDomain=zDomain,rotationRate=options.rotationRate,latitude=options.latitude,g=options.g, ...
-        surfaceBoundary=surface,nModes=options.candidateCount,nInertialModes=options.inertialCount);
+        surfaceBoundary=surface,nModes=requestedCounts);
 end
 counts = table(kappa(:),zeros(numel(kappa),1),zeros(numel(kappa),1),zeros(numel(kappa),1),false(numel(kappa),1),false(numel(kappa),1), ...
     VariableNames=["kappa","convergedCount","gridSupportedCount","combinedCount","atCandidateCeiling","inconclusive"]);
@@ -83,8 +85,9 @@ for page = 1:numel(kappa)
     % kappa=0 is an independent inertial inventory with its F metric.
     if kappa(page) == 0
         % The wave catalog has no F diagnostic recipe at general kappa.
-        % At zero kappa its physical inertial identity is integral(F_i F_j)=h_i delta_ij.
-        projection = IMProjection(candidate.F(z),diag(weights),diag(candidate.h),columnLabels=string(candidate.modeNumber));
+        % With F=D*Gz and the default waveEnergy norm at k=0,
+        % integral(F_i F_j)=D delta_ij.
+        projection = IMProjection(candidate.F(z),diag(weights),diff(candidate.zDomain)*eye(candidate.nColumns),columnLabels=string(candidate.modeNumber));
         gridReport = projection.assess(prefixColumnCounts=1:n,identity=coarse.identity);
     else
         gridReport = collections{1}.assess(z,weights,page=page,variable="G",prefixColumnCounts=1:n);
@@ -147,9 +150,8 @@ fprintf("Saved figure, counts, measurements and provenance to %s\n",outputDirect
 end
 
 function data = sampledModes(basis,z)
-factors = basis.normalizationFactors();
-dG = basis.solver.evaluatePhysicalDerivative(basis.nativeModes,z,1)./factors;
-dF = basis.solver.evaluatePhysicalDerivative(basis.nativeModes,z,2)./factors.*basis.h(:).';
+dG = basis.Gz(z);
+dF = basis.evaluate(z,variable="F",derivativeOrder=1);
 identity = struct(family=string(basis.evp.name),columnLabels=string(basis.modeNumber),normalization=string(basis.normalization),zDomain=basis.zDomain,kappa=basis.evp.parameters.k);
 provenance = struct(solverClass=string(class(basis.solver)),nEVP=basis.solver.nEVP,coordinateKind="wkb");
 data = struct(identity=identity,values=struct(F=basis.F(z),G=basis.G(z)),derivatives=struct(F=dF,G=dG), ...

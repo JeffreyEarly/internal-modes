@@ -10,7 +10,9 @@ function result = bandwidthCoordinateComparison(options)
 % An exactly neutral surface layer uses hydrostatic G modes with rigid
 % endpoints, avoiding a separate signed wave-branch ordering question.
 % The legacy neutral coordinate is recorded as unsupported, not as zero
-% resolved modes. Counts stop at the first unaccepted scientific mode.
+% resolved modes. An unavailable exact requested inventory is recorded
+% explicitly without a smaller retry. Counts stop at the first unaccepted
+% scientific mode.
 % This study measures EVP convergence; it does not assess a simulation's
 % vertical sampling, nonlinear aliasing, or the nontraditional wave EVP.
 % The opt-in smoothed comparison uses one fixed physical smoothing length
@@ -44,7 +46,7 @@ profiles = struct(name={"constant","standardExponential","weakDeepExponential","
     N2={@(z) 1e-4*ones(size(z)),@(z) 1e-4*exp(2*z/400),@(z) 9e-6*exp(2*z/300),@neutralSurfaceN2}, ...
     formula={"N2=1e-4","N2=1e-4 exp(2z/400)","N2=9e-6 exp(2z/300)", ...
     "N2=(5e-3)^2 s(t), t=clip((-z-200)/200,0,1), s=6t^5-15t^4+10t^3"});
-quadratureEVP = IMInternalModes.hydrostaticGModes(N2=profiles(1).N2,zDomain=zDomain,rotationRate=rotationRate,latitude=latitude,g=g);
+quadratureEVP = IMInternalModes.hydrostaticGModes(N2=profiles(1).N2,zDomain=zDomain,rotationRate=rotationRate,latitude=latitude,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
 rule = IMSolverSpectral(nEVP=1025,coordinateKind="z").configuredForEVP(quadratureEVP);
 [z,weights] = rule.nativeQuadratureRule(zDomain);
 % Aggregations are bounded by 42 candidate rows, seven cases and one retry.
@@ -102,7 +104,7 @@ for iProfile = 1:numel(profiles)
                 if coordinate == "N"
                     solver = IMBandwidthComparison.LegacyWKBSolver(nEVP=resolution,coordinateKind="wkb");
                 elseif coordinate == "sqrtB"
-                    solver = IMSolverSpectral(nEVP=resolution,coordinateKind="wkb");
+                    solver = IMSolverSpectral(nEVP=resolution,coordinateKind="bandwidth");
                 else
                     solver = IMBandwidthComparison.SmoothedBandwidthSolver(nEVP=resolution,smoothingLength=options.smoothingLength);
                 end
@@ -118,17 +120,21 @@ for iProfile = 1:numel(profiles)
                 try
                     basis = solver.solveEVP(evp,nModes=requestedCount);
                 catch exception
-                    if isNeutral && coordinate == "N" && string(exception.identifier) == "IMSolverSpectral:InvalidCoordinate"
-                        row.errorIdentifier = string(exception.identifier);
-                        row.errorMessage = string(exception.message);
-                        summaryRows{end+1,1} = row; %#ok<AGROW>
-                        if options.includeSmoothed
-                            control.errorIdentifier = row.errorIdentifier;
-                            coordinateControlRows{end+1,1} = control; %#ok<AGROW>
-                        end
-                        continue
+                    if string(exception.identifier) == "IMSolver:InsufficientModes"
+                        row.status = "insufficientInventory";
+                        row.inconclusive = true;
+                    elseif ~(isNeutral && coordinate == "N" && string(exception.identifier) == "IMSolverSpectral:InvalidCoordinate")
+                        rethrow(exception)
                     end
-                    rethrow(exception)
+                    row.errorIdentifier = string(exception.identifier);
+                    row.errorMessage = string(exception.message);
+                    summaryRows{end+1,1} = row; %#ok<AGROW>
+                    if options.includeSmoothed
+                        control.status = row.status;
+                        control.errorIdentifier = row.errorIdentifier;
+                        coordinateControlRows{end+1,1} = control; %#ok<AGROW>
+                    end
+                    continue
                 end
                 candidate = sampledModes(basis,z,coordinate);
                 report = assessModeConvergence(candidate,highSamples,z,weights);
@@ -157,9 +163,9 @@ for iProfile = 1:numel(profiles)
         end
     end
 end
-zeroRotationEVP = IMInternalModes.hydrostaticGModes(N2=profiles(2).N2,zDomain=zDomain,rotationRate=0,latitude=latitude,g=g);
+zeroRotationEVP = IMInternalModes.hydrostaticGModes(N2=profiles(2).N2,zDomain=zDomain,rotationRate=0,latitude=latitude,g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
 legacy = IMBandwidthComparison.LegacyWKBSolver(nEVP=nEVP(1),coordinateKind="wkb").configuredForEVP(zeroRotationEVP);
-bandwidth = IMSolverSpectral(nEVP=nEVP(1),coordinateKind="wkb").configuredForEVP(zeroRotationEVP);
+bandwidth = IMSolverSpectral(nEVP=nEVP(1),coordinateKind="bandwidth").configuredForEVP(zeroRotationEVP);
 zeroRotationRecovery = struct(nEVP=nEVP(1),profile=string(profiles(2).name), ...
     identicalCoordinate=isequal(legacy.zNative,bandwidth.zNative) && isequal(legacy.qReference,bandwidth.qReference) && isequal(legacy.qzReference,bandwidth.qzReference));
 summary = struct2table(vertcat(summaryRows{:}));
@@ -177,6 +183,7 @@ provenance = struct(rotationRate=rotationRate,latitude=latitude,f0=2*rotationRat
     newCoordinate="dx/dz=sqrt(B), B=sqrt((N2+fHorizontal^2-f0^2)^2+4*f0^2*fHorizontal^2), fHorizontal=2*rotationRate*cosd(latitude)", ...
     waveBoundary="surface Gz=G/h, bottom G=0",neutralBoundary="hydrostatic G=0 at both endpoints", ...
     candidateCount="nEVP-2",countRule="contiguous prefix before first failed or unverified mode", ...
+    unavailableInventory="insufficientInventory status with the exact solver error; returned count and resolved prefix remain NaN; no smaller retry", ...
     convergenceTolerance=convergenceTolerance,referenceTolerance=referenceTolerance, ...
     referenceCount=referenceCount,referenceRefinements=[384 512;512 1024], ...
     quadrature="1025-point physical-z Chebyshev-Lobatto rule shared by both coordinates", ...
@@ -230,9 +237,8 @@ values = (5e-3)^2*(6*t.^5-15*t.^4+10*t.^3);
 end
 
 function data = sampledModes(basis,z,coordinate)
-factors = basis.normalizationFactors();
-dG = basis.solver.evaluatePhysicalDerivative(basis.nativeModes,z,1)./factors;
-dF = basis.solver.evaluatePhysicalDerivative(basis.nativeModes,z,2)./factors.*basis.h(:).';
+dG = basis.Gz(z);
+dF = basis.evaluate(z,variable="F",derivativeOrder=1);
 identity = struct(family=string(basis.evp.name),columnLabels=string(basis.modeNumber),normalization=string(basis.normalization),zDomain=basis.zDomain);
 if isfield(basis.evp.parameters,"k"), identity.kappa = basis.evp.parameters.k; end
 provenance = struct(solverClass=string(class(basis.solver)),nEVP=basis.solver.nEVP,coordinate=coordinate);
@@ -266,10 +272,13 @@ if ~isequaln(old(:,keys),new(:,keys))
 end
 qualification = strings(height(old),1);
 for j = 1:height(old)
-    % Each paired case has at most seven qualification tags.
+    % Each paired case has at most eight qualification tags.
     tags = strings(0,1);
     if old.status(j) == "unsupported", tags(end+1,1) = "legacy unsupported"; end %#ok<AGROW>
     if new.status(j) == "unsupported", tags(end+1,1) = "new coordinate unsupported"; end %#ok<AGROW>
+    if old.status(j) == "insufficientInventory" || new.status(j) == "insufficientInventory"
+        tags(end+1,1) = "requested candidate inventory unavailable"; %#ok<AGROW>
+    end
     if old.inconclusive(j) || new.inconclusive(j), tags(end+1,1) = "inconclusive evidence"; end %#ok<AGROW>
     if old.referenceValidatedPrefix(j) < old.returnedCount(j) || new.referenceValidatedPrefix(j) < new.returnedCount(j)
         tags(end+1,1) = "reference uncertainty"; %#ok<AGROW>
@@ -296,9 +305,10 @@ if ~isequaln(old(:,keys),smooth(:,keys)) || ~isequaln(raw(:,keys),smooth(:,keys)
 end
 qualification = strings(height(smooth),1);
 for j = 1:height(smooth)
-    % At most five smoothed/diagnostic tags extend the old/raw qualification.
+    % At most six smoothed/diagnostic tags extend the old/raw qualification.
     tags = paired.qualification(j);
     if smooth.inconclusive(j), tags(end+1,1) = "smoothed evidence inconclusive"; end %#ok<AGROW>
+    if smooth.status(j) == "insufficientInventory", tags(end+1,1) = "smoothed requested inventory unavailable"; end %#ok<AGROW>
     if smooth.referenceValidatedPrefix(j) < smooth.returnedCount(j)
         tags(end+1,1) = "smoothed reference uncertainty"; %#ok<AGROW>
     end

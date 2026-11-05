@@ -31,7 +31,7 @@ evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g
     surfaceBoundary=surfaceBoundary,bottomBoundary=bottomBoundary);
 solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 fprintf("Mode basis: hydrostatic G modes with G(-D) = G(0) = 0; normalization: %s.\n",basisSet.normalization);
 
 %% Ask for an exact mode-root point count

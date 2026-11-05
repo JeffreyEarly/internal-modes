@@ -31,7 +31,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
                 numerical=IMSolverSpectral(nEVP=257,coordinateKind="z").solveEVP(evp,nModes=3);
                 testCase.verifyEqual(nnz(exact.h<0),1)
                 testCase.verifyEqual(exact.h,numerical.h,RelTol=2e-6)
-                F=exact.F(0,normalization="uMax"); Fz=exact.uz(0,normalization="uMax");
+                F=exact.F(0,normalization="maxAbsF"); Fz=exact.uz(0,normalization="maxAbsF");
                 residual=Fz/N0^2+(1/g+1/g0)*F;
                 scale=abs(Fz/N0^2)+abs((1/g+1/g0)*F);
                 testCase.verifyLessThan(max(abs(residual)./scale),1e-10)
@@ -50,10 +50,10 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             basisSet = solution.internalModes(evp, nModes=4);
             expectedH = testCase.canonicalEigendepths(N0, b, zDomain, g, g0);
 
-            testCase.verifyTrue(ismember("depth", basisSet.normalizationNames()))
+            testCase.verifyTrue(ismember("rmsF", basisSet.normalizationNames()))
             testCase.verifyEqual(basisSet.h, expectedH, RelTol=5e-11)
             testCase.verifyEqual(basisSet.modeNumber, [-1 1 2 3])
-            testCase.verifyEqual(string(basisSet.normalization), "depth")
+            testCase.verifyEqual(string(basisSet.normalization), "rmsF")
             testCase.verifyEqual(basisSet.metadata.g0, g0, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.gd, Inf, AbsTol=0)
             testCase.verifyEqual(basisSet.metadata.surfaceBoundary, "freeSurface")
@@ -137,8 +137,8 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             testCase.verifyFalse(any(isinf(freeInfiniteBasis.h)))
 
             z = linspace(zDomain(1), zDomain(2), 17).';
-            constantF = freeNeumannBasis.F(z, normalization="uMax");
-            constantG = freeNeumannBasis.G(z, normalization="uMax");
+            constantF = freeNeumannBasis.F(z, normalization="maxAbsF");
+            constantG = freeNeumannBasis.G(z, normalization="maxAbsF");
             testCase.verifyEqual(constantF(:,1), ones(size(z)), AbsTol=1e-12)
             testCase.verifyEqual(constantG(:,1), zeros(size(z)), AbsTol=1e-12)
         end
@@ -159,9 +159,9 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             solver = IMSolverSpectral(nEVP=160, coordinateKind="z");
             solver = solver.configuredForEVP(evp);
             z = solver.zNative;
-            F = basisSet.F(z, normalization="uMax");
-            G = basisSet.G(z, normalization="uMax");
-            Fz = basisSet.uz(z, normalization="uMax");
+            F = basisSet.F(z, normalization="maxAbsF");
+            G = basisSet.G(z, normalization="maxAbsF");
+            Fz = basisSet.uz(z, normalization="maxAbsF");
             flux = Fz ./ N2(z);
             fluxDerivative = solver.differentiateGridValues(flux, 1);
             rhs = F .* reshape(1./(g*basisSet.h), 1, []);
@@ -210,8 +210,8 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
             testCase.verifyLessThan(highError, 2e-8)
 
             z = linspace(zDomain(1), zDomain(2), 801).';
-            analyticalF = analytical.F(z, normalization="uMax");
-            numericalF = highOrder.F(z, normalization="uMax");
+            analyticalF = analytical.F(z, normalization="maxAbsF");
+            numericalF = highOrder.F(z, normalization="maxAbsF");
             [analyticalF, ~] = IMGeostrophicAPVTestSupport.orientColumns( ...
                 analyticalF, zeros(size(analyticalF)));
             [numericalF, ~] = IMGeostrophicAPVTestSupport.orientColumns( ...
@@ -235,7 +235,7 @@ classdef IMExponentialGeostrophicAPVAnalyticalTests < matlab.unittest.TestCase
                 N0=N0, b=b, zDomain=zDomain, g=g);
             basisSet = solution.internalModes(evp, nModes=4);
 
-            factors = basisSet.normalizationFactors("geostrophic");
+            factors = basisSet.normalizationFactors("rmsF");
             signedGram = basisSet.gramMatrix(variable="G");
             majorantGram = basisSet.majorantGramMatrix(variable="G");
             testCase.verifyTrue(all(isreal(factors)))

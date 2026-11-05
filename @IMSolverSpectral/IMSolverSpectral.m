@@ -9,9 +9,9 @@ classdef IMSolverSpectral < IMSolver
     % reconstruction and sampled-field calculus share the same coordinate.
     %
     % ```matlab
-    % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4);
+    % evp = IMInternalModes.waveModesAtWavenumber(N2=@(z) 1e-5*ones(size(z)), zDomain=[-1000 0], k=1e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
     % solver = IMSolverSpectral(nEVP=64);
-    % basisSet = solver.solveEVP(evp);
+    % basisSet = solver.solveEVP(evp,nModes=10);
     % ```
     %
     % - Topic: Create solvers
@@ -547,6 +547,8 @@ classdef IMSolverSpectral < IMSolver
                 xBounds = min(max(xBounds, min(self.xNative)), max(self.xNative));
                 value = InternalModesSpectral.IntegrateChebyshevVectorWithLimits( ...
                     integrandCheb, self.xNative, min(xBounds), max(xBounds));
+                % The antiderivative uses the normalized Chebyshev coordinate.
+                value = value*(max(self.xNative)-min(self.xNative))/2;
             end
         end
 

@@ -12,5 +12,9 @@ classdef IMInternalModesBasisTestAccess < IMInternalModesBasis
         function mask = classifyTransformColumns(self,sampled,targetGram,targetMajorantGram)
             mask = self.internalModesTransformActiveMask("F",sampled,targetGram,targetMajorantGram);
         end
+
+        function self = withVectorRule(self,name,rule)
+            self = self.addVectorNormalization(name,@(basis,j) IMInternalModesNormalizationTools.selectedNormFactor(basis,name,j),rule);
+        end
     end
 end

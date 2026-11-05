@@ -9,10 +9,14 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
     % F_j(z)=\frac{1}{g}\int_z^{z_s}N^2(z')G_j(z')\,dz'.
     % $$
     %
-    % The default `unity` normalization divides each aligned `F`/`G` pair
-    % by the positive magnitude of its signed generalized-energy norm.
-    % `signatures(j)` records the remaining sign, so the normalized Gram
-    % matrix is `diag(signatures)`.
+    % The default `meanDensityAnomalyEnergy` normalization divides each aligned `F`/`G` pair
+    % by $$\sqrt{|Q_j|}$$, where
+    % $$Q_j=g^{-1}\int N^2G_j^2\,dz+(g_0/g)G_j(z_s)^2+(g_d/g)G_j(z_b)^2.$$
+    % Inactive endpoint terms are omitted. The profiles remain dimensionless;
+    % `signatures(j)` records the sign, and the associated full-state energy
+    % coefficient is $$g\,\mathrm{signatures}(j)/2$$. Under this default,
+    % `gramMatrix(variable="G")` is `diag(signatures)`. Other amplitude
+    % normalizations preserve this signed form but change its magnitudes.
     %
     % Discrete transforms project `G` and synthesize both `G` and the
     % diagnostic `F`. Omitted transform variables therefore select `G`.
@@ -106,7 +110,7 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
                     join(string(labels),", "));
             end
             self.signatures = sign(rawNorms);
-            self.normalization = "unity";
+            self.normalization = "meanDensityAnomalyEnergy";
         end
 
         function Gz = Gz(self,z,options)
@@ -134,6 +138,7 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             % - Developer: true
             [self,signs] = orientModeSigns@IMInternalModesBasis(self);
             self.nativeFModes = self.nativeFModes.*signs;
+            self = self.resetNormalizationCache();
         end
     end
 
@@ -159,4 +164,20 @@ classdef IMMeanDensityAnomalyModesBasis < IMInternalModesBasis
             end
         end
     end
+    methods (Access = protected)
+        function values = rawVariableDerivative(self,variable,z,order)
+            if variable == "F" && ismember(order,[1 2])
+                values = self.solver.evaluatePhysicalDerivative(self.nativeFModes,z,order);
+            else
+                values = rawVariableDerivative@IMInternalModesBasis(self,variable,z,order);
+            end
+        end
+
+        function self = selectAlignedColumns(self,columns)
+            self = selectAlignedColumns@IMInternalModesBasis(self,columns);
+            self.nativeFModes = self.nativeFModes(:,columns);
+            self.signatures = self.signatures(columns);
+        end
+    end
+
 end

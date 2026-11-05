@@ -7,6 +7,8 @@ classdef IMBasisCollection
     % `sourcePage` selects a page within a multi-wavenumber boundary basis.
     % Supported bases are value objects, so subsequent changes to the input
     % basis normalization do not change this collection.
+    % Evaluation can override normalization for one call without changing
+    % these stored defaults or the collection's scientific column identity.
     %
     % ```matlab
     % collection = IMBasisCollection({basis1,basis2},kappa=[k2 k1 k2],basisIndex=[2 1 2]);
@@ -24,10 +26,8 @@ classdef IMBasisCollection
         bases (1,:) cell
         % Requested horizontal wavenumbers, in requested-page order.
         %
-        % Empty unless every page has an explicit or solved scalar identity.
-        % Wavenumber-independent bases accept caller-supplied page identities;
-        % per-column fixed-frequency roots cannot be replaced by one kappa.
-        % Values are never rounded or replaced by representative wavenumbers.
+        % Empty for collections without a wavenumber identity. Values are
+        % never rounded or replaced by representative wavenumbers.
         % - Topic: Inspect collections
         kappa (1,:) double
         % Requested-page to stored-basis mapping.
@@ -38,11 +38,8 @@ classdef IMBasisCollection
         sourcePage (1,:) double
         % Scientific column identity and evaluation capabilities per basis.
         %
-        % `capabilities` preserves the authoritative common-basis record.
-        % The top-level `variables` and `derivativeOrders` are evaluation
-        % summaries copied from that record. Conditional physical projection
-        % and sampled recovery are distinct operations; observability requires
-        % preparing the actual observation system.
+        % `derivativeOrders` is a cell row aligned with `variables`. These
+        % describe evaluation only; no projection capability is implied.
         % Mode labels, endpoint labels, and wavenumber pages remain separate.
         % Frequency signs are not introduced by a vertical basis collection.
         % - Topic: Inspect collections
@@ -51,6 +48,7 @@ classdef IMBasisCollection
 
     methods (Access = private)
         [projection,recipe] = prepareProjection(self,z,weights,options)
+        basis = selectProjectionBasis(self,page,columns)
         columns = allColumnIndices(self,page)
     end
 
@@ -79,7 +77,7 @@ classdef IMBasisCollection
             end
             for iBasis = 1:numel(bases)
                 basis = bases{iBasis};
-                supported = isa(basis,"IMModeBasis") || isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis");
+                supported = isa(basis,"IMBasisSet") || isa(basis,"IMAnalyticalInternalModesBasis") || isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis") || isa(basis,"IMNeutralLabelModesBasis") || isa(basis,"IMZeroDepthWaveModesBasis");
                 if ~supported || ~isscalar(basis) || isa(basis,"handle")
                     error("IMBasisCollection:UnsupportedBasis","Entry %d must be a supported scalar continuous value basis.",iBasis);
                 end
@@ -105,14 +103,14 @@ classdef IMBasisCollection
             elseif numel(self.sourcePage) ~= nPages
                 error("IMBasisCollection:InvalidSourcePage","sourcePage must contain one index per requested page.");
             end
+            if ~isempty(options.kappa) && numel(options.kappa) ~= nPages
+                error("IMBasisCollection:InvalidKappaCount","kappa must contain one value per requested page.");
+            end
             knownKappa = nan(1,nPages);
             for iPage = 1:nPages
                 basis = bases{self.basisIndex(iPage)};
-                if isa(basis,"IMModeBasis") && basis.horizontalKind == "perColumn" && ~isempty(options.kappa)
-                    error("IMBasisCollection:UnsupportedHorizontalPage","A per-column dispersion basis cannot be assigned one scalar kappa. Preserve its signed kSquared roots and use a fixed-wavenumber family for scalar-wavenumber pages.");
-                end
-                if isa(basis,"IMModeBasis") && basis.horizontalKind == "unspecified" && ~isempty(options.kappa)
-                    error("IMBasisCollection:UnsupportedHorizontalPage","A common basis with unspecified horizontal identity cannot be assigned kappa. Declare a fixed wavenumber or explicitly wavenumber-independent structure when constructing the basis.");
+                if isprop(basis,"horizontalKind") && ismember(basis.horizontalKind,["perColumn","unspecified"]) && ~isempty(options.kappa)
+                    error("IMBasisCollection:UnsupportedHorizontalPage","A per-column or unspecified horizontal identity cannot be assigned one scalar kappa. Preserve the declared dispersion or use a fixed-wavenumber family.");
                 end
                 basisKappa = IMBasisCollection.basisWavenumbers(basis);
                 if self.sourcePage(iPage) > max(1,numel(basisKappa))
@@ -140,119 +138,39 @@ classdef IMBasisCollection
 
     methods (Static, Access = private)
         function entry = describeBasis(basis)
-            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",strings(1,0),"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables","u","derivativeOrders",{{[0 1]}},"capabilities",struct(),"horizontalIdentity",struct(),"scientificSpecification",struct(),"constructionRecord",struct(),"rotationName","","rotationMatrix",[],"sourceCoordinateMap",[],"rotationMetadata",struct());
-            if isa(basis,"IMModeBasis")
-                entry.family = basis.family;
-                entry.columnLabels = basis.columnLabels;
-                entry.normalization = basis.normalization;
-                entry.capabilities = basis.capabilities;
-                entry.horizontalIdentity = struct(kind=basis.horizontalKind,k=basis.k,kSquared=basis.kSquared);
-                entry.scientificSpecification = basis.scientificSpecification;
-                entry.constructionRecord = basis.constructionRecord;
-                entry.variables = entry.capabilities.variables;
-                entry.derivativeOrders = entry.capabilities.derivativeOrders;
-                if basis.family == "geostrophicZeroAPV"
-                    entry.columnKind = "endpoint";
-                    entry.endpointLabels = basis.canonicalEndpointLabels;
-                    entry.sourceCoordinateMap = basis.sourceCoordinateMap;
-                    entry.rotationMetadata = basis.rotationMetadata;
-                    entry.rotationName = basis.rotationMetadata.name;
-                end
-                if numel(entry.columnLabels) ~= basis.nColumns
-                    error("IMBasisCollection:InvalidColumnLabels","Mode labels must match the facade column count.");
-                end
-            elseif isa(basis,"IMNeutralLabelModesBasis")
-                entry.family = "neutralLabelModes";
-                entry.columnKind = "mode";
-                entry.columnLabels = basis.columnLabels;
-                entry.normalization = basis.normalization;
-                entry.variables = ["G" "APV"];
-                entry.derivativeOrders = {0:2,0};
-            elseif isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
+            description = basis.capabilities;
+            entry = struct("family",string(class(basis)),"columnKind","mode","columnLabels",basis.columnLabels,"modeNumber",[],"endpointLabels",strings(1,0),"normalization","","zDomain",basis.zDomain,"variables",description.variables,"derivativeOrders",{description.derivativeOrders},"capabilities",description,"horizontalIdentity",struct(),"scientificSpecification",basis.scientificSpecification,"constructionRecord",basis.constructionRecord,"boundaryResponseMatrixStatus","notApplicable");
+            if isprop(basis,"normalization"), entry.normalization = string(basis.normalization); end
+            if isprop(basis,"modeNumber"), entry.modeNumber = reshape(basis.modeNumber,1,[]); end
+            if isprop(basis,"evp"), entry.family = string(basis.evp.name); end
+            if isprop(basis,"family"), entry.family = string(basis.family); end
+            if isa(basis,"IMGeostrophicZeroAPVModesBasis") || isa(basis,"IMAnalyticalGeostrophicZeroAPVModesBasis")
                 entry.family = "geostrophicZeroAPVModes";
                 entry.columnKind = "endpoint";
-                entry.columnLabels = reshape(string(basis.endpoints),1,[]);
-                entry.endpointLabels = entry.columnLabels;
-                entry.rotationName = string(basis.rotationName);
-                entry.rotationMatrix = basis.rotationMatrix;
-                entry.sourceCoordinateMap = basis.rotationMatrix;
-                if basis.normalizationConvention ~= "unitEndpointResponse"
-                    entry.columnLabels = entry.rotationName + string(1:numel(entry.endpointLabels));
-                end
-                entry.normalization = string(basis.normalizationConvention);
-                entry.variables = ["F" "G"];
-                entry.derivativeOrders = {[0 1],0};
+                entry.endpointLabels = reshape(string(basis.endpoints),1,[]);
+                entry.boundaryResponseMatrixStatus = "availableOnBasis";
+                if entry.normalization == "", entry.normalization = string(basis.normalizationConvention); end
+            end
+            if isprop(basis,"horizontalKind")
+                entry.horizontalIdentity = struct(kind=basis.horizontalKind,k=basis.k,kSquared=basis.kSquared);
             else
-                entry.family = string(basis.evp.name);
-                entry.modeNumber = reshape(basis.modeNumber,1,[]);
-                entry.columnLabels = string(entry.modeNumber);
-                entry.normalization = string(basis.normalization);
-                if numel(entry.modeNumber) ~= numel(basis.eigenvalues)
-                    error("IMBasisCollection:InvalidColumnLabels","Mode labels must match eigenvalue columns.");
-                end
-                if isa(basis,"IMInternalModesBasis") || isa(basis,"IMAnalyticalInternalModesBasis")
-                    entry.variables = ["F" "G"];
-                    entry.derivativeOrders = {0,0};
-                    entry.derivativeOrders{entry.variables == basis.evp.formulation} = [0 1];
-                end
+                entry.horizontalIdentity = struct(kind="unspecified",k=[],kSquared=[]);
             end
-            if ~isa(basis,"IMModeBasis")
-                entry.capabilities = IMBasisCollection.describeLegacyCapabilities(entry,basis);
-                k = IMBasisCollection.basisWavenumbers(basis);
-                kind = "unspecified";
-                if isscalar(k), kind = "fixedWavenumber"; elseif ~isempty(k), kind = "fixedWavenumberPages"; end
-                entry.horizontalIdentity = struct(kind=kind,k=k,kSquared=[]);
-                entry.scientificSpecification = struct(availability="notCommonBasis");
-                entry.constructionRecord = struct(availability="notCommonBasis");
+            if numel(entry.columnLabels) ~= basis.nColumns || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
+                error("IMBasisCollection:InvalidColumnLabels","Every retained column requires a distinct scientific label; empty inventories remain empty.");
             end
-            supportsEmptyColumns = isa(basis,"IMModeBasis") || isa(basis,"IMNeutralLabelModesBasis");
-            if (isempty(entry.columnLabels) && ~supportsEmptyColumns) || numel(unique(entry.columnLabels)) ~= numel(entry.columnLabels)
-                error("IMBasisCollection:InvalidColumnLabels","Each retained column must have a distinct scientific label; only common and neutral-label bases support an empty inventory.");
-            end
-        end
-
-        function description = describeLegacyCapabilities(entry,basis)
-            % Keep the direct low-level collection adapters explicit while
-            % the common facade supplies its own authoritative description.
-            aliases = struct("variable",{},"baseVariable",{},"derivativeOffset",{});
-            if ismember("F",entry.variables)
-                aliases = struct(variable="Fz",baseVariable="F",derivativeOffset=1);
-            end
-            if ismember("G",entry.variables)
-                aliases = [aliases,struct("variable",{"Gz","Gzz"},"baseVariable",{"G","G"},"derivativeOffset",{1,2})];
-            end
-            spectra = strings(1,0);
-            for name = ["h","eigenvalues"]
-                if isprop(basis,name), spectra(end+1) = name; end %#ok<AGROW>
-            end
-            normalizations = entry.normalization;
-            if ismethod(basis,"normalizationNames"), normalizations = basis.normalizationNames(); end
-            if isa(basis,"IMNeutralLabelModesBasis")
-                derivativeConvention = "classicalIntervalInterior";
-                traceConvention = "insideIntervalEndpoints";
-                operations = struct(variable="APV",kind="prescribedContinuousDual",availability="conditional",requirements=["APV observations with fixed dz quadrature","nonzero f0 and representable continuous APV norms for retained columns","empty inventories preserve an empty physical dual"]);
-            else
-                derivativeConvention = "classicalPhysical";
-                traceConvention = "physicalDomainEvaluation";
-                operations = struct("variable",{},"kind",{},"availability",{},"requirements",{});
-                for variable = entry.variables
-                    operations(end+1) = struct(variable=variable,kind="familyRecipe",availability="conditional",requirements="The requested variable must have an available family-owned physical pairing recipe."); %#ok<AGROW>
-                end
-            end
-            recovery = struct(synthesisVariables=entry.variables,preparation="IMDiscreteTransform.fromObservationMatrices",availability="requiresPreparedSystem",requirements=["explicit observation model and column identities","explicit scientific column activity","declared fitting or observation factor, or physical dual","successful rank and overlap assessment of the prepared system"],noiseEvidence="requiresDeclaredObservationFactor");
-            description = struct(variables=entry.variables,derivativeOrders={entry.derivativeOrders},aliases=aliases,derivativeConvention=derivativeConvention,traceConvention=traceConvention,traceOrders={entry.derivativeOrders},spectrumNames=spectra,normalizationNames=normalizations,normalizationRequirements="Each normalization rule validates its retained-column magnitudes.",projectionOperations=operations,sampledRecovery=recovery,supportsEmptyColumns=isa(basis,"IMNeutralLabelModesBasis"));
         end
 
         function kappa = basisWavenumbers(basis)
-            if isa(basis,"IMModeBasis")
-                kappa = [];
-                if basis.horizontalKind == "fixedWavenumber", kappa = basis.k; end
+            kappa = [];
+            if isprop(basis,"horizontalKind")
+                if ismember(basis.horizontalKind,["fixedWavenumber","fixedWavenumberPages"])
+                    kappa = reshape(basis.k,1,[]);
+                end
             elseif isprop(basis,"k")
                 kappa = reshape(basis.k,1,[]);
             elseif isprop(basis,"evp") && isfield(basis.evp.parameters,"k")
                 kappa = reshape(basis.evp.parameters.k,1,[]);
-            else
-                kappa = [];
             end
         end
     end

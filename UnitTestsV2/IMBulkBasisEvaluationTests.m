@@ -77,10 +77,10 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             scalar = solver.solveEVP(scalarEVP,nModes=3);
             collection = IMBasisCollection({scalar});
             z = linspace(-1,0,11).';
-            testCase.verifyEqual(collection.evaluate(z,sampleChunkSize=3),scalar.u(z),AbsTol=1e-13);
-            testCase.verifyEqual(collection.evaluate(z,derivativeOrder=1,sampleChunkSize=3),scalar.uz(z),AbsTol=1e-12);
+            testCase.verifyEqual(collection.evaluate(z,variable="u",sampleChunkSize=3),scalar.u(z),AbsTol=1e-13);
+            testCase.verifyEqual(collection.evaluate(z,variable="u",derivativeOrder=1,sampleChunkSize=3),scalar.uz(z),AbsTol=1e-12);
             N2 = @(z) 2.5e-5*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1000 0]);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMConstantStratificationSolution(rotationRate=0,N0=5e-3,zDomain=[-1000 0]);
             analytical = solution.internalModes(evp,nModes=3);
             mean = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
@@ -102,7 +102,7 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             exponential = IMExponentialStratificationSolution(N0=5e-3,b=1000,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
             z = linspace(-1000,0,17).';
             for entry = {numerical,constant.geostrophicZeroAPVModesAtWavenumber(k),exponential.geostrophicZeroAPVModesAtWavenumber(k)}
-                basis = entry{1}.rotateBoundaryDepth();
+                basis = entry{1}.orthogonalizeGeneralizedEnergy(g0=0,gd=0);
                 collection = IMBasisCollection({basis},basisIndex=[1 1 1],sourcePage=[3 1 2]);
                 for variable = ["F","G"]
                     full = basis.(variable)(z);
@@ -130,8 +130,8 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
         function invalidRequestsFailBeforeCallingConsumer(testCase)
             collection = testCase.waveCollection();
             callbacks = 0;
-            testCase.verifyError(@() collection.evaluateChunks([-100;1],@consume,sampleChunkSize=1),"IMBasisCollection:OutsideDomain");
-            testCase.verifyError(@() collection.evaluateChunks(-100,@consume,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyError(@() collection.evaluateChunks([-100;1],@consume,variable="F",sampleChunkSize=1),"IMBasisCollection:OutsideDomain");
+            testCase.verifyError(@() collection.evaluateChunks(-100,@consume,variable="F",derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
             testCase.verifyEqual(callbacks,0);
             function consume(varargin)
                 callbacks = callbacks+1;
@@ -144,7 +144,7 @@ classdef IMBulkBasisEvaluationTests < matlab.unittest.TestCase
             solver = IMSolverSpectral(nEVP=48);
             bases = cell(1,2);
             for i = 1:2
-                evp = IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=i*1e-4);
+                evp = IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=i*1e-4,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 bases{i} = solver.solveEVP(evp,nModes=3);
             end
             bases{2} = bases{2}.addNormalization("double",@(b,j) 2*b.innerProductNormFactor(j));

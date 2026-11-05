@@ -90,21 +90,15 @@ xlabel("G")
 title("Displacement structure")
 grid on
 
-%% Rotate the endpoint coordinates
-% Canonical columns are convenient boundary coordinates. Applications may
-% instead diagonalize generalized energy or surface buoyancy. The same
-% rotation is applied to F and G.
+%% Generalized-energy orthogonal boundary-buoyancy modes
+% Orthogonalize the complete endpoint family before selecting or normalizing
+% columns. The signed boundary depths describe this scientific basis choice.
 
 g0 = -0.03;
 gd = 0.01;
-depthModes = exponentialModes.rotateBoundaryDepth(g0=g0,gd=gd);
-surfaceModes = exponentialModes.rotateSurfaceBuoyancy(g0=g0,gd=gd);
-
-rotationSummary = table( ...
-    depthModes.rotationEigenvalues(:,1),depthModes.h0(:,1), ...
-    surfaceModes.rotationEigenvalues(:,1), ...
-    VariableNames=["boundaryDepthEigenvalue" "h0" "surfaceBuoyancyEigenvalue"]);
-disp(rotationSummary)
+depthModes = exponentialModes.orthogonalizeGeneralizedEnergy(g0=g0,gd=gd);
+boundaryDepthSummary = table(depthModes.boundaryDepth(:,1),VariableNames="boundaryDepth");
+disp(boundaryDepthSummary)
 
 %% Compare with a refined numerical solve
 % The analytical object is an independent reference; it does not call a

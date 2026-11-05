@@ -33,14 +33,14 @@ The result includes per-mode matching/orientation, long-form measurements, input
 
 ## Different wave counts at each wavenumber
 
-`IMSolver.solveWaveModesAtWavenumbers` accepts either scalar `nModes` or a row aligned with the positive entries of the requested `kappa` row, including repeats. Repeated identical wavenumbers must request identical counts. Zero-wavenumber pages instead use the explicit independent scalar `nInertialModes`.
+`IMSolver.solveWaveModesAtWavenumbers` requires `nModes` as either a scalar applied to every page or a row aligned with the full requested `kappa` row, including zero and repeated wavenumbers. Repeated wavenumbers may request different counts. Every count is an exact total, and zero retains no columns.
 
 ```matlab
 kappa = [2e-4 0 1e-4 2e-4];
-[collection,costs] = solver.solveWaveModesAtWavenumbers(kappa,rotationRate=0,N2=N2,zDomain=[-1000 0],nModes=[4 7 4],nInertialModes=5);
+[collection,costs] = solver.solveWaveModesAtWavenumbers(kappa,rotationRate=0,N2=N2,zDomain=[-1000 0],surfaceBoundary=IMBoundaryCondition.dirichlet(),nModes=[4 5 7 2]);
 ```
 
-Each distinct wavenumber is solved once, using shared preparation and the exact requested count. The collection preserves the original basis, labels and page mapping. Evaluating pages with different column counts together requires an explicit common column selection, or separate calls; rectangular outputs do not silently pad or truncate the scientific bases. Wave frequency signs and model storage conventions remain the consumer's responsibility.
+Each distinct wavenumber is solved once, using shared preparation and the largest count requested at that wavenumber. Smaller requests retain exact prefixes of that solve, preserving its normalization integration budget and shared provenance. The collection preserves the original basis, labels and page mapping. Evaluating pages with different column counts together requires an explicit common column selection, or separate calls; rectangular outputs do not silently pad or truncate the scientific bases. Wave frequency signs and model storage conventions remain the consumer's responsibility.
 
 ## Reproduce the figure
 
@@ -55,7 +55,7 @@ result = waveModeCountsByWavenumber(Nz=33,outputDirectory="wave-counts-33");
 
 The [example source](../ExamplesV2/waveModeCountsByWavenumber.m) uses a 1 km square periodic domain, 16 × 16 horizontal points, depth 1000 m, and a fixed 25-point WKB-stretched Chebyshev–Lobatto physical quadrature. The profile is $$N^2(z) = N_0^2 \exp(2z/b)$$ with $$N_0 = 0.01\,\mathrm{s}^{-1}$$ and $$b = 400\,\mathrm{m}$$; $$f_0 = 10^{-4}\,\mathrm{s}^{-1}$$ and $$g = 9.81\,\mathrm{m}\,\mathrm{s}^{-2}$$. It solves every distinct positive Fourier radius of that horizontal grid, requesting 24 modes including the external wave, at eigenproblem resolutions 96 and 144. The independently requested inertial inventory contains 12 modes.
 
-The plot separates three contiguous prefixes: modes passing the relative equivalent-depth and both F/G H¹ comparisons at tolerance $$10^{-5}$$; modes passing the sampled G Gram test at tolerance 1%; and modes passing both. The physical G metric retains its $$(N^2-f_0^2)/g$$ interior weight and free-surface endpoint contribution. The zero-wavenumber inertial comparison uses its separate physical F identity $$\int F_i F_j\,dz = h_i\delta_{ij}$$. No density displacement, mode normalization or wave polarization is redefined to improve the plot.
+The plot separates three contiguous prefixes: modes passing the relative equivalent-depth and both F/G H¹ comparisons at tolerance $$10^{-5}$$; modes passing the sampled G Gram test at tolerance 1%; and modes passing both. The physical G metric retains its $$(N^2-f_0^2)/g$$ interior weight and free-surface endpoint contribution. The zero-wavenumber inertial comparison uses the manuscript profile $$F=D G_z$$. With the default `waveEnergy` normalization at zero wavenumber, its F identity is $$\int F_i F_j\,dz = D\delta_{ij}$$. No density displacement, mode normalization or wave polarization is redefined to improve the plot.
 
 Candidate-ceiling markers distinguish a lower bound from a measured limit. Inconclusive comparisons are marked separately. The default integration run found all 24 candidate waves converged, with the sampled grid supporting between 13 and 8 leading modes over the positive wavenumbers; all 12 requested inertial modes passed. This is an example result with its explicit tolerances, not a universal retention rule. Counts need not vary monotonically because different modal shapes can interact differently with a fixed quadrature.
 

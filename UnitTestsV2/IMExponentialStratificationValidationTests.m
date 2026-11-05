@@ -24,7 +24,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
@@ -58,16 +58,16 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
 
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
-            F = basisSet.F(z, normalization=Normalization.unity);
-            G = basisSet.G(z, normalization=Normalization.unity);
-            factors = basisSet.normalizationFactors(Normalization.unity);
+            F = basisSet.F(z);
+            G = basisSet.G(z);
+            factors = basisSet.normalizationFactors();
             testCase.verifyEqual(F(:,1), ones(size(z))/factors(1), AbsTol=1e-12)
             testCase.verifyEqual(G(:,1), zeros(size(z)), AbsTol=1e-12)
         end
@@ -77,14 +77,14 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
-            expected = basisSet.F(z, normalization="unity") ./ basisSet.h;
+            expected = basisSet.F(z) ./ basisSet.h;
 
-            testCase.verifyEqual(basisSet.uz(z, normalization="unity"), expected, RelTol=1e-12, AbsTol=1e-14)
+            testCase.verifyEqual(basisSet.uz(z), expected, RelTol=1e-12, AbsTol=1e-14)
         end
 
         function analyticalFModesReturnSolvedDerivative(testCase)
@@ -92,14 +92,14 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
             basisSet = solution.internalModes(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 12).';
 
-            expected = -(N2(z)/evp.g).*basisSet.G(z, normalization="unity");
+            expected = -(N2(z)/evp.g).*basisSet.G(z);
 
-            actual = basisSet.uz(z, normalization="unity");
+            actual = basisSet.uz(z);
             testCase.verifyEqual(actual, expected, RelTol=1e-12, AbsTol=1e-14)
             testCase.verifyEqual(actual(:,1), zeros(size(z)), AbsTol=1e-14)
             testCase.verifyTrue(all(isfinite(actual(:))))
@@ -110,7 +110,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3);
+            evp = IMInternalModes.waveModesAtFrequency(rotationRate=0,N2=N2, zDomain=zDomain, omega=1e-3,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
 
             basisSet = solution.internalModes(evp, nModes=2);
@@ -124,7 +124,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) (2*N0)^2*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
 
             testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
@@ -135,7 +135,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0^2*exp(2*z/(2*b));
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
 
             testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:StratificationMismatch")
@@ -147,7 +147,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             zDomain = [-5000 0];
             D = diff(zDomain);
             N2 = @(z) N0^2*exp(2*z/b).*(1 + 0.1*(z-zDomain(1)).*(zDomain(2)-z)/D^2);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
 
             testCase.verifyEqual(evp.N2(zDomain),solution.N2(zDomain),AbsTol=0)
@@ -159,7 +159,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 100;
             zDomain = [-5000 0];
             N2 = @(z) N0^2*exp(2*z/b).*(1+(z < -4000));
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
 
             testCase.verifyEqual(evp.N2(0),solution.N2(0),AbsTol=0)
@@ -171,7 +171,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) (N0*exp(z/b)).^2;
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0,b=b,zDomain=zDomain);
 
             basisSet = solution.internalModes(evp,nModes=2);
@@ -189,7 +189,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             profiles = {@(z) NaN(size(z)), @(z) N0^2*exp(2*z/b) + 1i*ones(size(z)), @(z) N0^2};
 
             for iProfile = 1:numel(profiles)
-                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=profiles{iProfile},zDomain=zDomain);
+                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=profiles{iProfile},zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 testCase.verifyError(@() solution.internalModes(evp,nModes=2), "IMExponentialStratificationSolution:InvalidStratification")
             end
         end
@@ -224,7 +224,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) (2*N0)^2*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=[-4000 0]);
 
@@ -236,7 +236,7 @@ classdef IMExponentialStratificationValidationTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-5000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, bottomBoundary=IMBoundaryCondition.neumann());
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, bottomBoundary=IMBoundaryCondition.neumann(),surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             solution = IMExponentialStratificationSolution(rotationRate=0,N0=N0, b=b, zDomain=zDomain);
 

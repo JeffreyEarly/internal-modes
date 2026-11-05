@@ -61,8 +61,8 @@ function [transform, assessment] = discreteTransform(self, options)
 % {\lVert u_i u_j\rVert_\mu}.
 % $$
 %
-% The continuous quadratic projection is evaluated on the source solver's
-% inner-product grid, independently of the fixed transform rule. Leakage
+% The continuous quadratic projection uses the basis reference quadrature
+% and full retained Gram matrix, independently of the fixed transform rule. Leakage
 % and quadratic aliasing require a positive-definite target Gram matrix;
 % signed targets support Gram assessment only. `IMDiscreteTransformAssessment`
 % defines every table column and policy-result field.
@@ -249,7 +249,7 @@ if isempty(options.quadraticAliasingTolerance)
     quadraticPolicy.limitingModeNumberI = quadraticLimitingModeNumberI;
     quadraticPolicy.limitingModeNumberJ = quadraticLimitingModeNumberJ;
 else
-    integrationGrid = self.solver.innerProductGrid(self.zDomain);
+    [integrationGrid,integrationWeights] = self.referenceQuadrature(self.zDomain);
     integrationModes = self.u(integrationGrid);
     integrationModes = integrationModes(:,1:candidateModeCount);
     context = self.evp.contextForSolver(self.solver);
@@ -283,7 +283,7 @@ else
         endpointModeValues(end+1,:) = valuesAtEndpoint(1,1:candidateModeCount); %#ok<AGROW>
         endpointCoefficients(end+1,1) = endpointWeight.coefficient*endpointWeight.c*endpointWeight.c; %#ok<AGROW>
     end
-    integrate = @(integrand) self.solver.integrateInnerProduct(integrationGrid,integrand,self.zDomain);
+    integrate = @(integrand) sum(integrationWeights.*integrand);
     [quadraticError,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ] = scalarQuadraticAliasing( ...
         candidateTransform,prefixTransforms,integrationModes,interiorWeight,integrate,endpointModeValues,endpointCoefficients);
     quadraticAccepted = IMDiscreteTransformTools.cumulativeAcceptance(quadraticError <= options.quadraticAliasingTolerance);
@@ -343,7 +343,7 @@ for nPrefix = 1:nCandidate
     end
     rejectedIndices = (nPrefix+1):nCheckModes;
     coefficients = transform.forwardMatrix*checkValues(:,rejectedIndices);
-    majorant = diag(abs(diag(transform.targetGramMatrix)));
+    majorant = transform.projection.majorantGramMatrix;
     leakage = IMProjection.relativeCoefficientNorm(coefficients,majorant,abs(checkNorms(rejectedIndices)));
     leakage(~isfinite(leakage)) = Inf;
     [errors(nPrefix),iLimiting] = max(leakage);
@@ -397,11 +397,10 @@ for nPrefix = 1:nCandidate
         continue
     end
     includedPairs = find(pairIndices(:,1) <= nPrefix & pairIndices(:,2) <= nPrefix);
-    targetNorms = diag(transform.targetGramMatrix);
     discreteCoefficients = transform.forwardMatrix*sampleProducts(:,includedPairs);
-    continuousCoefficients = continuousPairings(1:nPrefix,includedPairs)./targetNorms;
+    continuousCoefficients = transform.targetGramMatrix\continuousPairings(1:nPrefix,includedPairs);
     coefficientDifference = discreteCoefficients-continuousCoefficients;
-    pairErrors = IMProjection.relativeCoefficientNorm(coefficientDifference,diag(abs(targetNorms)),productNorms(includedPairs));
+    pairErrors = IMProjection.relativeCoefficientNorm(coefficientDifference,transform.projection.majorantGramMatrix,productNorms(includedPairs));
     pairErrors(~isfinite(pairErrors)) = Inf;
     [errors(nPrefix),iLimiting] = max(pairErrors);
     limitingPair = pairIndices(includedPairs(iLimiting),:);

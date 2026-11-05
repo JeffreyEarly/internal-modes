@@ -30,7 +30,7 @@ classdef IMNeutralGeostrophicReadinessTests < matlab.unittest.TestCase
 
         function independentConstantReferenceMatchesTheAnalyticalAPVFamily(testCase)
             N0 = 5e-3;
-            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],g0=0,gd=-.01);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) N0^2*ones(size(z)),zDomain=[-1000 0],g0=0,gd=-.01,surfaceBoundary="freeSurface");
             reference = neutralGeostrophicReference(evp,nModes=4,joins=[-1000 0]);
             analytical = IMConstantStratificationSolution(N0=N0,zDomain=[-1000 0]).internalModes(evp,nModes=4);
             [z,weights] = neutralGeostrophicQuadrature([-1000 0],257);
@@ -47,7 +47,7 @@ classdef IMNeutralGeostrophicReadinessTests < matlab.unittest.TestCase
 
         function neutralAPVReferencesRefineIndependentlyAndHaveAnAffineCap(testCase)
             p = neutralGeostrophicProfile();
-            evp = IMInternalModes.geostrophicAPVModes(N2=p.N2,zDomain=p.zDomain,g0=0,gd=-.01);
+            evp = IMInternalModes.geostrophicAPVModes(N2=p.N2,zDomain=p.zDomain,g0=0,gd=-.01,surfaceBoundary="freeSurface");
             coarse = neutralGeostrophicReference(evp,nModes=4,tolerance=1e-11);
             tight = neutralGeostrophicReference(evp,nModes=4,tolerance=1e-13,rootBrackets=coarse.rootBrackets);
             [z,weights] = neutralGeostrophicQuadrature(p.joins,257);

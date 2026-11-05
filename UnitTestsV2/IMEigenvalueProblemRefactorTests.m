@@ -88,7 +88,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [N2, zDomain, nEVP, f0, g] = testCase.profile();
             k = 1e-4;
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             configuredSolver = solver.configuredForEVP(evp);
 
             [A, B] = evp.assemble(solver);
@@ -129,7 +129,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [N2, zDomain, ~, ~, g] = testCase.profile();
             canonicalEVP = IMEigenvalueProblem(zDomain=zDomain, p=2, q=0, r=3);
             canonicalSpec = canonicalEVP.innerProduct();
-            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
+            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             defaultSpec = internalEVP.innerProduct();
             gSpec = internalEVP.innerProduct("G");
             fSpec = internalEVP.innerProduct("F");
@@ -180,12 +180,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function fixedFrequencyDiagnosticFInnerProductIsUnavailable(testCase)
             [N2, zDomain, nEVP, f0] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
+            evp = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=IMBoundaryCondition.dirichlet());
             spec = evp.innerProduct("F");
             basisSet = solver.solveEVP(evp, nModes=2);
 
             testCase.verifyFalse(spec.hasInnerProduct)
-            testCase.verifyEqual(basisSet.normalization, "unity")
+            testCase.verifyEqual(basisSet.normalization, "rmsF")
             testCase.verifyError(@() basisSet.gramMatrix(variable="F"), "IMInternalModesBasis:UnavailableInnerProduct")
         end
 
@@ -208,7 +208,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
                 badVariableThrows = true;
             end
             try
-                IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2, zDomain=zDomain, k=Inf);
+                IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2, zDomain=zDomain, k=Inf,surfaceBoundary=IMBoundaryCondition.dirichlet());
             catch
                 badWavenumberThrows = true;
             end
@@ -299,7 +299,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
         function summarizeInternalModesAppendsPhysicalContext(testCase)
             [N2, zDomain, ~, f0, g] = testCase.profile();
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             output = string(evalc('evp.summarize();'));
 
@@ -313,16 +313,15 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(contains(output, "Internal-mode variables"))
             testCase.verifyTrue(contains(output, "solved formulation: G"))
             testCase.verifyTrue(contains(output, "diagnostic variable: F"))
-            testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = h_j dG_j/dz(z)"))
+            testCase.verifyTrue(contains(output, "diagnostic relation: F_j(z) = D dG_j/dz(z)"))
             testCase.verifyTrue(contains(output, "Internal-mode inner products"))
-            testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
-            testCase.verifyTrue(contains(output, "geostrophic normalization: unavailable for this mode family"))
+            testCase.verifyTrue(contains(output, "interior weight: (N^2(z)-f0^2)/g"))
             testCase.verifyFalse(contains(output, "function_handle"))
         end
 
         function summarizeHydrostaticGReportsDiagnosticFInnerProduct(testCase)
             [N2, zDomain] = testCase.profile();
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             output = string(evalc('evp.summarize();'));
 
@@ -333,15 +332,12 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyTrue(contains(output, "inner product: known"))
             testCase.verifyTrue(contains(output, "interior-only diagnostic inner product"))
             testCase.verifyTrue(contains(output, "interior weight: N^2(z)/g"))
-            testCase.verifyTrue(contains(output, "geostrophic normalization: available"))
-            testCase.verifyTrue(contains(output, "shared scale: one factor per coupled (F,G) mode"))
-            testCase.verifyTrue(contains(output, "convention: <G_j,G_j>_G = 1"))
-            testCase.verifyTrue(contains(output, "implied: <F_j,F_j>_F = h_j"))
+            testCase.verifyTrue(contains(output, "shared scale: one positive factor per aligned (F,G) mode"))
         end
 
         function summarizeHydrostaticFReportsDiagnosticGInnerProduct(testCase)
             [N2, zDomain] = testCase.profile();
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
 
             output = string(evalc('evp.summarize();'));
 
@@ -357,7 +353,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             [N2, zDomain, ~, f0] = testCase.profile();
             boundaryEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, ...
                 surfaceBoundary=IMBoundaryCondition(a=1, b=0, c=0, d=1));
-            waveEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0));
+            waveEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             boundaryOutput = string(evalc('boundaryEVP.summarize();'));
             waveOutput = string(evalc('waveEVP.summarize();'));
@@ -374,7 +370,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function solverReturnsInternalModesBasisWithFAndG(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 16).';
@@ -415,27 +411,33 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function defaultRelationFromGSolveUsesEquivalentDepth(testCase)
             [N2, zDomain, nEVP, ~, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basisSet = solver.solveEVP(evp, nModes=2);
             z = linspace(zDomain(1), zDomain(2), 8).';
 
             dGdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
-            expectedF = dGdz .* basisSet.h ./ basisSet.normalizationFactors("unity");
+            expectedF = dGdz .* basisSet.h ./ basisSet.normalizationFactors();
 
-            testCase.verifyEqual(basisSet.F(z, normalization="unity"), expectedF, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(basisSet.F(z), expectedF, RelTol=1e-12, AbsTol=1e-12)
         end
 
         function defaultRelationFromFSolveUsesHydrostaticInverse(testCase)
             [N2, zDomain, nEVP, ~, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain, g=g);
+            standardEVP = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g,surfaceBoundary=IMBoundaryCondition.neumann());
+            % Retain a direct F pencil to check the inverse diagnostic
+            % independently of the standard family's shared G solve.
+            evp = IMInternalModes(rotationRate=0,name="directHydrostaticF", ...
+                N2=N2,zDomain=zDomain,g=g,formulation="F",modeFamily="hydrostatic", ...
+                p=standardEVP.p,q=standardEVP.q,r=standardEVP.r, ...
+                surfaceBoundary=standardEVP.surfaceBoundary,bottomBoundary=standardEVP.bottomBoundary);
             basisSet = solver.solveEVP(evp, nModes=3);
             z = linspace(zDomain(1), zDomain(2), 8).';
 
-            dFdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
-            expectedG = -(g./N2(z)).*dFdz ./ basisSet.normalizationFactors("unity");
+            dFdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes,z,1);
+            expectedG = -(g./N2(z)).*dFdz ./ basisSet.normalizationFactors();
 
-            testCase.verifyEqual(basisSet.G(z, normalization="unity"), expectedG, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(basisSet.G(z), expectedG, RelTol=1e-12, AbsTol=1e-12)
         end
 
         function customGfromFzRelationIsUsedByBasisSet(testCase)
@@ -450,9 +452,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
             dFdz = basisSet.solver.evaluatePhysicalDerivative(basisSet.nativeModes, z, 1);
             context = evp.contextForSolver(basisSet.solver);
-            expectedG = customGfromFz(z, dFdz, basisSet.h, context) ./ basisSet.normalizationFactors("unity");
+            expectedG = customGfromFz(z, dFdz, basisSet.h, context) ./ basisSet.normalizationFactors();
 
-            testCase.verifyEqual(basisSet.G(z, normalization="unity"), expectedG, RelTol=1e-12, AbsTol=1e-12)
+            testCase.verifyEqual(basisSet.G(z), expectedG, RelTol=1e-12, AbsTol=1e-12)
         end
 
         function waveFactoryInverseRelationsUseWaveDenominators(testCase)
@@ -462,13 +464,13 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             h = [7 8];
             k = 1e-4;
             omega = 1e-3;
-            kEVP = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g);
-            omegaEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=omega, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g);
+            kEVP = IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=k, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            omegaEVP = IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=omega, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             kContext = kEVP.contextForSolver(IMSolverSpectral(nEVP=16).configuredForEVP(kEVP));
             omegaContext = omegaEVP.contextForSolver(IMSolverSpectral(nEVP=16).configuredForEVP(omegaEVP));
 
-            expectedK = -(g./(N2(z) - f0*f0 - g*reshape(h,1,[])*k*k)).*dFdz;
-            expectedOmega = -(g./(N2(z) - omega*omega)).*dFdz;
+            expectedK = -(g./(N2(z) - f0*f0 - g*reshape(h,1,[])*k*k)).*dFdz.*(h/diff(zDomain));
+            expectedOmega = -(g./(N2(z) - omega*omega)).*dFdz.*(h/diff(zDomain));
 
             testCase.verifyEqual(kEVP.GfromFz(z, dFdz, h, kContext), expectedK, RelTol=1e-12)
             testCase.verifyEqual(omegaEVP.GfromFz(z, dFdz, h, omegaContext), expectedOmega, RelTol=1e-12)
@@ -477,7 +479,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function evpContextOwnsDomainAndInternalModeMedium(testCase)
             [N2, zDomain, nEVP, f0, g] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g);
+            evp = IMInternalModes.hydrostaticGModes(N2=N2, zDomain=zDomain, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0), g=g,surfaceBoundary=IMBoundaryCondition.dirichlet());
             configuredSolver = solver.configuredForEVP(evp);
 
             context = evp.contextForSolver(configuredSolver);
@@ -496,7 +498,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function basisSetRetainsEVPDomainAndMedium(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
 
             basisSet = solver.solveEVP(evp, nModes=2);
 
@@ -531,7 +533,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
         function spectralSolverSupportsCoordinateKinds(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             coordinateKinds = ["z", "wkb", "density"];
             for coordinateKind = coordinateKinds
                 solver = IMSolverSpectral(nEVP=nEVP, coordinateKind=coordinateKind);
@@ -569,7 +571,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(basisSet, "N2"))
             testCase.verifyFalse(isprop(basisSet, "N2" + "Function"))
             testCase.verifyFalse(ismethod(basisSet, "dz" + "LogN2"))
-            testCase.verifyFalse(ismethod(basisSet, "eval" + "uate"))
+            testCase.verifyEqual(basisSet.evaluate(linspace(zDomain(1),zDomain(2),8).',variable="u"),basisSet.u(linspace(zDomain(1),zDomain(2),8).'))
             testCase.verifyFalse(ismethod(basisSet, "eval" + "uateAll"))
             testCase.verifySize(basisSet.u(linspace(zDomain(1),zDomain(2),8).'), [8 2])
             testCase.verifySize(basisSet.uz(linspace(zDomain(1),zDomain(2),8).'), [8 2])
@@ -614,7 +616,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             endpointTerms = basisSet.endpointGramTerms();
             rawEndpointTerms = basisSet.endpointGramTerms(useNormalized=false);
             partialEndpointTerms = basisSet.endpointGramTerms(zBounds=[zDomain(1) mean(zDomain)]);
-            factors = basisSet.normalizationFactors("unity");
+            factors = basisSet.normalizationFactors();
 
             testCase.verifyNumElements(endpointTerms, 1)
             testCase.verifyEqual(endpointTerms(1).kind, "endpointWeight")
@@ -631,106 +633,74 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
 
         function genericNormalizationRulesUseStringNames(testCase)
             [~, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(nEVP=nEVP);
-            constantScale = 3;
-            evp = IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1);
-            basisSet = solver.solveEVP(evp, nModes=2);
-            basisSet = basisSet.addNormalization("constantScaled", ...
-                @(basisSet,iMode) constantScale*basisSet.innerProductNormFactor(iMode));
-            basisSet = basisSet.addNormalization("eigenvalueScaled", ...
-                @(basisSet,iMode) sqrt(abs(basisSet.eigenvalues(iMode))) * basisSet.innerProductNormFactor(iMode));
+            basisSet = IMSolverSpectral(nEVP=nEVP).solveEVP(IMEigenvalueProblem(zDomain=zDomain,p=1,q=0,r=1),nModes=2);
+            rmsFactors = basisSet.normalizationFactors();
+            basisSet = basisSet.addNormalization("constantScaled",@(~,j) 3*rmsFactors(j));
+            basisSet = basisSet.addNormalization("eigenvalueScaled",@(basis,j) sqrt(abs(basis.eigenvalues(j)))*basis.innerProductNormFactor(j));
             basisSet.normalization = "constantScaled";
-
-            z = linspace(zDomain(1), zDomain(2), 8).';
-            unityFactors = basisSet.normalizationFactors("unity");
-            constantFactors = basisSet.normalizationFactors("constantScaled");
-            eigenvalueFactors = basisSet.normalizationFactors("eigenvalueScaled");
-            names = basisSet.normalizationNames();
-
-            testCase.verifyFalse(isprop(evp, "normalizations"))
-            testCase.verifyFalse(isprop(evp, "normalization" + "Rules"))
-            testCase.verifyFalse(isprop(evp, "default" + "Normalization"))
-            testCase.verifyTrue(ismember("constantScaled", names))
-            testCase.verifyTrue(ismember("eigenvalueScaled", names))
-            testCase.verifyEqual(basisSet.normalization, "constantScaled")
-            testCase.verifyEqual(constantFactors, constantScale*unityFactors, RelTol=1e-12)
-            testCase.verifyEqual(eigenvalueFactors, sqrt(abs(basisSet.eigenvalues)).*unityFactors, RelTol=1e-12)
-            testCase.verifyEqual(basisSet.u(z), basisSet.u(z, normalization="unity")/constantScale, RelTol=1e-12)
-
-            overwriteScale = 4;
-            basisSet = basisSet.addNormalization("constantScaled", ...
-                @(basisSet,iMode) overwriteScale*basisSet.innerProductNormFactor(iMode));
-            testCase.verifyEqual(basisSet.normalizationFactors("constantScaled"), ...
-                overwriteScale*unityFactors, RelTol=1e-12)
+            z = linspace(zDomain(1),zDomain(2),8).';
+            mathematicalFactors = arrayfun(@(j) basisSet.innerProductNormFactor(j),1:2);
+            testCase.verifyEqual(basisSet.normalizationFactors("constantScaled"),3*rmsFactors,RelTol=1e-12)
+            testCase.verifyEqual(basisSet.normalizationFactors("eigenvalueScaled"),sqrt(abs(basisSet.eigenvalues)).*mathematicalFactors,RelTol=1e-12)
+            testCase.verifyEqual(basisSet.u(z),basisSet.u(z,normalization="rms")/3,RelTol=1e-12)
+            changed = basisSet.addNormalization("constantScaled",@(~,j) 4*rmsFactors(j));
+            testCase.verifyEqual(changed.normalizationFactors(),4*rmsFactors,RelTol=1e-12)
+            testCase.verifyEqual(basisSet.normalizationFactors(),3*rmsFactors,RelTol=1e-12)
         end
 
-        function internalModeBasisAcceptsEnumsAndAddNormalization(testCase)
-            [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes(rotationRate=0,name="customInternalNormalization", formulation="G", N2=N2, zDomain=zDomain, ...
-                p=@(z,~) ones(size(z)), q=@(z,~) zeros(size(z)), r=@(z,ctx) ctx.N2(z)/ctx.g);
-            basisSet = solver.solveEVP(evp, nModes=2);
-            basisSet = basisSet.addNormalization("customG", ...
-                @(basisSet,iMode) 2*basisSet.innerProductNormFactor(iMode, variable="G"));
-            names = basisSet.normalizationNames();
-
-            testCase.verifyEqual(basisSet.normalization, "unity")
-            testCase.verifyTrue(ismember("customG", names))
-            testCase.verifyFalse(ismember("geostrophic", names))
-            testCase.verifyEqual(basisSet.normalizationFactors("customG"), ...
-                2*basisSet.normalizationFactors(Normalization.unity), RelTol=1e-12)
-            basisSet.normalization = Normalization.unity;
-            testCase.verifyEqual(basisSet.normalizationFactors(), ...
-                basisSet.normalizationFactors("unity"), RelTol=1e-12)
+        function internalModeBasisRejectsEnumsAndAcceptsCustomNames(testCase)
+            [N2,zDomain,nEVP] = testCase.profile();
+            evp = IMInternalModes(rotationRate=0,name="customInternalNormalization",formulation="G",N2=N2,zDomain=zDomain,p=1,q=0,r=@(z,ctx) ctx.N2(z)/ctx.g);
+            basisSet = IMSolverSpectral(nEVP=nEVP).solveEVP(evp,nModes=2);
+            basisSet = basisSet.addNormalization("customG",@(basis,j) 2*basis.innerProductNormFactor(j,variable="G"));
+            expected = 2*arrayfun(@(j) basisSet.innerProductNormFactor(j,variable="G"),1:2);
+            testCase.verifyEqual(basisSet.normalization,"rmsF")
+            testCase.verifyEqual(basisSet.normalizationFactors("customG"),expected,RelTol=1e-12)
+            testCase.verifyError(@() basisSet.withNormalization(Normalization.unity),"IMBasisSet:InvalidNormalizationName")
+            testCase.verifyError(@() basisSet.normalizationFactors("unity"),"IMBasisSet:UnsupportedNormalization")
         end
 
-        function customNormalizationOverridesBuiltInVectorRule(testCase)
-            [N2, zDomain, nEVP] = testCase.profile();
-            solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain);
-            basisSet = solver.solveEVP(evp,nModes=4);
-            basisSet = basisSet.addNormalization("geostrophic",@(~,iMode) 10+iMode);
-
-            testCase.verifyEqual(basisSet.normalizationFactors("geostrophic"),11:14,AbsTol=0)
+        function canonicalNormalizationNamesCannotBeOverridden(testCase)
+            [N2,zDomain,nEVP] = testCase.profile();
+            basisSet = IMSolverSpectral(nEVP=nEVP).solveEVP(IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann()),nModes=4);
+            testCase.verifyError(@() basisSet.addNormalization("rmsF",@(~,j) 10+j),"IMBasisSet:ReservedNormalization")
+            testCase.verifyError(@() basisSet.addNormalization("waveEnergy",@(~,j) 10+j),"IMBasisSet:ReservedNormalization")
+            testCase.verifyError(@() basisSet.addNormalization("geostrophic",@(~,j) 10+j),"IMBasisSet:UnsupportedNormalization")
         end
 
         function standardInternalModeFactoryDefaultsAreInstalledOnBasisSets(testCase)
-            [N2, zDomain, nEVP, f0] = testCase.profile();
+            [N2,zDomain,nEVP,f0] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-
-            hydrostaticBasis = solver.solveEVP(IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain), nModes=2);
-            wavenumberBasis = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2, zDomain=zDomain, k=1e-4, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0)), nModes=2);
-            frequencyBasis = solver.solveEVP(IMInternalModes.waveModesAtFrequency(N2=N2, zDomain=zDomain, omega=1e-3, rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0)), nModes=2);
-
-            testCase.verifyEqual(hydrostaticBasis.evp.modeFamily, "hydrostatic")
-            testCase.verifyEqual(wavenumberBasis.evp.modeFamily, "none")
-            testCase.verifyEqual(frequencyBasis.evp.modeFamily, "none")
-            testCase.verifyEqual(hydrostaticBasis.normalization, "geostrophic")
-            testCase.verifyTrue(ismember("geostrophic", hydrostaticBasis.normalizationNames()))
-            testCase.verifyEqual(wavenumberBasis.normalization, "kConstant")
-            testCase.verifyTrue(ismember("kConstant", wavenumberBasis.normalizationNames()))
-            testCase.verifyFalse(ismember("geostrophic", wavenumberBasis.normalizationNames()))
-            testCase.verifyEqual(frequencyBasis.normalization, "unity")
-            testCase.verifyFalse(ismember("geostrophic", frequencyBasis.normalizationNames()))
-            testCase.verifyError(@() wavenumberBasis.normalizationFactors(Normalization.geostrophic), ...
-                "IMBasisSet:UnsupportedNormalization")
+            hydrostaticBasis = solver.solveEVP(IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet()),nModes=2);
+            wavenumberBasis = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=zDomain,k=1e-4,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=IMBoundaryCondition.dirichlet()),nModes=2);
+            frequencyBasis = solver.solveEVP(IMInternalModes.waveModesAtFrequency(N2=N2,zDomain=zDomain,omega=1e-3,rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),surfaceBoundary=IMBoundaryCondition.dirichlet()),nModes=2);
+            testCase.verifyEqual(hydrostaticBasis.normalization,"rmsF")
+            testCase.verifyEqual(wavenumberBasis.normalization,"waveEnergy")
+            testCase.verifyEqual(frequencyBasis.normalization,"rmsF")
+            testCase.verifyTrue(ismember("surfaceF",hydrostaticBasis.normalizationNames()))
+            testCase.verifyTrue(ismember("waveEnergy",wavenumberBasis.normalizationNames()))
+            testCase.verifyFalse(ismember("waveEnergy",frequencyBasis.normalizationNames()))
+            for name = ["unity","kConstant","depth","geostrophic","surfacePressure","uMax","wMax"]
+                testCase.verifyFalse(ismember(name,hydrostaticBasis.normalizationNames()))
+                testCase.verifyFalse(ismember(name,wavenumberBasis.normalizationNames()))
+                testCase.verifyFalse(ismember(name,frequencyBasis.normalizationNames()))
+            end
         end
 
         function developerBasisMethodsArePublicAndCallable(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
             scalarBasis = solver.solveEVP(IMEigenvalueProblem(zDomain=zDomain, p=1, q=0, r=1), nModes=2);
-            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             internalBasis = solver.solveEVP(internalEVP, nModes=2);
             solution = IMConstantStratificationSolution(rotationRate=0,N0=sqrt(N2(0)), zDomain=zDomain);
-            % Keep the varying numerical profile and give the analytical
-            % helpers an EVP with their matching constant stratification.
-            analyticalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) solution.N2(z),zDomain=zDomain);
-            analyticalBasis = solution.internalModes(analyticalEVP, nModes=2);
+            analyticalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0, ...
+                N2=@(z) N2(0)*ones(size(z)),zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            analyticalBasis = solution.internalModes(analyticalEVP,nModes=2);
 
-            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "innerProductNormFactor", "maxAmplitudeNormFactor", "rawU", "rawUz"])))
-            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor", "rawVariable"])))
-            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMAnalyticalInternalModesBasis", ["innerProductNormFactor", "geostrophicNormFactor", "maxAmplitudeNormFactor", "surfacePressureNormFactor"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMBasisSet", ["orientModeSigns", "maxAmplitudeNormFactor", "rawU", "rawUz"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMInternalModesBasis", ["orientModeSigns", "maxAmplitudeNormFactor", "rawVariable"])))
+            testCase.verifyFalse(any(testCase.methodHiddenFlags("IMAnalyticalInternalModesBasis", "maxAmplitudeNormFactor")))
 
             scalarBasis = scalarBasis.orientModeSigns();
             internalBasis = internalBasis.orientModeSigns();
@@ -756,13 +726,9 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             testCase.verifyEqual(internalRawG ./ internalFactors, internalBasis.G(z), RelTol=1e-12, AbsTol=1e-12)
             testCase.verifyEqual(internalBasis.rawVariable(internalBasis.evp.formulation, z), internalRawU, RelTol=1e-12, AbsTol=1e-12)
             testCase.verifyGreaterThan(internalBasis.innerProductNormFactor(1, variable="G"), 0)
-            testCase.verifyGreaterThan(internalBasis.geostrophicNormFactor(1), 0)
             testCase.verifyGreaterThan(internalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)
-            testCase.verifyTrue(isfinite(internalBasis.surfacePressureNormFactor(1)))
             testCase.verifyGreaterThan(analyticalBasis.innerProductNormFactor(1, variable="G"), 0)
-            testCase.verifyGreaterThan(analyticalBasis.geostrophicNormFactor(1), 0)
             testCase.verifyGreaterThan(analyticalBasis.maxAmplitudeNormFactor(1, variable="F"), 0)
-            testCase.verifyTrue(isfinite(analyticalBasis.surfacePressureNormFactor(1)))
         end
 
         function basisSetValidationRejectsBadScalarAnalysisInputs(testCase)
@@ -784,7 +750,7 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
             catch
                 badBoundsThrows = true;
             end
-            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)), zDomain=zDomain);
+            internalEVP = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) ones(size(z)), zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             internalBasis = solver.solveEVP(internalEVP, nModes=2);
             try
                 internalBasis.gramMatrix(variable="u");
@@ -807,18 +773,21 @@ classdef IMEigenvalueProblemRefactorTests < matlab.unittest.TestCase
         function internalModeBasisUsesExplicitEvaluationMethods(testCase)
             [N2, zDomain, nEVP] = testCase.profile();
             solver = IMSolverSpectral(nEVP=nEVP);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             basisSet = solver.solveEVP(evp, nModes=2);
 
-            testCase.verifyFalse(ismethod(basisSet, "eval" + "uate"))
+            testCase.verifyTrue(ismethod(basisSet, "evaluate"))
             testCase.verifyFalse(ismethod(basisSet, "eval" + "uateAll"))
-            testCase.verifySize(basisSet.F(linspace(zDomain(1),zDomain(2),8).'), [8 2])
-            testCase.verifySize(basisSet.G(linspace(zDomain(1),zDomain(2),8).'), [8 2])
+            z = linspace(zDomain(1),zDomain(2),8).';
+            testCase.verifySize(basisSet.F(z),[8 2])
+            testCase.verifySize(basisSet.G(z),[8 2])
+            testCase.verifyEqual(basisSet.evaluate(z,variable="F"),basisSet.F(z),AbsTol=0)
+            testCase.verifyEqual(basisSet.evaluate(z,variable="G",derivativeOrder=1),basisSet.Gz(z),AbsTol=0)
         end
 
         function internalModeBasisWithoutSolverRejectsDerivativeFallback(testCase)
             [N2, zDomain] = testCase.profile();
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             didThrow = false;
             try
                 IMInternalModesBasis(evp=evp, nativeModes=zeros(0,1), eigenvalues=1, modeNumber=1);

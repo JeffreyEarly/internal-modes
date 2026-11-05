@@ -5,17 +5,17 @@
 ## Generate a collection
 
 ```matlab
-N2 = @(z) 1e-4*(1+0.2*exp(z/300));
+background = IMBackground(N2=@(z) 1e-4*(1+0.2*exp(z/300)),zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,surfaceCondition="rigidLid");
 solver = IMSolverSpectral(nEVP=96);
-[collection,costs] = solver.solveWaveModesAtWavenumbers([2e-4 0 1e-4 2e-4],N2=N2,zDomain=[-1000 0],rotationRate=1e-4/(2*sind(33)),latitude=33,nModes=16,nInertialModes=8);
+[collection,costs] = solver.solveWaveModesAtWavenumbers(background,[2e-4 0 1e-4 2e-4],nModes=[16 8 16 16]);
 z = linspace(-1000,0,2048).';
 F = collection.evaluate(z,variable="F",pages=[4 1 3]);
 Gz = collection.evaluate(z,variable="G",derivativeOrder=1,pages=[1 3]);
 ```
 
-Every distinct requested κ is solved once. `collection.kappa` preserves input order, `basisIndex` maps each request to a stored continuous basis, and every basis retains its actual κ-specific EVP, scientific labels, normalization, and boundary conditions. Positive κ uses the uniform `nModes` count. A zero request requires a separate explicit `nInertialModes`; a solve that cannot return an explicit count errors rather than reducing it. Evaluate heterogeneous wave/inertial counts as separate page selections or with explicitly selected common columns.
+Every distinct requested κ is solved once, retaining the largest requested count at that κ. `nModes` is required and counts all columns on every page, including κ=0: supply one scalar for all pages or one count per entry of `kappa`. Zero counts are valid; an empty wavenumber list is rejected. Repeated κ may request different counts. Smaller requests retain exact prefixes of the shared solve, and identical `(κ,count)` requests share one stored basis. `collection.kappa` preserves input order and `basisIndex` maps each page to that stored basis. Each basis retains its actual κ-specific EVP, scientific labels, normalization and boundary conditions. Its construction request records the page count and the shared solve that supplied the prefix, while preserving the original normalization integration budget. A solve that cannot return the requested count raises an error. Evaluate heterogeneous counts as separate page selections or with explicitly selected common columns.
 
-The bulk entry supports the built-in spectral and finite-difference solvers. Unknown solver subclasses receive an explicit unsupported-operation error because their preparation may depend on κ. They can continue using independent `solveEVP` calls. Spectral physical, WKB, and density coordinates are covered.
+The bulk entry supports the built-in spectral, finite-difference and analytical solvers. Numerical solvers share κ-independent assembly; analytical solvers deduplicate identical wavenumbers. Unknown solver subclasses receive an explicit unsupported-operation error because their preparation may depend on κ. They can continue using independent `solveEVP` calls. Spectral physical, WKB, and density coordinates are covered.
 
 Preparation shares coordinate/grid construction, differentiation matrices, stratification samples for the pencil, and κ-independent assembly. For the wave factory, `A(κ)=A0+κ²*A2` and `B` is shared. Both endpoint rows of `A2` are zero because boundary equations replace those rows. Shared finite-eigenpair processing, scientific selection, basis construction, and orientation preserve scalar behavior. No persistent global cache or approximate neighboring-κ reuse is introduced.
 
@@ -25,7 +25,7 @@ Preparation shares coordinate/grid construction, differentiation matrices, strat
 
 ```matlab
 F = collection.evaluate(z,variable="F",pages=[4 1 3],sampleChunkSize=256,pageChunkSize=8);
-collection.evaluateChunks(z,@consume,variable="F",pages=[4 1 4],sampleChunkSize=256,pageChunkSize=8);
+collection.evaluateChunks(z,@consume,variable="F",normalization="waveEnergy",pages=[4 1 4],sampleChunkSize=256,pageChunkSize=8);
 
 function consume(values,rowIndices,pagePositions,requestedPages)
     % Write or reduce this chunk here; no full result is retained by the API.
@@ -33,7 +33,9 @@ function consume(values,rowIndices,pagePositions,requestedPages)
 end
 ```
 
-`evaluate` returns the complete requested `nZ × nColumns × nPages` result and bounds its intermediate work. `evaluateChunks` streams four-argument callbacks and allocates no complete result. Defaults are 1024 sample rows and 16 requested pages per chunk. Selected pages, columns, duplicates, derivatives, and ordering retain the scalar conventions.
+`evaluate` returns the complete requested `nZ × nColumns × nPages` result and bounds its intermediate work. `evaluateChunks` streams four-argument callbacks and allocates no complete result. Defaults are 1024 sample rows and 16 requested pages per chunk. Selected pages, columns, duplicates, derivatives, and ordering retain the scalar conventions. Omitting `pages` selects every requested page; `pages=[]` selects none and invokes no streaming callbacks. With no pages and omitted columns, the output is `nZ × 0 × 0`; explicit columns preserve their middle dimension, giving `nZ × numel(columns) × 0`. Omitting columns on nonempty pages requires equal retained counts; heterogeneous counts raise an error.
+
+Scalar and collection evaluation require `variable`; `derivativeOrder` defaults to zero. Use `variable="G",derivativeOrder=1` for Gz rather than a derivative-name alias. Both collection entry points accept per-call `normalization`, applying it to the requested values or derivatives without changing stored defaults. Omitting it preserves each basis's own default. Selected variables, derivative orders, column selections and normalization support are validated across the requested bases before the first callback, including custom bases with limited companion derivatives. Endpoint-coordinate bases reject normalization overrides that would reinterpret canonical or rotated coordinates.
 
 Compatible native spectral representations share evaluation/derivative preparation within bounded page groups. Raw native columns are evaluated, EVP-owned diagnostic recovery is applied, and normalization is applied afterward in the same order as scalar calls. Analytical bases, MDA, and custom basis subclasses retain their own evaluators. Numerical and built-in analytical zero-APV evaluators now select source pages before expensive evaluation and preserve rotations and required endpoint identities. Arbitrary custom callbacks still control their own internal allocations; chunk bounds do not claim to control user code.
 

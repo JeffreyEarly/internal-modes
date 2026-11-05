@@ -51,7 +51,7 @@ classdef IMNeutralGeostrophicSamplingTests < matlab.unittest.TestCase
 
         function pairedSamplingDifferentiatesStoredFieldsIndependently(testCase)
             n = 16;
-            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) ones(size(z)),zDomain=[-2 0],g0=Inf,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) ones(size(z)),zDomain=[-2 0],g0=Inf,gd=Inf,surfaceBoundary="freeSurface");
             solver = IMSolverSpectral(nEVP=n,coordinateKind="z").configuredForEVP(evp);
             F = zeros(n,1);
             F([1 4]) = [1 .2];

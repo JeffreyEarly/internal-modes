@@ -12,10 +12,11 @@ classdef IMBasisSet
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
-    % basisSet.normalization = "unity";
+    % rmsFactors = basisSet.normalizationFactors("rms");
+    % basisSet = basisSet.addNormalization("twiceRms",@(~,j) 2*rmsFactors(j));
+    % basisSet.normalization = "twiceRms";
     % u = basisSet.u(z);
-    % factors = basisSet.normalizationFactors("unity");
+    % factors = basisSet.normalizationFactors();
     % ```
     %
     % - Topic: Create basis sets
@@ -37,7 +38,7 @@ classdef IMBasisSet
         % evaluation method overrides this property for that call.
         %
         % - Topic: Normalize modes
-        normalization = "unity"
+        normalization = "rms"
     end
 
     properties (SetAccess = protected)
@@ -127,18 +128,96 @@ classdef IMBasisSet
         zDomain
     end
 
-    properties (Access = private)
+    properties (Access = protected)
         % Map from normalization names to rule handles.
         normalizationNameMap
         % Optional whole-family normalization rule handles.
         normalizationVectorRuleMap
+        normalizationCache_
+        normalizationBuiltins_ (1,:) string = strings(1,0)
+    end
+
+    properties (Hidden, SetAccess = protected)
+        % Immutable construction identities; derived normalization stays separate.
+        basisContractState struct = struct()
+    end
+
+    properties (Dependent, SetAccess = private)
+        % Supported continuous operations and conditional preparation requirements.
+        % - Topic: Inspect basis sets
+        capabilities
+        % Requested/resolved scientific identity, without evaluating normalization.
+        % - Topic: Inspect basis sets
+        scientificSpecification
+        % Original backend request and current selection, with unverified accuracy.
+        % - Topic: Inspect basis sets
+        constructionRecord
+        % Fixed, per-column or independent horizontal identity.
+        % - Topic: Inspect basis sets
+        horizontalKind
+        k
+        kSquared
+        % Signs of the active normalization form.
+        % - Topic: Normalize modes
+        normSignatures
+        % Number of retained columns, including all special sectors.
+        nColumns
+        % Scientific family name and retained column identities.
+        family
+        columnLabels
+        modeInfo
+    end
+
+    methods
+        projection = projectionOnGrid(self,z,weights,options)
+        transform = scalarTransform(self,z,weights,options)
     end
 
     methods (Hidden)
+        function value = isBuiltinNormalization(self,name)
+            value = ismember(string(name),self.normalizationBuiltins_);
+        end
+        function self = withConstructionRequest(self,request,solver,selection)
+            % Attach original creation evidence without evaluating the modes.
+            arguments
+                self
+                request (1,1) struct
+                solver
+                selection (1,1) struct = struct()
+            end
+            state = self.basisContractState;
+            state.request = request;
+            state.requestedSolver = IMBasisContracts.solverRecord(solver,false);
+            if isfield(selection,"sortIndex"), state.sourceEigenpairIndices = reshape(selection.sortIndex,1,[]); end
+            if isfield(selection,"modeSelectionDiagnostics"), state.selectionDiagnostics = selection.modeSelectionDiagnostics; end
+            self.basisContractState = state;
+        end
         recipe = projectionRecipe(self,options)
     end
 
     methods
+        function value = get.scientificSpecification(self)
+            value = IMBasisContracts.scientificSpecification(self);
+        end
+        function value = get.constructionRecord(self)
+            value = IMBasisContracts.constructionRecord(self);
+        end
+        function value = get.horizontalKind(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kind;
+        end
+        function value = get.k(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.k;
+        end
+        function value = get.kSquared(self)
+            description = IMBasisContracts.horizontalIdentity(self); value = description.kSquared;
+        end
+        function value = get.capabilities(self)
+            value = IMBasisContracts.capabilities(self);
+        end
+        function value = get.normSignatures(self)
+            value = IMBasisContracts.normalizationSignatures(self);
+        end
+
         function self = IMBasisSet(options)
             % Create a solved scalar basis set.
             %
@@ -178,7 +257,7 @@ classdef IMBasisSet
             self.modeNumber = reshape(options.modeNumber,1,[]);
             self.modeSelectionDiagnostics = options.modeSelectionDiagnostics;
             if isempty(options.normalization)
-                self.normalization = "unity";
+                self.normalization = "rms";
             else
                 self.normalization = options.normalization;
             end
@@ -186,7 +265,13 @@ classdef IMBasisSet
             self.zDomain = self.evp.zDomain;
             self.normalizationNameMap = configureDictionary("string","cell");
             self.normalizationVectorRuleMap = configureDictionary("string","cell");
-            self = self.addVectorNormalization("unity",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode),@(basisSet) basisSet.innerProductNormFactors());
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+            if ~isa(self,"IMInternalModesBasis")
+                self = self.addVectorNormalization("rms",@(basis,j) IMInternalModesNormalizationTools.selectedNormFactor(basis,"rms",j),@(basis) basis.rmsNormFactors());
+            end
+            self.normalizationBuiltins_ = self.normalizationNames();
+            if ~isa(self,"IMInternalModesBasis"), IMBasisContracts.validateNormalization(self,self.normalization); end
+            self.basisContractState = IMBasisContracts.initialState(self);
         end
 
         function self = addNormalization(self, name, rule)
@@ -198,25 +283,20 @@ classdef IMBasisSet
             % factor $$s_j$$ for retained mode `iMode`. Evaluated modes use
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
             %
-            % For a constant-scaled norm,
-            % $$s_j=C\|u_j\|_\mu,$$
-            % use:
+            % To set a dimensionless scalar profile RMS of one half, use
+            % a positive multiplier of its existing RMS divisor:
+            % $$s_j=2\sqrt{D^{-1}\int |u_j^{\mathrm{raw}}|^2\,dz}.$$
             %
             % ```matlab
-            % C = 2;
-            % basisSet = basisSet.addNormalization("constantScaled", @(basisSet,j) C*basisSet.innerProductNormFactor(j));
-            % basisSet.normalization = "constantScaled";
+            % rmsFactors = basisSet.normalizationFactors("rms");
+            % basisSet = basisSet.addNormalization("twiceRms",@(~,j) 2*rmsFactors(j));
+            % basisSet.normalization = "twiceRms";
             % ```
             %
-            % For an eigenvalue-scaled norm,
-            % $$s_j=\sqrt{|\lambda_j|}\|u_j\|_\mu,$$
-            % use:
+            % Each custom rule must return one numeric scalar that is real,
+            % positive, and finite. Validation occurs when the rule is used.
             %
-            % ```matlab
-            % basisSet = basisSet.addNormalization("eigenvalueScaled", @(basisSet,j) sqrt(abs(basisSet.eigenvalues(j)))*basisSet.innerProductNormFactor(j));
-            % ```
-            %
-            % If `name` already exists, the rule is overwritten.
+            % Existing custom names may be replaced; built-in names are reserved.
             %
             % - Topic: Normalize modes
             % - Declaration: basisSet = addNormalization(basisSet,name,rule)
@@ -229,9 +309,88 @@ classdef IMBasisSet
                 rule (1,1) function_handle
             end
 
-            name = self.normalizationName(name);
+            name = IMInternalModesNormalizationTools.customName(name,"IMBasisSet");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = [];
+            self = self.resetNormalizationCache();
+        end
+
+        function value = get.nColumns(self)
+            value = size(self.nativeModes,2);
+        end
+
+        function value = get.family(self)
+            value = string(self.evp.name);
+            if isfield(self.metadata,"family"), value = string(self.metadata.family); end
+        end
+
+        function value = get.modeInfo(self)
+            if isa(self.evp,"IMInternalModes")
+                value = IMInternalModesNormalizationTools.modeInfo(self.evp,self.modeNumber,self.eigenvalues,self.metadata,self.modeSelectionDiagnostics);
+            else
+                value = table(string(self.modeNumber(:)),repmat("mode",self.nColumns,1),self.modeNumber(:),self.eigenvalues(:),VariableNames=["columnLabel","branch","branchIndex","eigenvalue"]);
+            end
+        end
+
+        function value = get.columnLabels(self)
+            value = self.modeInfo.columnLabel.';
+        end
+
+        function self = set.normalization(self,name)
+            name = self.normalizationName(name);
+            if ~isempty(self.normalizationNameMap) && ~isKey(self.normalizationNameMap,name)
+                error("IMBasisSet:UnsupportedNormalization","The basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
+        end
+
+        function self = withNormalization(self,name)
+            % Select a registered normalization without solving or evaluating it.
+            name = self.normalizationName(name);
+            if ~isKey(self.normalizationNameMap,name)
+                error("IMBasisSet:UnsupportedNormalization","The basis does not define normalization %s.",name);
+            end
+            self.normalization = name;
+        end
+
+        function self = selectColumns(self,columns,options)
+            % Keep the concrete basis type, scientific identities and coupled fields.
+            arguments
+                self IMBasisSet
+                columns (1,:) double {mustBeInteger,mustBePositive}
+                options.modeInfo table = table()
+            end
+            if any(columns > self.nColumns) || numel(unique(columns)) ~= numel(columns)
+                error("IMBasisSet:InvalidColumns","Select distinct existing columns.");
+            end
+            source = self;
+            self.basisContractState = IMBasisContracts.selectState(self.basisContractState,columns);
+            info = self.modeInfo(columns,:);
+            self = self.selectAlignedColumns(columns);
+            self.nativeModes = self.nativeModes(:,columns);
+            self.eigenvalues = self.eigenvalues(columns);
+            self.modeNumber = self.modeNumber(columns);
+            if width(options.modeInfo) > 0, info = options.modeInfo; end
+            if height(info) ~= numel(columns)
+                error("IMBasisSet:InvalidModeInfo","modeInfo must contain one row per selected column.");
+            end
+            self.metadata.modeInfo = info;
+            self.modeSelectionDiagnostics.modeInfo = info;
+            if isfield(self.modeSelectionDiagnostics,"geostrophicInverseDepth")
+                self.modeSelectionDiagnostics.geostrophicInverseDepth = self.modeSelectionDiagnostics.geostrophicInverseDepth(columns);
+            end
+            self = self.resetNormalizationCache();
+            for name = reshape(self.normalizationNames(),1,[])
+                cached = source.normalizationCache_(name);
+                if ~isempty(cached), self.normalizationCache_(name,cached(columns)); end
+                if isempty(self.normalizationVectorRuleMap{name})
+                    rule = self.normalizationNameMap{name};
+                    self.normalizationNameMap{name} = @(~,j) rule(source,columns(j));
+                elseif ~ismember(name,self.normalizationBuiltins_)
+                    self.normalizationNameMap{name} = @(~,j) IMInternalModesNormalizationTools.selectedNormFactor(source,name,columns(j));
+                    self.normalizationVectorRuleMap{name} = @(~) IMInternalModesNormalizationTools.columns(source.normalizationFactors(name),columns);
+                end
+            end
         end
 
         function names = normalizationNames(self)
@@ -249,6 +408,47 @@ classdef IMBasisSet
             end
 
             names = sort(string(keys(self.normalizationNameMap)));
+        end
+
+        function values = evaluate(self,z,options)
+            % Evaluate the solved scalar channel and its first derivative.
+            %
+            % Use variable="u" and derivativeOrder=0 or 1. Per-call
+            % normalization leaves the active basis normalization unchanged.
+            %
+            % - Topic: Evaluate modes
+            % - Declaration: values = evaluate(self,z,options)
+            % - Parameter z: physical coordinate column within zDomain
+            % - Parameter options.variable: required solved channel u
+            % - Parameter options.derivativeOrder: zero for values or one for the vertical derivative
+            % - Parameter options.normalization: normalization rule for this call
+            % - Returns values: sample-by-mode scalar profiles or derivatives
+            arguments (Input)
+                self IMBasisSet
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
+                options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+                options.normalization = self.normalization
+            end
+            arguments (Output)
+                values double
+            end
+            if options.variable == ""
+                error("IMBasisSet:MissingVariable","Specify the solved channel with variable=""u"".");
+            end
+            if options.variable ~= "u"
+                error("IMBasisSet:UnsupportedVariable","The solved scalar channel is u.");
+            end
+            if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
+                error("IMBasisSet:OutsideDomain","Evaluation points must lie within zDomain.");
+            end
+            if options.derivativeOrder == 0
+                values = self.u(z,normalization=options.normalization);
+            elseif options.derivativeOrder == 1
+                values = self.uz(z,normalization=options.normalization);
+            else
+                error("IMBasisSet:UnsupportedDerivative","The solved scalar channel supports derivative orders zero and one.");
+            end
         end
 
         function values = u(self, z, options)
@@ -298,16 +498,15 @@ classdef IMBasisSet
             % For a requested rule name this returns the row vector
             % $$s_j$$ used by evaluation methods:
             % $$u_j^{\mathrm{out}}=u_j^{\mathrm{raw}}/s_j.$$
-            % The default scalar `"unity"` rule is installed on every
-            % scalar basis set and uses
-            % $$s_j=\sqrt{|\langle u_j,u_j\rangle|}$$ with the EVP inner
-            % product. Custom rules are added to the basis set with
+            % The default scalar `"rms"` rule is installed on every
+            % scalar basis set and uses the dimensionless profile convention
+            % $$s_j=\sqrt{D^{-1}\int |u_j|^2\,dz},\quad D=z_s-z_b.$$ Custom rules are added to the basis set with
             % `addNormalization`, and the active rule is selected by
             % `basisSet.normalization`.
             %
             % ```matlab
-            % factors = basisSet.normalizationFactors("unity");
-            % uUnity = basisSet.u(z,normalization="unity");
+            % factors = basisSet.normalizationFactors("rms");
+            % uRms = basisSet.u(z,normalization="rms");
             % ```
             %
             % - Topic: Normalize modes
@@ -326,10 +525,20 @@ classdef IMBasisSet
             normalizeMode = self.normalizationNameMap{name};
             nModes = size(self.nativeModes,2);
             vectorRule = self.normalizationVectorRuleMap{name};
+            if ~isempty(vectorRule)
+                cached = self.normalizationCache_(name);
+                if ~isempty(cached) || nModes == 0
+                    factors = cached;
+                    if nModes == 0, factors = zeros(1,0); end
+                    return
+                end
+            end
             if isempty(vectorRule)
                 factors = zeros(1,nModes);
                 for iMode = 1:nModes
-                    factors(iMode) = normalizeMode(self,iMode);
+                    value = normalizeMode(self,iMode);
+                    IMInternalModesNormalizationTools.validateCustomFactor(value,"IMBasisSet");
+                    factors(iMode) = value;
                 end
             else
                 factors = vectorRule(self);
@@ -338,8 +547,10 @@ classdef IMBasisSet
                 end
                 factors = reshape(factors,1,[]);
             end
-            factors = abs(factors);
-            factors(factors == 0 | ~isfinite(factors)) = 1;
+            if ~isreal(factors) || any(factors <= 0 | ~isfinite(factors))
+                error("IMBasisSet:NullNormalization","Every retained mode requires a finite positive normalization divisor.");
+            end
+            if ~isempty(vectorRule), self.normalizationCache_(name,factors); end
         end
 
         function gram = gramMatrix(self, options)
@@ -378,30 +589,7 @@ classdef IMBasisSet
             if options.zBounds(1) >= options.zBounds(2)
                 error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
             end
-            z = self.solver.innerProductGrid(options.zBounds);
-            context = self.evp.contextForSolver(self.solver);
-            normalizationFactors = self.normalizationFactors(self.normalization);
-            values = self.rawU(z) ./ normalizationFactors;
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.solver.integrateInnerProduct(z, integrand, options.zBounds);
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
-            end
-
-            endpointTerms = self.endpointGramTerms(zBounds=options.zBounds, normalization=self.normalization, useNormalized=true);
-            for iTerm = 1:numel(endpointTerms)
-                valuesAtEndpoint = endpointTerms(iTerm).values(:);
-                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
-            end
+            gram = self.scalarGramMatrices(options.zBounds);
         end
 
         function terms = endpointGramTerms(self, options)
@@ -603,68 +791,6 @@ classdef IMBasisSet
             self.nativeModes = self.nativeModes .* signs;
         end
 
-        function factor = innerProductNormFactor(self, iMode)
-            % Return the scalar inner-product norm factor.
-            %
-            % This developer utility returns the raw scale factor used by
-            % the default `"unity"` normalization rule before any modal
-            % normalization has been applied:
-            % $$s_j=\sqrt{|\langle u_j,u_j\rangle_\mu|}.$$
-            % The scalar inner product includes the interior weight and
-            % any canonical endpoint terms prepared by `endpointGramTerms`.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
-            % - Parameter iMode: retained mode index
-            % - Returns factor: raw scalar inner-product scale factor
-            % - Developer: true
-            arguments
-                self IMBasisSet
-                iMode (1,1) double {mustBeInteger, mustBePositive}
-            end
-
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            values = self.rawU(z);
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            end
-            integrand = weight(:).*values(:,iMode).*values(:,iMode);
-            value = self.solver.integrateInnerProduct(z, integrand, self.zDomain);
-            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                valuesAtEndpoint = endpointTerms(iTerm).values;
-                value = value + endpointTerms(iTerm).coefficient*valuesAtEndpoint(iMode)^2;
-            end
-            factor = sqrt(abs(value));
-        end
-
-        function factors = innerProductNormFactors(self)
-            % Return raw scalar inner-product factors for the whole family.
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            values = self.rawU(z);
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            else
-                weight = weight(:);
-            end
-            normSquared = zeros(1,size(values,2));
-            for iMode = 1:size(values,2)
-                normSquared(iMode) = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
-            end
-            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                endpointValues = endpointTerms(iTerm).values;
-                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
-            end
-            factors = sqrt(abs(normSquared));
-        end
-
         function factor = maxAmplitudeNormFactor(self, iMode)
             % Return the maximum scalar amplitude.
             %
@@ -738,6 +864,55 @@ classdef IMBasisSet
     end
 
     methods (Access = protected)
+        [z,weights] = referenceQuadrature(self,zBounds,refinement)
+        points = referenceBreakpoints(self,zBounds)
+
+        function [gram,majorant,isPositiveMetric] = scalarGramMatrices(self,zBounds)
+            % Integrate the represented scalar pairing and its positive majorant.
+            [z,weights] = self.referenceQuadrature(zBounds);
+            values = self.u(z);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight), weight = repmat(weight,size(z)); end
+            if numel(weight) ~= numel(z) || ~isreal(weight) || any(~isfinite(weight(:)))
+                error("IMBasisSet:InvalidInnerProductWeight","The scalar interior weight must return one finite real value per reference point.");
+            end
+            gram = values.'*((weights.*weight(:)).*values);
+            majorant = values.'*((weights.*abs(weight(:))).*values);
+            isPositiveMetric = all(weight(:) >= 0);
+            terms = self.endpointGramTerms(zBounds=zBounds);
+            for iTerm = 1:numel(terms)
+                endpointValues = terms(iTerm).values(:);
+                endpointMatrix = endpointValues*endpointValues.';
+                gram = gram+terms(iTerm).coefficient*endpointMatrix;
+                majorant = majorant+abs(terms(iTerm).coefficient)*endpointMatrix;
+                isPositiveMetric = isPositiveMetric && terms(iTerm).coefficient >= 0;
+            end
+            gram = 0.5*(gram+gram.');
+            majorant = 0.5*(majorant+majorant.');
+        end
+
+        function factors = rmsNormFactors(self)
+            % Normalize the scalar profile without changing its scientific pairing.
+            [z,weights] = self.normalizationQuadrature();
+            values = self.rawU(z);
+            factors = sqrt(sum(weights.*abs(values).^2,1)/diff(self.zDomain));
+        end
+
+        function [z,weights] = normalizationQuadrature(self)
+            % Integrate the profiles returned by the public evaluator.
+            [z,weights] = self.referenceQuadrature(self.zDomain);
+        end
+
+        function self = resetNormalizationCache(self)
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+        end
+
+        function self = selectAlignedColumns(self,~)
+            % Family subclasses select companion coefficient arrays here.
+        end
+
         function self = addVectorNormalization(self,name,rule,vectorRule)
             arguments
                 self IMBasisSet
@@ -746,8 +921,10 @@ classdef IMBasisSet
                 vectorRule (1,1) function_handle
             end
             name = self.normalizationName(name);
+            self.normalizationBuiltins_ = setdiff(self.normalizationBuiltins_,string(name),"stable");
             self.normalizationNameMap{name} = rule;
             self.normalizationVectorRuleMap{name} = vectorRule;
+            self = self.resetNormalizationCache();
         end
 
         function transform = buildDiscreteTransform(self, z, weights, nModes)
@@ -824,20 +1001,81 @@ classdef IMBasisSet
                 metricMatrix(endpointIndex,endpointIndex) = metricMatrix(endpointIndex,endpointIndex) + endpointWeight.coefficient*endpointWeight.c*endpointWeight.c;
             end
 
-            continuousGramMatrix = self.gramMatrix();
-            targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
-            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
+            [continuousGramMatrix,continuousMajorant] = self.scalarGramMatrices(self.zDomain);
+            targetGramMatrix = continuousGramMatrix(1:nModes,1:nModes);
+            majorantGramMatrix = continuousMajorant(1:nModes,1:nModes);
+            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,majorantGramMatrix=majorantGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
             transform = IMScalarDiscreteTransform(physical,physical.recovery,z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization));
         end
 
         function name = normalizationName(~, normalization)
-            parts = split(string(normalization), ".");
-            name = parts(end);
+            name = IMInternalModesNormalizationTools.name(normalization,"IMBasisSet");
         end
 
         function unsupported(~, operationName)
             error("IMBasisSet:UnsupportedOperation", "IMBasisSet does not support %s for this basis.", operationName);
         end
+    end
+
+    methods (Hidden)
+        function factor = innerProductNormFactor(self, iMode)
+            % Return the square-root magnitude of the raw scalar pairing.
+            %
+            % This mathematical utility returns the raw diagonal pairing
+            % magnitude before any modal normalization has been applied:
+            % $$s_j=\sqrt{|\langle u_j,u_j\rangle_\mu|}.$$
+            % The scalar inner product includes the interior weight and
+            % any canonical endpoint terms prepared by `endpointGramTerms`.
+            %
+            % - Topic: Developer topics — Normalization rules
+            % - Declaration: factor = innerProductNormFactor(basisSet,iMode)
+            % - Parameter iMode: retained mode index
+            % - Returns factor: square-root magnitude of the weighted scalar pairing
+            % - Developer: true
+            arguments
+                self IMBasisSet
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+            end
+
+            [z,weights] = self.referenceQuadrature(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            end
+            integrand = weight(:).*values(:,iMode).*values(:,iMode);
+            value = sum(weights.*integrand);
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                valuesAtEndpoint = endpointTerms(iTerm).values;
+                value = value + endpointTerms(iTerm).coefficient*valuesAtEndpoint(iMode)^2;
+            end
+            factor = sqrt(abs(value));
+        end
+
+        function factors = innerProductNormFactors(self)
+            % Return raw scalar inner-product factors for the whole family.
+            [z,weights] = self.referenceQuadrature(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            values = self.rawU(z);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            normSquared = sum((weights.*weight).*values.^2,1);
+            endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            end
+            factors = sqrt(abs(normSquared));
+        end
+
     end
 
 end

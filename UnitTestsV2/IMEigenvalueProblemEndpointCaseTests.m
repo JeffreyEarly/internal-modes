@@ -275,14 +275,14 @@ classdef IMEigenvalueProblemEndpointCaseTests < matlab.unittest.TestCase
             N0 = 5.2e-3;
             N2 = @(z) N0*N0*(1 + 0*z);
             solver = IMSolverSpectral(nEVP=32);
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2, zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.neumann());
             removedZeroProperty = "has" + "ZeroMode";
 
             basisSet = solver.solveEVP(evp, nModes=3);
 
             testCase.verifyFalse(isprop(evp, removedZeroProperty))
             testCase.verifyEqual(basisSet.modeNumber(1), 0)
-            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "present")
+            testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeStatus, "analyticalBarotropic")
             testCase.verifyEqual(basisSet.modeSelectionDiagnostics.zeroModeCount, 1)
         end
 

@@ -55,7 +55,6 @@ self.targetGramMatrix = targetGram;
 self.majorantGramMatrix = majorant;
 self.activeColumnMask = activeMask;
 self.columnLabels = labels;
-self.forwardMatrix = [];
 self.recovery = [];
 self.physicalDualMatrix = [];
 self.physicalDualStatus = "unavailable";
@@ -63,9 +62,6 @@ if isempty(active)
     self.coefficientScale_ = zeros(0);
     self.physicalDualMatrix = zeros(nColumns,nSamples);
     self.physicalDualStatus = "available";
-    if self.projectionKind == "prescribedDual"
-        self.forwardMatrix = zeros(nColumns,nSamples);
-    end
     self.sampledGramRank = 0;
     self.gramConditionNumber = NaN;
     self.targetGramIsPositiveDefinite = true;
@@ -95,13 +91,12 @@ if self.projectionKind == "prescribedDual"
     if self.sampledGramRank < numel(active)
         self.physicalDualStatus = "singularCoefficientSystem";
     else
-        self.forwardMatrix = zeros(nColumns,nSamples);
-        self.forwardMatrix(active,:) = self.coefficientScale_*(normalizedGram\normalizedPairing);
-        if any(~isfinite(self.forwardMatrix),"all") || any(any(samplePairingMatrix(active,:) ~= 0,1) & all(self.forwardMatrix(active,:) == 0,1))
-            self.forwardMatrix = [];
+        self.physicalDualMatrix = zeros(nColumns,nSamples);
+        self.physicalDualMatrix(active,:) = self.coefficientScale_*(normalizedGram\normalizedPairing);
+        if any(~isfinite(self.physicalDualMatrix),"all") || any(any(samplePairingMatrix(active,:) ~= 0,1) & all(self.physicalDualMatrix(active,:) == 0,1))
+            self.physicalDualMatrix = [];
             self.physicalDualStatus = "unrepresentableCoefficientSystem";
         else
-            self.physicalDualMatrix = self.forwardMatrix;
             self.physicalDualStatus = "available";
         end
     end

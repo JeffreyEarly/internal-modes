@@ -1,12 +1,15 @@
 classdef IMProjection
     % Construct a fixed sampled projection and measure its numerical quality.
     %
-    % The signed sampled pairing defines coefficients through
-    % $$A = (\Phi^T W\Phi)^{-1}\Phi^T W.$$
-    % A positive semidefinite metric uses the shared sampled-recovery engine
-    % before any Gram-rank decision. Signed pairings use the same engine's
-    % preconditioned physical-test recovery. Deficient recovery is explicitly
-    % unavailable, while the continuous physical dual remains separate.
+    % The physical dual uses the continuous target Gram matrix,
+    % $$B = H^{-1}\Phi^T W.$$
+    % Direct matrix construction prepares recovery by default; pass
+    % prepareRecovery=false for physical preparation alone. The higher-level
+    % projectionOnGrid factories default to false.
+    % Optional sampled recovery is available through the separate recovery
+    % object. A positive semidefinite metric uses the shared recovery engine;
+    % signed pairings use its preconditioned physical-test recovery. Deficient
+    % recovery is explicitly unavailable and never replaces the physical dual.
     % The separately supplied positive majorant measures coefficient
     % errors; it never replaces the physical pairing. This object does not
     % choose a grid, fit weights, apply physical acceptance tolerances, or
@@ -17,7 +20,7 @@ classdef IMProjection
     %
     % ```matlab
     % projection = IMProjection(sampledBasis,metricMatrix,targetGramMatrix);
-    % coefficients = projection.project(values);
+    % coefficients = projection.projectPhysical(values);
     % ```
     %
     % - Topic: Create projections
@@ -27,7 +30,7 @@ classdef IMProjection
     % - Declaration: classdef IMProjection
 
     properties (SetAccess = private)
-        % Number of sampled source coordinates accepted by project.
+        % Number of sampled source coordinates accepted by projectPhysical.
         % - Topic: Inspect projection data
         sampleCount
         % Number of output coefficient coordinates.
@@ -66,9 +69,6 @@ classdef IMProjection
         % Scientific column labels, distinct from array indices.
         % - Topic: Inspect projection data
         columnLabels
-        % Matrix mapping sample columns to basis coefficients.
-        % - Topic: Inspect projection data
-        forwardMatrix
         % Sampled Gram or explicitly prescribed signed coefficient system.
         % - Topic: Inspect projection data
         gramMatrix
@@ -121,6 +121,7 @@ classdef IMProjection
 
     methods (Access = private)
         self = initializeProjection(self,samplePairingMatrix,sampleGram,targetGram,majorant,activeMask,labels)
+        coefficients = applyAssessmentOperator(self,values)
     end
 
     methods (Static, Hidden)
@@ -151,7 +152,7 @@ classdef IMProjection
             % - Parameter options.activeColumnMask: logical row, default all columns
             % - Parameter options.columnLabels: string row of scientific labels; default positional labels
             % - Parameter options.provenance: construction identity and numerical evidence
-            % - Parameter options.prepareRecovery: prepare sample recovery as well as the physical record
+            % - Parameter options.prepareRecovery: prepare sample recovery as well as the physical record, true by default
             % - Parameter options.failureMode: error or diagnostic for unresolved sample recovery
             % - Parameter options.rankTolerance: relative rank cutoff in the declared scaled recovery coordinates
             % - Returns self: fixed projection and numerical diagnostics
@@ -225,7 +226,6 @@ classdef IMProjection
                 end
                 self.recovery = IMDiscreteTransform.fromPreparedRecovery(sampledBasis,prepared, ...
                     metadata=struct(construction="IMProjection",projectionProvenance=self.provenance));
-                self.forwardMatrix = prepared.forwardMatrix;
                 if prepared.success
                     self.roundTripError = prepared.diagnostics.roundTripError;
                 else

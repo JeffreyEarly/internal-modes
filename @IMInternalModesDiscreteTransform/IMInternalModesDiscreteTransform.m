@@ -210,8 +210,12 @@ classdef IMInternalModesDiscreteTransform
                     data.sampledGramRank = projection.sampledGramRank;
                     if isfield(data,"recovery")
                         recovery = data.recovery;
-                        if ~isa(recovery,"IMDiscreteTransform") || ~isequal(recovery.synthesisMatrix,inverseMatrices.(field)) || ~isequal(recovery.columnLabels,labels) || ~isequal(recovery.activeColumnMask,data.activeModeMask)
-                            error("IMInternalModesDiscreteTransform:InvalidRecovery","A prepared recovery must preserve this channel's synthesis, labels and activity.");
+                        if ~isa(recovery,"IMDiscreteTransform")
+                            error("IMInternalModesDiscreteTransform:InvalidRecovery","Supply an engine-prepared IMDiscreteTransform recovery.");
+                        end
+                        matching = [isequal(recovery.synthesisMatrix,inverseMatrices.(field)),isequal(recovery.columnLabels,labels),isequal(recovery.activeColumnMask,data.activeModeMask)];
+                        if ~all(matching)
+                            error("IMInternalModesDiscreteTransform:InvalidRecovery","Prepared %s recovery must preserve synthesis, labels and activity (matching: %d, %d, %d).",variable,matching(1),matching(2),matching(3));
                         end
                         if (isfield(recovery.metadata,"normalization") && ~isequal(string(recovery.metadata.normalization),string(options.normalization))) || (isfield(recovery.metadata,"variable") && ~isequal(string(recovery.metadata.variable),variable)) || (isfield(recovery.metadata,"z") && ~isequal(recovery.metadata.z,z))
                             error("IMInternalModesDiscreteTransform:InvalidRecovery","Prepared recovery metadata must match the channel variable, normalization and physical sample ordering.");
@@ -280,11 +284,11 @@ classdef IMInternalModesDiscreteTransform
             self.inverseMatrices = inverseMatrices;
             self.endpointMatrices = endpointMatrices;
             self.channelData = channelData;
-            if ~isempty(options.basis) && (~isa(options.basis,"IMModeBasis") || options.basis.nColumns ~= nModes || options.basis.normalization ~= string(options.normalization))
-                error("IMInternalModesDiscreteTransform:InvalidBasis","basis must be an aligned IMModeBasis with the same column count and normalization.");
+            if ~isempty(options.basis) && (~(isa(options.basis,"IMInternalModesBasis") || isa(options.basis,"IMAnalyticalInternalModesBasis")) || options.basis.nColumns ~= nModes || string(options.basis.normalization) ~= string(options.normalization))
+                error("IMInternalModesDiscreteTransform:InvalidBasis","basis must be an aligned native internal-mode basis with the same column count and normalization.");
             end
             if ~isempty(options.basis)
-                if ~isequal(options.basis.h,options.h) || ~isequal(options.basis.modeInfo.branchIndex.',options.modeNumber) ...
+                if ~isequal(options.basis.h,options.h) || ~isequal(options.basis.modeNumber,options.modeNumber) ...
                         || (isfield(options.problemMetadata,"columnLabels") && ~isequal(options.basis.columnLabels,options.problemMetadata.columnLabels))
                     error("IMInternalModesDiscreteTransform:InvalidBasis","basis identities and equivalent depths must match the prepared modal snapshot.");
                 end

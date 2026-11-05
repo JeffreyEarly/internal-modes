@@ -61,7 +61,7 @@ classdef IMGeostrophicTransformTests < matlab.unittest.TestCase
 
         function rotatedCoordinatesPreservePhysicalState(testCase)
             data = testCase.standard;
-            rotated = data.zeroAPVModes.rotateBoundaryDepth(g0=data.g0,gd=data.gd);
+            rotated = data.zeroAPVModes.orthogonalizeGeneralizedEnergy(g0=data.g0,gd=data.gd);
             Aq = randn(data.nModes,numel(data.k),2)+1i*randn(data.nModes,numel(data.k),2);
             A0 = randn(2,numel(data.k),2)+1i*randn(2,numel(data.k),2);
             [qCanonical,bCanonical] = data.transform.transformStateBack(APVCoefficients=Aq,zeroAPVCoefficients=A0);
@@ -70,7 +70,7 @@ classdef IMGeostrophicTransformTests < matlab.unittest.TestCase
             testCase.verifyEqual(qRotated,qCanonical,RelTol=1e-13,AbsTol=1e-13)
             testCase.verifyEqual(bRotated,bCanonical,RelTol=3e-11,AbsTol=3e-11)
             for iK = 1:numel(data.k)
-                expected = rotated.rotationMatrix(:,:,iK)\reshape(A0(:,iK,:),2,[]);
+                expected = rotated.boundaryResponseMatrix(:,:,iK)\reshape(A0(:,iK,:),2,[]);
                 testCase.verifyEqual(reshape(A0Rotated(:,iK,:),2,[]),expected,RelTol=2e-12,AbsTol=2e-12)
             end
         end
@@ -108,7 +108,7 @@ classdef IMGeostrophicTransformTests < matlab.unittest.TestCase
             data = testCase.standard;
             testCase.verifyError(@() IMGeostrophicTransform(apvTransform=data.apvTransform,zeroAPVModes=data.zeroAPVModes,g0=data.g0+1e-3,gd=data.gd),"IMGeostrophicTransform:EndpointParameterMismatch")
             testCase.verifyError(@() IMGeostrophicTransform(apvTransform=data.apvTransform,zeroAPVModes=data.zeroAPVModes,g0=Inf,gd=Inf),"IMGeostrophicTransform:NoActiveEndpoint")
-            rotated = data.zeroAPVModes.rotateBoundaryDepth(g0=data.g0,gd=data.gd);
+            rotated = data.zeroAPVModes.orthogonalizeGeneralizedEnergy(g0=data.g0,gd=data.gd);
             testCase.verifyError(@() IMGeostrophicTransform(apvTransform=data.apvTransform,zeroAPVModes=rotated,g0=data.g0,gd=data.gd),"IMGeostrophicTransform:CanonicalZeroAPVModesRequired")
 
             wrongEndpointProblem = IMGeostrophicZeroAPVModes.atWavenumber(N2=data.N2,zDomain=data.zDomain,rotationRate=abs(data.f0)/(2*sind(33)),latitude=33*sign(data.f0),g=data.g,k=data.k,endpoints="surface");
@@ -165,7 +165,7 @@ classdef IMGeostrophicTransformTests < matlab.unittest.TestCase
             gd = Inf;
             N2 = @(z) (5.2e-3)^2*ones(size(z));
             solver = IMSolverSpectral(nEVP=96);
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
             basis = solver.solveEVP(evp,nModes=8);
             z = linspace(-D,0,65).';
             weights = [0.5;ones(63,1);0.5]*(D/64);
@@ -189,7 +189,7 @@ classdef IMGeostrophicTransformTests < matlab.unittest.TestCase
             problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-D 0],rotationRate=abs(f0)/(2*sind(33)),latitude=33*sign(f0),g=g,k=k,endpoints="surface");
             zeroAPVModes = solver.solveGeostrophicZeroAPVModes(problem);
             g0 = -zeroAPVModes.energyMatrix/zeroAPVModes.surfaceBuoyancyMatrix;
-            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd);
+            evp = IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-D 0],g=g,g0=g0,gd=gd,surfaceBoundary="freeSurface");
             basis = solver.solveEVP(evp,nModes=8);
             z = linspace(-D,0,65).';
             weights = [0.5;ones(63,1);0.5]*(D/64);

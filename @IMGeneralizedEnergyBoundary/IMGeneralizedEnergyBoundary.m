@@ -4,7 +4,7 @@ classdef IMGeneralizedEnergyBoundary
     % Finite `g0` and `gd` values, including zero, activate the surface and
     % bottom coordinates respectively. Positive infinity removes that
     % endpoint coordinate. These basis choices are independent of the
-    % physical surface convention stored by `IMModeBackground`.
+    % physical surface convention stored by `IMBackground`.
     %
     % ```matlab
     % boundary = IMGeneralizedEnergyBoundary(g0=-0.02,gd=Inf);

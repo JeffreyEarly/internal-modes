@@ -35,9 +35,9 @@ classdef IMSpectralWaveMomentumTests < matlab.unittest.TestCase
                 inertia = -omega2.*G; buoyancy = N2(z).*G;
                 scale = weightedNorm(directPressure,weights)+weightedNorm(inertia,weights)+weightedNorm(buoyancy,weights);
                 testCase.verifyLessThan(weightedNorm(directPressure+inertia+buoyancy,weights)./scale,2e-8)
-                % Preserve the WVM physical-field diagnostic's existing bound.
-                testCase.verifyLessThan(weightedNorm(g*Dz*F+inertia+buoyancy,weights)./scale,2e-7)
-                testCase.verifyLessThan(abs(G(end,:)-F(end,:))./(max(abs(G),[],1)+max(abs(F),[],1)),1e-8)
+                % With F=D*Gz, the physical pressure term is (g*h/D)*Fz.
+                testCase.verifyLessThan(weightedNorm((g*Dz*F).*(h/D)+inertia+buoyancy,weights)./scale,2e-7)
+                testCase.verifyLessThan(abs(D*G(end,:)-h.*F(end,:))./(D*max(abs(G),[],1)+abs(h).*max(abs(F),[],1)),1e-8)
                 testCase.verifyLessThan(abs(G(1,:))./max(abs(G),[],1),1e-8)
                 if profile == "constant"
                     exact = IMConstantStratificationSolution(N0=.01,zDomain=[-D 0],rotationRate=abs(f)/(2*sind(33)),latitude=33*sign(f),g=g).internalModes(basis.evp,nModes=nModes);

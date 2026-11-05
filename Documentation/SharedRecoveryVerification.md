@@ -1,5 +1,7 @@
 # Shared recovery verification
 
+Historical verification of the incoming implementation before the capable-basis integration. Code examples and class names below describe that historical API; current usage is documented in [the integration plan](APISimplificationPlan.md). These results do not replace verification of the integrated implementation.
+
 Evidence for [#57](https://github.com/JeffreyEarly/internal-modes/issues/57), measured on 2026-11-02 against base revision `8717aca878fff72b5e2c19f962e7dc6c8c435888`. The implementation and portable controls accompany this note on the same branch. This is provider recovery qualification, not a new physical-grid or maximum-band claim.
 
 ## Environment and reproduction

@@ -29,7 +29,7 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             z = linspace(zDomain(1),zDomain(2),257).';
             for iProfile = 1:numel(solutions)
                 solution = solutions{iProfile};
-                evp = IMInternalModes.geostrophicAPVModes(N2=@(z) solution.N2(z),zDomain=zDomain,g0=-0.02,gd=Inf);
+                evp = IMInternalModes.geostrophicAPVModes(N2=@(z) solution.N2(z),zDomain=zDomain,g0=-0.02,gd=Inf,surfaceBoundary="freeSurface");
                 numerical = IMSolverSpectral(nEVP=128,coordinateKind="z").solveEVP(evp,nModes=6);
                 analytical = solution.internalModes(evp,nModes=6);
                 testCase.verifyClass(numerical,"IMGeostrophicModesBasis")
@@ -53,7 +53,7 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             endpoints = [0 0;0.02 0.03];
             for iEndpoint = 1:size(endpoints,1)
                 evp = IMInternalModes.geostrophicAPVModes(N2=@(z) N0*N0*ones(size(z)), ...
-                    zDomain=zDomain,g0=endpoints(iEndpoint,1),gd=endpoints(iEndpoint,2));
+                    zDomain=zDomain,g0=endpoints(iEndpoint,1),gd=endpoints(iEndpoint,2),surfaceBoundary="freeSurface");
                 basis = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
                 analytical = solution.internalModes(evp,nModes=4);
                 numericalScale = testCase.independentDepthScales(basis);
@@ -95,7 +95,7 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
         end
 
         function neutralCapRetainsSignedModesAndAffineLayer(testCase)
-            evp = IMInternalModes.geostrophicAPVModes(N2=@IMNeutralGeostrophicModesTests.neutralCap,zDomain=[-1000 0],g0=0,gd=-0.01);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@IMNeutralGeostrophicModesTests.neutralCap,zDomain=[-1000 0],g0=0,gd=-0.01,surfaceBoundary="freeSurface");
             basis = IMSolverSpectral(nEVP=512,coordinateKind="z").solveEVP(evp,nModes=6);
             testCase.verifyTrue(any(basis.inverseDepth < 0))
             testCase.verifyPairEquations(basis,1e-7)
@@ -191,7 +191,7 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
 
         function scalarWavePencilKeepsDefaultMapping(testCase)
             N2 = @(z) (5e-3)^2*ones(size(z));
-            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=2*pi/10e3,latitude=45);
+            evp = IMInternalModes.waveModesAtWavenumber(N2=N2,zDomain=[-1000 0],k=2*pi/10e3,latitude=45,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numerical = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
             solution = IMConstantStratificationSolution(N0=5e-3,zDomain=[-1000 0],latitude=45);
             analytical = solution.internalModes(evp,nModes=4);
@@ -222,8 +222,10 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
 
         function fullyNeutralAPVUsesOnlyItsFiniteFamily(testCase)
             N2 = @(z) zeros(size(z));
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0.02,gd=0.03);
-            basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=6);
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0.02,gd=0.03,surfaceBoundary="freeSurface");
+            solver = IMSolverSpectral(nEVP=48,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=6),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             expected = evp.g*(1/evp.g+1/0.02+1/0.03)/1000;
             testCase.verifySize(basis.nativeModes,[48 1])
             testCase.verifyEqual(basis.inverseDepth,expected,RelTol=1e-12)
@@ -231,7 +233,8 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             testCase.verifyAPVBoundaryConditions(basis,1e-10)
 
             zeroEVP = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=Inf,gd=Inf,surfaceBoundary="rigidLid");
-            zeroBasis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(zeroEVP,nModes=6);
+            testCase.verifyError(@() solver.solveEVP(zeroEVP,nModes=6),"IMSolver:InsufficientModes")
+            zeroBasis = solver.solveEVP(zeroEVP,nModes=1);
             testCase.verifyEqual(zeroBasis.inverseDepth,0,AbsTol=0)
             testCase.verifyEqual(zeroBasis.h,Inf,AbsTol=0)
             testCase.verifyLessThan(max(abs(zeroBasis.G([-1000;0]))),1e-10)
@@ -244,7 +247,9 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             alphaD = 3e-11;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
                 N2=N2,zDomain=[-1000 0],k=k,alpha0=alpha0,alphaD=alphaD);
-            basis = IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=6);
+            solver = IMSolverSpectral(nEVP=48,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=6),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             weightSum = 1/alpha0+1/alphaD;
             expectedR = (1-evp.g*k*k*weightSum)/(1000+evp.f0^2*weightSum);
             expectedLambda = (k*k*1000+evp.f0^2/evp.g)/(1000+evp.f0^2*weightSum);
@@ -262,7 +267,9 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
             g = 9.81;
             evp = IMInternalModes.geostrophicGeneralizedPotentialEnstrophyModes( ...
                 N2=@(z) zeros(size(z)),zDomain=[-1000 0],k=k,g=g,alpha0=g*k*k,alphaD=Inf);
-            basis = IMSolverSpectral(nEVP=64,coordinateKind="z").solveEVP(evp,nModes=4);
+            solver = IMSolverSpectral(nEVP=64,coordinateKind="z");
+            testCase.verifyError(@() solver.solveEVP(evp,nModes=4),"IMSolver:InsufficientModes")
+            basis = solver.solveEVP(evp,nModes=1);
             testCase.verifyNumElements(basis.h,1)
             testCase.verifyEqual(basis.inverseDepth,0,AbsTol=0)
             testCase.verifyEqual(basis.h,Inf,AbsTol=0)
@@ -274,7 +281,7 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
 
         function missingAPVPhysicalSectorsCannotBeReplacedByPositiveModes(testCase)
             N2 = @(z) (5e-3)^2*ones(size(z));
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=-0.02,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=-0.02,gd=Inf,surfaceBoundary="freeSurface");
             solver = IMSolverSpectral(nEVP=64,coordinateKind="z");
             [A,~] = evp.assemble(solver);
             testCase.verifyError(@() evp.selectModes([1;2;3],2,solver,A),"IMGeostrophicModes:UnresolvedPhysicalSector")
@@ -298,10 +305,10 @@ classdef IMNeutralGeostrophicModesTests < matlab.unittest.TestCase
         function invalidStratificationAndFNullFamiliesAreRejected(testCase)
             profiles = {@(z) -ones(size(z)),@(z) 1i*ones(size(z)),@(z) Inf(size(z)),@(z) NaN(size(z))};
             for iProfile = 1:numel(profiles)
-                testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(N2=profiles{iProfile},zDomain=[-1000 0],g0=Inf,gd=Inf), ...
+                testCase.verifyError(@() IMInternalModes.geostrophicAPVModes(N2=profiles{iProfile},zDomain=[-1000 0],g0=Inf,gd=Inf,surfaceBoundary="freeSurface"), ...
                     "IMGeostrophicModes:InvalidStratification")
             end
-            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],g0=0,gd=Inf);
+            evp = IMInternalModes.geostrophicAPVModes(N2=@(z) zeros(size(z)),zDomain=[-1000 0],g0=0,gd=Inf,surfaceBoundary="freeSurface");
             testCase.verifyError(@() IMSolverSpectral(nEVP=48,coordinateKind="z").solveEVP(evp,nModes=4),"IMSolver:NoValidEigenvalues")
         end
 

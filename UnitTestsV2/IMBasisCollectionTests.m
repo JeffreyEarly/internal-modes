@@ -21,16 +21,16 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             basis = basis.addNormalization("twice",@(b,j) 2*b.innerProductNormFactor(j));
             basis.normalization = "twice";
             expected = 2*basis.u(z);
-            values = collection.evaluate(z);
+            values = collection.evaluate(z,variable="u");
             testCase.verifyEqual(values(:,:,1),expected,AbsTol=1e-13);
             testCase.verifyEqual(values(:,:,2),expected,AbsTol=1e-13);
-            derivative = collection.evaluate(z,derivativeOrder=1,pages=2,columns=[3 1]);
+            derivative = collection.evaluate(z,variable="u",derivativeOrder=1,pages=2,columns=[3 1]);
             expectedDerivative = 2*basis.uz(z);
             testCase.verifyEqual(derivative,expectedDerivative(:,[3 1]),AbsTol=1e-13);
-            testCase.verifyEqual(collection.metadata.normalization,"unity");
-            testCase.verifyEqual(collection.metadata.columnLabels,string(basis.modeNumber));
+            testCase.verifyEqual(collection.metadata.normalization,"rms");
+            testCase.verifyEqual(collection.metadata.columnLabels,basis.columnLabels);
             testCase.verifyEmpty(collection.kappa);
-            testCase.verifyError(@() collection.evaluate(z,derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyError(@() collection.evaluate(z,variable="u",derivativeOrder=2),"IMBasisCollection:UnsupportedDerivative");
             testCase.verifyError(@() collection.evaluate(z,variable="F"),"IMBasisCollection:UnsupportedVariable");
         end
 
@@ -38,7 +38,7 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             N0 = 5e-3;
             zDomain = [-1000 0];
             N2 = @(z) N0^2*ones(size(z));
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
             numerical = IMSolverSpectral(nEVP=48).solveEVP(evp,nModes=3);
             solution = IMConstantStratificationSolution(rotationRate=0,N0=N0,zDomain=zDomain);
             analytical = solution.internalModes(evp,nModes=3);
@@ -50,15 +50,17 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             derivatives = collection.evaluate(z,variable="G",derivativeOrder=1);
             testCase.verifyEqual(derivatives(:,:,1),derivatives(:,:,2),AbsTol=1e-11);
             testCase.verifyEqual(collection.metadata(1).variables,["F" "G"]);
-            testCase.verifyEqual(collection.metadata(2).derivativeOrders,{0,[0 1]});
-            testCase.verifyError(@() collection.evaluate(z,variable="F",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+            testCase.verifyEqual(collection.metadata(2).derivativeOrders,{[0 1],0:2});
+            derivativeF = collection.evaluate(z,variable="F",derivativeOrder=1);
+            testCase.verifyEqual(derivativeF(:,:,1),numerical.evaluate(z,variable="F",derivativeOrder=1),AbsTol=1e-13);
+            testCase.verifyEqual(derivativeF(:,:,2),analytical.evaluate(z,variable="F",derivativeOrder=1),AbsTol=1e-13);
         end
 
         function waveKappaMappingsRejectApproximateSubstitution(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
             solver = IMSolverSpectral(nEVP=40);
-            basis1 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=1e-4),nModes=3);
-            basis2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=2e-4),nModes=3);
+            basis1 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=1e-4,surfaceBoundary=IMBoundaryCondition.dirichlet()),nModes=3);
+            basis2 = solver.solveEVP(IMInternalModes.waveModesAtWavenumber(rotationRate=0,N2=N2,zDomain=[-1000 0],k=2e-4,surfaceBoundary=IMBoundaryCondition.dirichlet()),nModes=3);
             collection = IMBasisCollection({basis1,basis2},kappa=[2e-4 1e-4 2e-4],basisIndex=[2 1 2]);
             testCase.verifyEqual(collection.kappa,[2e-4 1e-4 2e-4]);
             values = collection.evaluate([-700;-100],variable="F");
@@ -90,19 +92,21 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
                 testCase.verifyEqual(derivative,-N0^2/basis{1}.g*G,AbsTol=1e-15);
                 selected = collection.evaluate([0;-1000],variable="G",pages=[3 1],columns=2);
                 testCase.verifyEqual(selected,G(:,2,[3 1]),AbsTol=0);
-                testCase.verifyError(@() collection.evaluate(0,variable="G",derivativeOrder=1),"IMBasisCollection:UnsupportedDerivative");
+                expectedDerivative = basis{1}.evaluate(0,variable="G",derivativeOrder=1,pages=[2 1 2]);
+                testCase.verifyEqual(collection.evaluate(0,variable="G",derivativeOrder=1),expectedDerivative,AbsTol=1e-12);
             end
-            rotated = analytical.rotateBoundaryDepth();
+            rotated = analytical.orthogonalizeGeneralizedEnergy(g0=0,gd=0);
             rotatedCollection = IMBasisCollection({rotated});
-            testCase.verifyEqual(rotatedCollection.metadata.columnLabels,["boundaryDepth1" "boundaryDepth2"]);
+            testCase.verifyEqual(rotatedCollection.metadata.columnLabels,rotated.columnLabels);
             testCase.verifyEqual(rotatedCollection.metadata.endpointLabels,["surface" "bottom"]);
-            testCase.verifyEqual(rotatedCollection.metadata.rotationMatrix,rotated.rotationMatrix);
+            testCase.verifyEqual(rotatedCollection.metadata.boundaryResponseMatrixStatus,"availableOnBasis");
+            testCase.verifyEqual(rotatedCollection.bases{1}.boundaryResponseMatrix,rotated.boundaryResponseMatrix);
         end
 
         function meanAndAPVBasesRetainTheirFamilyIdentity(testCase)
             N2 = @(z) 2.5e-5*ones(size(z));
             solver = IMSolverSpectral(nEVP=48);
-            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
+            apv = solver.solveEVP(IMInternalModes.geostrophicAPVModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0,surfaceBoundary="freeSurface"),nModes=3);
             mean = solver.solveEVP(IMInternalModes.meanDensityAnomalyModes(rotationRate=0,N2=N2,zDomain=[-1000 0],g0=0,gd=0),nModes=3);
             for basis = {apv,mean}
                 collection = IMBasisCollection(basis);
@@ -125,19 +129,19 @@ classdef IMBasisCollectionTests < matlab.unittest.TestCase
             testCase.verifyEqual(smaller.identity.basisIndex,2);
             testCase.verifyEqual(larger.identity.basisIndex,1);
             checkBasisAssessment(smaller,gramTolerance=0);
-            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=2).columnCount,4);
-            testCase.verifyEqual(collection.projectionOnGrid(z,weights,page=3).forwardMatrix,smaller.projection.forwardMatrix);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,variable="u",page=2).columnCount,4);
+            testCase.verifyEqual(collection.projectionOnGrid(z,weights,variable="u",page=3,prepareRecovery=true).recovery.forwardMatrix,smaller.projection.recovery.forwardMatrix);
         end
 
         function invalidSelectionsAndHeterogeneousCountsAreExplicit(testCase)
             basis3 = testCase.scalarBasis(3);
             basis2 = testCase.scalarBasis(2);
             collection = IMBasisCollection({basis3,basis2});
-            testCase.verifyError(@() collection.evaluate(-0.5),"IMBasisCollection:HeterogeneousColumns");
-            testCase.verifySize(collection.evaluate(-0.5,columns=[2 1]),[1 2 2]);
-            testCase.verifyError(@() collection.evaluate(-0.5,columns=3),"IMBasisCollection:InvalidColumn");
-            testCase.verifyError(@() collection.evaluate(-0.5,pages=3),"IMBasisCollection:InvalidPage");
-            testCase.verifyError(@() collection.evaluate(1,pages=1),"IMBasisCollection:OutsideDomain");
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u"),"IMBasisCollection:HeterogeneousColumns");
+            testCase.verifySize(collection.evaluate(-0.5,variable="u",columns=[2 1]),[1 2 2]);
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u",columns=3),"IMBasisCollection:InvalidColumn");
+            testCase.verifyError(@() collection.evaluate(-0.5,variable="u",pages=3),"IMBasisCollection:InvalidPage");
+            testCase.verifyError(@() collection.evaluate(1,variable="u",pages=1),"IMBasisCollection:OutsideDomain");
             testCase.verifyError(@() IMBasisCollection({}),"IMBasisCollection:EmptyCollection");
             testCase.verifyError(@() IMBasisCollection({1}),"IMBasisCollection:UnsupportedBasis");
             testCase.verifyError(@() IMBasisCollection({basis3},basisIndex=2),"IMBasisCollection:InvalidBasisIndex");

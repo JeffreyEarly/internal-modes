@@ -22,7 +22,7 @@ evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g
     surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
 solver = IMSolverSpectral(nEVP=160,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 
 sigma = linspace(0,1,nPoints).';
 z = zDomain(1) + D*(1 - (1 - sigma).^2);

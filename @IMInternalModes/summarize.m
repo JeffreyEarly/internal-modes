@@ -41,7 +41,7 @@ function summarize(self, solver)
 %     reason: The solved formulation has no endpoint metric terms, so the inner product is the interior integral only.
 %
 % Internal-mode normalization
-%   geostrophic normalization: available
+%   default: rmsF
 %     shared scale: one factor per coupled (F,G) mode
 %     convention: <G_j,G_j>_G = 1
 %     implied: <F_j,F_j>_F = h_j
@@ -60,7 +60,7 @@ function summarize(self, solver)
 % ```
 %
 % Mean-density-anomaly summaries instead report the surface-referenced
-% `N2*G` integral for `F` and the signed generalized-energy normalization.
+% `N2*G` integral for `F` and the meanDensityAnomalyEnergy convention.
 %
 % - Topic: Summarize internal-mode EVPs
 % - Declaration: summarize(evp,solver)
@@ -92,8 +92,8 @@ fprintf('  diagnostic variable: %s\n', diagnosticVariable(self));
 fprintf('  diagnostic relation: %s\n', diagnosticRelationText(self));
 
 fprintf('\nInternal-mode inner products\n');
-printInnerProductSpec(self.innerProduct("F"));
-printInnerProductSpec(self.innerProduct("G"));
+printInnerProductSpec(self,self.innerProduct("F"));
+printInnerProductSpec(self,self.innerProduct("G"));
 
 fprintf('\nInternal-mode normalization\n');
 printNormalizationSummary(self);
@@ -119,6 +119,8 @@ end
 function text = diagnosticRelationText(evp)
 if evp.modeFamily == "meanDensityAnomaly"
     text = "F_j(z) = (1/g) integral_z^surface N^2(z') G_j(z') dz'";
+elseif IMInternalModesNormalizationTools.isWave(evp)
+    text = "F_j(z) = D dG_j/dz(z), D = z_surface - z_bottom";
 elseif evp.formulation == "G"
     text = "F_j(z) = h_j dG_j/dz(z)";
 elseif evp.modeFamily == "hydrostatic"
@@ -129,23 +131,20 @@ end
 end
 
 function printNormalizationSummary(evp)
-if evp.modeFamily == "hydrostatic"
-    fprintf('  geostrophic normalization: available\n');
-    fprintf('    shared scale: one factor per coupled (F,G) mode\n');
-    fprintf('    convention: <G_j,G_j>_G = 1\n');
-    fprintf('    implied: <F_j,F_j>_F = h_j\n');
-elseif evp.modeFamily == "meanDensityAnomaly"
-    fprintf('  signed generalized-energy normalization: available\n');
-    fprintf('    shared scale: one positive factor per aligned (F,G) mode\n');
-    fprintf('    convention: <G_j,G_j>_G = epsilon_j, epsilon_j in {-1,+1}\n');
-else
-    fprintf('  geostrophic normalization: unavailable for this mode family\n');
+fprintf('  default: %s\n',IMInternalModesNormalizationTools.default(evp));
+fprintf('  available: %s\n',join(IMInternalModesNormalizationTools.available(evp),", "));
+fprintf('  shared scale: one positive factor per aligned (F,G) mode\n');
+fprintf('  profiles remain dimensionless; rmsF and rmsG use full-depth averages\n');
+if evp.modeFamily == "meanDensityAnomaly"
+    fprintf('  meanDensityAnomalyEnergy: signed dimensionless magnitude one; state energy g*epsilon_j/2\n');
+elseif string(evp.name) == "waveModesAtWavenumber"
+    fprintf('  waveEnergy: integral (F^2 + (k*D)^2*G^2)/D = 1\n');
 end
 end
 
-function printInnerProductSpec(spec)
+function printInnerProductSpec(evp,spec)
 fprintf('  %s\n', spec.variable);
-fprintf('    interior weight: %s\n', interiorWeightText(spec.variable));
+fprintf('    interior weight: %s\n', interiorWeightText(evp,spec.variable));
 fprintf('    endpoint terms: %s\n', endpointTermsText(spec));
 if spec.hasInnerProduct
     fprintf('    inner product: known\n');
@@ -155,9 +154,13 @@ end
 fprintf('    reason: %s\n', spec.reason);
 end
 
-function text = interiorWeightText(variable)
+function text = interiorWeightText(evp,variable)
 if string(variable) == "F"
     text = "1";
+elseif evp.name == "waveModesAtWavenumber"
+    text = "(N^2(z)-f0^2)/g";
+elseif evp.name == "waveModesAtFrequency"
+    text = "(N^2(z)-omega^2)/g";
 else
     text = "N^2(z)/g";
 end

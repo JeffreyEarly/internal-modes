@@ -34,7 +34,8 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             testCase.verifyFalse(isprop(surface,"g0"))
             testCase.verifyFalse(isprop(surface,"gd"))
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=0,latitude=33,k=2),"IMGeostrophicZeroAPVModes:InvalidCoriolis")
-            testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=string.empty(1,0)),"IMGeostrophicZeroAPVModes:NoEndpoint")
+            empty = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=strings(1,0));
+            testCase.verifyEqual(empty.modesPerWavenumber(),0)
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints="middle"),"IMGeostrophicZeroAPVModes:InvalidEndpoint")
             testCase.verifyError(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,endpoints=["surface" "surface"]),"IMGeostrophicZeroAPVModes:DuplicateEndpoint")
             testCase.verifyTrue(testCase.throwsAny(@() IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,k=2,surfaceBoundary="bad")))
@@ -88,18 +89,13 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(F(:,:,2),F(:,:,5),AbsTol=0)
         end
 
-        function canonicalBasisReportsUnrotatedCoordinateMetadata(testCase)
+        function canonicalBasisPreservesPhysicalEndpointCoordinates(testCase)
             boundaryModes = testCase.standardBoundaryModes([1e-4 2e-4]);
-            testCase.verifyEqual(boundaryModes.rotationName,"boundaryNormalized")
-            testCase.verifyEqual(boundaryModes.normalizationConvention,"unitEndpointResponse")
-            testCase.verifyEmpty(boundaryModes.rotationEigenvalues)
-            testCase.verifyEmpty(boundaryModes.signatures)
-            testCase.verifyEmpty(boundaryModes.h0)
-            testCase.verifyEqual(boundaryModes.metadata.rotationName,"boundaryNormalized")
-            testCase.verifyEqual(boundaryModes.metadata.endpoints,["surface" "bottom"])
-            for iK = 1:numel(boundaryModes.k)
-                testCase.verifyEqual(boundaryModes.rotationMatrix(:,:,iK),eye(2),AbsTol=0)
-            end
+            testCase.verifyEqual(boundaryModes.normalization,"endpointResponse")
+            testCase.verifyEmpty(boundaryModes.boundaryDepth)
+            testCase.verifyEqual(boundaryModes.canonicalEndpointLabels,["surface" "bottom"])
+            testCase.verifyEqual(boundaryModes.boundaryResponseMatrix,repmat(eye(2),1,1,2),AbsTol=0)
+            testCase.verifyFalse(any(ismember(["rotationName","rotationMatrix","h0"],string(properties(boundaryModes)))))
         end
 
         function constantStratificationMatchesIndependentExactBoundarySolve(testCase)
@@ -188,72 +184,50 @@ classdef IMGeostrophicZeroAPVModesTests < matlab.unittest.TestCase
             testCase.verifyEqual(basisSet.generalizedEnergyMatrix(g0=3,gd=-1e9),basisSet.generalizedEnergyMatrix(g0=3,gd=0),AbsTol=0)
         end
 
-        function boundaryDepthRotationDiagonalizesEnergy(testCase)
+        function generalizedEnergyOrthogonalityHasSignedBoundaryDepth(testCase)
             boundaryModes = testCase.standardBoundaryModes([1e-4 2e-4]);
-            g0 = -0.035;
-            gd = 0.018;
-            depthModes = boundaryModes.rotateBoundaryDepth(g0=g0,gd=gd);
+            g0 = -.035; gd = .018;
+            orthogonal = boundaryModes.orthogonalizeGeneralizedEnergy(g0=g0,gd=gd);
             Hg = boundaryModes.generalizedEnergyMatrix(g0=g0,gd=gd);
-            for iK = 1:numel(boundaryModes.k)
-                C = depthModes.rotationMatrix(:,:,iK);
-                RB = boundaryModes.endpointResponseMetric(:,:,iK);
-                testCase.verifyEqual(C.'*RB*C,eye(2),AbsTol=2e-11)
-                testCase.verifyEqual(C.'*Hg(:,:,iK)*C,diag(depthModes.rotationEigenvalues(:,iK)),AbsTol=2e-8)
-                testCase.verifyEqual(depthModes.h0(:,iK),2*boundaryModes.k(iK)^2*depthModes.rotationEigenvalues(:,iK),RelTol=1e-13)
-                testCase.verifyEqual(depthModes.signatures(:,iK),sign(depthModes.rotationEigenvalues(:,iK)))
-                testCase.verifyLessThanOrEqual(max(diff(depthModes.rotationEigenvalues(:,iK))),0)
+            for page = 1:numel(boundaryModes.k)
+                C = orthogonal.boundaryResponseMatrix(:,:,page);
+                target = diag(orthogonal.boundaryDepth(:,page)/(2*boundaryModes.k(page)^2));
+                testCase.verifyEqual(C.'*C,eye(2),AbsTol=2e-11)
+                testCase.verifyEqual(C.'*Hg(:,:,page)*C,target,AbsTol=2e-8)
+                testCase.verifyLessThanOrEqual(max(diff(orthogonal.boundaryDepth(:,page))),0)
                 testCase.verifyGreaterThanOrEqual(testCase.referenceCoefficients(C),zeros(1,size(C,2)))
             end
-            testCase.verifyEqual(depthModes.rotationName,"boundaryDepth")
-            testCase.verifyLessThan(max(depthModes.rotationResiduals.relativePencilResidual,[],"all"),1e-12)
-            testCase.verifyLessThan(max(depthModes.rotationResiduals.rightOrthogonalityError),1e-12)
+            testCase.verifyLessThan(max(orthogonal.metadata.orthogonality.relativeEnergyResidual,[],"all"),1e-12)
+            testCase.verifyLessThan(max(orthogonal.metadata.orthogonality.endpointOrthogonalityError),1e-12)
         end
 
-        function surfaceBuoyancyAndCustomRotationsUseSharedPencilContract(testCase)
-            boundaryModes = testCase.standardBoundaryModes([1e-4 2e-4]);
-            g0 = -0.02;
-            gd = 0.01;
-            Hg = boundaryModes.generalizedEnergyMatrix(g0=g0,gd=gd);
-            surfaceModes = boundaryModes.rotateSurfaceBuoyancy(g0=g0,gd=gd);
-            for iK = 1:numel(boundaryModes.k)
-                C = surfaceModes.rotationMatrix(:,:,iK);
-                left = boundaryModes.g*boundaryModes.surfaceBuoyancyMatrix(:,:,iK);
-                right = Hg(:,:,iK);
-                residual = left*C-right*C*diag(surfaceModes.rotationEigenvalues(:,iK));
-                testCase.verifyLessThan(norm(residual,"fro")/max(1,norm(left,"fro")),1e-10)
-                testCase.verifyEqual(diag(C.'*right*C),surfaceModes.signatures(:,iK),AbsTol=2e-10)
-                testCase.verifyGreaterThan(abs(surfaceModes.rotationEigenvalues(1,iK)),1e-10)
-                testCase.verifyEqual(surfaceModes.rotationEigenvalues(2,iK),0,AbsTol=1e-10)
-                testCase.verifyGreaterThanOrEqual(testCase.referenceCoefficients(C),zeros(1,size(C,2)))
-            end
-            testCase.verifyEmpty(surfaceModes.h0)
-
-            customSurfaceModes = boundaryModes.rotateWithPencil(name="customSurface",leftMatrix=boundaryModes.g*boundaryModes.surfaceBuoyancyMatrix,rightMatrix=Hg);
-            testCase.verifyEqual(customSurfaceModes.rotationEigenvalues,surfaceModes.rotationEigenvalues,RelTol=1e-12,AbsTol=1e-12)
-            testCase.verifyEqual(customSurfaceModes.rotationMatrix,surfaceModes.rotationMatrix,RelTol=1e-10,AbsTol=1e-10)
-
-            depthModes = boundaryModes.rotateBoundaryDepth(g0=g0,gd=gd);
-            customModes = boundaryModes.rotateWithPencil(name="customDepth",leftMatrix=Hg,rightMatrix=boundaryModes.endpointResponseMetric);
-            testCase.verifyEqual(customModes.rotationEigenvalues,depthModes.rotationEigenvalues,RelTol=1e-12,AbsTol=1e-12)
-            testCase.verifyEqual(customModes.rotationMatrix,depthModes.rotationMatrix,RelTol=1e-10,AbsTol=1e-10)
-            testCase.verifyEqual(customModes.F(linspace(-1000,0,13).'),depthModes.F(linspace(-1000,0,13).'),RelTol=1e-10,AbsTol=1e-10)
-            testCase.verifyEmpty(customModes.h0)
+        function publicEndpointChoicesFollowTheManuscript(testCase)
+            boundary = testCase.standardBoundaryModes(1e-4);
+            methodNames = string(methods(boundary));
+            testCase.verifyFalse(any(ismember(["rotateSurfaceBuoyancy","rotateBoundaryDepth","rotateWithPencil"],methodNames)))
+            testCase.verifyTrue(ismember("orthogonalizeGeneralizedEnergy",methodNames))
+            testCase.verifyFalse(ismember("rotationRightMetric",boundary.normalizationNames()))
+            testCase.verifyTrue(testCase.throwsAny(@() boundary.orthogonalizeGeneralizedEnergy()))
+            testCase.verifyTrue(testCase.throwsAny(@() boundary.orthogonalizeGeneralizedEnergy(g0=0)))
         end
 
         function rotationsApplyIdenticalColumnMapToFAndG(testCase)
             boundaryModes = testCase.standardBoundaryModes(1e-4);
-            rotatedModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0.02);
+            rotatedModes = boundaryModes.orthogonalizeGeneralizedEnergy(g0=-0.035,gd=0.02);
             z = linspace(-1000,0,31).';
-            C = rotatedModes.rotationMatrix(:,:,1);
+            C = rotatedModes.boundaryResponseMatrix(:,:,1);
             testCase.verifyEqual(rotatedModes.F(z),boundaryModes.F(z)*C,RelTol=1e-11,AbsTol=1e-11)
             testCase.verifyEqual(rotatedModes.G(z),boundaryModes.G(z)*C,RelTol=1e-11,AbsTol=1e-11)
         end
 
-        function surfaceRotationRequiresSurfaceEndpoint(testCase)
+        function aSingleChosenEndpointIsACompletePhysicalFamily(testCase)
             N2 = @(z) ones(size(z));
             problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-1 0],rotationRate=1/(2*sind(33)),latitude=33,g=2,k=1,endpoints="bottom");
-            basisSet = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(problem);
-            testCase.verifyError(@() basisSet.rotateSurfaceBuoyancy(),"IMGeostrophicZeroAPVModesBasis:SurfaceEndpointRequired")
+            basis = IMSolverSpectral(nEVP=32).solveGeostrophicZeroAPVModes(problem);
+            orthogonal = basis.orthogonalizeGeneralizedEnergy(g0=Inf,gd=.4);
+            testCase.verifyEqual(orthogonal.nColumns,1)
+            testCase.verifyEqual(orthogonal.boundaryResponseMatrix,1,AbsTol=0)
+            testCase.verifyEqual(orthogonal.boundaryDepth,2*basis.k^2*basis.generalizedEnergyMatrix(g0=Inf,gd=.4),AbsTol=1e-12)
         end
 
         function finiteDifferenceSolverPreservesCanonicalResponses(testCase)

@@ -10,7 +10,7 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
     % than recovered by subtracting public physical eigenvalues.
     %
     % ```matlab
-    % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0,gd=-0.01);
+    % evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=0,gd=-0.01,surfaceBoundary="freeSurface");
     % basis = IMSolverSpectral(nEVP=128).solveEVP(evp,nModes=10);
     % G = basis.G(z);
     % ```
@@ -155,6 +155,7 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
             self.nativeGModes = self.nativeGModes.*signs;
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
             self.metadata.dominantGOrientationFallback = fallback;
+            self = self.resetNormalizationCache();
         end
 
         function values = rawVariable(self,variable,z)
@@ -178,8 +179,27 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
             end
         end
     end
+    methods (Access = protected)
+        function points = referenceBreakpoints(self,zBounds)
+            % Stored F and G can have different staggered reconstruction knots.
+            points = referenceBreakpoints@IMBasisSet(self,zBounds);
+            companion = self.gSolver.zNative(:);
+            points = unique([points;companion(companion > zBounds(1) & companion < zBounds(2))]);
+        end
 
-    methods (Hidden)
-        points = samplingBreakpoints(self)
+        function values = rawVariableDerivative(self,variable,z,order)
+            if variable == "G" && ismember(order,[1 2])
+                values = self.gSolver.evaluatePhysicalDerivative(self.nativeGModes,z,order);
+            else
+                values = rawVariableDerivative@IMInternalModesBasis(self,variable,z,order);
+            end
+        end
+
+        function self = selectAlignedColumns(self,columns)
+            self = selectAlignedColumns@IMInternalModesBasis(self,columns);
+            self.nativeGModes = self.nativeGModes(:,columns);
+            self.inverseDepth = self.inverseDepth(columns);
+        end
     end
+
 end

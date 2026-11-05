@@ -1,153 +1,123 @@
 classdef IMAnalyticalGeostrophicZeroAPVModesBasis
-    % Store exact canonical or rotated geostrophic zero-APV modes.
+    % Evaluate canonical and generalized-energy orthogonal boundary-buoyancy modes.
     %
-    % Concrete analytical stratification families create the canonical
-    % columns. Their endpoint responses satisfy
-    %
-    % $$
-    % \mathbf B[F_0^{\mathrm{sur}}]=(1,0)^T,
-    % \qquad
-    % \mathbf B[F_0^{\mathrm{bot}}]=(0,1)^T,
-    % $$
-    %
-    % for the requested subset of surface and bottom endpoints. The exact
-    % diagnostic variable is
-    %
-    % $$
-    % G(z)=-\frac{g}{N^2(z)}\frac{\partial F}{\partial z}(z).
-    % $$
-    %
-    % `F(z)` and `G(z)` have dimensions `nZ x nEndpoints x nK`. Quadratic
-    % forms have dimensions `nEndpoints x nEndpoints x nK`. Rotations apply
-    % the same pagewise column map to both exact variables.
+    % Canonical columns have unit surface or bottom buoyancy response. At a
+    % free surface that response is G-F; the bottom response is G. The
+    % profiles obey Fz=-N2 G/g and Gz=-g k^2 F/f0^2, including neutral layers.
+    % Select endpoints in the problem, solve once, and optionally construct
+    % the manuscript's generalized-energy orthogonal basis before selecting
+    % columns. Profiles have shape nZ-by-nColumns-by-nWavenumbers.
     %
     % ```matlab
-    % solution = IMConstantStratificationSolution(N0=5.2e-3,zDomain=[-4000 0],rotationRate=1e-4/(2*sind(33)),latitude=33);
-    % exactModes = solution.geostrophicZeroAPVModesAtWavenumber(1e-4);
-    % depthModes = exactModes.rotateBoundaryDepth(g0=-0.03,gd=0.01);
+    % boundary = solver.solveGeostrophicZeroAPVModes(problem);
+    % orthogonal = boundary.orthogonalizeGeneralizedEnergy(g0=-.035,gd=.01);
+    % hbb = orthogonal.boundaryDepth;
     % ```
     %
-    % - Topic: Evaluate exact geostrophic zero-APV modes
-    % - Topic: Inspect exact geostrophic zero-APV modes
-    % - Topic: Form exact geostrophic zero-APV quadratic forms
-    % - Topic: Rotate exact geostrophic zero-APV modes
-    % - Topic: Developer topics
+    % - Topic: Evaluate boundary-buoyancy modes
+    % - Topic: Inspect boundary-buoyancy modes
+    % - Topic: Choose boundary-buoyancy coordinates
+    % - Topic: Form boundary-buoyancy quadratic forms
     % - Declaration: classdef IMAnalyticalGeostrophicZeroAPVModesBasis
 
     properties (SetAccess = private)
-        % Analytical solution family that created this basis.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        solution
-
-        % Canonical geostrophic zero-APV problem represented by the formulas.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Canonical physical endpoint problem.
+        % - Topic: Inspect boundary-buoyancy modes
         problem
-
-        % Horizontal-wavenumber pages.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Analytical solution that supplied the canonical profiles.
+        % - Topic: Inspect boundary-buoyancy modes
+        solution
+        % Positive horizontal-wavenumber pages.
+        % - Topic: Inspect boundary-buoyancy modes
         k
-
-        % Canonically ordered endpoint-coordinate labels.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Canonical endpoint-row identities, independent of retained columns.
+        % - Topic: Inspect boundary-buoyancy modes
         endpoints
-
-        % Endpoint-response Gram matrix $$\mathsf R_B$$.
-        %
-        % Canonical unit endpoint coordinates give $$\mathsf R_B=\mathsf I$$.
-        %
-        % - Topic: Form exact geostrophic zero-APV quadratic forms
-        endpointResponseMetric
-
-        % Physical-energy matrix $$\mathsf H$$.
-        %
-        % - Topic: Form exact geostrophic zero-APV quadratic forms
-        energyMatrix
-
-        % Surface-buoyancy matrix $$\mathsf B_0$$.
-        %
-        % This matrix is exactly zero when the surface endpoint is absent.
-        %
-        % - Topic: Form exact geostrophic zero-APV quadratic forms
-        surfaceBuoyancyMatrix
-
-        % Bottom-buoyancy matrix $$\mathsf B_d$$.
-        %
-        % This matrix is exactly zero when the bottom endpoint is absent.
-        %
-        % - Topic: Form exact geostrophic zero-APV quadratic forms
-        bottomBuoyancyMatrix
-
-        % Name of the current boundary-coordinate rotation.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        rotationName
-
-        % Canonical-to-current pagewise column transformation.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        rotationMatrix
-
-        % Pagewise generalized-pencil eigenvalues.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        rotationEigenvalues
-
-        % Pagewise quadratic-form signatures.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        signatures
-
-        % Signed boundary depths from the boundary-depth rotation.
-        %
-        % Only `rotateBoundaryDepth` populates `h0`, using
-        % $$h_0^a=2k^2\gamma_a$$.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        h0
-
-        % Rotation normalization convention.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        normalizationConvention
-
-        % Pagewise pencil and normalization residuals.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
-        rotationResiduals
-
-        % Coriolis parameter.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Signed Coriolis frequency in inverse seconds.
+        % - Topic: Inspect boundary-buoyancy modes
         f0
-
         % Gravitational acceleration.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % - Topic: Inspect boundary-buoyancy modes
         g
-
-        % Surface endpoint convention.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Physical free-surface or rigid-lid convention.
+        % - Topic: Inspect boundary-buoyancy modes
         surfaceBoundary
-
-        % Physical vertical domain.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Physical domain [bottom surface].
+        % - Topic: Inspect boundary-buoyancy modes
         zDomain
-
-        % Buoyancy frequency squared function.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Shape-preserving buoyancy-frequency-squared profile.
+        % - Topic: Inspect boundary-buoyancy modes
         N2
-
-        % Additional creation and rotation metadata.
-        %
-        % - Topic: Inspect exact geostrophic zero-APV modes
+        % Construction and orthogonality evidence.
+        % - Topic: Inspect boundary-buoyancy modes
         metadata
+        % Signed manuscript boundary depths; empty before orthogonalization.
+        % - Topic: Inspect boundary-buoyancy modes
+        boundaryDepth
+    end
+
+    properties (Hidden, SetAccess = private)
+        basisContractState = struct()
+    end
+
+    properties (Dependent)
+        % Active normalization; assigning it changes only this value object.
+        % - Topic: Evaluate boundary-buoyancy modes
+        normalization
+    end
+
+    properties (Dependent, SetAccess = private)
+        % Exact retained column count per page.
+        % - Topic: Inspect boundary-buoyancy modes
+        nColumns
+        % Scientific family identity.
+        % - Topic: Inspect boundary-buoyancy modes
+        family
+        % Current scientific column labels.
+        % - Topic: Inspect boundary-buoyancy modes
+        columnLabels
+        % Current column identities and branches.
+        % - Topic: Inspect boundary-buoyancy modes
+        modeInfo
+        % Zero geostrophic frequencies.
+        % - Topic: Inspect boundary-buoyancy modes
+        frequency
+        % Canonical source endpoint identities.
+        % - Topic: Inspect boundary-buoyancy modes
+        canonicalEndpointLabels
+        % Canonical endpoint responses per current coefficient, pagewise.
+        % - Topic: Inspect boundary-buoyancy modes
+        boundaryResponseMatrix
+        % Physical-energy form in current normalized coordinates.
+        % - Topic: Inspect boundary-buoyancy modes
+        energyMatrix
+        % Surface-buoyancy form in current normalized coordinates.
+        % - Topic: Inspect boundary-buoyancy modes
+        surfaceBuoyancyMatrix
+        % Bottom-buoyancy form in current normalized coordinates.
+        % - Topic: Inspect boundary-buoyancy modes
+        bottomBuoyancyMatrix
+        % Total endpoint-response form in current coordinates.
+        % - Topic: Inspect boundary-buoyancy modes
+        endpointResponseMetric
+        % Signs of the active normalization form.
+        % - Topic: Inspect boundary-buoyancy modes
+        normSignatures
+        % Structured supported-variable and operation contract.
+        % - Topic: Inspect boundary-buoyancy modes
+        capabilities
+        % Requested and resolved scientific identity.
+        % - Topic: Inspect boundary-buoyancy modes
+        scientificSpecification
+        % Original construction and later selection evidence.
+        % - Topic: Inspect boundary-buoyancy modes
+        constructionRecord
+        % Fixed-wavenumber horizontal identity.
+        % - Topic: Inspect boundary-buoyancy modes
+        horizontalKind
+        % Empty because every page has one fixed wavenumber.
+        % - Topic: Inspect boundary-buoyancy modes
+        kSquared
     end
 
     properties (Access = private)
@@ -157,10 +127,13 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
         canonicalEnergyMatrix
         canonicalSurfaceBuoyancyMatrix
         canonicalBottomBuoyancyMatrix
-    end
-
-    methods (Hidden)
-        recipe = projectionRecipe(self,options)
+        endpointDirections_
+        columnLabels_
+        columnOrdinals_
+        normalization_ = "endpointResponse"
+        normalizationRules_ = configureDictionary("string","cell")
+        normalizationCache_
+        isOrthogonal_ = false
     end
 
     methods
@@ -202,227 +175,316 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
 
             nEndpoints = numel(self.endpoints);
             nK = numel(self.k);
-            self.rotationName = "boundaryNormalized";
-            self.rotationMatrix = repmat(eye(nEndpoints),1,1,nK);
-            self.rotationEigenvalues = [];
-            self.signatures = [];
-            self.h0 = [];
-            self.normalizationConvention = "unitEndpointResponse";
-            self.rotationResiduals = struct();
-
             [self.canonicalEndpointResponseMetric,self.canonicalEnergyMatrix,self.canonicalSurfaceBuoyancyMatrix,self.canonicalBottomBuoyancyMatrix,responseResidual] = self.formCanonicalQuadraticMatrices();
-            self.endpointResponseMetric = self.canonicalEndpointResponseMetric;
-            self.energyMatrix = self.canonicalEnergyMatrix;
-            self.surfaceBuoyancyMatrix = self.canonicalSurfaceBuoyancyMatrix;
-            self.bottomBuoyancyMatrix = self.canonicalBottomBuoyancyMatrix;
             self.metadata = options.metadata;
-            self.metadata.rotationName = self.rotationName;
-            self.metadata.normalizationConvention = self.normalizationConvention;
             self.metadata.canonicalEndpointResponseResidual = responseResidual;
+            self.endpointDirections_ = repmat(eye(nEndpoints),1,1,nK);
+            self.columnLabels_ = reshape(string(self.endpoints),1,[]);
+            self.columnOrdinals_ = 1:nEndpoints;
+            self.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+            self.metadata.basisChoice = "boundaryNormalized";
+            self.basisContractState = IMBasisContracts.initialState(self);
+        end
+        function value = get.nColumns(self)
+            value = size(self.endpointDirections_,2);
+        end
+        function value = get.family(~)
+            value = "geostrophicZeroAPV";
+        end
+        function value = get.columnLabels(self)
+            value = self.columnLabels_;
+        end
+        function value = get.canonicalEndpointLabels(self)
+            value = self.endpoints;
+        end
+        function value = get.modeInfo(self)
+            branch = repmat("endpointResponse",self.nColumns,1);
+            if self.isOrthogonal_, branch(:) = "generalizedEnergyOrthogonal"; end
+            value = table(self.columnLabels(:),branch,self.columnOrdinals_(:),VariableNames=["columnLabel","branch","branchIndex"]);
+        end
+        function value = get.frequency(self)
+            value = zeros(1,self.nColumns);
+        end
+        function value = get.normalization(self)
+            value = self.normalization_;
+        end
+        function self = set.normalization(self,name)
+            name = IMInternalModesNormalizationTools.name(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            if ~isscalar(name) || ~ismember(name,self.normalizationNames())
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:UnsupportedNormalization","Choose a rule from normalizationNames().");
+            end
+            self.normalization_ = name;
+        end
+        function value = get.normSignatures(self)
+            value = ones(self.nColumns,numel(self.k));
+        end
+        function value = get.boundaryResponseMatrix(self)
+            factors = reshape(self.normalizationFactors(),1,self.nColumns,numel(self.k));
+            value = self.endpointDirections_./factors;
+        end
+        function value = get.energyMatrix(self)
+            value = IMGeostrophicZeroAPVFormTools.transformForm(self.canonicalEnergyMatrix,self.boundaryResponseMatrix);
+        end
+        function value = get.surfaceBuoyancyMatrix(self)
+            value = IMGeostrophicZeroAPVFormTools.transformForm(self.canonicalSurfaceBuoyancyMatrix,self.boundaryResponseMatrix);
+        end
+        function value = get.bottomBuoyancyMatrix(self)
+            value = IMGeostrophicZeroAPVFormTools.transformForm(self.canonicalBottomBuoyancyMatrix,self.boundaryResponseMatrix);
+        end
+        function value = get.endpointResponseMetric(self)
+            value = IMGeostrophicZeroAPVFormTools.transformForm(self.canonicalEndpointResponseMetric,self.boundaryResponseMatrix);
+        end
+        function value = get.capabilities(self)
+            value = IMBasisContracts.capabilities(self);
+        end
+        function value = get.scientificSpecification(self)
+            value = IMBasisContracts.scientificSpecification(self);
+        end
+        function value = get.constructionRecord(self)
+            value = IMBasisContracts.constructionRecord(self);
+        end
+        function value = get.horizontalKind(~)
+            value = "fixedWavenumber";
+        end
+        function value = get.kSquared(~)
+            value = zeros(1,0);
         end
 
-        function values = F(self,z,options)
-            % Evaluate exact streamfunction structures $$F(z)$$.
-            %
-            % The result has dimensions `nZ x nEndpoints x nK`.
-            %
-            % - Topic: Evaluate exact geostrophic zero-APV modes
-            % - Declaration: values = F(basisSet,z,options)
-            % - Parameter z: physical coordinate
-            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
-            % - Returns values: page-shaped exact `F` values
-            arguments
-                self IMAnalyticalGeostrophicZeroAPVModesBasis
-                z (:,1) double {mustBeReal, mustBeFinite}
-                options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
-            end
-            if any(options.pages > numel(self.k))
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
-            end
-
-            values = self.evaluateCanonical(self.canonicalFFunction,z,options.pages);
-            values = self.applyRotation(values,options.pages);
+        function names = normalizationNames(self)
+            % List admissible profile normalizations and installed rules.
+            % - Topic: Evaluate boundary-buoyancy modes
+            names = ["endpointResponse","rmsF","rmsG","maxAbsF","maxAbsG"];
+            names = unique([names,reshape(string(keys(self.normalizationRules_)),1,[])],"stable");
         end
 
-        function values = G(self,z,options)
-            % Evaluate exact diagnostic displacement structures $$G(z)$$.
-            %
-            % The evaluator uses the closed-form derivative relation
-            % $$G=-gN^{-2}\partial_zF$$ without numerical differentiation.
-            %
-            % - Topic: Evaluate exact geostrophic zero-APV modes
-            % - Declaration: values = G(basisSet,z,options)
-            % - Parameter z: physical coordinate
-            % - Parameter options.pages: source wavenumber pages, preserving order and repeats
-            % - Returns values: page-shaped exact `G` values
+        function factors = normalizationFactors(self,name,options)
+            % Return positive divisors for selected columns and source pages.
+            % - Topic: Evaluate boundary-buoyancy modes
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                z (:,1) double {mustBeReal, mustBeFinite}
+                name = self.normalization
                 options.pages (1,:) double {mustBeInteger,mustBePositive} = 1:numel(self.k)
             end
-            if any(options.pages > numel(self.k))
+            name = IMInternalModesNormalizationTools.name(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            if ~ismember(name,self.normalizationNames())
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:UnsupportedNormalization","Choose a rule from normalizationNames().");
+            end
+            if any(options.pages>numel(self.k))
                 error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidPage","pages must select existing source wavenumber pages.");
             end
+            factors = zeros(self.nColumns,numel(options.pages));
+            for iPage = 1:numel(options.pages)
+                page = options.pages(iPage);
+                key = name+"@"+string(page);
+                factor = self.normalizationCache_(key);
+                if isempty(factor) && self.nColumns>0
+                    if isKey(self.normalizationRules_,name)
+                        factor = zeros(self.nColumns,1);
+                        rule = self.normalizationRules_{name};
+                        for j = 1:self.nColumns
+                            value = rule(self,j);
+                            if ~isnumeric(value) || ~isreal(value) || ~(isscalar(value) || numel(value)==numel(self.k))
+                                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidNormalization","A custom rule must return one positive scalar or one value per wavenumber page.");
+                            end
+                            if isscalar(value), factor(j) = value; else, factor(j) = value(page); end
+                        end
+                    else
+                        factor = IMGeostrophicZeroAPVFormTools.normalizationFactors(self,name,page);
+                    end
+                    if any(~isfinite(factor) | factor<=0)
+                        error("IMAnalyticalGeostrophicZeroAPVModesBasis:NullNormalization","Normalization divisors must be positive and finite for every retained column.");
+                    end
+                    self.normalizationCache_(key,factor);
+                end
+                if self.nColumns>0, factors(:,iPage) = factor; end
+            end
+        end
 
-            values = self.evaluateCanonical(self.canonicalGFunction,z,options.pages);
-            values = self.applyRotation(values,options.pages);
+        function basis = withNormalization(self,name)
+            % Choose a copied basis normalization without another solve.
+            % - Topic: Choose boundary-buoyancy coordinates
+            arguments
+                self IMAnalyticalGeostrophicZeroAPVModesBasis
+                name
+            end
+            basis = self;
+            basis.normalization = name;
+        end
+
+        function basis = addNormalization(self,name,rule)
+            % Install or replace a positive divisor rule, factor=rule(basis,j).
+            % Built-in names retain their scientific definitions on every
+            % family; use a distinct name for a custom alternative.
+            % - Topic: Choose boundary-buoyancy coordinates
+            arguments
+                self IMAnalyticalGeostrophicZeroAPVModesBasis
+                name
+                rule (1,1) function_handle
+            end
+            name = IMInternalModesNormalizationTools.customName(name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            basis = self;
+            basis.normalizationRules_{name} = rule;
+            basis.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+        end
+
+        function basis = selectColumns(self,columns)
+            % Retain distinct existing columns in caller order without a solve.
+            % - Topic: Choose boundary-buoyancy coordinates
+            arguments
+                self IMAnalyticalGeostrophicZeroAPVModesBasis
+                columns (1,:) double {mustBeInteger,mustBePositive}
+            end
+            if any(columns > self.nColumns) || numel(unique(columns)) ~= numel(columns)
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidColumns","Select distinct existing columns.");
+            end
+            basis = self;
+            for name = reshape(string(keys(self.normalizationRules_)),1,[])
+                rule = self.normalizationRules_{name};
+                basis.normalizationRules_{name} = @(~,j) rule(self,columns(j));
+            end
+            basis.endpointDirections_ = self.endpointDirections_(:,columns,:);
+            basis.columnLabels_ = self.columnLabels_(columns);
+            basis.columnOrdinals_ = self.columnOrdinals_(columns);
+            if self.isOrthogonal_, basis.boundaryDepth = self.boundaryDepth(columns,:); end
+            basis.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+            basis.basisContractState = IMBasisContracts.selectState(self.basisContractState,columns);
         end
 
         function matrix = generalizedEnergyMatrix(self,options)
-            % Return $$\mathsf H_g=\mathsf H+g_0\mathsf B_0+g_d\mathsf B_d$$.
-            %
-            % A coefficient for an absent endpoint has no effect because its
-            % form matrix is exactly zero.
-            %
-            % - Topic: Form exact geostrophic zero-APV quadratic forms
-            % - Declaration: matrix = generalizedEnergyMatrix(basisSet,options)
-            % - Parameter options.g0: finite signed surface coefficient
-            % - Parameter options.gd: finite signed bottom coefficient
-            % - Returns matrix: generalized-energy matrix pages
+            % Form signed generalized energy in the current coefficient coordinates.
+            % - Topic: Form boundary-buoyancy quadratic forms
+            % - Parameter options.g0: signed surface coefficient; infinity only for an absent endpoint
+            % - Parameter options.gd: signed bottom coefficient; infinity only for an absent endpoint
+            % - Returns matrix: current-coordinate H + g0 B0 + gd Bd pages
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                options.g0 (1,1) double {mustBeReal, mustBeFinite} = 0
-                options.gd (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g0 (1,1) double {mustBeReal} = 0
+                options.gd (1,1) double {mustBeReal} = 0
             end
-
-            matrix = self.energyMatrix + options.g0*self.surfaceBuoyancyMatrix + options.gd*self.bottomBuoyancyMatrix;
-            matrix = IMGeostrophicZeroAPVFormTools.symmetrizePages(matrix);
+            matrix = IMGeostrophicZeroAPVFormTools.generalizedEnergy(self.energyMatrix,self.surfaceBuoyancyMatrix,self.bottomBuoyancyMatrix,self.endpoints,options.g0,options.gd,"IMAnalyticalGeostrophicZeroAPVModesBasis");
         end
 
-        function basisSet = rotateBoundaryDepth(self,options)
-            % Diagonalize generalized energy relative to endpoint response.
+        function basis = orthogonalizeGeneralizedEnergy(self,options)
+            % Construct the manuscript's generalized-energy orthogonal modes.
             %
-            % For each wavenumber page,
+            % Solve Hg C=C diag(boundaryDepth/(2 k^2)), C' C=I, in the
+            % complete originally chosen endpoint coordinates. Negative,
+            % zero and repeated depths remain valid. A proper retained
+            % selection must be made after this operation.
             %
-            % $$
-            % \mathsf H_g\mathbf c^a=\gamma_a\mathsf R_B\mathbf c^a,
-            % \qquad h_0^a=2k^2\gamma_a.
-            % $$
-            %
-            % - Topic: Rotate exact geostrophic zero-APV modes
-            % - Declaration: basisSet = rotateBoundaryDepth(exactModes,options)
-            % - Parameter options.g0: finite signed surface coefficient
-            % - Parameter options.gd: finite signed bottom coefficient
-            % - Returns basisSet: boundary-depth rotated exact basis
+            % - Topic: Choose boundary-buoyancy coordinates
+            % - Parameter options.g0: required signed surface coefficient
+            % - Parameter options.gd: required signed bottom coefficient
+            % - Returns basis: orthogonal modes with unit endpoint-response geometry
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                options.g0 (1,1) double {mustBeReal, mustBeFinite} = 0
-                options.gd (1,1) double {mustBeReal, mustBeFinite} = 0
+                options.g0 (1,1) double {mustBeReal}
+                options.gd (1,1) double {mustBeReal}
             end
-
-            leftMatrix = self.canonicalGeneralizedEnergyMatrix(options.g0,options.gd);
-            rightMatrix = self.canonicalEndpointResponseMetric;
-            [rotation,eigenvalues,~,residuals] = self.solveSymmetricPencil(leftMatrix,rightMatrix,"descending");
-            h0Values = 2*(self.k.^2).*eigenvalues;
-            basisSet = self.basisWithRotation("boundaryDepth",rotation,eigenvalues,sign(eigenvalues),h0Values,"unitEndpointResponseMetric",residuals);
+            if self.nColumns ~= numel(self.endpoints)
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:IncompleteEndpointBasis","Orthogonalize the complete chosen endpoint family before selecting columns.");
+            end
+            matrix = IMGeostrophicZeroAPVFormTools.generalizedEnergy(self.canonicalEnergyMatrix,self.canonicalSurfaceBuoyancyMatrix,self.canonicalBottomBuoyancyMatrix,self.endpoints,options.g0,options.gd,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            [map,depth,evidence] = IMGeostrophicZeroAPVFormTools.orthogonalizeEnergy(matrix,self.k,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            basis = self;
+            basis.endpointDirections_ = map;
+            basis.boundaryDepth = depth;
+            basis.columnLabels_ = "generalizedEnergy"+string(1:self.nColumns);
+            basis.columnOrdinals_ = 1:self.nColumns;
+            basis.normalization_ = "endpointResponse";
+            basis.isOrthogonal_ = true;
+            basis.normalizationCache_ = IMInternalModesNormalizationTools.normalizationCache();
+            basis.metadata.basisChoice = "generalizedEnergyOrthogonal";
+            basis.metadata.generalizedEnergyCoefficients = struct(g0=options.g0,gd=options.gd);
+            basis.metadata.orthogonality = evidence;
+            basis.basisContractState.initialColumnIndices = zeros(1,0);
+            basis.basisContractState.activeSourceColumns = zeros(1,0);
+            basis.basisContractState.sourceDirections = map;
         end
 
-        function basisSet = rotateSurfaceBuoyancy(self,options)
-            % Diagonalize surface buoyancy relative to generalized energy.
-            %
-            % The surface-carrying direction is ordered first. This rotation
-            % reports its eigenvalues through `rotationEigenvalues` and leaves
-            % `h0` empty.
-            %
-            % - Topic: Rotate exact geostrophic zero-APV modes
-            % - Declaration: basisSet = rotateSurfaceBuoyancy(exactModes,options)
-            % - Parameter options.g0: finite signed surface coefficient
-            % - Parameter options.gd: finite signed bottom coefficient
-            % - Returns basisSet: surface-buoyancy rotated exact basis
+        function projection = projectionOnGrid(self,z,weights,options)
+            % Request an explicit scalar physical projection capability.
+            % - Topic: Evaluate boundary-buoyancy modes
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                options.g0 (1,1) double {mustBeReal, mustBeFinite} = 0
-                options.gd (1,1) double {mustBeReal, mustBeFinite} = 0
+                z (:,1) double {mustBeReal,mustBeFinite}
+                weights (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string
             end
-
-            if ~ismember("surface",self.endpoints)
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:SurfaceEndpointRequired", "rotateSurfaceBuoyancy requires a surface endpoint coordinate.");
-            end
-            leftMatrix = self.g*self.canonicalSurfaceBuoyancyMatrix;
-            rightMatrix = self.canonicalGeneralizedEnergyMatrix(options.g0,options.gd);
-            [rotation,eigenvalues,rightSignatures,residuals] = self.solveSymmetricPencil(leftMatrix,rightMatrix,"nonzeroFirst");
-            basisSet = self.basisWithRotation("surfaceBuoyancy",rotation,eigenvalues,rightSignatures,[],"unitSignedGeneralizedEnergy",residuals);
+            projection = IMScalarProjectionTools.projectionOnGrid(self,z,weights,variable=options.variable);
         end
 
-        function basisSet = rotateWithPencil(self,options)
-            % Apply a custom symmetric matrix-pencil rotation.
-            %
-            % Input matrices are expressed in canonical endpoint coordinates.
-            % Two-dimensional matrices broadcast across wavenumber pages.
-            %
-            % - Topic: Rotate exact geostrophic zero-APV modes
-            % - Declaration: basisSet = rotateWithPencil(exactModes,options)
-            % - Parameter options.name: custom rotation name
-            % - Parameter options.leftMatrix: symmetric left matrix pages
-            % - Parameter options.rightMatrix: symmetric right matrix pages
-            % - Returns basisSet: custom-pencil rotated exact basis
+        function transform = scalarTransform(self,z,weights,options)
+            % Request an explicit scalar physical transform capability.
+            % - Topic: Evaluate boundary-buoyancy modes
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
-                options.name {mustBeTextScalar}
-                options.leftMatrix double {mustBeReal, mustBeFinite}
-                options.rightMatrix double {mustBeReal, mustBeFinite}
+                z (:,1) double {mustBeReal,mustBeFinite}
+                weights (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string
             end
-
-            name = string(options.name);
-            if strlength(name) == 0
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidRotationName", "Custom rotation name must not be empty.");
-            end
-            leftMatrix = self.expandMatrixPages(options.leftMatrix,"leftMatrix");
-            rightMatrix = self.expandMatrixPages(options.rightMatrix,"rightMatrix");
-            ordering = "descending";
-            if IMGeostrophicZeroAPVFormTools.pagesEqual(leftMatrix,self.g*self.canonicalSurfaceBuoyancyMatrix)
-                ordering = "nonzeroFirst";
-            end
-            [rotation,eigenvalues,rightSignatures,residuals] = self.solveSymmetricPencil(leftMatrix,rightMatrix,ordering);
-            basisSet = self.basisWithRotation(name,rotation,eigenvalues,rightSignatures,[],"unitSignedRightMetric",residuals);
+            transform = IMScalarProjectionTools.scalarTransform(self,z,weights,variable=options.variable);
         end
+
+        values = evaluate(self,z,options)
+        values = F(self,z,options)
+        values = G(self,z,options)
+        values = Fz(self,z,options)
+        values = Gz(self,z,options)
+        values = Gzz(self,z,options)
 
         function summarize(self)
-            % Print a readable exact zero-APV basis summary.
-            %
-            % - Topic: Inspect exact geostrophic zero-APV modes
-            % - Declaration: summarize(exactModes)
+            % Print the scientific family, physical domain and retained count.
+            % - Topic: Inspect boundary-buoyancy modes
+            fprintf("%s: %d columns on [%g,%g], %d wavenumber pages\n",class(self),self.nColumns,self.zDomain(1),self.zDomain(2),numel(self.k));
+        end
+    end
+
+    methods (Hidden)
+        recipe = projectionRecipe(self,options)
+
+        function values = endpointUnscaledProfiles(self,variable,z,pages)
+            % Evaluate the retained coordinate directions before profile divisors.
+            if isempty(z) || self.nColumns==0 || isempty(pages)
+                values = zeros(numel(z),self.nColumns,numel(pages));
+                return
+            end
+            if variable == "F", evaluator = self.canonicalFFunction; else, evaluator = self.canonicalGFunction; end
+            canonical = self.evaluateCanonical(evaluator,z,pages);
+            values = IMGeostrophicZeroAPVFormTools.applyMap(canonical,self.endpointDirections_(:,:,pages));
+        end
+
+        function map = endpointUnscaledResponseMatrix(self)
+            map = self.endpointDirections_;
+        end
+
+        function [z,weights] = endpointNormalizationQuadrature(self)
+            [z,weights] = legpts(256,self.zDomain);
+            z = z(:); weights = weights(:);
+        end
+
+        function self = withProblem(self,problem)
+            % Retain the authoritative descriptor after exact source dispatch.
             arguments
                 self IMAnalyticalGeostrophicZeroAPVModesBasis
+                problem (1,1) IMGeostrophicZeroAPVModes
             end
-
-            fprintf("%s\n",class(self));
-            fprintf("  solution: %s\n",class(self.solution));
-            fprintf("  zDomain: [%g, %g]\n",self.zDomain(1),self.zDomain(2));
-            fprintf("  endpoints: %s\n",join(self.endpoints,", "));
-            fprintf("  surfaceBoundary: %s\n",self.surfaceBoundary);
-            fprintf("  rotationName: %s\n",self.rotationName);
-            fprintf("  nWavenumbers: %d\n",numel(self.k));
+            if ~isequal(problem.zDomain,self.zDomain) || ~isequal(problem.k,self.k) || ~isequal(problem.endpoints,self.endpoints) || problem.g ~= self.g || problem.f0 ~= self.f0 || problem.surfaceBoundary ~= self.surfaceBoundary
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:IncompatibleProblem","The descriptor must represent the same exact physical endpoint problem.");
+            end
+            self.problem = problem;
+            authoritative = IMBasisContracts.initialState(self);
+            self.basisContractState.requestedScientific = authoritative.requestedScientific;
+            if isfield(authoritative,"physicalBackground")
+                self.basisContractState.physicalBackground = authoritative.physicalBackground;
+            end
+        end
+        function tf = sharesCanonicalBasisWith(self,other)
+            tf = isa(other,"IMAnalyticalGeostrophicZeroAPVModesBasis") && isequal(self.canonicalFFunction,other.canonicalFFunction) && isequal(self.canonicalGFunction,other.canonicalGFunction) && isequal(self.problem,other.problem);
         end
     end
 
     methods (Access = private)
-        function values = evaluateCanonical(self,evaluator,z,pages)
-            if nargin < 4
-                pages = 1:numel(self.k);
-            end
-            if nargin(evaluator) == 1
-                values = evaluator(z(:));
-                values = values(:,:,pages);
-            else
-                values = evaluator(z(:),pages);
-            end
-            nEndpoints = numel(self.endpoints);
-            nK = numel(pages);
-            if size(values,1) ~= numel(z) || size(values,2) ~= nEndpoints || size(values,3) ~= nK
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidEvaluatorShape", "Exact evaluators must return nZ x nEndpoints x nK arrays.");
-            end
-            if ~isreal(values) || any(~isfinite(values(:)))
-                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidEvaluatorValues", "Exact evaluators must return finite real values.");
-            end
-        end
-
-        function values = applyRotation(self,values,pages)
-            for iK = 1:numel(pages)
-                values(:,:,iK) = values(:,:,iK)*self.rotationMatrix(:,:,pages(iK));
-            end
-        end
-
         function [responseMetric,physicalEnergy,surfaceBuoyancy,bottomBuoyancy,responseResidual] = formCanonicalQuadraticMatrices(self)
             zSurface = self.zDomain(2);
             zBottom = self.zDomain(1);
@@ -449,41 +511,24 @@ classdef IMAnalyticalGeostrophicZeroAPVModesBasis
             end
             [responseMetric,physicalEnergy,surfaceBuoyancy,bottomBuoyancy] = IMGeostrophicZeroAPVFormTools.formMatrices(FSurface,FBottom,surfaceResponse,bottomResponse,selectedResponse,self.endpoints,self.k,self.f0,self.g);
         end
-
-        function matrix = canonicalGeneralizedEnergyMatrix(self,g0,gd)
-            matrix = self.canonicalEnergyMatrix + g0*self.canonicalSurfaceBuoyancyMatrix + gd*self.canonicalBottomBuoyancyMatrix;
-            matrix = IMGeostrophicZeroAPVFormTools.symmetrizePages(matrix);
-        end
-
-        function basisSet = basisWithRotation(self,name,rotation,eigenvalues,signatures,h0Values,normalizationConvention,residuals)
-            IMGeostrophicZeroAPVFormTools.validateRotationPages(rotation,numel(self.endpoints),numel(self.k),"IMAnalyticalGeostrophicZeroAPVModesBasis");
-            basisSet = IMAnalyticalGeostrophicZeroAPVModesBasis(solution=self.solution,problem=self.problem,FFunction=self.canonicalFFunction,GFunction=self.canonicalGFunction,metadata=self.metadata);
-            for iK = 1:numel(self.k)
-                C = rotation(:,:,iK);
-                basisSet.endpointResponseMetric(:,:,iK) = IMGeostrophicZeroAPVFormTools.symmetrize(C.'*self.canonicalEndpointResponseMetric(:,:,iK)*C);
-                basisSet.energyMatrix(:,:,iK) = IMGeostrophicZeroAPVFormTools.symmetrize(C.'*self.canonicalEnergyMatrix(:,:,iK)*C);
-                basisSet.surfaceBuoyancyMatrix(:,:,iK) = IMGeostrophicZeroAPVFormTools.symmetrize(C.'*self.canonicalSurfaceBuoyancyMatrix(:,:,iK)*C);
-                basisSet.bottomBuoyancyMatrix(:,:,iK) = IMGeostrophicZeroAPVFormTools.symmetrize(C.'*self.canonicalBottomBuoyancyMatrix(:,:,iK)*C);
+        function values = evaluateCanonical(self,evaluator,z,pages)
+            if nargin < 4
+                pages = 1:numel(self.k);
             end
-            basisSet.rotationName = string(name);
-            basisSet.rotationMatrix = rotation;
-            basisSet.rotationEigenvalues = eigenvalues;
-            basisSet.signatures = signatures;
-            basisSet.h0 = h0Values;
-            basisSet.normalizationConvention = string(normalizationConvention);
-            basisSet.rotationResiduals = residuals;
-            basisSet.metadata.rotationName = basisSet.rotationName;
-            basisSet.metadata.normalizationConvention = basisSet.normalizationConvention;
-            basisSet.metadata.rotationEigenvalues = eigenvalues;
-            basisSet.metadata.signatures = signatures;
-        end
-
-        function pages = expandMatrixPages(self,matrix,name)
-            pages = IMGeostrophicZeroAPVFormTools.expandMatrixPages(matrix,numel(self.endpoints),numel(self.k),name,"IMAnalyticalGeostrophicZeroAPVModesBasis");
-        end
-
-        function [vectors,eigenvalues,rightSignatures,residuals] = solveSymmetricPencil(self,leftMatrix,rightMatrix,ordering)
-            [vectors,eigenvalues,rightSignatures,residuals] = IMGeostrophicZeroAPVFormTools.solveSymmetricPencil(leftMatrix,rightMatrix,numel(self.endpoints),numel(self.k),ordering,"IMAnalyticalGeostrophicZeroAPVModesBasis");
+            if nargin(evaluator) == 1
+                values = evaluator(z(:));
+                values = values(:,:,pages);
+            else
+                values = evaluator(z(:),pages);
+            end
+            nEndpoints = numel(self.endpoints);
+            nK = numel(pages);
+            if size(values,1) ~= numel(z) || size(values,2) ~= nEndpoints || size(values,3) ~= nK
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidEvaluatorShape", "Exact evaluators must return nZ x nEndpoints x nK arrays.");
+            end
+            if ~isreal(values) || any(~isfinite(values(:)))
+                error("IMAnalyticalGeostrophicZeroAPVModesBasis:InvalidEvaluatorValues", "Exact evaluators must return finite real values.");
+            end
         end
     end
 end

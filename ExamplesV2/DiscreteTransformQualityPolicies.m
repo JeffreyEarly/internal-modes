@@ -21,7 +21,7 @@ evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,g=g
     surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
 solver = IMSolverSpectral(nEVP=nEVP,coordinateKind="wkb");
 basisSet = solver.solveEVP(evp,nModes=nAvailableModes);
-basisSet.normalization = "geostrophic";
+basisSet.normalization = "rmsF";
 
 %% Apply three illustrative quality budgets
 % These tolerances make all three limits visible for this example. They are

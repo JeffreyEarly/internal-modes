@@ -74,10 +74,10 @@ classdef IMNeutralSupportingFamiliesTests < matlab.unittest.TestCase
             end
             testCase.verifyEqual(basis.F(z,pages=[3 1]),F(:,:,[3 1]),AbsTol=0)
             testCase.verifyEqual(basis.G(z,pages=[3 1]),G(:,:,[3 1]),AbsTol=0)
-            rotated = basis.rotateBoundaryDepth(g0=-0.0175,gd=0.0175);
+            rotated = basis.orthogonalizeGeneralizedEnergy(g0=-0.0175,gd=0.0175);
             for iK = 1:numel(problem.k)
-                testCase.verifyEqual(rotated.F(z,pages=iK),F(:,:,iK)*rotated.rotationMatrix(:,:,iK),AbsTol=1e-11)
-                testCase.verifyEqual(rotated.G(z,pages=iK),G(:,:,iK)*rotated.rotationMatrix(:,:,iK),AbsTol=1e-11)
+                testCase.verifyEqual(rotated.F(z,pages=iK),F(:,:,iK)*rotated.boundaryResponseMatrix(:,:,iK),AbsTol=1e-11)
+                testCase.verifyEqual(rotated.G(z,pages=iK),G(:,:,iK)*rotated.boundaryResponseMatrix(:,:,iK),AbsTol=1e-11)
             end
         end
 
@@ -109,7 +109,7 @@ classdef IMNeutralSupportingFamiliesTests < matlab.unittest.TestCase
             N2 = @IMNeutralSupportingFamiliesTests.neutralCap;
             g0 = -0.0175;
             gd = 0.0175;
-            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=g0,gd=gd,latitude=45);
+            evp = IMInternalModes.geostrophicAPVModes(N2=N2,zDomain=[-1000 0],g0=g0,gd=gd,latitude=45,surfaceBoundary="freeSurface");
             basis = IMSolverSpectral(nEVP=384).solveEVP(evp,nModes=8);
             [z,weights] = basis.solver.nativeQuadratureRule([-1000 0]);
             apv = basis.discreteTransform(z=z,weights=weights,nModes=6,variables=["F","G"],gramTolerance=1e-5);

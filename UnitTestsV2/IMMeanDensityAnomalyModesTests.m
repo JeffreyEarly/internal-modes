@@ -169,8 +169,8 @@ classdef IMMeanDensityAnomalyModesTests < matlab.unittest.TestCase
                 second.G(linspace(zDomain(1),zDomain(2),101).'),RelTol=2e-11,AbsTol=2e-11)
             testCase.verifyEqual(first.signatures,[-1 1 1 1 1 1],AbsTol=0)
             testCase.verifyEqual(gram,diag(first.signatures),RelTol=2e-8,AbsTol=2e-8)
-            testCase.verifyEqual(string(first.normalization),"unity")
-            testCase.verifyFalse(ismember("surfacePressure",first.normalizationNames()))
+            testCase.verifyEqual(string(first.normalization),"meanDensityAnomalyEnergy")
+            testCase.verifyFalse(ismember("surfaceF",first.normalizationNames()))
             testCase.verifyFalse(ismember("geostrophic",first.normalizationNames()))
         end
 

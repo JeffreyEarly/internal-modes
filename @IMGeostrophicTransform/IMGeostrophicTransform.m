@@ -113,8 +113,8 @@ classdef IMGeostrophicTransform
             if isinf(options.g0) && isinf(options.gd)
                 error("IMGeostrophicTransform:NoActiveEndpoint", "Both endpoint accelerations are Inf. Use the APV transform directly when no endpoint is active.");
             end
-            if options.zeroAPVModes.rotationName ~= "boundaryNormalized"
-                error("IMGeostrophicTransform:CanonicalZeroAPVModesRequired", "zeroAPVModes must use canonical boundary-normalized coordinates. Supply rotated coordinates to individual transform methods.");
+            if options.zeroAPVModes.nColumns~=numel(options.zeroAPVModes.endpoints) || ~isequal(options.zeroAPVModes.boundaryResponseMatrix,repmat(eye(numel(options.zeroAPVModes.endpoints)),1,1,numel(options.zeroAPVModes.k)))
+                error("IMGeostrophicTransform:CanonicalZeroAPVModesRequired", "zeroAPVModes must use canonical boundary-normalized coordinates. Supply orthogonal coordinates to individual transform methods.");
             end
 
             apvTransform = options.apvTransform;
@@ -456,7 +456,7 @@ classdef IMGeostrophicTransform
         end
 
         function coordinates = requireCoordinateBasis(self, coordinates)
-            if ~coordinates.sharesCanonicalBasisWith(self.zeroAPVModes)
+            if ~coordinates.sharesCanonicalBasisWith(self.zeroAPVModes) || coordinates.nColumns~=numel(self.activeEndpoints)
                 error("IMGeostrophicTransform:IncompatibleZeroAPVCoordinates", "zeroAPVCoordinates must derive from the canonical zeroAPVModes supplied at construction.");
             end
         end
@@ -466,7 +466,7 @@ classdef IMGeostrophicTransform
             nFields = size(canonicalPages,3);
             for iK = 1:numel(self.k)
                 canonical = reshape(canonicalPages(:,iK,:),numel(self.activeEndpoints),nFields);
-                coordinatePages(:,iK,:) = reshape(coordinates.rotationMatrix(:,:,iK)\canonical,numel(self.activeEndpoints),1,nFields);
+                coordinatePages(:,iK,:) = reshape(coordinates.boundaryResponseMatrix(:,:,iK)\canonical,numel(self.activeEndpoints),1,nFields);
             end
         end
 
@@ -475,7 +475,7 @@ classdef IMGeostrophicTransform
             nFields = size(coordinatePages,3);
             for iK = 1:numel(self.k)
                 coordinatesAtK = reshape(coordinatePages(:,iK,:),numel(self.activeEndpoints),nFields);
-                canonicalPages(:,iK,:) = reshape(coordinates.rotationMatrix(:,:,iK)*coordinatesAtK,numel(self.activeEndpoints),1,nFields);
+                canonicalPages(:,iK,:) = reshape(coordinates.boundaryResponseMatrix(:,:,iK)*coordinatesAtK,numel(self.activeEndpoints),1,nFields);
             end
         end
 

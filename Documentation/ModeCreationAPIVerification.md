@@ -1,5 +1,7 @@
 # Mode creation API verification
 
+This is a historical verification record for the removed creation layer. The current canonical API and its completed integration are documented in [V2 API consolidation verification](APISimplificationVerification.md).
+
 Verified on 2026-10-15 against the authoring checkout. All local MATLAB commands used `matlab -batch` outside the sandbox. No release, source push, or tracker communication was performed.
 
 The neutral-label constant-kernel results below describe the historical endpoint policy. The current fixed-endpoint manuscript alignment supersedes those profiles and counts; see [neutral-label verification](NeutralLabelModesVerification.md).

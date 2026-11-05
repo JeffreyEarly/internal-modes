@@ -3,8 +3,9 @@ classdef IMInternalModesBasis < IMBasisSet
     %
     % `IMInternalModesBasis` evaluates the physical variables with explicit
     % `F(z)` and `G(z)` methods. If the EVP solves `G`, then `F(z)` is
-    % recovered by `evp.FfromGz`, whose default relation is
-    % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+    % recovered by `evp.FfromGz`. Hydrostatic modes use
+    % $$F_j=h_j G_j',$$ while wave and inertial auxiliary modes use
+    % $$F_j=D G_j',\qquad D=z_s-z_b.$$
     % If the EVP solves `F`, then `G(z)` is recovered by `evp.GfromFz`.
     % The default inverse is hydrostatic, but wave factories install
     % wave-specific inverse relations.
@@ -12,10 +13,18 @@ classdef IMInternalModesBasis < IMBasisSet
     % $$s_j$$, then both diagnostic variables for mode $$j$$ are divided by
     % that same factor. Standard rules are installed on the basis set, and
     % custom rules are added after solving with `addNormalization`.
+    % `rmsF` and `rmsG` give unit depth-mean-square field amplitude;
+    % `maxAbsF`, `maxAbsG`, and `surfaceF` give unit magnitude at the
+    % corresponding maximum or surface. Fixed-wavenumber waves default to
+    % `waveEnergy`, with $$D^{-1}\int(F^2+(kD)^2G^2)\,dz=1$$.
+    % Hydrostatic, APV, and fixed-frequency families default to `rmsF`.
+    % The specialized MDA and generalized-potential-enstrophy families use
+    % their manuscript energy and enstrophy conventions. All scale factors
+    % are positive and preserve the common orientation of F and G.
     %
     % ```matlab
     % basisSet = solver.solveEVP(evp,nModes=4);
-    % basisSet.normalization = Normalization.geostrophic;
+    % basisSet.normalization = "rmsF";
     % F = basisSet.F(z);
     % G = basisSet.G(z);
     % ```
@@ -46,6 +55,11 @@ classdef IMInternalModesBasis < IMBasisSet
         N2
     end
 
+    properties (Dependent, SetAccess = private)
+        % Physical modal frequencies; imaginary values indicate nonpropagating roots.
+        frequency
+    end
+
     methods (Hidden)
         recipe = projectionRecipe(self,options)
     end
@@ -62,7 +76,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Parameter options.eigenvalues: retained eigenvalues
             % - Parameter options.modeNumber: physical mode numbers
             % - Parameter options.modeSelectionDiagnostics: mode-selection diagnostics
-            % - Parameter options.normalization: active normalization rule name or enum value
+            % - Parameter options.normalization: active normalization rule name
             % - Parameter options.metadata: additional metadata
             % - Returns basisSet: internal-mode basis set
             arguments
@@ -83,29 +97,93 @@ classdef IMInternalModesBasis < IMBasisSet
                 error("IMInternalModesBasis:InvalidEquivalentDepthCount", "hFromEigenvalue must return one equivalent depth for each native mode column.");
             end
 
-            availableNormalizations = IMInternalModesNormalizationTools.available(self.evp);
-            self = self.addVectorNormalization("uMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="F"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="F"));
-            self = self.addVectorNormalization("wMax",@(basisSet,iMode) basisSet.maxAmplitudeNormFactor(iMode,variable="G"),@(basisSet) basisSet.maxAmplitudeNormFactors(variable="G"));
-            if ismember("surfacePressure",availableNormalizations)
-                self = self.addVectorNormalization("surfacePressure",@(basisSet,iMode) basisSet.surfacePressureNormFactor(iMode),@(basisSet) basisSet.surfacePressureNormFactors());
-            end
-            if ismember("geostrophic",availableNormalizations)
-                self = self.addVectorNormalization("geostrophic",@(basisSet,iMode) basisSet.geostrophicNormFactor(iMode),@(basisSet) basisSet.geostrophicNormFactors());
-            end
-            if ismember("depth",availableNormalizations)
-                self = self.addVectorNormalization("depth",@(basisSet,iMode) basisSet.depthNormFactor(iMode),@(basisSet) basisSet.depthNormFactors());
-            end
-            if ismember("generalizedPotentialEnstrophy",availableNormalizations)
-                self = self.addVectorNormalization("generalizedPotentialEnstrophy", ...
-                    @(basisSet,iMode) basisSet.generalizedPotentialEnstrophyNormFactor(iMode), ...
-                    @(basisSet) basisSet.generalizedPotentialEnstrophyNormFactors());
-            end
-            if ismember("kConstant",availableNormalizations)
-                self = self.addVectorNormalization("kConstant",@(basisSet,iMode) basisSet.innerProductNormFactor(iMode,variable="G"),@(basisSet) basisSet.innerProductNormFactors(variable="G"));
+            for name = IMInternalModesNormalizationTools.available(self.evp)
+                self = self.addVectorNormalization(name,@(basis,j) basis.profileNormFactor(j,name),@(basis) basis.profileNormFactors(name));
             end
             if isempty(options.normalization)
                 self.normalization = IMInternalModesNormalizationTools.default(self.evp);
             end
+            self.normalizationBuiltins_ = self.normalizationNames();
+            IMBasisContracts.validateNormalization(self,self.normalization);
+        end
+
+        function value = get.frequency(self)
+            value = IMInternalModesNormalizationTools.frequency(self.evp,self.h);
+        end
+
+
+
+
+
+        function values = evaluate(self,z,options)
+            % Evaluate physical fields and derivatives with one shared normalization.
+            %
+            % Custom diagnostic callbacks supply values only. Their
+            % derivatives require a defining family or a subclass override;
+            % solved-variable derivatives use the native representation.
+            %
+            % Use variable="F" or variable="G" and derivativeOrder to select
+            % a physical channel. Per-call normalization leaves the basis's
+            % active normalization unchanged.
+            %
+            % - Topic: Evaluate modes
+            % - Declaration: values = evaluate(self,z,options)
+            % - Parameter z: physical coordinate column within zDomain
+            % - Parameter options.variable: required physical channel F or G
+            % - Parameter options.derivativeOrder: supported nonnegative vertical derivative order, zero by default
+            % - Parameter options.normalization: normalization rule for this call
+            % - Returns values: sample-by-mode physical profiles or derivatives
+            arguments (Input)
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.variable (1,1) string = ""
+                options.derivativeOrder (1,1) double {mustBeInteger,mustBeNonnegative} = 0
+                options.normalization = self.normalization
+            end
+            arguments (Output)
+                values double
+            end
+            variable = options.variable;
+            derivativeOrder = options.derivativeOrder;
+            if variable == ""
+                error("IMInternalModesBasis:MissingVariable","Specify the channel with variable= followed by a supported channel name.");
+            end
+            if ~ismember(variable,["F","G"])
+                error("IMInternalModesBasis:UnsupportedVariable","Unsupported channel %s. Inspect capabilities for supported channels and derivatives.",variable);
+            end
+            IMBasisContracts.validateEvaluation(self,variable,derivativeOrder);
+            IMBasisContracts.validateNormalization(self,options.normalization);
+            if any(z < self.zDomain(1)) || any(z > self.zDomain(2))
+                error("IMInternalModesBasis:OutsideDomain","Evaluation points must lie within zDomain.");
+            end
+            values = self.rawVariableDerivative(variable,z,derivativeOrder)./self.normalizationFactors(options.normalization);
+        end
+
+        function values = Fz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="F",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=1,normalization=options.normalization);
+        end
+
+        function values = Gzz(self,z,options)
+            arguments
+                self IMInternalModesBasis
+                z (:,1) double {mustBeReal,mustBeFinite}
+                options.normalization = self.normalization
+            end
+            values = self.evaluate(z,variable="G",derivativeOrder=2,normalization=options.normalization);
         end
 
         function G = G(self, z, options)
@@ -122,7 +200,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Topic: Evaluate modes
             % - Declaration: G = G(basisSet,z,options)
             % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization rule name or enum value
+            % - Parameter options.normalization: normalization rule name
             % - Returns G: evaluated `G` modes
             arguments
                 self IMInternalModesBasis
@@ -130,7 +208,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.normalization = self.normalization
             end
 
-            G = self.rawVariable("G", z) ./ self.normalizationFactors(options.normalization);
+            G = self.evaluate(z,variable="G",normalization=options.normalization);
         end
 
         function F = F(self, z, options)
@@ -138,13 +216,13 @@ classdef IMInternalModesBasis < IMBasisSet
             %
             % If the EVP formulation is `F`, this evaluates the solved
             % canonical variable. If the formulation is `G`, `F` is recovered
-            % by `evp.FfromGz`; the default relation is
-            % $$F_j(z)=h_j\frac{\partial G_j}{\partial z}(z).$$
+            % by `evp.FfromGz`: hydrostatic modes use $$F_j=h_jG_j'$$,
+            % while wave and inertial auxiliary modes use $$F_j=DG_j'$$.
             %
             % - Topic: Evaluate modes
             % - Declaration: F = F(basisSet,z,options)
             % - Parameter z: physical coordinate
-            % - Parameter options.normalization: normalization rule name or enum value
+            % - Parameter options.normalization: normalization rule name
             % - Returns F: evaluated `F` modes
             arguments
                 self IMInternalModesBasis
@@ -152,7 +230,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.normalization = self.normalization
             end
 
-            F = self.rawVariable("F", z) ./ self.normalizationFactors(options.normalization);
+            F = self.evaluate(z,variable="F",normalization=options.normalization);
         end
 
         function spec = majorantInnerProduct(self, options)
@@ -310,7 +388,7 @@ classdef IMInternalModesBasis < IMBasisSet
             % - Declaration: terms = endpointGramTerms(basisSet,options)
             % - Parameter options.variable: `"F"` or `"G"`
             % - Parameter options.zBounds: integration bounds `[zMin zMax]`
-            % - Parameter options.normalization: normalization rule name or enum value
+            % - Parameter options.normalization: normalization rule name
             % - Parameter options.useNormalized: whether returned values use the normalization
             % - Returns terms: struct array with `location`, `coefficient`, `values`, and `kind`
             % - Developer: true
@@ -498,105 +576,8 @@ classdef IMInternalModesBasis < IMBasisSet
                 GValues=GValues,GzSurface=GzSurface,FValues=FValues, ...
                 depth=diff(self.zDomain),surfaceIndex=surfaceIndex,allowFFallback=allowFFallback);
             self.nativeModes = self.nativeModes .* signs;
+            self = self.resetNormalizationCache();
             self.metadata.modeOrientation = IMModeOrientationTools.convention;
-        end
-
-        function factor = innerProductNormFactor(self, iMode, options)
-            % Return the `F` or `G` inner-product norm factor.
-            %
-            % This is the raw factor
-            % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
-            % to `F` or `G`. If `variable` is omitted, the solved
-            % formulation is used. This is a per-mode normalization
-            % convention, not a norm for arbitrary modal combinations. The
-            % requested variable must have a known inner product. Custom normalization rules
-            % registered with `addNormalization` call this method.
-            % The factor is computed from raw, unnormalized modes before
-            % the active basis normalization is applied.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
-            % - Parameter iMode: retained mode index
-            % - Parameter options.variable: `"F"` or `"G"`
-            % - Returns factor: raw inner-product norm factor
-            % - Developer: true
-            arguments
-                self IMInternalModesBasis
-                iMode (1,1) double {mustBeInteger, mustBePositive}
-                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
-            end
-
-            variable = string(options.variable);
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            spec = self.evp.innerProduct(variable);
-            if ~spec.hasInnerProduct
-                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define a normalization factor. %s",variable,string(spec.reason));
-            end
-            values = self.rawVariable(variable,z);
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            else
-                weight = weight(:);
-            end
-            value = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
-            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                endpointValues = endpointTerms(iTerm).values;
-                value = value+endpointTerms(iTerm).coefficient*endpointValues(iMode)^2;
-            end
-            factor = sqrt(abs(value));
-        end
-
-        function factor = geostrophicNormFactor(self, iMode)
-            % Return the hydrostatic geostrophic normalization factor.
-            %
-            % This developer utility implements the normalization rule
-            % installed for `modeFamily="hydrostatic"`. It chooses one
-            % shared raw scale factor for each coupled `F`/`G` mode.
-            % Baroclinic modes use
-            % $$s_j^2=\langle G_j,G_j\rangle_G,$$
-            % so normalized modes satisfy
-            % $$\langle G_j,G_j\rangle_G=1,\qquad
-            % \langle F_j,F_j\rangle_F=h_j.$$
-            % A barotropic zero mode uses the `F` norm divided by
-            % $$\sqrt{z_\mathrm{surface}-z_\mathrm{bottom}}$$ and is a
-            % separate null-mode convention.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = geostrophicNormFactor(basisSet,iMode)
-            % - Parameter iMode: retained mode index
-            % - Returns factor: raw geostrophic scale factor
-            % - Developer: true
-            if self.modeNumber(iMode) == 0
-                factor = self.innerProductNormFactor(iMode,variable="F")/sqrt(diff(self.zDomain));
-                return;
-            end
-            factor = self.innerProductNormFactor(iMode, variable="G");
-        end
-
-        function factor = depthNormFactor(self, iMode)
-            % Return the volume-only depth normalization factor.
-            %
-            % This developer utility evaluates the positive factor
-            % $$s_j=\sqrt{D^{-1}\int_{z_b}^{z_s}(F_j^{\mathrm{raw}})^2\,dz}$$
-            % without endpoint terms. The same factor scales `F` and `G`.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = depthNormFactor(basisSet,iMode)
-            % - Parameter iMode: retained mode index
-            % - Returns factor: positive volume root-mean-square `F` factor
-            % - Developer: true
-            arguments
-                self IMInternalModesBasis
-                iMode (1,1) double {mustBeInteger, mustBePositive}
-            end
-
-            z = self.solver.innerProductGrid(self.zDomain);
-            F = self.rawVariable("F", z);
-            integral = self.solver.integrateInnerProduct(z, F(:,iMode).*F(:,iMode), self.zDomain);
-            factor = sqrt(max(0, real(integral)/diff(self.zDomain)));
         end
 
         function factor = generalizedPotentialEnstrophyNormFactor(self, iMode)
@@ -644,28 +625,6 @@ classdef IMInternalModesBasis < IMBasisSet
             z = self.solver.innerProductGrid(self.zDomain);
             values = self.rawVariable(variable, z);
             factor = max(abs(values(:,iMode)));
-        end
-
-        function factor = surfacePressureNormFactor(self, iMode)
-            % Return the raw surface `F` value.
-            %
-            % This developer utility returns the raw surface value
-            % $$s_j=F_j^{\mathrm{raw}}(z_\mathrm{surface}).$$
-            % It gives unit surface `F` value when the raw surface value is
-            % finite and nonzero. If that value is unavailable, zero, or
-            % nonfinite, it returns `1` so normalization remains well
-            % defined.
-            %
-            % - Topic: Developer topics — Normalization rules
-            % - Declaration: factor = surfacePressureNormFactor(basisSet,iMode)
-            % - Parameter iMode: retained mode index
-            % - Returns factor: raw surface-pressure scale factor
-            % - Developer: true
-            values = self.rawVariable("F", self.zDomain(2));
-            factor = values(1,iMode);
-            if ~isfinite(factor) || abs(factor) <= 1e-12
-                factor = 1;
-            end
         end
 
         function values = rawVariable(self, variable, z)
@@ -720,53 +679,42 @@ classdef IMInternalModesBasis < IMBasisSet
     end
 
     methods (Hidden)
-        function factors = innerProductNormFactors(self, options)
-            % Return raw variable inner-product factors for the whole family.
-            arguments
-                self IMInternalModesBasis
-                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.evp.formulation
+        function factor = profileNormFactor(self,iMode,name)
+            factors = self.profileNormFactors(name);
+            factor = factors(iMode);
+        end
+
+        function factors = profileNormFactors(self,name)
+            if name == "meanDensityAnomalyEnergy"
+                % The manuscript's dimensionless signed G form has magnitude one;
+                % the corresponding state energy is g*signature/2.
+                factors = self.innerProductNormFactors(variable="G");
+                return
+            elseif name == "generalizedPotentialEnstrophy"
+                factors = self.innerProductNormFactors(variable="F")/sqrt(diff(self.zDomain));
+                return
+            elseif name == "surfaceF"
+                factors = abs(self.rawVariable("F",self.zDomain(2)));
+                return
             end
-            variable = string(options.variable);
-            z = self.solver.innerProductGrid(self.zDomain);
-            context = self.evp.contextForSolver(self.solver);
-            spec = self.evp.innerProduct(variable);
-            if ~spec.hasInnerProduct
-                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define normalization factors. %s",variable,string(spec.reason));
-            end
-            values = self.rawVariable(variable,z);
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
+            [z,weights] = self.normalizationQuadrature();
+            if startsWith(name,"maxAbs"), z = unique([z;self.zDomain.']); end
+            D = diff(self.zDomain);
+            if name == "waveEnergy"
+                F = self.rawVariable("F",z); G = self.rawVariable("G",z);
+                factors = sqrt(sum(weights.*(abs(F).^2+(self.evp.parameters.k*D)^2*abs(G).^2),1)/D);
             else
-                weight = weight(:);
+                if startsWith(name,"rms"), variable = extractAfter(name,"rms"); else, variable = extractAfter(name,"maxAbs"); end
+                values = self.rawVariable(variable,z);
+                if startsWith(name,"rms")
+                    factors = sqrt(sum(weights.*abs(values).^2,1)/D);
+                else
+                    factors = IMInternalModesNormalizationTools.maximumAmplitudes(@(zz) self.rawVariable(variable,zz),z,values);
+                end
             end
-            integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
-            normSquared = sum((integrationWeights.*weight).*values.*values,1);
-            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
-            for iTerm = 1:numel(endpointTerms)
-                endpointValues = endpointTerms(iTerm).values;
-                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            if any(factors <= 0 | ~isfinite(factors))
+                error("IMInternalModesBasis:NullNormalization","A retained mode has zero or nonfinite %s norm.",name);
             end
-            factors = sqrt(abs(normSquared));
-        end
-
-        function factors = geostrophicNormFactors(self)
-            % Return hydrostatic geostrophic factors for the whole family.
-            factors = self.innerProductNormFactors(variable="G");
-            zeroModes = self.modeNumber == 0;
-            if any(zeroModes)
-                FFactors = self.innerProductNormFactors(variable="F");
-                factors(zeroModes) = FFactors(zeroModes)/sqrt(diff(self.zDomain));
-            end
-        end
-
-        function factors = depthNormFactors(self)
-            % Return volume-only F depth factors for the whole family.
-            z = self.solver.innerProductGrid(self.zDomain);
-            F = self.rawVariable("F",z);
-            integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
-            normSquared = sum(integrationWeights.*F.*F,1)/diff(self.zDomain);
-            factors = sqrt(max(0,real(normSquared)));
         end
 
         function factors = generalizedPotentialEnstrophyNormFactors(self)
@@ -785,15 +733,31 @@ classdef IMInternalModesBasis < IMBasisSet
             factors = max(abs(values),[],1);
         end
 
-        function factors = surfacePressureNormFactors(self)
-            % Return raw surface-F factors for the whole family.
-            factors = self.rawVariable("F",self.zDomain(2));
-            invalid = ~isfinite(factors) | abs(factors) <= 1e-12;
-            factors(invalid) = 1;
-        end
     end
 
     methods (Access = protected)
+        function self = selectAlignedColumns(self,columns)
+            self.h = self.h(columns);
+        end
+
+        function values = rawVariableDerivative(self,variable,z,order)
+            if order == 0
+                values = self.rawVariable(variable,z);
+            elseif variable == self.evp.formulation && order <= 2
+                values = self.solver.evaluatePhysicalDerivative(self.nativeModes,z,order);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.isWave(self.evp)
+                values = diff(self.zDomain)*self.solver.evaluatePhysicalDerivative(self.nativeModes,z,2);
+            elseif variable == "F" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = -self.N2(z)/self.evp.g.*self.rawVariable("G",z);
+            elseif variable == "G" && order == 1 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = self.rawVariable("F",z)./self.h;
+            elseif variable == "G" && order == 2 && IMInternalModesNormalizationTools.hasHydrostaticDerivativeRelations(self.evp)
+                values = -self.N2(z)/self.evp.g.*self.rawVariable("G",z)./self.h;
+            else
+                error("IMInternalModesBasis:UnsupportedDerivative","This family does not provide derivative order %d of %s.",order,variable);
+            end
+        end
+
         function transform = buildInternalModesDiscreteTransform(self, z, weights, nModes, variables)
             arguments
                 self IMInternalModesBasis
@@ -1064,7 +1028,7 @@ classdef IMInternalModesBasis < IMBasisSet
             if nargin < 5
                 useMajorant = false;
             end
-            z = self.solver.innerProductGrid(zBounds);
+            [z,integrationWeights] = self.referenceQuadrature(zBounds);
             context = self.evp.contextForSolver(self.solver);
             if useMajorant
                 spec = self.evp.majorantInnerProduct(variable);
@@ -1084,7 +1048,6 @@ classdef IMInternalModesBasis < IMBasisSet
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
-            integrationWeights = self.solver.innerProductWeights(z,zBounds);
             gram = values.'*((integrationWeights.*weight(:)).*values);
             gram = 0.5*(gram+gram.');
 
@@ -1100,6 +1063,86 @@ classdef IMInternalModesBasis < IMBasisSet
         end
     end
 
+    methods (Hidden)
+        function factor = innerProductNormFactor(self, iMode, options)
+            % Return the `F` or `G` inner-product norm factor.
+            %
+            % This is the raw factor
+            % $$s_j=\sqrt{|\langle V_j,V_j\rangle|}$$ for `variable` equal
+            % to `F` or `G`. If `variable` is omitted, the solved
+            % formulation is used. This diagonal magnitude is not a norm for arbitrary
+            % modal combinations when the pairing is indefinite. The
+            % requested variable must have a known inner product. Custom normalization rules
+            % registered with `addNormalization` call this method.
+            % The factor is computed from raw, unnormalized modes before
+            % the active basis normalization is applied.
+            %
+            % - Topic: Developer topics — Normalization rules
+            % - Declaration: factor = innerProductNormFactor(basisSet,iMode,options)
+            % - Parameter iMode: retained mode index
+            % - Parameter options.variable: `"F"` or `"G"`
+            % - Returns factor: raw inner-product norm factor
+            % - Developer: true
+            arguments
+                self IMInternalModesBasis
+                iMode (1,1) double {mustBeInteger, mustBePositive}
+                options.variable {mustBeTextScalar, mustBeMember(options.variable, ["F", "G"])} = self.evp.formulation
+            end
+
+            variable = string(options.variable);
+            [z,integrationWeights] = self.referenceQuadrature(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct(variable);
+            if ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define a normalization factor. %s",variable,string(spec.reason));
+            end
+            values = self.rawVariable(variable,z);
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            value = sum(integrationWeights.*weight.*values(:,iMode).*values(:,iMode));
+            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                value = value+endpointTerms(iTerm).coefficient*endpointValues(iMode)^2;
+            end
+            factor = sqrt(abs(value));
+        end
+
+        function factors = innerProductNormFactors(self, options)
+            % Return raw variable inner-product factors for the whole family.
+            arguments
+                self IMInternalModesBasis
+                options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.evp.formulation
+            end
+            variable = string(options.variable);
+            [z,integrationWeights] = self.referenceQuadrature(self.zDomain);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct(variable);
+            if ~spec.hasInnerProduct
+                error("IMInternalModesBasis:UnavailableInnerProduct", "The %s inner product is unavailable for this EVP and cannot define normalization factors. %s",variable,string(spec.reason));
+            end
+            values = self.rawVariable(variable,z);
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight)
+                weight = weight*ones(size(z));
+            else
+                weight = weight(:);
+            end
+            normSquared = sum((integrationWeights.*weight).*values.*values,1);
+            endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
+            for iTerm = 1:numel(endpointTerms)
+                endpointValues = endpointTerms(iTerm).values;
+                normSquared = normSquared+endpointTerms(iTerm).coefficient*endpointValues.^2;
+            end
+            factors = sqrt(abs(normSquared));
+        end
+
+    end
+
 end
 
 function [index,zEndpoint] = endpointSampleIndex(z,zDomain,location,tolerance)
@@ -1109,4 +1152,5 @@ else
     zEndpoint = zDomain(1);
 end
 index = find(abs(z-zEndpoint) <= tolerance,1);
+
 end

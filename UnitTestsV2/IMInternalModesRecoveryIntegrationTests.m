@@ -92,8 +92,29 @@ classdef IMInternalModesRecoveryIntegrationTests < matlab.unittest.TestCase
             testCase.verifyError(@() preparedF(A,recovery=wrongMetadata),"IMInternalModesDiscreteTransform:InvalidRecovery")
         end
 
+        function nativeAndAnalyticalFixedGridBridgesReusePreparedRecovery(testCase)
+            background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="rigidLid");
+            grid = IMVerticalGrid.physicalDepth(background.zDomain,17);
+            for solver = {IMSolverSpectral(nEVP=48),IMSolverAnalytical()}
+                basis = solver{1}.solveEVP(IMInternalModes.hydrostaticFModes(background),nModes=4);
+                F = basis.F(grid.z); G = basis.G(grid.z);
+                metadata = struct(normalization=string(basis.normalization),z=grid.z);
+                recoveryF = IMDiscreteTransform.fromObservationMatrices(F,columnLabels=basis.columnLabels,fitFactor=diag(sqrt(grid.weights)),metadata=metadata);
+                recoveryG = IMDiscreteTransform.fromObservationMatrices(G,columnLabels=basis.columnLabels,activeColumnMask=[false true true true],fitFactor=diag(sqrt(grid.weights)),metadata=metadata);
+                transform = basis.discreteTransform(grid,recoveryF=recoveryF,recoveryG=recoveryG,forwardOperator="galerkin");
+                testCase.verifyEqual(transform.forwardMatrix(variable="F"),recoveryF.forwardMatrix,AbsTol=0);
+                testCase.verifyEqual(transform.forwardMatrix(variable="G"),recoveryG.forwardMatrix,AbsTol=0);
+                testCase.verifyEqual(transform.inverseMatrix(variable="F"),F,AbsTol=0);
+                testCase.verifyEqual(transform.inverseMatrix(variable="G"),G,AbsTol=0);
+                testCase.verifyEqual(transform.transformForward(F,variable="F"),eye(4),AbsTol=3e-13);
+                testCase.verifyEqual(transform.transformForward(G,variable="G"),diag([0 1 1 1]),AbsTol=3e-13);
+                wrong = IMDiscreteTransform.fromObservationMatrices(1.1*F,columnLabels=basis.columnLabels,fitFactor=diag(sqrt(grid.weights)),metadata=metadata);
+                testCase.verifyError(@() basis.discreteTransform(grid,recoveryF=wrong),"IMInternalModesDiscreteTransform:InvalidRecovery");
+            end
+        end
+
         function rootExtendedSpanSurvivesPrefixAndReweighting(testCase)
-            background = IMModeBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],surfaceCondition="rigidLid");
+            background = IMBackground(N2=@(z) 1e-4*ones(size(z)),zDomain=[-1000 0],surfaceCondition="rigidLid");
             transform = IMInternalModesDiscreteTransform.hydrostaticRoot(background,9,nInternalModes=3);
             prefix = transform.prefixTransform(3);
             weights = transform.weights.*linspace(.9,1.1,9).';

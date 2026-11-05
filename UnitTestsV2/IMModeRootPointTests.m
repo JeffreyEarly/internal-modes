@@ -37,15 +37,19 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
         function selectedColumnDefinesRootsWhenLabelsIncludeNullMode(testCase)
             solver = IMSolverSpectral(nEVP=96);
             N2 = @(z) ones(size(z));
-            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0]);
+            evp = IMInternalModes.hydrostaticFModes(rotationRate=0,N2=N2,zDomain=[-1 0],surfaceBoundary=IMBoundaryCondition.neumann());
             basisSet = solver.solveEVP(evp,nModes=5);
             z = basisSet.pointsFromModeRoots(nModes=4);
-            F = basisSet.F(z(2:end-1));
+            G = basisSet.G(z(2:end-1));
+            referenceG = basisSet.G(linspace(-1,0,1001).');
+            withoutAuxiliary = solver.solveEVP(evp,nModes=4);
+            zAuxiliary = withoutAuxiliary.pointsFromModeRoots();
 
             testCase.verifyEqual(basisSet.modeNumber,0:4,AbsTol=0)
             testCase.verifyEqual(basisSet.modeNumber(5),4,AbsTol=0)
-            testCase.verifyEqual(length(z),6)
-            testCase.verifyLessThan(max(abs(F(:,5))),1e-11)
+            testCase.verifyEqual(length(z),5)
+            testCase.verifyLessThan(max(abs(G(:,5)))/max(abs(referenceG(:,5))),1e-11)
+            testCase.verifyEqual(zAuxiliary,z,AbsTol=1e-12)
         end
 
         function activeRobinGridKeepsPhysicalEndpoints(testCase)
@@ -72,11 +76,12 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             grids = zeros(6,length(coordinateKinds));
             for iKind = 1:length(coordinateKinds)
                 solver = IMSolverSpectral(nEVP=128,coordinateKind=coordinateKinds(iKind));
-                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+                evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
                 basisSet = solver.solveEVP(evp,nModes=5);
                 grids(:,iKind) = basisSet.pointsFromModeRoots(nModes=4);
                 G = basisSet.G(grids(2:end-1,iKind));
-                testCase.verifyLessThan(max(abs(G(:,5))),1e-8)
+                referenceG = basisSet.G(linspace(zDomain(1),zDomain(2),1001).');
+                testCase.verifyLessThan(max(abs(G(:,5)))/max(abs(referenceG(:,5))),1e-8)
             end
 
             testCase.verifyEqual(grids(:,2),grids(:,1),AbsTol=1e-3)
@@ -218,7 +223,7 @@ classdef IMModeRootPointTests < matlab.unittest.TestCase
             b = 1300;
             zDomain = [-4000 0];
             N2 = @(z) N0*N0*exp(2*z/b);
-            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain);
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=N2,zDomain=zDomain,surfaceBoundary=IMBoundaryCondition.dirichlet());
         end
     end
 end

@@ -1,84 +1,69 @@
-# Zero-APV forms and basis rotations
+# Boundary-buoyancy basis choices
 
-`IMModes.geostrophicZeroAPVModesAtWavenumber` returns a common continuous basis with one canonical response for each active endpoint. The basis also exposes physical forms and immutable rotations of its retained subspace. These operations reuse the continuous representation; they require no new boundary-value solve, observation grid or weight fit.
+Zero-APV geostrophic modes span the boundary-buoyancy states at each nonzero horizontal wavenumber. The manuscript uses two choices: canonical unit endpoint responses, and their generalized-energy orthogonal combinations. Both reuse the same continuous solutions.
 
 ```matlab
-background = IMModeBackground.constantStratification(N0=.01,zDomain=[-1000 0]);
-boundary = IMGeneralizedEnergyBoundary(g0=-.035,gd=.01);
-responses = IMModes.geostrophicZeroAPVModesAtWavenumber(background,1e-3,energyBoundary=boundary);
-Hg = responses.generalizedEnergyMatrix();
-depthModes = responses.rotateBoundaryDepth();
-rmsModes = depthModes.withNormalization("depthRMSF");
+background = IMBackground.constantStratification(N0=.01,zDomain=[-1000 0],surfaceCondition="freeSurface");
+problem = IMGeostrophicZeroAPVModes.atWavenumber(background,1e-3,endpoints=["surface","bottom"]);
+responses = IMSolverSpectral(nEVP=64).solveGeostrophicZeroAPVModes(problem);
+orthogonal = responses.orthogonalizeGeneralizedEnergy(g0=-.035,gd=.01);
+hbb = orthogonal.boundaryDepth;
+rmsModes = orthogonal.withNormalization("rmsF");
 ```
+
+## Canonical endpoint coordinates
+
+`endpoints` selects a possibly empty subset of surface and bottom. It is independent of the generalized-energy coefficients. Each canonical column has unit buoyancy response at its requested endpoint and zero response at the other endpoint. For a free surface the response is B(0)=G(0)-F(0); at the bottom B(-D)=G(-D). For a rigid lid the surface response is G(0).
+
+`boundaryResponseMatrix` M maps current modal coefficients to canonical endpoint coefficients:
+
+$$a_{\mathrm{boundary}}=M a_{\mathrm{current}},\qquad A_{\mathrm{current}}=A_{\mathrm{canonical}}M.$$
+
+Its rows identify the originally requested canonical endpoints; columns identify the current modes; pages identify wavenumbers. Canonical M is the identity. Orthogonalization changes its directions, normalization rescales its columns, and selection restricts its columns. The same relation holds for F, G, B, derivatives and endpoint traces. No new boundary-value solve, observation grid or weight fit is needed.
+
+Construct the complete endpoint inventory, orthogonalize if needed, then select and normalize. Orthogonalization requires the complete originally requested span. A proper selection, including an empty selection from a nonempty family, cannot be orthogonalized afterward. This prevents silently restoring a discarded direction. A single-endpoint family is complete. An originally empty family remains empty without an eigensolve.
+
+## Generalized-energy orthogonal combinations
+
+For explicitly supplied g0 and gd, form the real symmetric canonical generalized-energy matrix and diagonalize it in unit endpoint-response coordinates:
+
+$$H_g C=C\operatorname{diag}\left(\frac{h_{\mathrm{bb}}}{2k^2}\right),\qquad C^T C=I.$$
+
+`orthogonalizeGeneralizedEnergy(g0=...,gd=...)` returns the resulting combinations with M=C. The default scaling is the manuscript's endpoint-response scaling. `boundaryDepth` contains the signed manuscript quantities h_bb, rather than eigenvalues of the boundary-value differential equations. Canonical endpoint modes have no ordinary EVP equivalent depth or spectrum. Subsequent normalization changes physical self-pairings but preserves the intrinsic boundary-depth labels.
+
+Negative, zero and repeated boundary depths are admissible. Generalized energy need not be positive definite, so its matrix is not used as a Cholesky metric. Numerical qualification uses relative symmetry, eigen-residual and coefficient-orthogonality checks. Repeated eigenvalues identify an invariant subspace, not unique individual vectors. Physical energy need not be diagonal in these coordinates.
+
+Requested endpoints require finite signed coefficients. A positive infinite coefficient is permitted only at an absent endpoint, whose term is omitted before arithmetic. It never selects or removes endpoints. NaN and negative infinity are rejected.
 
 ## Physical forms in current coordinates
 
-| API | Restricted physical form |
+| API | Physical coefficient form |
 | --- | --- |
 | `energyMatrix` | Physical energy H |
 | `surfaceBuoyancyMatrix` | Scaled surface-buoyancy variance B0 |
 | `bottomBuoyancyMatrix` | Scaled bottom-buoyancy variance Bd |
-| `endpointResponseMetric` | Sum of squared active endpoint responses RB |
-| `generalizedEnergyMatrix(g0=...,gd=...)` | Generalized energy Hg = H + g0 B0 + gd Bd |
+| `generalizedEnergyMatrix(g0=...,gd=...)` | H_g = H + g0 B0 + gd Bd |
 
-Every matrix has `nColumns` rows and columns and uses the basis's current normalized, selected or rotated coordinates. The forms retain the existing lower-level zero-APV state convention, including its factors of f0, g and k. These are physical coefficient forms, rather than raw depth integrals of a single profile. Physical energy of the boundary-buoyancy component is a self-pairing; it need not be an additive reservoir when combined with PV modes, because physical-energy cross terms can remain.
+Every matrix uses the current selected and normalized coordinates. For current profile rows Fs, Fb, Gs and Gb, let bs=Gs-Fs for a free surface and bs=Gs for a rigid lid, with bd=Gb. The manuscript forms are
 
-For current profile rows Fs, Fb, Gs and Gb at the surface and bottom, let bs = Gs - Fs for a free surface and bs = Gs for a rigid lid, with bd = Gb. The restricted forms are
+$$H=\frac{f_0^2}{2g k^4}\operatorname{sym}(-F_s^*b_s+F_b^*b_d),\qquad B_0=\frac{f_0^2}{2g^2 k^4}b_s^*b_s,\qquad B_d=\frac{f_0^2}{2g^2 k^4}b_d^*b_d.$$
 
-$$H=\frac{f_0^2}{2g k^4}\operatorname{sym}(-F_s^*b_s+F_b^*b_d),\qquad B_0=\frac{f_0^2}{2g^2 k^4}b_s^*b_s,\qquad B_d=\frac{f_0^2}{2g^2 k^4}b_d^*b_d,$$
+An absent endpoint's buoyancy form is zero. Every form changes by congruence:
 
-where `sym` takes the symmetric part. The response metric is the sum of the active endpoint response outer products, and an absent endpoint's buoyancy form is exactly zero. These are the manuscript's boundary-buoyancy restricted state forms, including its distinction between total displacement and the free-surface buoyancy response.
+$$H_{\mathrm{current}}=M^*H_{\mathrm{canonical}}M.$$
 
-Omitted `g0` and `gd` use the retained scientific energy-boundary coefficients. Explicit overrides change the requested form or rotation and are recorded with the rotation. Terms for endpoints already absent from `canonicalEndpointLabels` are omitted, including an infinite inactive-endpoint coefficient. An override cannot deactivate an endpoint retained by the source; an infinite coefficient there is rejected. Signed finite coefficients remain signed, and a null generalized-energy direction cannot be assigned unit generalized energy.
+ Physical energy can retain cross terms between PV and boundary-buoyancy states even when generalized energy makes those subspaces orthogonal.
 
-Zero-APV generalized-energy normalization rejects an unresolved self-pairing at relative tolerance `1e-12`. It compares the signed magnitude with both the physical majorant H + |g0| B0 + |gd| Bd and a per-column cancellation bound from the entrywise absolute canonical forms and source directions. The latter detects roundoff in a physically null neutral direction even when a rounded physical-majorant self-pairing is tiny and positive. There is no dimensional absolute floor. These tests reject an unresolved norm; they do not turn the signed form into a positive pairing or remove the direction from the basis. A suitable profile normalization remains available.
+Generalized-energy orthogonalization does not impose unit energy. The default remains `endpointResponse`, preserving dimensionless profiles and the manuscript's response geometry. A null generalized-energy direction remains in the basis; inverse-energy projection on it fails explicitly. Profile normalizations such as `rmsF` remain available when their own amplitudes are nonzero. The basis never removes a direction to make a norm succeed.
 
-## Canonical endpoints and current columns
+## Coefficients, source projection and recovery
 
-`canonicalEndpointLabels` gives the source-row identities, such as `["surface","bottom"]`. `columnLabels` identifies current basis columns. They coincide for the canonical responses but have different meanings after mixing columns.
+For an invertible change T on the same active span, physical duals B and numerical recovery maps R transform as
 
-The rectangular `sourceCoordinateMap` M is authoritative:
+$$B_{\mathrm{new}}=T^{-1}B,\qquad R_{\mathrm{new}}=T^{-1}R.$$
 
-$$A_{\mathrm{current}} = A_{\mathrm{canonical}} M.$$
+Keep observation factors, fitting policy and represented spans consistent when comparing prepared operators. Selecting fewer columns changes the physical subspace; prepare its projection in the retained coordinates rather than slicing a full-space physical dual.
 
-This equation holds for F, G, their supported physical derivatives and endpoint traces. Thus canonical endpoint coefficients equal M times current coefficients, and every form changes by congruence:
+For an ocean state, determine canonical endpoint coefficients from residual endpoint anomalies after subtracting the reconstructed PV contribution, as in the manuscript. Independent source observations remain independent inputs. `IMGeostrophicTransform` owns this composition and uses the response map to convert coordinates. A scalar profile alone does not define a complete state projector.
 
-$$H_{\mathrm{current}} = M^* H_{\mathrm{canonical}} M.$$
-
-Selecting columns restricts M's columns. Normalization rescales them by positive divisors. A rotation composes M on the right with a current-coordinate transformation. A mixed column has no single source index or endpoint identity. Current coordinate records preserve the map rather than inventing a one-to-one source-column assignment; original construction requests and backend evidence remain available.
-
-`scientificSpecification.resolved.sourceCoordinateMap` records current normalized coordinates. `constructionRecord.selection.sourceDirections` records the fixed directions before subsequent profile divisors and therefore stays unchanged by renormalization. New rotated identities clear `initialColumnIndices`; their source directions provide the appropriate provenance.
-
-The developer constructor can wrap an already rotated lower-level source and retains its canonical map. It infers an omitted source wavenumber and rejects contradictory fixed k, g, f0, domain or surface convention. The supplied background must also describe the same stratification as the source; equivalence of arbitrary coefficient functions is a developer precondition rather than a numerical certificate. The `IMModes` factories construct the source from the declared background directly.
-
-## Supported rotations
-
-All pencils below act in the current retained coordinates. A selected subspace stays selected; rotation never restores discarded source directions.
-
-| Method | Left form L | Right form R | Rotation normalization |
-| --- | --- | --- | --- |
-| `rotateBoundaryDepth()` | Hg | RB | Unit endpoint-response metric |
-| `rotateSurfaceBuoyancy()` | g B0 | Hg | Unit signed generalized energy |
-| `rotateWithPencil(name=...,leftMatrix=L,rightMatrix=R)` | Caller-supplied current-coordinate L | Caller-supplied current-coordinate R | Unit signed right metric |
-
-The real symmetric pencil satisfies
-
-$$L T = R T \operatorname{diag}(\lambda),\qquad T^* R T = \operatorname{diag}(\sigma),\qquad \sigma_j\in\{-1,1\}.$$
-
-The returned basis has synthesis `Anew=Aold*T`. Boundary-depth eigenvalues are ordered descending and define signed boundary depths $$h_0=2k^2\lambda$$. Surface-buoyancy directions with nonzero eigenvalue come first and require an active surface endpoint. Custom matrices must have `nColumns` rows and columns; their meaning follows the common form getters. The older lower-level custom-pencil API instead takes canonical boundary coordinates, so copying its matrices after changing common coordinates requires the corresponding congruence.
-
-`rotationMetadata` records the name, eigenvalues, metric signatures, normalization convention, residuals, boundary depths when defined and the transformation from the parent coordinates. These describe the rotation that was performed. They remain distinct from the current profile normalization after a subsequent `withNormalization` call. Zero-APV modes have no differential-EVP eigenvalues or equivalent depths: `basis.eigenvalues` and `basis.h` remain unavailable.
-
-The immediate rotation normalization is `"rotationRightMetric"`; its exact physical meaning is in `rotationMetadata.normalizationConvention`. A unit right-metric vector is generally neither a canonical unit endpoint response nor a depth-RMS profile. Later positive profile normalization retains the coordinate map and the original rotation evidence. Call `withNormalization("rotationRightMetric")` to restore that rotation's retained right-metric normalization. Signed metrics are never replaced by their absolute-value forms to manufacture an admissible pencil.
-
-The supported pencils require a complete, finite, real, numerically independent eigenbasis with nonnull right-metric norms. Singular, defective, nonreal or unresolved metric cases fail explicitly. A zero left eigenvalue is allowed when the right metric remains admissible; its generalized-energy norm may still be zero. Empty inventories preserve empty forms and coordinate maps.
-
-## Prepared recovery and qualification
-
-For an invertible change T on the same active span, physical duals B, prepared recovery R and coefficient scaling C obey
-
-$$B_{\mathrm{new}}=T^{-1}B,\qquad R_{\mathrm{new}}=T^{-1}R,\qquad C_{\mathrm{new}}=T^{-1}C.$$
-
-The observation and fitting factors, recovery policy, active span and retained/extended interpretation must retain their physical meanings. These relations also apply to inputs outside the represented span. A restriction to fewer columns changes the represented subspace and is not an invertible coordinate equivalence. General rotations across active and inactive sectors are outside this contract.
-
-This API supplies continuous forms and coordinate changes to the [shared recovery engine](SharedRecovery.md). It does not add a separate recovery engine or claim a new family/source projection adapter. See [verification](BasisRotationVerification.md) for tested cases and limitations; broader adapters remain a separate increment.
+The common [normalization](BasisNormalization.md) and [shared recovery](SharedRecovery.md) contracts apply. The integration [plan](APISimplificationPlan.md) and its verification ledger record the API migration and numerical checks.

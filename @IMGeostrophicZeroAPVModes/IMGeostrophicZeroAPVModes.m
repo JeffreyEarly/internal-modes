@@ -43,7 +43,7 @@ classdef IMGeostrophicZeroAPVModes
     %
     % Solvers return one mode with unit response at each requested endpoint
     % and zero response at the other endpoint. Generalized-energy
-    % coefficients are supplied later to basis rotation methods; they do
+    % coefficients are supplied later to basis orthogonalization methods; they do
     % not change this problem or decide which endpoint coordinates exist.
     % For two endpoints,
     %
@@ -57,7 +57,7 @@ classdef IMGeostrophicZeroAPVModes
     % problem = IMGeostrophicZeroAPVModes.atWavenumber(N2=N2,zDomain=[-4000 0],rotationRate=7.2921e-5,latitude=33,k=1e-4,endpoints=["surface","bottom"],surfaceBoundary="freeSurface");
     % solver = IMSolverSpectral(nEVP=128);
     % boundaryModes = solver.solveGeostrophicZeroAPVModes(problem);
-    % depthModes = boundaryModes.rotateBoundaryDepth(g0=-0.035,gd=0);
+    % orthogonal = boundaryModes.orthogonalizeGeneralizedEnergy(g0=-0.035,gd=0);
     % ```
     %
     % - Topic: Create geostrophic zero-APV problems
@@ -66,6 +66,10 @@ classdef IMGeostrophicZeroAPVModes
     % - Declaration: classdef IMGeostrophicZeroAPVModes
 
     properties (SetAccess = private)
+        % Authoritative source background, when constructed from one.
+        % - Topic: Inspect geostrophic zero-APV problems
+        background = []
+
         % Buoyancy frequency squared function.
         %
         % `N2` has signature `values = N2(z)` and defines the continuous
@@ -101,7 +105,7 @@ classdef IMGeostrophicZeroAPVModes
 
         % Canonically ordered endpoint coordinates.
         %
-        % `endpoints` is a nonempty subset of `["surface","bottom"]`.
+        % `endpoints` is a possibly empty subset of `["surface","bottom"]`.
         % Its order defines the second dimension of solved mode arrays.
         %
         % - Topic: Inspect geostrophic zero-APV problems
@@ -165,9 +169,6 @@ classdef IMGeostrophicZeroAPVModes
                 error("IMGeostrophicZeroAPVModes:EmptyWavenumber", "k must contain at least one positive horizontal wavenumber.");
             end
             endpoints = reshape(string(options.endpoints), 1, []);
-            if isempty(endpoints)
-                error("IMGeostrophicZeroAPVModes:NoEndpoint", "endpoints must request at least one of ""surface"" or ""bottom"".");
-            end
             canonicalEndpoints = ["surface", "bottom"];
             if any(~ismember(endpoints, canonicalEndpoints))
                 error("IMGeostrophicZeroAPVModes:InvalidEndpoint", "endpoints must contain only ""surface"" and ""bottom"".");
@@ -227,35 +228,48 @@ classdef IMGeostrophicZeroAPVModes
     end
 
     methods (Static)
-        function problem = atWavenumber(options)
-            % Create geostrophic zero-APV modes at fixed wavenumber.
+        function problem = atWavenumber(varargin)
+            % Create canonical endpoint responses from a background or physical inputs.
+            %
+            % `atWavenumber(background,k,endpoints="surface")` takes all physical
+            % state from the background. The explicit name-value form remains
+            % available. Mixing a background with explicit physical inputs is
+            % rejected so there is one authoritative physical column.
             %
             % - Topic: Create geostrophic zero-APV problems
-            % - Declaration: problem = IMGeostrophicZeroAPVModes.atWavenumber(options)
-            % - Parameter options.N2: buoyancy frequency squared function
-            % - Parameter options.zDomain: physical vertical domain
-            % - Parameter options.rotationRate: nonnegative planetary rotation rate in radians per second
-            % - Parameter options.latitude: latitude in degrees north, between -90 and 90
-            % - Parameter options.g: gravitational acceleration
-            % - Parameter options.k: horizontal wavenumbers
-            % - Parameter options.endpoints: requested endpoint coordinates
-            % - Parameter options.surfaceBoundary: surface endpoint convention
-            % - Parameter options.metadata: additional metadata
-            % - Returns problem: geostrophic zero-APV problem
-            arguments
-                options.N2 function_handle
-                options.zDomain (1,2) double {mustBeReal, mustBeFinite}
-                options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
-                options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
-                options.g (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 9.81
-                options.k double {mustBeReal, mustBeFinite, mustBePositive}
-                options.endpoints {mustBeText} = ["surface", "bottom"]
-                options.surfaceBoundary {mustBeTextScalar, mustBeMember(options.surfaceBoundary, ["freeSurface", "rigidLid"])} = "freeSurface"
-                options.metadata struct = struct()
+            % - Declaration: problem = IMGeostrophicZeroAPVModes.atWavenumber(background,k,options)
+            % - Parameter background: optional authoritative IMBackground
+            % - Parameter k: positive horizontal wavenumbers
+            % - Returns problem: canonical geostrophic zero-APV problem
+            if ~isempty(varargin) && isa(varargin{1},"IMBackground")
+                background = varargin{1};
+                if numel(varargin) >= 2 && isnumeric(varargin{2})
+                    k = varargin{2};
+                    supplied = varargin(3:end);
+                else
+                    supplied = varargin(2:end);
+                    if mod(numel(supplied),2) ~= 0
+                        error("IMGeostrophicZeroAPVModes:InvalidOptions","Supply name-value options after the background.");
+                    end
+                    kIndex = find(string(supplied(1:2:end)) == "k");
+                    if numel(kIndex) ~= 1
+                        error("IMGeostrophicZeroAPVModes:MissingWavenumber","Supply one horizontal wavenumber input after the background, positionally or with k=.");
+                    end
+                    k = supplied{2*kIndex};
+                    supplied(2*kIndex-1:2*kIndex) = [];
+                end
+                if mod(numel(supplied),2) ~= 0
+                    error("IMGeostrophicZeroAPVModes:InvalidOptions","Supply name-value options after background and k.");
+                end
+                names = string(supplied(1:2:end));
+                if any(ismember(names,["N2","zDomain","rotationRate","latitude","g","surfaceBoundary","k"]))
+                    error("IMGeostrophicZeroAPVModes:ConflictingBackground","Physical inputs come from the background. Supply only endpoint or metadata options alongside it.");
+                end
+                problem = IMGeostrophicZeroAPVModes(supplied{:},N2=background.N2,zDomain=background.zDomain,rotationRate=background.rotationRate,latitude=background.latitude,g=background.g,k=k,surfaceBoundary=background.surfaceCondition);
+                problem.background = background;
+            else
+                problem = IMGeostrophicZeroAPVModes(varargin{:});
             end
-
-            factoryArguments = namedargs2cell(options);
-            problem = IMGeostrophicZeroAPVModes(factoryArguments{:});
         end
     end
 end
