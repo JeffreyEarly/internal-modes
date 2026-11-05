@@ -28,8 +28,12 @@ classdef IMDiscreteTransformTests < matlab.unittest.TestCase
             expectedMetric = diag(dz);
             expectedGram = expectedBasis.'*expectedMetric*expectedBasis;
             expectedGram = 0.5*(expectedGram + expectedGram.');
-            continuousGram = basisSet.gramMatrix();
-            expectedTarget = diag(diag(continuousGram(1:3,1:3)));
+            % A separate resolved rule measures every represented cross pairing.
+            [zr,wr] = legpts(128,basisSet.zDomain);
+            referenceValues = basisSet.u(zr);
+            referenceValues = referenceValues(:,1:3);
+            expectedTarget = referenceValues.'*(wr(:).*referenceValues);
+            expectedTarget = 0.5*(expectedTarget+expectedTarget.');
             scale = 1./sqrt(abs(diag(expectedTarget)));
             expectedRelativeError = norm(scale.*(expectedGram - expectedTarget).*scale.',2);
 

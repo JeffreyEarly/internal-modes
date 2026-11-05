@@ -547,6 +547,8 @@ classdef IMSolverSpectral < IMSolver
                 xBounds = min(max(xBounds, min(self.xNative)), max(self.xNative));
                 value = InternalModesSpectral.IntegrateChebyshevVectorWithLimits( ...
                     integrandCheb, self.xNative, min(xBounds), max(xBounds));
+                % The antiderivative uses the normalized Chebyshev coordinate.
+                value = value*(max(self.xNative)-min(self.xNative))/2;
             end
         end
 

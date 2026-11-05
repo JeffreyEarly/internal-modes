@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Integrate represented scalar and F/G products for physical reference forms and finite-difference RMS. Retain full scalar Gram matrices and contribution-wise positive majorants across projection and transform entry points, including selected columns and partial-depth integrals.
+- Restore the physical coordinate scale in V2 native spectral integration over a partial depth interval.
 - Resolve squared spectral profiles when computing scalar `rms` normalization. Enforce the same physical-projection capabilities for individual bases and collection pages while preserving auxiliary EVP pairings for assessment.
 - Modernize V2 normalization with dimensionless `rmsF`, `rmsG`, generic `rms`, `maxAbsF`, `maxAbsG`, `surfaceF`, `waveEnergy`, `generalizedPotentialEnstrophy`, `meanDensityAnomalyEnergy` and `endpointResponse`. Reserve canonical names, remove legacy aliases and enum inputs, and retain replaceable custom rules. Remove `generalizedEnergy` normalization while preserving physical energy matrices and orthogonalization.
 - Derive fixed-grid hydrostatic metrics from the actual normalized basis. Physical projection defaults to no recovery; use `projectPhysical`/`physicalDualMatrix` or explicit `recovery.transformForward`/`recovery.forwardMatrix`. Remove ambiguous `IMProjection.project` and `IMProjection.forwardMatrix` aliases.

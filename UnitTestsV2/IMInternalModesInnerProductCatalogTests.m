@@ -117,16 +117,11 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             basisSet = solver.solveEVP(evp, nModes=2);
             spec = evp.innerProduct("F");
 
-            z = solver.configuredForEVP(evp).innerProductGrid(zDomain);
+            % Integrate the evaluated profiles directly in physical depth,
+            % independently of the solver's native-coordinate integral.
+            [z,weights] = legpts(2*nEVP,zDomain);
             F = basisSet.F(z);
-            gramInterior = zeros(2,2);
-            for iMode = 1:2
-                for jMode = iMode:2
-                    value = basisSet.solver.integrateInnerProduct(z, F(:,iMode).*F(:,jMode), zDomain);
-                    gramInterior(iMode,jMode) = value;
-                    gramInterior(jMode,iMode) = value;
-                end
-            end
+            gramInterior = F.'*(weights(:).*F);
             FSurface = basisSet.F(zDomain(2));
             endpointTerms = basisSet.endpointGramTerms(variable="F");
             rawEndpointTerms = basisSet.endpointGramTerms(variable="F", useNormalized=false);
@@ -134,16 +129,9 @@ classdef IMInternalModesInnerProductCatalogTests < matlab.unittest.TestCase
             expected = gramInterior + endpointTerms(1).coefficient*(endpointTerms(1).values(:)*endpointTerms(1).values(:).');
             partialBounds = [zDomain(1) mean(zDomain)];
             partialEndpointTerms = basisSet.endpointGramTerms(variable="F", zBounds=partialBounds);
-            zPartial = solver.configuredForEVP(evp).innerProductGrid(partialBounds);
+            [zPartial,partialWeights] = legpts(2*nEVP,partialBounds);
             FPartial = basisSet.F(zPartial);
-            expectedPartial = zeros(2,2);
-            for iMode = 1:2
-                for jMode = iMode:2
-                    value = basisSet.solver.integrateInnerProduct(zPartial, FPartial(:,iMode).*FPartial(:,jMode), partialBounds);
-                    expectedPartial(iMode,jMode) = value;
-                    expectedPartial(jMode,iMode) = value;
-                end
-            end
+            expectedPartial = FPartial.'*(partialWeights(:).*FPartial);
 
             testCase.verifyNumElements(endpointTerms, 1)
             testCase.verifyEqual(endpointTerms(1).kind, "endpointInnerProductTerm")

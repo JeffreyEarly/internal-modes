@@ -1028,7 +1028,7 @@ classdef IMInternalModesBasis < IMBasisSet
             if nargin < 5
                 useMajorant = false;
             end
-            z = self.solver.innerProductGrid(zBounds);
+            [z,integrationWeights] = self.referenceQuadrature(zBounds);
             context = self.evp.contextForSolver(self.solver);
             if useMajorant
                 spec = self.evp.majorantInnerProduct(variable);
@@ -1048,7 +1048,6 @@ classdef IMInternalModesBasis < IMBasisSet
             if isscalar(weight)
                 weight = weight*ones(size(z));
             end
-            integrationWeights = self.solver.innerProductWeights(z,zBounds);
             gram = values.'*((integrationWeights.*weight(:)).*values);
             gram = 0.5*(gram+gram.');
 
@@ -1091,7 +1090,7 @@ classdef IMInternalModesBasis < IMBasisSet
             end
 
             variable = string(options.variable);
-            z = self.solver.innerProductGrid(self.zDomain);
+            [z,integrationWeights] = self.referenceQuadrature(self.zDomain);
             context = self.evp.contextForSolver(self.solver);
             spec = self.evp.innerProduct(variable);
             if ~spec.hasInnerProduct
@@ -1104,7 +1103,7 @@ classdef IMInternalModesBasis < IMBasisSet
             else
                 weight = weight(:);
             end
-            value = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
+            value = sum(integrationWeights.*weight.*values(:,iMode).*values(:,iMode));
             endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
             for iTerm = 1:numel(endpointTerms)
                 endpointValues = endpointTerms(iTerm).values;
@@ -1120,7 +1119,7 @@ classdef IMInternalModesBasis < IMBasisSet
                 options.variable {mustBeTextScalar, mustBeMember(options.variable,["F","G"])} = self.evp.formulation
             end
             variable = string(options.variable);
-            z = self.solver.innerProductGrid(self.zDomain);
+            [z,integrationWeights] = self.referenceQuadrature(self.zDomain);
             context = self.evp.contextForSolver(self.solver);
             spec = self.evp.innerProduct(variable);
             if ~spec.hasInnerProduct
@@ -1133,7 +1132,6 @@ classdef IMInternalModesBasis < IMBasisSet
             else
                 weight = weight(:);
             end
-            integrationWeights = self.solver.innerProductWeights(z,self.zDomain);
             normSquared = sum((integrationWeights.*weight).*values.*values,1);
             endpointTerms = self.endpointGramTerms(variable=variable,zBounds=self.zDomain,useNormalized=false);
             for iTerm = 1:numel(endpointTerms)

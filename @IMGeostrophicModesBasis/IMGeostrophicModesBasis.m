@@ -180,6 +180,13 @@ classdef IMGeostrophicModesBasis < IMInternalModesBasis
         end
     end
     methods (Access = protected)
+        function points = referenceBreakpoints(self,zBounds)
+            % Stored F and G can have different staggered reconstruction knots.
+            points = referenceBreakpoints@IMBasisSet(self,zBounds);
+            companion = self.gSolver.zNative(:);
+            points = unique([points;companion(companion > zBounds(1) & companion < zBounds(2))]);
+        end
+
         function values = rawVariableDerivative(self,variable,z,order)
             if variable == "G" && ismember(order,[1 2])
                 values = self.gSolver.evaluatePhysicalDerivative(self.nativeGModes,z,order);

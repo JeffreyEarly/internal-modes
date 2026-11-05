@@ -589,30 +589,7 @@ classdef IMBasisSet
             if options.zBounds(1) >= options.zBounds(2)
                 error("IMBasisSet:InvalidInterval", "zBounds must be increasing.");
             end
-            z = self.solver.innerProductGrid(options.zBounds);
-            context = self.evp.contextForSolver(self.solver);
-            normalizationFactors = self.normalizationFactors(self.normalization);
-            values = self.rawU(z) ./ normalizationFactors;
-            spec = self.evp.innerProduct();
-            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight, z, context);
-            if isscalar(weight)
-                weight = weight*ones(size(z));
-            end
-            gram = zeros(size(values,2), size(values,2));
-            for iMode = 1:size(values,2)
-                for jMode = iMode:size(values,2)
-                    integrand = weight(:).*values(:,iMode).*values(:,jMode);
-                    value = self.solver.integrateInnerProduct(z, integrand, options.zBounds);
-                    gram(iMode,jMode) = value;
-                    gram(jMode,iMode) = value;
-                end
-            end
-
-            endpointTerms = self.endpointGramTerms(zBounds=options.zBounds, normalization=self.normalization, useNormalized=true);
-            for iTerm = 1:numel(endpointTerms)
-                valuesAtEndpoint = endpointTerms(iTerm).values(:);
-                gram = gram + endpointTerms(iTerm).coefficient*(valuesAtEndpoint*valuesAtEndpoint.');
-            end
+            gram = self.scalarGramMatrices(options.zBounds);
         end
 
         function terms = endpointGramTerms(self, options)
@@ -887,6 +864,35 @@ classdef IMBasisSet
     end
 
     methods (Access = protected)
+        [z,weights] = referenceQuadrature(self,zBounds,refinement)
+        points = referenceBreakpoints(self,zBounds)
+
+        function [gram,majorant,isPositiveMetric] = scalarGramMatrices(self,zBounds)
+            % Integrate the represented scalar pairing and its positive majorant.
+            [z,weights] = self.referenceQuadrature(zBounds);
+            values = self.u(z);
+            context = self.evp.contextForSolver(self.solver);
+            spec = self.evp.innerProduct();
+            weight = IMEigenvalueProblem.evaluateCoefficient(spec.interiorWeight,z,context);
+            if isscalar(weight), weight = repmat(weight,size(z)); end
+            if numel(weight) ~= numel(z) || ~isreal(weight) || any(~isfinite(weight(:)))
+                error("IMBasisSet:InvalidInnerProductWeight","The scalar interior weight must return one finite real value per reference point.");
+            end
+            gram = values.'*((weights.*weight(:)).*values);
+            majorant = values.'*((weights.*abs(weight(:))).*values);
+            isPositiveMetric = all(weight(:) >= 0);
+            terms = self.endpointGramTerms(zBounds=zBounds);
+            for iTerm = 1:numel(terms)
+                endpointValues = terms(iTerm).values(:);
+                endpointMatrix = endpointValues*endpointValues.';
+                gram = gram+terms(iTerm).coefficient*endpointMatrix;
+                majorant = majorant+abs(terms(iTerm).coefficient)*endpointMatrix;
+                isPositiveMetric = isPositiveMetric && terms(iTerm).coefficient >= 0;
+            end
+            gram = 0.5*(gram+gram.');
+            majorant = 0.5*(majorant+majorant.');
+        end
+
         function factors = rmsNormFactors(self)
             % Normalize the scalar profile without changing its scientific pairing.
             [z,weights] = self.normalizationQuadrature();
@@ -895,18 +901,8 @@ classdef IMBasisSet
         end
 
         function [z,weights] = normalizationQuadrature(self)
-            % Resolve squared spectral profiles in the physical depth measure.
-            if isa(self.solver,"IMSolverSpectral")
-                bounds = [min(self.solver.xNative),max(self.solver.xNative)];
-                [x,nativeWeights] = legpts(max(128,2*self.solver.nEVP),bounds);
-                z = self.solver.zOfX(x);
-                coordinate = zeros(self.solver.nEVP,1);
-                coordinate(1:2) = [mean(bounds);diff(bounds)/2];
-                jacobian = self.solver.evaluatePhysicalDerivative(coordinate,z,1);
-                weights = nativeWeights(:)./jacobian;
-            else
-                [z,weights] = self.solver.nativeQuadratureRule(self.zDomain);
-            end
+            % Integrate the profiles returned by the public evaluator.
+            [z,weights] = self.referenceQuadrature(self.zDomain);
         end
 
         function self = resetNormalizationCache(self)
@@ -1005,9 +1001,10 @@ classdef IMBasisSet
                 metricMatrix(endpointIndex,endpointIndex) = metricMatrix(endpointIndex,endpointIndex) + endpointWeight.coefficient*endpointWeight.c*endpointWeight.c;
             end
 
-            continuousGramMatrix = self.gramMatrix();
-            targetGramMatrix = diag(diag(continuousGramMatrix(1:nModes,1:nModes)));
-            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
+            [continuousGramMatrix,continuousMajorant] = self.scalarGramMatrices(self.zDomain);
+            targetGramMatrix = continuousGramMatrix(1:nModes,1:nModes);
+            majorantGramMatrix = continuousMajorant(1:nModes,1:nModes);
+            physical = IMProjection(inverseMatrix,metricMatrix,targetGramMatrix,majorantGramMatrix=majorantGramMatrix,columnLabels=string(self.modeNumber(1:nModes)));
             transform = IMScalarDiscreteTransform(physical,physical.recovery,z=z,weights=weights,modeNumber=self.modeNumber(1:nModes),normalization=self.normalizationName(self.normalization));
         end
 
@@ -1040,7 +1037,7 @@ classdef IMBasisSet
                 iMode (1,1) double {mustBeInteger, mustBePositive}
             end
 
-            z = self.solver.innerProductGrid(self.zDomain);
+            [z,weights] = self.referenceQuadrature(self.zDomain);
             context = self.evp.contextForSolver(self.solver);
             values = self.rawU(z);
             spec = self.evp.innerProduct();
@@ -1049,7 +1046,7 @@ classdef IMBasisSet
                 weight = weight*ones(size(z));
             end
             integrand = weight(:).*values(:,iMode).*values(:,iMode);
-            value = self.solver.integrateInnerProduct(z, integrand, self.zDomain);
+            value = sum(weights.*integrand);
             endpointTerms = self.endpointGramTerms(zBounds=self.zDomain, useNormalized=false);
             for iTerm = 1:numel(endpointTerms)
                 valuesAtEndpoint = endpointTerms(iTerm).values;
@@ -1060,7 +1057,7 @@ classdef IMBasisSet
 
         function factors = innerProductNormFactors(self)
             % Return raw scalar inner-product factors for the whole family.
-            z = self.solver.innerProductGrid(self.zDomain);
+            [z,weights] = self.referenceQuadrature(self.zDomain);
             context = self.evp.contextForSolver(self.solver);
             values = self.rawU(z);
             spec = self.evp.innerProduct();
@@ -1070,10 +1067,7 @@ classdef IMBasisSet
             else
                 weight = weight(:);
             end
-            normSquared = zeros(1,size(values,2));
-            for iMode = 1:size(values,2)
-                normSquared(iMode) = self.solver.integrateInnerProduct(z,weight.*values(:,iMode).*values(:,iMode),self.zDomain);
-            end
+            normSquared = sum((weights.*weight).*values.^2,1);
             endpointTerms = self.endpointGramTerms(zBounds=self.zDomain,useNormalized=false);
             for iTerm = 1:numel(endpointTerms)
                 endpointValues = endpointTerms(iTerm).values;

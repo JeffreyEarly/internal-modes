@@ -51,8 +51,15 @@ classdef IMNormalizationCatalogueTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(zDomain=[-3 0],p=1,q=0,r=2);
             for solver = {IMSolverSpectral(nEVP=40),IMSolverFiniteDifference(z=linspace(-3,0,121).')}
                 basis = solver{1}.solveEVP(evp,nModes=3);
-                z = basis.solver.innerProductGrid(basis.zDomain);
-                weights = basis.solver.innerProductWeights(z,basis.zDomain);
+                if isa(basis.solver,"IMSolverFiniteDifference")
+                    knots = sort(basis.solver.zNative);
+                    [nodes,rule] = legpts(4,[0 1]);
+                    z = reshape(knots(1:end-1).'+nodes(:).*diff(knots).',[],1);
+                    weights = reshape(rule(:).*diff(knots).',[],1);
+                else
+                    [z,weights] = legpts(96,basis.zDomain);
+                    weights = weights(:);
+                end
                 testCase.verifyEqual(basis.normalization,"rms");
                 testCase.verifyEqual(sum(weights.*basis.u(z).^2,1)/3,ones(1,3),AbsTol=3e-13);
                 testCase.verifyEqual(diag(basis.gramMatrix()),6*ones(3,1),AbsTol=2e-12);

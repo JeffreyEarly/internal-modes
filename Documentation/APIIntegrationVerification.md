@@ -1,6 +1,20 @@
 # V2 API integration verification
 
-## PR review corrections
+## Represented-profile integration corrections
+
+Completed on 2026-11-05 from provider `c04a0e0` for the two subsequent PR review comments. Scalar and paired F/G reference forms, majorants, normalization factors and nonlinear reference products now integrate the profiles returned by the public evaluator. Spectral products use oversampled Gauss–Legendre quadrature in the solver coordinate with the physical-depth Jacobian. Finite-difference profiles use a composite rule split at reconstruction knots, including both staggered F/G grids. Native nodal quadrature remains a separate solver operation.
+
+Scalar physical projections retain the full represented Gram matrix and contribution-wise positive majorant; they no longer discard off-diagonal products. Partial-depth reference integrals retain the original coordinate scale. An independent analytic-integral check also exposed and repaired a missing scale factor in the V2 spectral solver's native bounded antiderivative.
+
+All **754 current provider V2 cases** are covered by passing results. The initial focused run passed 51 of 53 cases, and the remaining-inventory run passed 700 of 702 cases. Four stale expectations were repaired: two assumed native nodal products were continuous reference integrals, one used the incorrectly scaled native bounded integral as its reference, and one omitted the explicit majorant now required by its full target matrix. The final focused run passed all ten cases, including the eight solver integration-weight cases. The final inventory comparison found no missing cases or unresolved failures. These are staged runs with focused repairs, not a second complete-suite run.
+
+Twelve new regression cases cover high-degree and near-capacity spectral profiles, full scalar and paired forms, signed endpoints, partial-depth integrals, finite-difference RMS and staggered reconstruction, normalization/selection covariance, nonlinear products and physical coordinate scale. Independent quadrature and analytic integrals supply the reference values; scientific tolerances were not relaxed.
+
+The three affected WVM checks passed: constant- and exponential-stratification free-surface bulk construction, and explicit physical mapping/inverse projection. The affected basis API reference was generated and checked in temporary output. Code Analyzer checked all 20 changed MATLAB files against the preceding commit and found no new diagnostics. Canonical Markdown links, whitespace, repository scope, unchanged package manifests and generated-artifact scope passed. This provider has no configured `docs:check` target. The pre-existing free-surface example edit was preserved outside this change; no required local asset was missing.
+
+Reference quadrature does not certify convergence for arbitrary coefficient functions or coordinate maps, and it does not qualify eigenproblem accuracy. Those provenance fields remain unverified. The complete WVM suite, manuscript figure regeneration and performance campaigns were not rerun for this follow-up. Execution evidence is in `/private/tmp/pr68-product-integrals-20261105`.
+
+## Earlier PR review corrections at `c04a0e0`
 
 The follow-up to `c2f7b50` resolves scalar spectral RMS products with the same oversampled physical-depth quadrature used for paired F/G profiles. Collection `projectionOnGrid` now enforces the selected basis's physical scalar capabilities; `assess` retains auxiliary EVP pairings. The neutral-label quick start supplies `variable="APV"`, and the earlier coordinate-study result below explicitly identifies its working-tree dependencies.
 

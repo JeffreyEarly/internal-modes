@@ -155,7 +155,8 @@ if isempty(options.quadraticAliasingTolerance)
     quadraticAccepted = true(candidateModeCount,1);
     quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",false,[],quadraticError,quadraticAccepted,candidateModeCount);
 else
-    [quadraticError,quadraticLimitingChannel,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ] = coupledQuadraticAliasing(self,prefixData,candidateTransform,variables);
+    [integrationGrid,integrationWeights] = self.referenceQuadrature(self.zDomain);
+    [quadraticError,quadraticLimitingChannel,quadraticLimitingModeNumberI,quadraticLimitingModeNumberJ] = coupledQuadraticAliasing(self,prefixData,candidateTransform,variables,integrationGrid,integrationWeights);
     quadraticAccepted = IMDiscreteTransformTools.cumulativeAcceptance(quadraticError <= options.quadraticAliasingTolerance);
     quadraticPolicy = IMDiscreteTransformTools.policyResult("quadraticAliasing",true,options.quadraticAliasingTolerance,quadraticError,quadraticAccepted,candidateModeCount);
 end
@@ -331,14 +332,12 @@ for variable = variables
 end
 end
 
-function [errors,limitingChannel,limitingLabelI,limitingLabelJ] = coupledQuadraticAliasing(basisSet,prefixData,candidateTransform,variables)
+function [errors,limitingChannel,limitingLabelI,limitingLabelJ] = coupledQuadraticAliasing(basisSet,prefixData,candidateTransform,variables,integrationGrid,integrationWeights)
 nCandidate = length(candidateTransform.modeNumber);
 errors = zeros(nCandidate,1);
 limitingChannel = strings(nCandidate,1);
 limitingLabelI = nan(nCandidate,1);
 limitingLabelJ = nan(nCandidate,1);
-integrationGrid = basisSet.solver.innerProductGrid(basisSet.zDomain);
-integrationWeights = basisSet.solver.innerProductWeights(integrationGrid,basisSet.zDomain);
 sampleValues = struct(F=candidateTransform.inverseMatrix(variable="F"),G=candidateTransform.inverseMatrix(variable="G"));
 normalizationFactors = basisSet.normalizationFactors(basisSet.normalization);
 normalizationFactors = normalizationFactors(1:nCandidate);

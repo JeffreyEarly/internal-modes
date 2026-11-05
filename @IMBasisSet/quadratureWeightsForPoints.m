@@ -17,7 +17,8 @@ function [weights, weightFit] = quadratureWeightsForPoints(self, options)
 % The default `"normalizedGramFrobenius"` objective minimizes
 % $$\|E(w)\|_{\mathrm F}$$. It combines the mismatch from every retained
 % mode pair: diagonal entries of $$E$$ measure modal norm errors, while
-% off-diagonal entries measure lost orthogonality. For target modal norms
+% off-diagonal entries measure errors in the represented cross pairings.
+% The full continuous target retains any nonzero cross pairings. For target modal norms
 % $$C_i=(\Gamma_0)_{ii}$$ and fixed endpoint contribution
 % $$\Gamma_{\mathrm{endpoint}}$$, the corresponding least-squares system is
 %

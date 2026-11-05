@@ -200,7 +200,7 @@ classdef IMProjectionTests < matlab.unittest.TestCase
             evp = IMEigenvalueProblem(zDomain=[-1000 0],p=1,q=0,r=1,surfaceBoundary=IMBoundaryCondition.dirichlet(),bottomBoundary=IMBoundaryCondition.dirichlet());
             scalar = solver.solveEVP(evp,nModes=4);
             oldScalar = scalar.discreteTransform(z=z,weights=weights,nModes=4);
-            projection = IMProjection(oldScalar.inverseMatrix,oldScalar.metricMatrix,oldScalar.targetGramMatrix);
+            projection = IMProjection(oldScalar.inverseMatrix,oldScalar.metricMatrix,oldScalar.targetGramMatrix,majorantGramMatrix=oldScalar.projection.majorantGramMatrix);
             testCase.verifyEqual(projection.recovery.forwardMatrix,oldScalar.forwardMatrix,AbsTol=2e-13)
             testCase.verifyEqual(projection.gramError,oldScalar.relativeGramOperatorError,AbsTol=2e-13)
             testCase.verifyEqual(projection.roundTripError,oldScalar.roundTripError,AbsTol=2e-13)

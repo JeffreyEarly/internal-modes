@@ -14,7 +14,7 @@ arguments (Output)
     recipe (1,1) struct
 end
 spec = self.evp.innerProduct(options.variable);
-provenance = struct("representation","numerical","referenceIntegration","solver inner-product rule","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
+provenance = struct("representation","numerical","referenceIntegration","basis reference quadrature","solverClass",string(class(self.solver)),"solveAccuracy","unverified","referenceConvergence","unverified");
 if ~spec.hasInnerProduct
     recipe = IMProjection.createRecipe(isAvailable=false,reason=string(spec.reason),variable=options.variable,columnLabels=self.columnLabels,normalization=self.normalizationName(self.normalization),provenance=provenance,zDomain=self.zDomain);
     return;

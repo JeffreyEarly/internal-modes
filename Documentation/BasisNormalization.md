@@ -19,6 +19,8 @@ Normalization names retain their [mode-creation definitions](ModeCreationAPI.md#
 
 All built-in normalizations keep the profiles dimensionless. `rmsF`, `rmsG` and generic scalar `rms` use a full-depth average, without boundary contributions. Their names refer to profiles: F is not always horizontal velocity, and G is not always a displacement profile.
 
+These integrals use the profiles returned by the evaluator. Spectral profiles use oversampled Gauss quadrature in the solver coordinate with the physical-depth Jacobian. Finite-difference profiles use Gauss quadrature on each PCHIP reconstruction interval, including both knot sets for staggered F/G profiles. This keeps RMS distinct from a trapezoidal norm of native nodal values. The native solver quadrature and derivative operators retain their discretization meaning. Fixed reference quadrature does not certify convergence for arbitrary coefficient functions or diagnostic relations.
+
 Every canonical name is reserved across families. Register a distinct custom name; that custom rule can be replaced without affecting the source value. V2 accepts text names only and rejects legacy aliases, `Normalization` enums, `innerProduct*` variations and `generalizedEnergy`. Energy matrices and `orthogonalizeGeneralizedEnergy` retain their physical units and signed meaning independently of profile normalization.
 
 `meanDensityAnomalyEnergy` preserves the manuscript's dimensionless signed G form with magnitude one, so its physical generalized-energy self-pairing is g times its signature divided by two. The new name preserves the earlier MDA scale. Null or nonfinite magnitudes fail explicitly.

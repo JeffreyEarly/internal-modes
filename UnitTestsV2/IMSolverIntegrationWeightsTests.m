@@ -108,6 +108,24 @@ classdef IMSolverIntegrationWeightsTests < matlab.unittest.TestCase
             testCase.verifyEqual(weights.'*values,expected,RelTol=2e-13,AbsTol=2e-13)
         end
 
+        function partialNativeIntegralsRetainThePhysicalCoordinateScale(testCase)
+            domain = [-1000 0];
+            bounds = [-820 -130];
+            evp = IMInternalModes.hydrostaticGModes(rotationRate=0,N2=@(z) 1e-4*exp(2*z/700),zDomain=domain,surfaceBoundary=IMBoundaryCondition.dirichlet());
+            for coordinate = ["z","wkb"]
+                solver = IMSolverSpectral(nEVP=96,coordinateKind=coordinate).configuredForEVP(evp);
+                z = solver.innerProductGrid(bounds);
+                values = [ones(size(z)),z];
+                expected = [diff(bounds),diff(bounds.^2)/2];
+                weights = solver.innerProductWeights(z,bounds);
+                for j = 1:2
+                    actual = solver.integrateInnerProduct(z,values(:,j),bounds);
+                    testCase.verifyEqual(actual,expected(j),RelTol=2e-12,AbsTol=2e-10);
+                    testCase.verifyEqual(weights.'*values(:,j),expected(j),RelTol=2e-12,AbsTol=2e-10);
+                end
+            end
+        end
+
         function finiteDifferenceWeightsMatchTrapezoidalIntegrator(testCase)
             zDomain = [-4000 0];
             zNative = -4000+4000*linspace(0,1,83).'.^1.3;
