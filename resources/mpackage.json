@@ -1,6 +1,6 @@
 {
     "name": "InternalModes",
-    "version": "2.0.0-beta.7",
+    "version": "2.0.0-beta.8",
     "id": "d671f7d7-4215-4319-a7cc-d4c25efc725a",
     "formerNames": [],
     "displayName": "InternalModes",
@@ -59,7 +59,7 @@
     "dependencies": [
         {
             "name": "SplineCore",
-            "compatibleVersions": "^2.0",
+            "compatibleVersions": "^2.2.0",
             "id": "f723c088-397a-43e5-a0ad-e19422cc3c2a"
         },
         {

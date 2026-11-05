@@ -473,6 +473,10 @@ end
 end
 
 function values = evaluateGradientSegment(segment,z)
+if isempty(z)
+    values = zeros(2,0);
+    return
+end
 if isempty(segment.solution)
     values = zeros(2,numel(z));
     for i = 1:numel(z)

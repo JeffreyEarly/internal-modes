@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## [2.0.0-beta.8] - 2026-11-05
+
+- Require SplineCore `^2.2.0`, the first released version providing the spline factories used by InternalModes.
 - Integrate represented scalar and F/G products for physical reference forms and finite-difference RMS. Retain full scalar Gram matrices and contribution-wise positive majorants across projection and transform entry points, including selected columns and partial-depth integrals.
 - Restore the physical coordinate scale in V2 native spectral integration over a partial depth interval.
 - Resolve squared spectral profiles when computing scalar `rms` normalization. Enforce the same physical-projection capabilities for individual bases and collection pages while preserving auxiliary EVP pairings for assessment.
