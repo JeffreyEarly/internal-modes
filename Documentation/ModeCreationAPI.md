@@ -17,7 +17,18 @@ Every numerical and analytical `solveEVP` call requires an explicit `nModes`; so
 
 ## Shared physics and independent solvers
 
-The read-only background owns `N2`, `zDomain=[bottom surface]`, `rotationRate`, `latitude`, `g` and `surfaceCondition`. Rotation and gravity default to Earth rotation, 33 degrees north and 9.81. Every background constructor requires an explicit `surfaceCondition="freeSurface"` or `"rigidLid"`. Its derived quantities are the positive depth `D=diff(zDomain)` and signed Coriolis frequency `f0=2*rotationRate*sind(latitude)`.
+The read-only background owns `N2`, `rho`, `rho0`, `zDomain=[bottom surface]`, `rotationRate`, `latitude`, `g` and `surfaceCondition`. Rotation and gravity default to Earth rotation, 33 degrees north and 9.81. Every background constructor requires an explicit `surfaceCondition="freeSurface"` or `"rigidLid"`. Its derived quantities are the positive depth `D=diff(zDomain)` and signed Coriolis frequency `f0=2*rotationRate*sind(latitude)`.
+
+Supply exactly one of `N2` or `rho`. Density input sets `rho0` to the density at the upper endpoint of `zDomain`. The returned density and its spectral derivative come from the same Chebfun representation, with $$N^2=-(g/\rho_0)\,\partial_z\rho$$. An explicit `rho0` must agree with the supplied surface density.
+
+Stratification input uses the supplied `N2` evaluator and a Chebfun antiderivative anchored at the surface to derive density. In this case `rho0` defaults to 1025 kg per cubic meter. Both profiles preserve the shape of the queried depths and are independent of solver resolution and coordinates. The input function must describe a fixed profile throughout the background's lifetime.
+
+```matlab
+rho = @(z) 1027 - 0.01*z;
+background = IMBackground(rho=rho,zDomain=[-1000 0],surfaceCondition="freeSurface");
+rho0 = background.rho0;  % 1027 kg/m^3 at z = 0
+N2 = background.N2([-1000 0]);
+```
 
 ```matlab
 background = IMBackground(N2=@(z) 1e-4*exp(z/1000),zDomain=[-4000 0],latitude=33,surfaceCondition="rigidLid");
