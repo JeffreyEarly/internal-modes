@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Provide explicit mapped Chebyshev–Lobatto calculus for physical-depth, WKB, and smoothed-bandwidth grids. The retained metric defines nodal derivatives, interpolation, quadrature, surface-referenced integrals, endpoint traces, and numeric snapshots independently of an EVP solve.
+
 ## [2.0.0-beta.10] - 2026-11-05
 
 - Solve spectral APV modes in the finite subspace of the paired pencil when the reduced mass matrix is full rank. This excludes numerical representations of infinite roots from the signed APV mode inventory.

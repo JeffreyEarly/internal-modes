@@ -46,7 +46,7 @@ classdef IMVerticalGrid
         % - Topic: Inspect a vertical grid
         zDomain
 
-        % Grid rule: `"smoothedBandwidth"`, `"physicalDepth"`, `"modeRoots"` or `"custom"`.
+        % Grid rule: `"smoothedBandwidth"`, `"wkb"`, `"physicalDepth"`, `"modeRoots"` or `"custom"`.
         %
         % - Topic: Inspect a vertical grid
         kind
@@ -55,6 +55,11 @@ classdef IMVerticalGrid
         %
         % - Topic: Inspect a vertical grid
         design
+
+        % Explicit reconstruction and calculus for this grid, when supplied.
+        % A geometry-only grid has empty calculus regardless of its kind.
+        % - Topic: Inspect a vertical grid
+        calculus
     end
 
     properties (Dependent, SetAccess = private)
@@ -80,6 +85,7 @@ classdef IMVerticalGrid
             % - Parameter options.zDomain: increasing `[bottom surface]`; defaults to the point range
             % - Parameter options.kind: rule name, default `"custom"`
             % - Parameter options.design: provenance struct
+            % - Parameter options.calculus: optional IMLobattoCalculus on exactly these nodes
             % - Returns self: immutable vertical grid
             arguments
                 options.z (:,1) double {mustBeReal, mustBeFinite}
@@ -87,6 +93,7 @@ classdef IMVerticalGrid
                 options.zDomain double {mustBeReal} = []
                 options.kind {mustBeTextScalar} = "custom"
                 options.design (1,1) struct = struct()
+                options.calculus = []
             end
             z = options.z;
             if isempty(options.zDomain), zDomain = [z(1) z(end)]; else, zDomain = options.zDomain; end
@@ -121,6 +128,13 @@ classdef IMVerticalGrid
             self.zDomain = zDomain;
             self.kind = string(options.kind);
             self.design = options.design;
+            if ~isempty(options.calculus)
+                if ~isa(options.calculus,"IMLobattoCalculus") || ~isscalar(options.calculus) || ...
+                        ~isequal(options.calculus.depthAtCoordinate(options.calculus.nativeCoordinate),z)
+                    error("IMVerticalGrid:IncompatibleCalculus","The supplied calculus must reconstruct these exact depths in order.");
+                end
+            end
+            self.calculus = options.calculus;
         end
 
         function value = get.nPoints(self)
@@ -143,9 +157,39 @@ classdef IMVerticalGrid
             end
             value = reshape(self.weights.'*reshape(values,self.nPoints,[]),[1 size(values,2:ndims(values))]);
         end
+
+        function state = snapshot(self)
+            % Export geometry, provenance and any explicit calculus.
+            % - Topic: Inspect a vertical grid
+            % - Declaration: state = grid.snapshot()
+            % - Returns state: versioned scalar struct
+            calculusState = [];
+            if ~isempty(self.calculus), calculusState = self.calculus.snapshot(); end
+            state = struct(version=1,z=self.z,zDomain=self.zDomain,weights=self.weights, ...
+                kind=self.kind,design=self.design,calculus=calculusState);
+        end
     end
 
     methods (Static)
+        function grid = fromSnapshot(state)
+            % Restore saved geometry and calculus without rebuilding the map from a profile.
+            % - Topic: Create a vertical grid
+            % - Declaration: grid = IMVerticalGrid.fromSnapshot(state)
+            % - Parameter state: scalar struct from snapshot
+            % - Returns grid: restored vertical grid
+            arguments
+                state (1,1) struct
+            end
+            fields = ["version","z","zDomain","weights","kind","design","calculus"];
+            if ~all(isfield(state,fields)) || ~isequal(state.version,1)
+                error("IMVerticalGrid:InvalidSnapshot","A supported vertical grid snapshot is required.");
+            end
+            calculus = [];
+            if ~isempty(state.calculus), calculus = IMLobattoCalculus.fromSnapshot(state.calculus); end
+            grid = IMVerticalGrid(z=state.z(:),weights=state.weights(:),zDomain=state.zDomain(:).', ...
+                kind=state.kind,design=state.design,calculus=calculus);
+        end
+
         function Ls = defaultSmoothingLength(D,nPoints)
             % Return the provisional default smoothing length 2.5*D/(nPoints-1).
             %
@@ -180,8 +224,31 @@ classdef IMVerticalGrid
             end
             if isa(zDomain,"IMBackground"), zDomain = zDomain.zDomain; end
             [z,w] = IMVerticalGrid.clenshawCurtis(nPoints,zDomain);
+            metric = chebfun(1,zDomain);
+            calculus = IMLobattoCalculus.fromMetric(metric,z,z-z(1));
             grid = IMVerticalGrid(z=z,weights=w,zDomain=zDomain,kind="physicalDepth", ...
-                design=struct(rule="Clenshaw-Curtis in physical depth"));
+                design=struct(rule="Clenshaw-Curtis in physical depth"),calculus=calculus);
+        end
+
+        function grid = wkb(background,nPoints)
+            % Create a Lobatto grid in the classical WKB coordinate.
+            %
+            % The coordinate metric is $$dx/dz=\sqrt{N^2(z)}$$ and must be
+            % positive throughout the reference column.
+            %
+            % - Topic: Create a vertical grid
+            % - Declaration: grid = IMVerticalGrid.wkb(background,nPoints)
+            % - Parameter background: column background with positive stratification
+            % - Parameter nPoints: number of points, at least three
+            % - Returns grid: WKB grid with mapped quadrature and calculus
+            arguments
+                background (1,1) IMBackground
+                nPoints (1,1) double {mustBeInteger,mustBeGreaterThanOrEqual(nPoints,3)}
+            end
+            metric = chebfun(@(z) sqrt(background.N2(z)),background.zDomain);
+            [calculus,z,w] = IMLobattoCalculus.forMetric(metric,nPoints);
+            design = struct(rule="wkb",weightRule="Mapped Clenshaw-Curtis, normalized to integrate the column depth");
+            grid = IMVerticalGrid(z=z,weights=w,zDomain=background.zDomain,kind="wkb",design=design,calculus=calculus);
         end
 
         function grid = smoothedBandwidth(background,nPoints,options)
@@ -279,7 +346,8 @@ classdef IMVerticalGrid
                 qMin=qMin,qMax=qMax,nativeCoordinate=x,coordinateLength=lengthX,mapResidual=inversionResidual, ...
                 weightRule="Mapped Clenshaw-Curtis with physical Jacobian, normalized to integrate a constant exactly", ...
                 unadjustedRelativeDepthError=abs(rawSum-D)/D);
-            grid = IMVerticalGrid(z=z,weights=w,zDomain=domain,kind="smoothedBandwidth",design=design);
+            calculus = IMLobattoCalculus.fromMetric(q,z,x);
+            grid = IMVerticalGrid(z=z,weights=w,zDomain=domain,kind="smoothedBandwidth",design=design,calculus=calculus);
         end
 
         function grid = modeRoots(basisSet,nPoints,options)

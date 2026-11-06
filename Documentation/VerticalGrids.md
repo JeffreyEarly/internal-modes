@@ -1,6 +1,6 @@
 # Vertical sampling grids in V2
 
-A model samples every mode family, at every horizontal wavenumber, on one fixed set of depths. `IMVerticalGrid` holds those depths and their quadrature weights. It is separate from the numerical coordinate of an eigenvalue solver: modes can be solved at much higher resolution and evaluated on the grid afterwards.
+A model samples every mode family, at every horizontal wavenumber, on one fixed set of depths. `IMVerticalGrid` holds those depths and their quadrature weights, and a mapped Lobatto grid also carries an explicit reconstruction. Mode solutions use their own numerical resolution and can be evaluated on the sampling grid afterwards.
 
 ```matlab
 background = IMBackground(N2=@(z) 1e-6+5e-5*exp(z/300),zDomain=[-4000 0],latitude=33,surfaceCondition="freeSurface");
@@ -15,11 +15,31 @@ grid.integrate(background.N2(grid.z))
 | Constructor | Points | Weights |
 | --- | --- | --- |
 | `smoothedBandwidth(background,nPoints)` | Clenshaw–Curtis points in the smoothed-bandwidth coordinate | Mapped Clenshaw–Curtis weights, scaled so a constant integrates exactly |
+| `wkb(background,nPoints)` | Clenshaw–Curtis points in the classical WKB coordinate for strictly positive stratification | Mapped Clenshaw–Curtis weights, scaled so a constant integrates exactly |
 | `physicalDepth(zDomain,nPoints)` | Clenshaw–Curtis points in depth | Clenshaw–Curtis |
 | `modeRoots(basisSet,nPoints)` | Endpoints and roots of a generating mode (Early, Lelong and Smith 2020) | Nonnegative full-depth fit to the leading modes; can be zero where every fitted mode vanishes |
 | `IMVerticalGrid(z=...,weights=...)` | Supplied | Supplied |
 
 Every grid records its rule in `grid.kind` and its parameters and diagnostics in `grid.design`.
+
+## Mapped Lobatto calculus
+
+`physicalDepth`, `wkb`, and `smoothedBandwidth` provide `grid.calculus`, which uses one global Chebyshev interpolant in the grid's native coordinate. Each input column has one value per increasing reference depth. Interpolation queries take reference depths in meters. The derivative matrix applies the native Chebyshev derivative and multiplies by the same metric used to map the nodes. Repeated application reinterpolates each intermediate sampled derivative.
+
+```matlab
+values = background.N2(grid.z);
+calc = grid.calculus;
+Dz = calc.firstDerivativeMatrix();
+derivative = Dz*values;
+zQuery = [-500; -200; 0];
+atQuery = calc.interpolationMatrix(zQuery)*values;
+fromSurface = calc.integrateFromSurface(values,zQuery);
+bottomAndSurface = calc.endpointTraces(values);
+```
+
+`grid.integrate` applies the stored physical weights. `calc.integrateFromSurface` integrates the interpolant from each query depth to the surface using the physical Jacobian. `calc.quadratureRule(nPoints)` maps an interior Gauss–Legendre rule through the same coordinate. `calc.lobattoRule(nPoints)` resamples that coordinate with both endpoints and keeps the original map and smoothing length. Weak integration-by-parts accuracy depends on the resolved fields and the quadrature rule.
+
+`IMVerticalGrid.fromSnapshot(grid.snapshot())` reconstructs the map and operators from numerical data independently of a profile or mode solve. Mode-root grids and grids created from points and weights alone have empty calculus. A custom grid can supply an explicit `IMLobattoCalculus` on the exact same nodes. Interior one-sided trace and piecewise field-reconstruction policies are separate capabilities.
 
 ## The smoothed-bandwidth default
 
@@ -33,7 +53,7 @@ The default smoothing length is
 
 $$L_s = 2.5\,\frac{D}{N_z-1}.$$
 
-This is provisional. It comes from the joint modal-recovery study in the `wave-vortex-model-coordinate-grid` note. The counts below hold only under that study's conditions: a 1000 m column with a 200 m neutral surface layer, latitude 45°, a 10 km wavelength, `g0 = 0` and `gd = -0.01`, data containing only the retained modes, and the study's joint overlap correction applied after the direct projectors, with fixed energy, enstrophy, boundary and noise tolerances. Under those conditions, at 65 points, the default recovers 151 physical plus 2 neutral-label amplitudes, against 127 on a piecewise grid split at the neutral-layer joins. Smoothing lengths below about 1.2 grid spacings fail to resolve the mandatory boundary modes. `IMVerticalGrid` supplies only points and weights; ordinary manuscript projections on these points do not inherit that recovery result.
+This is provisional. It comes from the joint modal-recovery study in the `wave-vortex-model-coordinate-grid` note. The counts below hold only under that study's conditions: a 1000 m column with a 200 m neutral surface layer, latitude 45°, a 10 km wavelength, `g0 = 0` and `gd = -0.01`, data containing only the retained modes, and the study's joint overlap correction applied after the direct projectors, with fixed energy, enstrophy, boundary and noise tolerances. Under those conditions, at 65 points, the default recovers 151 physical plus 2 neutral-label amplitudes, against 127 on a piecewise grid split at the neutral-layer joins. Smoothing lengths below about 1.2 grid spacings fail to resolve the mandatory boundary modes. The counts depend on that recovery procedure in addition to the sampling rule.
 
 The original neutral-label counts used the historical generalized-energy-dependent endpoint policy: `g0=0` selected a Neumann surface for the neutral cap. The current manuscript and provider instead fix both interval endpoint labels (DD sine modes). The [DD requalification](NeutralLabelGridRequalification.md) independently confirms 151 physical plus two neutral amplitudes at the exact 65-point default, `Ls=39.0625 m`, with the same acceptance budgets and study joint correction. The original archive contained neighboring smoothing lengths rather than that exact default; its previously quoted default count is now directly measured.
 
