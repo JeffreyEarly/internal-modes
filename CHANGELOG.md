@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.0.0-beta.11] - 2026-11-05
+
 - Provide explicit mapped Chebyshev–Lobatto calculus for physical-depth, WKB, and smoothed-bandwidth grids. The retained metric defines nodal derivatives, interpolation, quadrature, surface-referenced integrals, endpoint traces, and numeric snapshots independently of an EVP solve.
 
 ## [2.0.0-beta.10] - 2026-11-05
