@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Solve spectral APV modes in the finite subspace of the paired pencil when the reduced mass matrix is full rank. This excludes numerical representations of infinite roots from the signed APV mode inventory.
+
 ## [2.0.0-beta.9] - 2026-11-05
 
 - Let `IMBackground` derive density and stratification from one supplied profile using spectral calculus, with `rho0` as the density at the upper boundary.
