@@ -329,7 +329,13 @@ classdef (Abstract) IMSolver
             rowScale(rowScale == 0) = 1;
             solveA = solveA./rowScale;
             solveB = solveB./rowScale;
-            [V, D] = eig(solveA.*columnScale, solveB.*columnScale);
+            if isfield(map,"reduceEquilibratedPencil")
+                [finiteA,finiteB,lift] = map.reduceEquilibratedPencil(solveA.*columnScale,solveB.*columnScale);
+                [V,D] = eig(finiteA,finiteB);
+                if ~isempty(lift), V = lift*V; end
+            else
+                [V,D] = eig(solveA.*columnScale,solveB.*columnScale);
+            end
             % Recover the original native representation before filtering,
             % normalization, or any physical evaluation: c = S*y.
             V = columnScale.'.*V;
