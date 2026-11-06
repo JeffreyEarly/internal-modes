@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.0.0-beta.9] - 2026-11-05
+
 - Let `IMBackground` derive density and stratification from one supplied profile using spectral calculus, with `rho0` as the density at the upper boundary.
 
 ## [2.0.0-beta.8] - 2026-11-05
