@@ -1,8 +1,10 @@
 classdef IMBackground
     % Define the shared physical column used to create every mode family.
     %
-    % A background owns the buoyancy-frequency-squared profile `N2`, its
-    % physical domain, and the rotation, gravity, and surface convention.
+    % A background derives density and buoyancy frequency from one supplied
+    % profile in physical depth. The density at the upper endpoint
+    % $$\rho(z_{\mathrm{surface}})=\rho_0$$ sets the Boussinesq reference
+    % density and the integration constant.
     % Numerical coordinates and mode counts belong to the solver and mode
     % factories. Public state is read-only after construction.
     %
@@ -27,6 +29,10 @@ classdef IMBackground
         %
         % - Topic: Inspect the physical column
         N2
+
+        % Surface density and Boussinesq reference density in kg per cubic meter.
+        % - Topic: Inspect the physical column
+        rho0
 
         % Strictly increasing physical domain `[bottom surface]` in meters.
         %
@@ -67,7 +73,16 @@ classdef IMBackground
         profileParameters
     end
 
+    properties (Access = private)
+        % Supplies the density evaluator, preparing its primitive on first use.
+        densityEvaluatorFactory_
+    end
+
     properties (Dependent, SetAccess = private)
+        % Shape-preserving density function in kg per cubic meter.
+        % - Topic: Inspect the physical column
+        rho
+
         % Signed Coriolis frequency $$f_0=2\Omega\sin(\mathrm{latitude})$$.
         %
         % - Topic: Inspect the physical column
@@ -83,9 +98,19 @@ classdef IMBackground
         function self = IMBackground(options)
             % Create a background from a declared stratification profile.
             %
+            % Supply exactly one of `rho` or `N2`. A density source gives
+            % $$N^2=-(g/\rho_0)\,\partial_z\rho$$ by Chebfun differentiation.
+            % A stratification source is evaluated directly and supplies the
+            % density through a surface-anchored Chebfun antiderivative.
+            % Both conversions are independent of the solver coordinate and grid.
+            % The supplied function must describe a fixed profile throughout
+            % the lifetime of the background.
+            %
             % - Topic: Create a mode background
             % - Declaration: background = IMBackground(options)
-            % - Parameter options.N2: shape-preserving physical-depth profile
+            % - Parameter options.N2: shape-preserving squared buoyancy frequency as a function of depth
+            % - Parameter options.rho: shape-preserving density as a function of depth
+            % - Parameter options.rho0: surface density, inferred from rho input or defaulting to 1025 for N2 input
             % - Parameter options.zDomain: strictly increasing `[bottom surface]` domain
             % - Parameter options.rotationRate: planetary rotation rate
             % - Parameter options.latitude: latitude in degrees north
@@ -94,6 +119,8 @@ classdef IMBackground
             % - Returns self: read-only physical background
             arguments
                 options.N2 (1,1) function_handle
+                options.rho (1,1) function_handle
+                options.rho0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite}
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
@@ -110,7 +137,36 @@ classdef IMBackground
             if ~ismember(surfaceCondition,["freeSurface", "rigidLid"])
                 error("IMBackground:InvalidSurfaceCondition","surfaceCondition must be ""freeSurface"" or ""rigidLid"".");
             end
-            self.N2 = options.N2;
+            hasN2 = isfield(options,"N2");
+            hasDensity = isfield(options,"rho");
+            if hasN2 == hasDensity
+                error("IMBackground:InvalidProfileSource","Supply exactly one of rho or N2.");
+            end
+            if hasDensity
+                zSurface = options.zDomain(2);
+                rho = options.rho;
+                rho0 = rho(zSurface);
+                if ~isnumeric(rho0) || ~isscalar(rho0) || ~isreal(rho0) || ~isfinite(rho0) || rho0 <= 0
+                    error("IMBackground:InvalidSurfaceDensity","rho must return one real, finite, positive density at the upper domain endpoint.");
+                end
+                rho0 = double(rho0);
+                if isfield(options,"rho0") && options.rho0 ~= rho0
+                    error("IMBackground:ConflictingSurfaceDensity","rho0 must equal rho at the upper domain endpoint. Omit rho0 to infer it from rho.");
+                end
+                densityProfile = chebfun(rho,options.zDomain,'splitting','on');
+                representedSurface = densityProfile(zSurface);
+                gradient = diff(densityProfile);
+                buoyancyScale = -options.g/rho0;
+                self.N2 = @(z) buoyancyScale*evaluateProfile(gradient,z);
+                densityEvaluator = @(z) rho0+(evaluateProfile(densityProfile,z)-representedSurface);
+                self.densityEvaluatorFactory_ = @() densityEvaluator;
+            else
+                rho0 = 1025;
+                if isfield(options,"rho0"), rho0 = options.rho0; end
+                self.N2 = options.N2;
+                self.densityEvaluatorFactory_ = densityFromStratification(options.N2,options.zDomain,options.g,rho0);
+            end
+            self.rho0 = rho0;
             self.zDomain = options.zDomain;
             self.rotationRate = options.rotationRate;
             self.latitude = options.latitude;
@@ -118,6 +174,10 @@ classdef IMBackground
             self.surfaceCondition = surfaceCondition;
             self.profileKind = "arbitrary";
             self.profileParameters = struct();
+        end
+
+        function value = get.rho(self)
+            value = self.densityEvaluatorFactory_();
         end
 
         function value = get.f0(self)
@@ -164,6 +224,7 @@ classdef IMBackground
             % - Topic: Create a mode background
             % - Declaration: background = IMBackground.constantStratification(options)
             % - Parameter options.N0: positive constant buoyancy frequency
+            % - Parameter options.rho0: surface density, default 1025 kg per cubic meter
             % - Parameter options.zDomain: strictly increasing physical domain
             % - Parameter options.rotationRate: planetary rotation rate
             % - Parameter options.latitude: latitude in degrees north
@@ -172,6 +233,7 @@ classdef IMBackground
             % - Returns self: constant-stratification background
             arguments
                 options.N0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 5.2e-3
+                options.rho0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite} = [-1 0]
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
                 options.latitude (1,1) double {mustBeReal, mustBeFinite, mustBeGreaterThanOrEqual(options.latitude,-90), mustBeLessThanOrEqual(options.latitude,90)} = 33
@@ -199,6 +261,7 @@ classdef IMBackground
             % - Topic: Create a mode background
             % - Declaration: background = IMBackground.exponentialStratification(options)
             % - Parameter options.N0: positive surface buoyancy frequency
+            % - Parameter options.rho0: surface density, default 1025 kg per cubic meter
             % - Parameter options.b: positive buoyancy-frequency e-folding depth
             % - Parameter options.zDomain: strictly increasing physical domain
             % - Parameter options.rotationRate: planetary rotation rate
@@ -208,6 +271,7 @@ classdef IMBackground
             % - Returns self: exponential-stratification background
             arguments
                 options.N0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 5.2e-3
+                options.rho0 (1,1) double {mustBeReal, mustBeFinite, mustBePositive}
                 options.b (1,1) double {mustBeReal, mustBeFinite, mustBePositive} = 1300
                 options.zDomain (1,2) double {mustBeReal, mustBeFinite} = [-1 0]
                 options.rotationRate (1,1) double {mustBeReal, mustBeFinite, mustBeNonnegative} = 7.2921e-5
@@ -229,4 +293,23 @@ classdef IMBackground
             self.profileParameters = struct("N0",N0,"b",b);
         end
     end
+end
+
+function factory = densityFromStratification(N2,zDomain,g,rho0)
+% One primitive serves all density queries for the fixed source profile.
+densityEvaluator = [];
+factory = @getDensityEvaluator;
+
+    function value = getDensityEvaluator()
+        if isempty(densityEvaluator)
+            primitive = cumsum(chebfun(N2,zDomain,'splitting','on'));
+            surfaceIntegral = primitive(zDomain(2));
+            densityEvaluator = @(z) rho0-(rho0/g)*(evaluateProfile(primitive,z)-surfaceIntegral);
+        end
+        value = densityEvaluator;
+    end
+end
+
+function values = evaluateProfile(profile,z)
+values = reshape(feval(profile,z(:)),size(z));
 end
